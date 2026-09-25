@@ -1,4 +1,4 @@
-# cumple Manual 1 1: infraestructura Python del compilador Synapse
+# cumple Manual 1 §6: infraestructura Python del compilador Synapse (regla de hierro del bootstrap)
 # cumple Manual 8 4: toolchain de construcción
 """
 Generación de código C para estructuras de control de flujo.
@@ -55,11 +55,95 @@ def visitar_mientras(ctx: GeneratorContext, nodo: SentenciaMientras):
     ctx.write_line("}")
 
 
+def _emitir_para_en(ctx, nodo, var_en: str, iterable_en):
+    """cumple Manual 3 §3 (H-R153-1): emisión C del bucle_para_rango.
+    - Lista<T> (handle del runtime, H-R153-2): índice + _syn_lista_obtener
+      + desencajonado del slot (escalares por valor, structs/texto por
+      dirección — el emisor encajona con memcpy al agregar).
+    - cadena enlazada (ListaNodo, p.ej. Programa.sentencias): caminata
+      .cabeza/.cola con desencajonado `.valor` (struct Nodo)."""
+    from compilador.generator.emit_expressions import expr_a_c, tipo_de_expr
+    tipo_iterable = tipo_de_expr(ctx, iterable_en)
+    iterable_c = expr_a_c(ctx, iterable_en)
+    ctx.push_scope()
+    if tipo_iterable.startswith('Lista<'):
+        tipo_elem = tipo_iterable[6:-1].strip()
+        tipo_elem_c = ctx.traducir_tipo_c(tipo_elem)
+        es_slot_direc = tipo_elem_c not in ('int64_t', 'double')
+        tmp_lista = f"_fe_list_{abs(hash(str(id(nodo)))) % 100000}"
+        ctx.write_line(f"void* {tmp_lista} = (void*)({iterable_c});")
+        ctx.write_line(f"for (int64_t _fe_i = 0; _fe_i < _syn_lista_longitud({tmp_lista}); _fe_i++) {{")
+        ctx.inc_indent()
+        slot_c = f"_syn_lista_obtener({tmp_lista}, (int)_fe_i)"
+        if es_slot_direc:
+            ctx.write_line(f"{tipo_elem_c} {var_en} = *({tipo_elem_c}*)(intptr_t){slot_c};")
+        else:
+            ctx.write_line(f"{tipo_elem_c} {var_en} = ({tipo_elem_c}){slot_c};")
+        ctx._variables[var_en] = tipo_elem
+        ctx.inc_indent()
+        ctx.push_scope()
+        for s in nodo.cuerpo:
+            _visitar_stmt(ctx, s)
+        ctx.pop_scope()
+        ctx.dec_indent()
+        ctx.dec_indent()
+        ctx.write_line("}")
+        ctx.pop_scope()
+        return
+    if tipo_iterable in ('texto', 'cadena', 'CadenaSegura'):
+        tmp_str = f"_fe_str_{abs(hash(str(id(nodo)))) % 100000}"
+        ctx.write_line(f"CadenaSegura {tmp_str} = {iterable_c};")
+        ctx.write_line(f"for (int _fe_i = 0; _fe_i < {tmp_str}.longitud; _fe_i++) {{")
+        ctx.inc_indent()
+        ctx.write_line(f"int64_t {var_en} = (int64_t)(unsigned char){tmp_str}.datos[_fe_i];")
+        ctx._variables[var_en] = 'entero'
+        ctx.inc_indent()
+        ctx.push_scope()
+        for s in nodo.cuerpo:
+            _visitar_stmt(ctx, s)
+        ctx.pop_scope()
+        ctx.dec_indent()
+        ctx.dec_indent()
+        ctx.write_line("}")
+        ctx.pop_scope()
+        return
+    # cadena enlazada (ListaNodo): campos cabeza/cola (M2 §4.2, ast_nodes.syn)
+    tmp_cur = f"_fe_cur_{abs(hash(str(id(nodo)))) % 100000}"
+    ctx.write_line(f"{{")
+    ctx.inc_indent()
+    ctx.write_line(f"struct ListaNodo* {tmp_cur} = (struct ListaNodo*)({iterable_c});")
+    ctx.write_line(f"while ({tmp_cur} != 0) {{")
+    ctx.inc_indent()
+    ctx.write_line(f"struct Nodo* {var_en} = {tmp_cur}->cabeza;")
+    ctx._variables[var_en] = 'Nodo'
+    ctx.inc_indent()
+    ctx.push_scope()
+    for s in nodo.cuerpo:
+        _visitar_stmt(ctx, s)
+    ctx.pop_scope()
+    ctx.dec_indent()
+    ctx.write_line(f"{tmp_cur} = {tmp_cur}->cola;")
+    ctx.dec_indent()
+    ctx.write_line("}")
+    ctx.dec_indent()
+    ctx.write_line("}")
+    ctx.pop_scope()
+
+
 def visitar_para(ctx: GeneratorContext, nodo: SentenciaPara):
     """R30 (Manual 2 §2.2 L108): `para i = 0 mientras i < 3:` — la variable de
     bucle se DECLARA en el C (`for (int64_t i = 0; ...)`) y se registra en
     ctx._variables (paridad visitar_declaracion L97). Antes se emitia
     `for (i = 0; ...)` sin declarar -> gcc 'i undeclared' (desvio H-R29-2)."""
+    # cumple Manual 3 §3 (H-R153-1): bucle_para_rango — `para x en expr:`
+    # (bucle_para_rango del Manual 3 §3 L133: "Iteración sobre lista o rango").
+    # Emisión: caminata del runtime de colecciones (runtime/core/lista.c,
+    # H-R153-2) o de la cadena enlazada ListaNodo (Programa.sentencias).
+    var_en = getattr(nodo, 'variable', None)
+    iterable_en = getattr(nodo, 'iterable', None)
+    if var_en and iterable_en is not None:
+        _emitir_para_en(ctx, nodo, var_en, iterable_en)
+        return
     init_code = ""
     var_name = None
     var_tipo_syn = None

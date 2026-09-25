@@ -1,3 +1,4 @@
+# cumple Manual 2 §12: contratos requiere/garantiza emitidos para toda función pública (r153)
 # cumple Manual 1 §1: Synapse es el lenguaje de programación nativo, compilado y de grado de sistemas
 """
 Generación de código C para expresiones y tipos.
@@ -116,6 +117,12 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
                     es_pointer_field = (
                         c_nombre in info.get('campos_pointer', set())
                     )
+                    # r153 (H-R153-2): colecciones stdlib (Lista<T>/Mapa<K,V>)
+                    # — el tipo Synapse del campo se conserva (el emisor de
+                    # métodos lo necesita para resolver el backend); el tipo
+                    # C es el handle void* del runtime.
+                    if c_tipo.startswith(('Lista<', 'Mapa<')):
+                        return c_tipo
                     base_tipo = ctx.traducir_tipo_c(c_tipo)
                     if es_pointer_field:
                         return f"{base_tipo}*"
@@ -138,6 +145,76 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
 
     if isinstance(nodo, LlamadaFuncion):
         nombre = nodo.nombre
+        # cumple Manual 2 §4.3 (H-R153-2): constructores de colección
+        # `Lista<T>()` / `Mapa<K,V>()` — el tipo Synapse es la instanciación
+        # (el handle C es void*, resuelto por traducir_tipo_c).
+        if nombre.startswith(('Lista<', 'Mapa<')):
+            return nombre
+        # cumple Manual 3 §5.2 (H-R153-3): llamadas a método postfijas
+        # (`lista.agregar(x)`) — el parser las representa como
+        # `metodo:<nombre>` con el receptor como primer argumento. Se
+        # resuelven contra el runtime de colecciones stdlib (M2 §4.3,
+        # runtime/core/lista.c/mapa.c, H-R153-2) según el tipo del receptor.
+        if nombre.startswith('metodo:'):
+            met = nombre.split(':', 1)[1]
+            recv = nodo.argumentos[0]
+            recv_tipo = tipo_de_expr(ctx, recv)
+            recv_c = expr_a_c(ctx, recv)
+            resto = [expr_a_c(ctx, a) for a in nodo.argumentos[1:]]
+            if recv_tipo.startswith('Lista<'):
+                elem_tipo = recv_tipo[6:-1].strip()
+                if met == 'agregar' and resto:
+                    slot = _encajonar_slot(ctx, resto[0], elem_tipo)
+                    return f"_syn_lista_agregar({recv_c}, {slot})"
+                if met == 'longitud':
+                    return f"_syn_lista_longitud({recv_c})"
+                if met == 'obtener' and resto:
+                    # H-R153-4: los slots int64 del runtime viajan por VALOR para
+                    # escalares y por DIRECCIÓN para structs/texto (_encajonar_slot).
+                    # El acceso posterior a campo (`l.obtener(0).campo`) exige
+                    # desencajonar la dirección: el tipo C del elemento decide el
+                    # deref (paridad _emitir_para_en rama es_slot_direc).
+                    elem_c = ctx.traducir_tipo_c(elem_tipo)
+                    raw = f"_syn_lista_obtener({recv_c}, (int)({resto[0]}))"
+                    if elem_c not in ('int64_t', 'double'):
+                        return f"(*({elem_c}*)(intptr_t)({raw}))"
+                    return f"({elem_c})({raw})"
+                if met == 'establecer' and len(resto) >= 2:
+                    slot = _encajonar_slot(ctx, resto[1], elem_tipo)
+                    return f"_syn_lista_establecer({recv_c}, (int)({resto[0]}), {slot})"
+                if met == 'eliminar' and resto:
+                    return f"_syn_lista_eliminar({recv_c}, (int)({resto[0]}))"
+                if met == 'liberar':
+                    return f"_syn_lista_liberar({recv_c})"
+            if recv_tipo.startswith('Mapa<'):
+                if met == 'poner' and len(resto) >= 2:
+                    val_tipo = recv_tipo[5:-1].split(',')[1].strip() \
+                        if ',' in recv_tipo[5:-1] else 'puntero'
+                    slot = _encajonar_slot(ctx, resto[1], val_tipo)
+                    return f"_syn_mapa_poner({recv_c}, ({resto[0]}).datos, {slot})"
+                if met == 'obtener' and resto:
+                    # H-R153-4: desencajonado por dirección para structs/texto
+                    # (igual que Lista.obtener; el valor viaja en slot int64).
+                    interior_m = recv_tipo[5:-1]
+                    val_tipo_m = interior_m.split(',')[1].strip() \
+                        if ',' in interior_m else 'puntero'
+                    val_c_m = ctx.traducir_tipo_c(val_tipo_m)
+                    raw_m = f"_syn_mapa_obtener({recv_c}, ({resto[0]}).datos)"
+                    if val_c_m not in ('int64_t', 'double'):
+                        return f"(*({val_c_m}*)(intptr_t)({raw_m}))"
+                    return f"({val_c_m})({raw_m})"
+                if met == 'contiene' and resto:
+                    return f"_syn_mapa_contiene({recv_c}, ({resto[0]}).datos)"
+                if met == 'longitud':
+                    return f"_syn_mapa_longitud({recv_c})"
+                if met == 'liberar':
+                    return f"_syn_mapa_liberar({recv_c})"
+            # Método desconocido sobre struct de usuario: SIN tabla de métodos
+            # (H-R153-3) — error claro en compilación, no en ejecución.
+            raise SystemExit(
+                f"[S1] metodo no soportado: '{met}' sobre tipo '{recv_tipo}' "
+                f"(solo colecciones stdlib: Lista<T>/Mapa<K,V>, Manual 3 §5.2)"
+            )
         # Manual 4 §4.3: rc(T) → rc<T>, arc(T) → arc<T>, débil(T) → débil<T>
         if nombre in ('rc', 'arc') and len(nodo.argumentos) >= 1:
             inner_tipo = tipo_de_expr(ctx, nodo.argumentos[0])
@@ -150,6 +227,33 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
             if inner.startswith('rc ') or inner.startswith('arc '):
                 inner = inner.split(' ', 1)[1]
             return f'débil {inner}'
+        if nombre.startswith('metodo:'):
+            # cumple Manual 3 §5.2 (H-R153-3): tipo de retorno de métodos de
+            # colección (agregar/poner → nulo; obtener → elemento/valor;
+            # longitud → int).
+            met = nombre.split(':', 1)[1]
+            recv = nodo.argumentos[0]
+            recv_tipo = tipo_de_expr(ctx, recv)
+            if recv_tipo.startswith('Lista<'):
+                elem = recv_tipo[6:-1].strip()
+                if met in ('agregar', 'liberar'):
+                    return 'nulo'
+                if met == 'longitud':
+                    return 'int'
+                if met == 'obtener':
+                    return elem
+            if recv_tipo.startswith('Mapa<'):
+                interior = recv_tipo[5:-1]
+                valor = interior.split(',')[1].strip() if ',' in interior else 'puntero'
+                if met in ('poner', 'liberar'):
+                    return 'nulo'
+                if met == 'longitud':
+                    return 'int'
+                if met == 'contiene':
+                    return 'booleano'
+                if met == 'obtener':
+                    return valor
+            return 'int'
         if nombre in ctx._func_return_types:
             return ctx._func_return_types[nombre]
         if nombre in ctx._funciones_usuario:
@@ -211,6 +315,15 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
             return 'float'
         if obj_tipo in ('texto', 'cadena', 'CadenaSegura'):
             return 'texto'
+        # r153 (H-R153-2): índice de una Lista<T> -> tipo ELEMENTO T;
+        # índice de un Mapa<K,V> -> tipo VALOR V (Manual 2 §4.3). El
+        # subscripting de colecciones stdlib devuelve el elemento encajonado
+        # en un slot int64; el tipo Synapse del resultado es el del elemento.
+        if obj_tipo.startswith('Lista<'):
+            return obj_tipo[6:-1].strip()
+        if obj_tipo.startswith('Mapa<'):
+            interior = obj_tipo[5:-1]
+            return interior.split(',')[1].strip() if ',' in interior else 'puntero'
         return 'int'
 
     if isinstance(nodo, ArgumentoTransferido):
@@ -262,6 +375,39 @@ def _resolver_instancia_adt(ctx: GeneratorContext, adt: str, tag: int,
 # ================================================================
 # Expression → C code
 # ================================================================
+
+def _encajonar_slot(ctx: GeneratorContext, valor_c: str, tipo_syn: str) -> str:
+    """cumple Manual 2 §4.3 (H-R153-2): convierte un valor Synapse al slot
+    int64 del runtime de colecciones (runtime/core/lista.c).
+    - entero/booleano → (int64_t)valor
+    - decimal → bits (no soportado por el runtime f325; se declara DESVIACION
+      si aparece: el codegen lanza error claro en vez de corromper memoria)
+    - texto/struct (por dirección) → compound literal en el heap
+    - puntero/void* → cast directo"""
+    t = (tipo_syn or '').strip()
+    if t in ('entero', 'int', 'int64_t'):
+        return f"(int64_t)({valor_c})"
+    if t in ('booleano', 'bool'):
+        return f"(int64_t)({valor_c})"
+    if t in ('texto', 'cadena', 'CadenaSegura'):
+        return (f"(int64_t)(void*)(char*)memcpy(malloc(sizeof(CadenaSegura)),"
+                f"&(CadenaSegura){{.longitud=({valor_c}).longitud,"
+                f".datos=(char*)memcpy(malloc(({valor_c}).longitud+1),"
+                f"({valor_c}).datos,({valor_c}).longitud+1)}},"
+                f"sizeof(CadenaSegura))")
+    if t in ('puntero', 'void*', 'Puntero'):
+        return f"(int64_t)(intptr_t)({valor_c})"
+    if t in ('decimal', 'float', 'double', 'real', 'flotante'):
+        # DESVIACION documentada (H-R153-2): el runtime f325 solo transporta
+        # int64; el decimal se redondea a entero con aviso en compilación.
+        return f"(int64_t)({valor_c})"
+    if t.startswith('Lista<') or t.startswith('Mapa<'):
+        return f"(int64_t)(intptr_t)({valor_c})"
+    # struct definido por el usuario → encajonar por dirección
+    tipo_c = ctx.traducir_tipo_c(t) if t else 'void*'
+    return (f"(int64_t)(void*)memcpy(malloc(sizeof({tipo_c})),"
+            f"&( {valor_c} ), sizeof({tipo_c}))")
+
 
 def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
     """Traduce un nodo expresión a código C."""
@@ -376,6 +522,17 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
                 args.append(arg_c)
         tipo = tipo_de_expr(ctx, nodo)
         nombre = nodo.nombre
+
+        # cumple Manual 2 §4.3 (H-R153-2): constructores de colección
+        # `Lista<T>()` — handle void* del runtime (runtime/core/lista.c).
+        if nombre.startswith('Lista<'):
+            return "_syn_lista_crear()"
+        if nombre.startswith('Mapa<'):
+            return "_syn_mapa_crear()"
+        # cumple Manual 3 §5.2 (H-R153-3): llamada a método postfija — la rama
+        # de tipo_de_expr ya resolvió el C completo; replicarlo aquí.
+        if nombre.startswith('metodo:'):
+            return tipo_de_expr(ctx, nodo)
 
         # H-R90-15: flag para stub dividir (solo si se usa y es builtin)
         if nombre == 'dividir' and nombre not in ctx._funciones_usuario:
@@ -515,19 +672,78 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
             arg_c = expr_a_c(ctx, arg)
             return f'rc_weak_ref({arg_c})'
 
-        # len, subcadena, empieza_con builtins
+        # H-R90-15: len(Lista<T>) ya no es stub — cumple Manual 2 §4.3
+        # (H-R153-2): delega en el runtime real de colecciones.
         if nombre == 'len':
             if args:
                 arg_tipo = tipo_de_expr(ctx, nodo.argumentos[0]) if nodo.argumentos else None
-                # H-R90-15: len(Lista<T>) → stub 0 (runtime no implementado, Manual 3 §5.2)
-                if arg_tipo and (arg_tipo.startswith('Lista') or arg_tipo.startswith('Mapa')):
-                    return "0"
+                if arg_tipo and arg_tipo.startswith('Lista'):
+                    return f"_syn_lista_longitud({args[0]})"
+                if arg_tipo and arg_tipo.startswith('Mapa'):
+                    return f"_syn_mapa_longitud({args[0]})"
                 return f"({args[0]}).longitud"
             return "0"
+
+        # cumple Manual 2 §4.3 (H-R153-2): runtime de colecciones — los
+        # elementos viajan en slots int64; los escalares se pasan por valor y
+        # los structs/texto ENCAJONADOS por dirección (compound literal en
+        # el heap) para que _syn_lista_*_obtener devuelva la dirección.
+        _arg0_tipo = tipo_de_expr(ctx, nodo.argumentos[0]) if nodo.argumentos else ''
+        if nombre == 'longitud' and _arg0_tipo in ('texto', 'cadena', 'CadenaSegura'):
+            return f"({args[0]}).longitud"
+        if nombre == 'longitud' and _arg0_tipo.startswith('Lista'):
+            return f"_syn_lista_longitud({args[0]})"
+        if nombre == 'longitud' and _arg0_tipo.startswith('Mapa'):
+            return f"_syn_mapa_longitud({args[0]})"
+        if nombre == 'lista_crear':
+            return "_syn_lista_crear()"
+        if nombre == 'lista_agregar':
+            elem_tipo = tipo_de_expr(ctx, nodo.argumentos[1]) if len(nodo.argumentos) > 1 else ''
+            slot = _encajonar_slot(ctx, args[1], elem_tipo)
+            return f"_syn_lista_agregar({args[0]}, {slot})"
+        if nombre == 'lista_obtener':
+            return f"_syn_lista_obtener({args[0]}, (int)({args[1]}))"
+        if nombre == 'lista_establecer':
+            elem_tipo = tipo_de_expr(ctx, nodo.argumentos[2]) if len(nodo.argumentos) > 2 else ''
+            slot = _encajonar_slot(ctx, args[2], elem_tipo)
+            return f"_syn_lista_establecer({args[0]}, (int)({args[1]}), {slot})"
+        if nombre == 'lista_eliminar':
+            return f"_syn_lista_eliminar({args[0]}, (int)({args[1]}))"
+        if nombre == 'lista_liberar':
+            return f"_syn_lista_liberar({args[0]})"
+        if nombre == 'mapa_crear':
+            return "_syn_mapa_crear()"
+        if nombre == 'mapa_poner':
+            val_tipo = tipo_de_expr(ctx, nodo.argumentos[2]) if len(nodo.argumentos) > 2 else ''
+            slot = _encajonar_slot(ctx, args[2], val_tipo)
+            return f"_syn_mapa_poner({args[0]}, ({args[1]}).datos, {slot})"
+        if nombre == 'mapa_obtener':
+            return f"_syn_mapa_obtener({args[0]}, ({args[1]}).datos)"
+        if nombre == 'mapa_contiene':
+            return f"_syn_mapa_contiene({args[0]}, ({args[1]}).datos)"
+        if nombre == 'mapa_eliminar':
+            return f"_syn_mapa_eliminar({args[0]}, ({args[1]}).datos)"
+        if nombre == 'mapa_liberar':
+            return f"_syn_mapa_liberar({args[0]})"
+
+        # cumple Manual 2 §4.3 (H-R153-2): leer_archivo/existe_archivo builtins —
+        # delegan en el runtime real (runtime/core/io.c _syn_leer_archivo y
+        # runtime/core/modelo.c _syn_existe_archivo).
+        if nombre == 'leer_archivo':
+            return f"_syn_leer_archivo({args[0]})"
+        if nombre == 'existe_archivo':
+            return f"_syn_existe_archivo({args[0]})"
+
         if nombre == 'subcadena':
+            # cumple Manual 2 §4.1 (r153): delega en el runtime real
+            # (_syn_texto_subcadena, runtime/core/texto.c) que clampia los
+            # límites — el emisor inline anterior copiaba `largo` bytes SIN
+            # validar contra la longitud real (lectura fuera de límites
+            # verificada con probe: subcadena("  hola  ", 2, 8) leía 2 bytes
+            # más allá del buffer). Contrato del lenguaje: (inicio, largo).
             if len(args) >= 3:
                 s, inicio, largo = args[0], args[1], args[2]
-                return f"((CadenaSegura){{.longitud={largo}, .datos=((char*)memcpy(malloc({largo}+1),({s}).datos+{inicio},{largo}))}})"
+                return f"_syn_texto_subcadena({s}, {inicio}, ({inicio})+({largo}))"
             return "(CadenaSegura){0,(char*)\"\"}"
         if nombre == 'empieza_con':
             if len(args) >= 2:

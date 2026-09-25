@@ -1,3 +1,4 @@
+# cumple Manual 1 §6: infraestructura Python del compilador Synapse (r153)
 """
 GeneratorContext — Estado centralizado del generador de código C.
 
@@ -84,6 +85,8 @@ class GeneratorContext:
             'cerrar_archivo': 'void', 'relu': 'tensor', 'tokenizar': 'int',
             'parsear': 'struct Programa', 'generar': 'int',
             'concat': 'texto', '_argc': 'int',
+            # cumple Manual 2 §4.3 (H-R153-2): leer_archivo delega en runtime.
+            'leer_archivo': 'texto',
             '_argv': 'texto', 'salir': 'void',
             'canal_crear': 'CanalConcurrencia*', 'canal_enviar': 'void',
             'canal_recibir': 'puntero', 'cerrar': 'void',
@@ -135,6 +138,23 @@ class GeneratorContext:
         # Manual 3 §7.1: Resultado<decimal, texto>. Resuelta como return type
         # (no en _RUNTIME_BUILTINS: provee stub inline en el generator).
         'dividir': 'Resultado<decimal, texto>',
+        # cumple Manual 2 §4.3 (H-R153-2): colecciones de la biblioteca
+        # estándar — runtime real en runtime/core/lista.c y mapa.c (slots
+        # int64, ME f325). El emisor de llamadas resuelve la instancia según
+        # el tipo del argumento (Lista<T> handle, texto → .longitud).
+        'longitud': 'int',
+        'lista_crear': 'Lista<puntero>',
+        'lista_agregar': 'nulo',
+        'lista_obtener': 'puntero',
+        'lista_establecer': 'nulo',
+        'lista_eliminar': 'nulo',
+        'lista_liberar': 'nulo',
+        'mapa_crear': 'Mapa<puntero>',
+        'mapa_poner': 'nulo',
+        'mapa_obtener': 'puntero',
+        'mapa_contiene': 'booleano',
+        'mapa_eliminar': 'nulo',
+        'mapa_liberar': 'nulo',
         }
         # F1.2d/F1.4 (Manual 4 §3.2-3.3, §4.2, §4.3): rc/arc/débil constructores
         # `rc(T)` → rc<T>, `débil(T)` → débil<T> / `débil(nulo)` → nil WeakRef
@@ -560,7 +580,10 @@ class GeneratorContext:
             args = tuple(_dividir_args_tipo(resto[:-1]))
             if (base, args) in self._instancias_adt:
                 return self._instancias_adt[(base, args)]['nombre_c']
-            # H-R90-15: Lista<T>/Mapa<K,V> son opaque types (void* en C, Manual 3 §5.2)
+            # H-R90-15 + cumple Manual 2 §4.3 (H-R153-2): Lista<T>/Mapa<K,V>
+            # son handles opacos del runtime de colecciones (runtime/core/
+            # lista.c/mapa.c, slots int64) — void* en C. El emisor de llamadas
+            # y de for-en usa los builtins _syn_lista_*/_syn_mapa_*.
             if base in ('Lista', 'Mapa'):
                 return 'void*'
         if tipo_synapse.startswith('Resultado<'):

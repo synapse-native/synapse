@@ -1,6 +1,8 @@
 #lang: es
 # cumple Manual 1 1: infraestructura del compilador Synapse
 # cumple Manual 8 4: toolchain de construcción
+// cumple Manual 2 §3: tabla de palabras reservadas multi-idioma (r153: token contextual 'en' para bucle_para_rango)
+// cumple Manual 3 §3 (r153 R2n/R3n): 'en' del bucle_para_rango y degradación contextual de keywords tras '.' (obj.metodo) para la gramática de métodos
 // --- Token ID constants ---
 // AUDITORIA F1 (H23): nombres alineados al Manual 2 §3 (T_SI/T_SINO).
 // AUDITORIA FASE A (A2.1): numeración CANÓNICA de nucleo/tokens.syn. El
@@ -499,8 +501,31 @@ funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
                 // destructor RAII (_syn_texto_liberar en reasignacion, pipeline S1) liberaba
                 // el slice prestado -> pool_free sobre puntero interior -> 0xC0000374.
                 tok = 0
+                // cumple Manual 2 §2 (r153 H-R153-17): paridad lexer.py L629-643 —
+                // un keyword en posicion de CAMPO se degrada a identificador:
+                // (a) inmediatamente despues de un T_PUNTO (p.y = 4, q.y, obj.metodo()),
+                // (b) keyword seguido de '=' simple (no '==', regla de asignacion).
+                // Sin esto el parser nativo recibe T_Y en posicion de campo/metodo y
+                // muere con "Expresion inesperada" (los probes Lista<Punto> de r153).
+                // El contexto se lee del ULTIMO token emitido (T_PUNTO = 13): paridad
+                // exacta con despues_de_punto de lexer.py, sin estado persistente.
+                es_ctx_id = 0
+                t_punto_c = T_PUNTO
                 inseguro:
-                    asm("tok = keyword_token((CadenaSegura){.longitud = (i - inicio), .datos = (char*)ptr_texto + inicio}, lexer_idioma_actual());")
+                    asm("{ struct LexerBuffers* _lbw = (struct LexerBuffers*)lexer_buffers();")
+                    asm("  es_ctx_id = (_lbw && _lbw->ntks > 0 && ((struct TokenLex*)_lbw->tokens)[_lbw->ntks-1].tipo == t_punto_c) ? 1 : 0; }")
+                si es_ctx_id == 0:
+                    inseguro:
+                        asm("tok = keyword_token((CadenaSegura){.longitud = (i - inicio), .datos = (char*)ptr_texto + inicio}, lexer_idioma_actual());")
+                    si tok != 0:
+                        // paridad lexer.py L636-643: keyword + '=' simple (no '==') -> identificador
+                        es_asig = 0
+                        inseguro:
+                            asm("{ int _pkw = i;")
+                            asm("  while (_pkw < len_texto && ((const char*)ptr_texto)[_pkw] == 32) _pkw++;")
+                            asm("  if (_pkw < len_texto && ((const char*)ptr_texto)[_pkw] == 61 && (_pkw + 1 >= len_texto || ((const char*)ptr_texto)[_pkw + 1] != 61)) es_asig = 1; }")
+                        si es_asig == 1:
+                            tok = 0
                 si tok == 0:
                     tok = T_IDENTIFICADOR
                 si tok == T_IDENTIFICADOR:
@@ -649,6 +674,15 @@ funcion tokenizar(fuente: cadena) -> entero:
     // verian ptr_fuente/len_fuente en el C generado).
     let ptr_fuente: puntero = nulo
     let len_fuente: entero = 0
+    // r153 (H-R153-16): profundidad de parentesis abiertos (paridad
+    // compilador/lexer.py L348 self.profundidad) — permite llamadas
+    // multi-linea: en continuacion (profundidad > 0) NO se procesa la
+    // indentacion ni se emite T_NUEVALINEA (lexer.py _procesar_lineas
+    // L450-459). Sin esto, `advertencias.agregar(A(\n ... \n))` del modulo
+    // lint.syn fallaba con 'Expresion inesperada' en el T_INDENTAR interno.
+    let profundidad_parentesis: entero = 0
+    let ntok_antes: entero = 0
+    let jtok: entero = 0
     inseguro:
         asm("ptr_fuente = (void*)fuente.datos;")
         asm("len_fuente = fuente.longitud;")
@@ -726,13 +760,32 @@ funcion tokenizar(fuente: cadena) -> entero:
                     j = j + 1
                 si solo_espacios == 0:
                     lexer_fijar_linea(linea_num)
-                    lexer_procesar_indentacion(ptr_linea, len_linea)
+                    // r153 (H-R153-16): la indentacion solo se procesa fuera de
+                    // parentesis (paridad lexer.py L452-455).
+                    si profundidad_parentesis == 0:
+                        lexer_procesar_indentacion(ptr_linea, len_linea)
+                    ntok_antes = lexer_obtener_total()
                     lexer_tokenizar_linea(ptr_linea, len_linea)
+                    // r153 (H-R153-16): actualizar la profundidad escaneando los
+                    // tokens emitidos por esta linea (paridad lexer.py L578-586:
+                    // '(' y '[' suben, ')' y ']' bajan; el nativo no lexea [], solo ( )).
+                    jtok = ntok_antes
+                    mientras jtok < lexer_obtener_total():
+                        inseguro:
+                            asm("{ struct LexerBuffers* _lbd = (struct LexerBuffers*)lexer_buffers();")
+                            asm("  if (jtok >= 0 && jtok < _lbd->ntks) { int64_t _tt_d = ((struct TokenLex*)_lbd->tokens)[jtok].tipo;")
+                            asm("      if (_tt_d == 38) { profundidad_parentesis = profundidad_parentesis + 1; }")
+                            asm("      else if (_tt_d == 39) { if (profundidad_parentesis > 0) { profundidad_parentesis = profundidad_parentesis - 1; } } } }")
+                        jtok = jtok + 1
         // FASE A (A2.1): paridad con _P_tokenizar — NL tras CADA linea
         // (incluidas vacias, #lang y comentarios; el salto tras la ultima
         // linea se emite solo si existe el \n final)
+        // r153 (H-R153-16): SALVO en continuacion de parentesis (paridad
+        // lexer.py L456-459: `if self.profundidad > 0: continue` — la linea
+        // tokenizada no agrega NEWLINE mientras la llamada este abierta).
         lexer_fijar_linea(linea_num)
-        lexer_push_token(T_NUEVALINEA, linea_num, 0)
+        si profundidad_parentesis == 0:
+            lexer_push_token(T_NUEVALINEA, linea_num, 0)
         si i < len_fuente:
             inseguro:
                 c = 0

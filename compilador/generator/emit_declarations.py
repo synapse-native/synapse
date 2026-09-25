@@ -673,8 +673,16 @@ def visitar_retornar(ctx: GeneratorContext, nodo: SentenciaRetornar):
             ctx.emit_all_destructors(exclude_var=excl)
             ctx.write_line(f"return ->{temp};")
         else:
+            # cumple Manual 2 §9.1 (r153, clase H-R146-1/H-R113): evaluar la
+            # expresión de retorno en un temporal ANTES de inyectar los
+            # destructores. La liberación RAII es al cierre del scope, jamás
+            # antes de leer el recurso: `return concat(a, b)` liberaba los
+            # locales y DESPUÉS los leía (use-after-free verificado en fmt).
+            ctx._contador_tmp += 1
+            temp = f"_ret_{nodo.linea or 0}_{ctx._contador_tmp}"
+            ctx.write_line(f"{ret_tipo_c} {temp} = {ret_expr};")
             ctx.emit_all_destructors(exclude_var=excl)
-            ctx.write_line(f"return {ret_expr};")
+            ctx.write_line(f"return {temp};")
     else:
         ctx.emit_all_destructors(exclude_var=excl)
         ctx.write_line("return;")

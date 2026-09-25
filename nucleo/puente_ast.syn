@@ -286,6 +286,30 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->objeto = (struct Nodo*)puente_nodo(hi);")
             asm("  _p->nombre_campo = puente_cs_str(puente_str(idx));")
             asm("  r = (void*)_p; }")
+    // cumple Manual 3 §3 (r153 R3n, cumple Manual 2 §7.2): NODO_METODO -> LlamadaFuncion con nombre
+    // "metodo:<n>" y el objeto como primer argumento (paridad S1
+    // parser_expressions.py _parsear_postfijo; el emisor resuelve el backend
+    // de colección, Manual 3 §5.2).
+    si t == NODO_METODO:
+        inseguro:
+            asm("{ struct LlamadaFuncion* _p = (struct LlamadaFuncion*)calloc(1, sizeof(struct LlamadaFuncion));")
+            asm("  _p->tipo = puente_cs_str((void*)\"LlamadaFuncion\");")
+            asm("  { char* _mm = (char*)puente_str(idx);")
+            asm("    size_t _ml = _mm ? strlen(_mm) : 0;")
+            asm("    char* _mb = (char*)malloc(_ml + 8);")
+            asm("    if (_mb) { memcpy(_mb, \"metodo:\", 7); if (_mm) memcpy(_mb + 7, _mm, _ml + 1); }")
+            asm("    _p->nombre = puente_cs_str(_mb);")
+            asm("    // r153 (H-R153-5): SIN free(_mb) — puente_cs_str NO copia la")
+            asm("    // cadena (r = (CadenaSegura){len, p}); liberar _mb aqui colgaba el")
+            asm("    // nombre del LlamadaFuncion y el C emitido salia con bytes basura")
+            asm("    // (stray '\\21' en synapse_unity.c, 2a llamada a metodo).")
+            asm("    }")
+            asm("  { struct ListaNodo* _objs = (struct ListaNodo*)calloc(1, sizeof(struct ListaNodo));")
+            asm("    _objs->cabeza = (struct Nodo*)puente_nodo(hi);")
+            asm("    _objs->cola = (struct ListaNodo*)puente_lista(hd);")
+            asm("    _p->argumentos = _objs; }")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
+            asm("  r = (void*)_p; }")
     si t == NODO_ASIGNACION:
         inseguro:
             asm("{ struct AsignacionVariable* _p = (struct AsignacionVariable*)calloc(1, sizeof(struct AsignacionVariable));")
@@ -381,6 +405,11 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->tipo = puente_cs_str((void*)\"DefinicionFuncion\");")
             asm("  _p->nombre = puente_cs_str(puente_str(idx));")
             asm("  _p->tipo_retorno = puente_cs_str(puente_str2(idx));")
+            asm("  // r153 (H-R153-12b): firma SIN `-> tipo` -> tipo_retorno 'nulo'")
+            asm("  // (paridad S1 parser_declarations.py L52-55 y puente_canonico.py:343;")
+            asm("  // antes el C emitia el fallback int64_t para funciones nulas).")
+            asm("  if (!_p->tipo_retorno.datos || _p->tipo_retorno.longitud == 0) {")
+            asm("    _p->tipo_retorno = puente_cs_str((void*)\"nulo\"); }")
             asm("  _p->parametros = (struct ListaParametro*)puente_lista_param(hd);")
             asm("  _p->cuerpo = (struct ListaNodo*)puente_lista(hi);")
             asm("  if (extra > 0) {")
@@ -432,6 +461,22 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  // puente_nodo(extra) guardaba SOLO la primera sentencia y el resto")
             asm("  // del bloque se perdia en el codegen.")
             asm("  _p->cuerpo = (struct ListaNodo*)puente_lista(extra);")
+            asm("  r = (void*)_p; }")
+    // cumple Manual 3 §3 (r153 R2n): NODO_PARA_EN -> SentenciaPara con
+    // inicializacion=0 e iterable en condicion (convención del emisor:
+    // gen_visitar_para distingue for-en por inicializacion nula, paridad
+    // parser_control.py: iterable viaja en `condicion`). Variable en payload
+    // primario, iterable en hijo_der, cuerpo (cadena hermano) en hijo_izq.
+    si t == NODO_PARA_EN:
+        inseguro:
+            asm("{ struct SentenciaPara* _p = (struct SentenciaPara*)calloc(1, sizeof(struct SentenciaPara));")
+            asm("  _p->tipo = puente_cs_str((void*)\"SentenciaPara\");")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
+            asm("  _p->nombre = puente_cs_str(puente_str(idx));")
+            asm("  _p->inicializacion = 0;")
+            asm("  _p->condicion = (struct Nodo*)puente_nodo(hd);")
+            asm("  _p->incremento = 0;")
+            asm("  _p->cuerpo = (struct ListaNodo*)puente_lista(hi);")
             asm("  r = (void*)_p; }")
     si t == NODO_RETORNAR:
         inseguro:

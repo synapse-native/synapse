@@ -1,5 +1,6 @@
-# cumple Manual 1 1: infraestructura Python del compilador Synapse
+# cumple Manual 1 §6: infraestructura Python del compilador Synapse (regla de hierro del bootstrap)
 # cumple Manual 8 4: toolchain de construcción
+# cumple Manual 2 §4.3 (r153): colecciones Lista<T>/Mapa<K,V> de la biblioteca estándar
 from typing import List, Optional, Dict, Tuple
 
 from compilador.ast_nodes import (
@@ -50,6 +51,9 @@ _FUNCIONES_BUILTIN: Dict[str, Tuple[List[str], str]] = {
     'cerrar': (['CanalConcurrencia*'], 'nulo'),
     'obtener_env': (['texto'], 'texto'),
     'existe_archivo': (['texto'], 'booleano'),
+    # cumple Manual 2 §4.3 (H-R153-2): leer_archivo builtin — delega en
+    # _syn_leer_archivo del runtime (runtime/core/io.c).
+    'leer_archivo': (['texto'], 'texto'),
     'eliminar_archivo': (['texto'], 'entero'),
     '_syn_obtener_env': (['texto'], 'texto'),
     '_syn_existe_archivo': (['texto'], 'entero'),
@@ -60,7 +64,48 @@ _FUNCIONES_BUILTIN: Dict[str, Tuple[List[str], str]] = {
     # H-R90-15: dividir como builtin de test FFI (std.err §3: retorna Resultado)
     # Manual 3 §7.1: función que retorna Resultado<decimal, texto>.
     'dividir': (['decimal', 'decimal'], 'Resultado<decimal, texto>'),
+    # cumple Manual 2 §4.3: Lista<T> y Mapa<K,V> son tipos dinámicos de la
+    # biblioteca estándar — runtime real en runtime/core/lista.c y mapa.c
+    # (ME f325, slots int64; H-R153-2). Los primeros parámetros (l, m) se
+    # validan de forma relajada abajo (cualquier Lista<...>/Mapa<...> vale).
+    'lista_crear': ([], 'Lista<puntero>'),
+    'mapa_crear': ([], 'Mapa<puntero>'),
+    'mapa_poner': (['Mapa<puntero>', 'texto', 'puntero'], 'nulo'),
+    'mapa_obtener': (['Mapa<puntero>', 'texto'], 'puntero'),
+    'mapa_contiene': (['Mapa<puntero>', 'texto'], 'booleano'),
+    'mapa_liberar': (['Mapa<puntero>'], 'nulo'),
 }
+
+# R1 (H-R153-2): builtins de colecciones cuyo PRIMER parámetro es polimórfico
+# en la instanciación genérica (Manual 2 §4.3): `lista_agregar` acepta una
+# Lista<T> de CUALQUIER T y `longitud` acepta texto/Lista<T>/Mapa<K,V>.
+# El checker valida contra estas firmas RELAJADAS (prefix match).
+_FUNCIONES_COLECCION_POLIMORFICAS: Dict[str, Tuple[str, str]] = {
+    # nombre -> (prefix_del_param_0, tipo_retorno)
+    'lista_agregar': ('Lista<', 'nulo'),
+    'lista_obtener': ('Lista<', 'puntero'),
+    'lista_establecer': ('Lista<', 'nulo'),
+    'lista_eliminar': ('Lista<', 'nulo'),
+    'lista_liberar': ('Lista<', 'nulo'),
+    'longitud': ('Lista<', 'int'),
+    'mapa_longitud': ('Mapa<', 'int'),
+}
+
+
+def _firma_coleccion_polimorfica(nombre: str, tipo_arg0: str):
+    """Devuelve la firma efectiva (params, retorno) si `nombre` es un builtin
+    de colección aplicable a `tipo_arg0` (Lista<T>/Mapa<K,V> instanciado o
+    texto para longitud). None si no aplica."""
+    regla = _FUNCIONES_COLECCION_POLIMORFICAS.get(nombre)
+    if regla is None:
+        return None
+    prefix, ret = regla
+    t = tipo_arg0 or ''
+    if nombre == 'longitud' and t in ('texto', 'cadena'):
+        return (['texto'], 'int')
+    if t.startswith(prefix):
+        return ([tipo_arg0, 'puntero', 'puntero'], ret)
+    return None
 
 # H-R90-13: índices de params con valor por defecto para builtins.
 # (Manual 3 §3: parametro ::= IDENTIFICADOR [":" tipo] ["=" expresion])

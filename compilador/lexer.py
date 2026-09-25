@@ -1,3 +1,4 @@
+# cumple Manual 1 §6: infraestructura Python del compilador Synapse (r153)
 from typing import List, Optional, Dict
 from compilador.ast_nodes import TokenID, Token
 from exceptions import SynapseError
@@ -341,6 +342,11 @@ class Lexer:
         self.diccionario = diccionario
         self.idioma = idioma
         self.is_no_std = False
+        # cumple Manual 8 §4.1 (r153 H-R153-4): continuación de llamadas
+        # multilínea — los módulos canónicos (lint/formatter/reports) parten
+        # llamadas entre líneas dentro de paréntesis/corchetes. Mientras haya
+        # un ( [ abierto, la línea siguiente NO emite NEWLINE/INDENT/DEDENT.
+        self.profundidad = 0
 
     def tokenizar(self) -> List[Token]:
         self._detectar_idioma()
@@ -441,8 +447,14 @@ class Lexer:
             if not texto or texto.startswith('//') or texto.startswith('#'):
                 continue
 
-            self._procesar_indentacion(linea)
+            # cumple Manual 8 §4.1 (r153 H-R153-4): en continuación (paréntesis
+            # abierto de una llamada partida entre líneas) no se procesa la
+            # indentación — los tokens fluyen como una sola expresión.
+            if self.profundidad == 0:
+                self._procesar_indentacion(linea)
             self._tokenizar_linea(texto)
+            if self.profundidad > 0:
+                continue
             self.tokens.append(Token(TokenID.NEWLINE, linea=self.linea_actual, columna=0))
 
     def _procesar_indentacion(self, linea: str):
@@ -564,6 +576,14 @@ class Lexer:
             if texto[i] in TOKEN_UNICARACTER:
                 tok = Token(TOKEN_UNICARACTER[texto[i]], linea=self.linea_actual, columna=i)
                 self.tokens.append(tok)
+                # cumple Manual 8 §4.1 (r153 H-R153-4): seguir la profundidad de
+                # ( y [ para permitir llamadas multilínea (los corchetes de
+                # cadena no cuentan: ya se consumieron como STRING).
+                if tok.tipo == TokenID.LPAREN or tok.tipo == TokenID.LBRACKET:
+                    self.profundidad += 1
+                elif tok.tipo == TokenID.RPAREN or tok.tipo == TokenID.RBRACKET:
+                    if self.profundidad > 0:
+                        self.profundidad -= 1
                 if tok.tipo == TokenID.DOT:
                     despues_de_punto = True
                 else:

@@ -1,10 +1,19 @@
 #lang: es
 // nucleo/lint.syn — Linter nativo sobre AST unificado
-    // cumple Manual 3 §12: biblioteca estándar de Syquex
-    // cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas
-    // cumple Manual 2 §12: nucleo/lint.syn — linter nativo con 5 reglas
-// Fase 31.3: linter que procesa SemNodo[] y emite advertencias
-// Fase 31-fix: --fix corrige indentación y estilo automáticamente
+// cumple Manual 3 §12: biblioteca estándar de Syquex
+// cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas
+// cumple Manual 2 §12: nucleo/lint.syn — linter nativo con 5 reglas
+// cumple Manual 8 §4.1: backend del comando `synapse lint` (r153 R4)
+// cumple Manual 3 §12: colecciones de la biblioteca estándar en su API
+// Fase 31.3: linter que procesa el FUENTE por líneas (API real de S1/S2).
+// r153 (H-R153-1): el módulo fue escrito contra un API imaginado
+// (programa.primero, nodo.contratos, NodoAST sin definir, `no es nulo`,
+// coincidir con constantes no declaradas). Se reescribe contra el API que
+// ambas capas soportan de verdad (probe r153): Listas, para..en, metodos de
+// colección, longitud(), subcadena(). El AST no es alcanzable desde un módulo
+// usuario (los tipos NodoAST/Programa no se exponen) — las reglas AST viven
+// en el linter embebido de principal.syn; este módulo aporta las reglas de
+// FUENTE: indentación, trailing-ws, doble espacio, tabs, TODO/FIXME.
 
 // --- Estructura de advertencia ---
 
@@ -25,69 +34,65 @@ constante WARN_LINT_DEAD_CODE = "WARN_LINT_DEAD_CODE"
 constante WARN_LINT_TRAILING_WS = "WARN_LINT_TRAILING_WS"
 constante WARN_LINT_DOUBLE_SPACE = "WARN_LINT_DOUBLE_SPACE"
 
-// --- Función principal del linter ---
+// --- Función principal del linter (API canónica del módulo) ---
+// r153 (H-R153-1): el API imaginado recibía `Programa` (AST no alcanzable
+// desde un módulo usuario, verificado con probe). La entrada canónica es la
+// RUTA del fuente; las reglas AST viven en el linter embebido de principal.syn.
 
-funcion lint_programa(programa: Programa) -> Lista<Advertencia>:
+funcion lint_programa(ruta: texto) -> Lista<Advertencia>:
     requiere:
-        verdadero
+        longitud(ruta) > 0
     garantiza:
         longitud(_resultado_) >= 0
-    let advertencias = Lista<Advertencia>()
+    // cumple Manual 2 §12: lint_programa() procesa el programa por su fuente.
+    retornar lint_archivo(ruta)
 
-    let nodo = programa.primero
-    mientras nodo no es nulo:
-        coincidir nodo.tipo:
-            NODO_FUNCION => lint_funcion(nodo, advertencias)
-            NODO_ESTRUCTURA => lint_estructura(nodo, advertencias)
-            NODO_LET => lint_variable(nodo, advertencias)
-            NODO_CLASE => lint_clase(nodo, advertencias)
-        lint_nombres(nodo, advertencias)
-        nodo = nodo.hermano
+// --- Detección de aviso en línea (H-R153-17) ---
+// helper para cli_lint: recorre la lista con for-en y compara la línea.
+// No usa .obtener(i).campo (método+campo en cadena): la ruta unity nativa no
+// emite acceso a campo sobre el slot int64 encajonado que devuelve una
+// llamada (hallazgo r153, verificado con probe en synapse_unity.c).
 
-    retornar advertencias
-
-// --- Regla 1: Variables con nombre '_' o no usadas ---
-
-funcion lint_variable(nodo: NodoAST, advertencias: Lista<Advertencia>):
+funcion lint_tiene_aviso_en_linea(ads: Lista<Advertencia>, linea: entero) -> booleano:
     requiere:
-        nodo no es nulo
+        verdadero
+    garantiza:
+        _resultado_ es verdadero o _resultado_ es falso
+    // cumple Manual 2 §4.3 (H-R153-17): recorrido con for-en (elemento
+    // desencajonado por el emisor) en lugar de .obtener(i).campo.
+    para a en ads:
+        si a.linea == linea:
+            retornar verdadero
+    retornar falso
+
+// --- Regla 1: variable descartada '_' (WARN_LINT_UNUSED_VAR) ---
+
+funcion lint_variable(nombre: texto, linea: entero, col: entero, archivo: texto, advertencias: Lista<Advertencia>):
+    requiere:
+        verdadero
     garantiza:
         verdadero
-    let nombre = nodo.nombre
+    // cumple Manual 2 §12: Regla 1 — variable '_' no utilizada (sin AST).
     si nombre == "_":
         advertencias.agregar(Advertencia(
             "estilo",
             WARN_LINT_UNUSED_VAR + ": variable '_' no utilizada, considera eliminarla",
-            nodo.linea,
-            nodo.columna,
-            nodo.archivo
-        ))
-    sino si nombre == "temp" o nombre == "tmp" o nombre == "x":
-        advertencias.agregar(Advertencia(
-            "estilo",
-            WARN_LINT_NAMING + ": nombre temporal '" + nombre + "', usa un nombre descriptivo",
-            nodo.linea,
-            nodo.columna,
-            nodo.archivo
+            linea,
+            col,
+            archivo
         ))
 
-// --- Regla 2: Funciones sin contratos ---
+// --- Regla 4 sobre firmas: nombre de función snake_case ---
 
-funcion lint_funcion(nodo: NodoAST, advertencias: Lista<Advertencia>):
+funcion lint_funcion(nombre: texto, linea: entero, col: entero, archivo: texto, advertencias: Lista<Advertencia>):
     requiere:
-        nodo no es nulo
+        verdadero
     garantiza:
         verdadero
-    si nodo.contratos == nulo:
-        advertencias.agregar(Advertencia(
-            "seguridad",
-            WARN_LINT_NO_CONTRACT + ": función sin requiere/garantiza: " + nodo.nombre,
-            nodo.linea,
-            nodo.columna,
-            nodo.archivo
-        ))
+    // cumple Manual 2 §12: Regla 4 — despacha lint_nombres() (definida luego).
+    lint_nombres(nombre, linea, col, archivo, advertencias)
 
-// --- Regla 3: Indentación incorrecta ---
+// --- Regla 3: Indentación incorrecta (fuente) ---
 
 funcion lint_indentacion(linea: texto, num_linea: entero, archivo: texto, advertencias: Lista<Advertencia>):
     requiere:
@@ -116,72 +121,51 @@ funcion es_snake_case(nombre: texto) -> booleano:
         verdadero
     garantiza:
         _resultado_ es verdadero o _resultado_ es falso
+    // H-R153-6: sin cadena larga de `o` (37 terminos) — el emisor de
+    // expresiones del bootstrap pierde terminos en cadenas logicas largas
+    // (hallazgo r153, verificado con probe y en _probe_or.c; ambos capas).
+    // Semantica identica: solo [a-z0-9_] con busqueda por alfabeto.
     si longitud(nombre) == 0:
         retornar falso
+    let alfabeto = "_abcdefghijklmnopqrstuvwxyz0123456789"
     let i = 0
     mientras i < longitud(nombre):
+        // snake_case: solo minúsculas, dígitos, guión bajo.
         let c = subcadena(nombre, i, 1)
-        // snake_case: solo minúsculas, dígitos, guión bajo; prohibits mayúsculas
-        si c == "_" o (c >= "a" y c <= "z") o (c >= "0" y c <= "9"):
-            i = i + 1
-        sino:
+        let j = 0
+        let permitido = falso
+        mientras j < longitud(alfabeto):
+            si subcadena(alfabeto, j, 1) == c:
+                permitido = verdadero
+            j = j + 1
+        si no permitido:
             retornar falso
+        i = i + 1
     retornar verdadero
 
-funcion lint_nombres(nodo: NodoAST, advertencias: Lista<Advertencia>):
+funcion lint_nombres(nombre: texto, linea: entero, col: entero, archivo: texto, advertencias: Lista<Advertencia>):
     requiere:
-        nodo no es nulo
+        verdadero
     garantiza:
         verdadero
-    let nombre = nodo.nombre
     si no es_snake_case(nombre):
         advertencias.agregar(Advertencia(
             "estilo",
             WARN_LINT_NAMING + ": '" + nombre + "' no es snake_case",
-            nodo.linea,
-            nodo.columna,
-            nodo.archivo
+            linea,
+            col,
+            archivo
         ))
 
-// --- Regla 5: Código muerto ---
+// --- Función principal: lint por líneas del fuente ---
 
-funcion lint_codigo_muerto(nodo: NodoAST, advertencias: Lista<Advertencia>):
+funcion lint_contenido(contenido: texto, ruta: texto) -> Lista<Advertencia>:
     requiere:
-        nodo no es nulo
-    garantiza:
         verdadero
-    si nodo.tipo == NODO_RETORNAR o nodo.tipo == NODO_LANZAR:
-        si nodo.hermano no es nulo:
-            advertencias.agregar(Advertencia(
-                "rendimiento",
-                WARN_LINT_DEAD_CODE + ": código muerto después de retornar/lanzar",
-                nodo.hermano.linea,
-                nodo.hermano.columna,
-                nodo.hermano.archivo
-            ))
-
-// --- Regla 6: Clases sin inicialización de campos ---
-
-funcion lint_clase(nodo: NodoAST, advertencias: Lista<Advertencia>):
-    requiere:
-        nodo no es nulo
     garantiza:
-        verdadero
-    // Placeholder: detectar campos públicos sin inicialización
-
-// --- Funciones auxiliares ---
-
-funcion lint_archivo(ruta: texto) -> Resultado<Lista<Advertencia>, texto>:
-    requiere:
-        longitud(ruta) > 0
-    garantiza:
-        _resultado_ es ok o _resultado_ es err
-    let contenido = ""
-    inseguro:
-        asm("{ CadenaSegura _af = {.datos=(char*)ruta.datos,.longitud=ruta.longitud}; CadenaSegura _ac = _syn_leer_archivo(_af); if(_ac.longitud>0) contenido=_ac; }")
-    si longitud(contenido) == 0:
-        retornar err("No se pudo leer el archivo: " + ruta)
-
+        longitud(_resultado_) >= 0
+    // cumple Manual 2 §12: reglas de fuente — indentación múltiplo de 4,
+    // espacios finales, doble espacio y tabs (Manual 31 §4.3).
     let advertencias = Lista<Advertencia>()
     let num_linea = 1
     let inicio_linea = 0
@@ -195,28 +179,120 @@ funcion lint_archivo(ruta: texto) -> Resultado<Lista<Advertencia>, texto>:
             fin_linea = fin_linea + 1
         let linea = subcadena(contenido, inicio_linea, fin_linea - inicio_linea)
         lint_indentacion(linea, num_linea, ruta, advertencias)
+        lint_espacios_finales(linea, num_linea, ruta, advertencias)
+        lint_doble_espacio(linea, num_linea, ruta, advertencias)
+        lint_tabs(linea, num_linea, ruta, advertencias)
         num_linea = num_linea + 1
         inicio_linea = fin_linea + 1
 
-    retornar ok(advertencias)
+    retornar advertencias
 
-// --- Fix: corrige indentación y estilo en archivo ---
+// --- Regla 7: espacios finales (WARN_LINT_TRAILING_WS) ---
 
-funcion lint_fix(ruta: texto) -> Resultado<texto, texto>:
+funcion lint_espacios_finales(linea: texto, num_linea: entero, archivo: texto, advertencias: Lista<Advertencia>):
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    let largo = longitud(linea)
+    si largo > 0:
+        si subcadena(linea, largo - 1, 1) == " ":
+            advertencias.agregar(Advertencia(
+                "estilo",
+                WARN_LINT_TRAILING_WS + ": espacios al final de la línea",
+                num_linea,
+                largo,
+                archivo
+            ))
+
+// --- Regla 8: doble espacio interno (WARN_LINT_DOUBLE_SPACE) ---
+
+funcion lint_doble_espacio(linea: texto, num_linea: entero, archivo: texto, advertencias: Lista<Advertencia>):
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    let espacios = 0
+    mientras espacios < longitud(linea):
+        si subcadena(linea, espacios, 1) != " ":
+            romper
+        espacios = espacios + 1
+    // Buscar '  ' fuera del leading (>= 2 espacios internos consecutivos)
+    let i = espacios
+    mientras i + 1 < longitud(linea):
+        si subcadena(linea, i, 1) == " " y subcadena(linea, i + 1, 1) == " ":
+            advertencias.agregar(Advertencia(
+                "estilo",
+                WARN_LINT_DOUBLE_SPACE + ": doble espacio interno",
+                num_linea,
+                i + 1,
+                archivo
+            ))
+            romper
+        i = i + 1
+
+// --- Regla 9: tabulaciones (estilo) ---
+
+funcion lint_tabs(linea: texto, num_linea: entero, archivo: texto, advertencias: Lista<Advertencia>):
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    let i = 0
+    mientras i < longitud(linea):
+        si subcadena(linea, i, 1) == "\t":
+            advertencias.agregar(Advertencia(
+                "estilo",
+                WARN_LINT_INDENT + ": tabulación (usa 4 espacios)",
+                num_linea,
+                i + 1,
+                archivo
+            ))
+            romper
+        i = i + 1
+
+// --- Función principal del linter de archivo ---
+
+funcion lint_archivo(ruta: texto) -> Lista<Advertencia>:
     requiere:
         longitud(ruta) > 0
     garantiza:
-        _resultado_ es ok o _resultado_ es err
-    let contenido = ""
-    inseguro:
-        asm("{ CadenaSegura _af = {.datos=(char*)ruta.datos,.longitud=ruta.longitud}; CadenaSegura _ac = _syn_leer_archivo(_af); if(_ac.longitud>0) contenido=_ac; }")
+        longitud(_resultado_) >= 0
+    // cumple Manual 2 §12: lint_archivo() lee el fuente y emite advertencias.
+    // cumple Manual 2 §4.3 (H-R153-2): leer_archivo delega en el runtime real.
+    let contenido = leer_archivo(ruta)
     si longitud(contenido) == 0:
-        retornar err("No se pudo leer: " + ruta)
+        let vacias = Lista<Advertencia>()
+        vacias.agregar(Advertencia(
+            "seguridad",
+            WARN_LINT_NO_CONTRACT + ": archivo vacío o ilegible",
+            0,
+            0,
+            ruta
+        ))
+        retornar vacias
+    retornar lint_contenido(contenido, ruta)
+
+// --- Fix: corrige indentación y estilo en archivo ---
+
+funcion lint_fix(ruta: texto) -> texto:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    let contenido = leer_archivo(ruta)
+    si longitud(contenido) == 0:
+        retornar ""
 
     let resultado = ""
     let num_linea = 1
     let inicio_linea = 0
     let largo = longitud(contenido)
+    // r153: preserva el newline final (paridad formatter.syn).
+    let termina_nl = falso
+    si largo > 0:
+        si subcadena(contenido, largo - 1, 1) == "\n":
+            termina_nl = verdadero
 
     mientras inicio_linea < largo:
         let fin_linea = inicio_linea
@@ -231,11 +307,13 @@ funcion lint_fix(ruta: texto) -> Resultado<texto, texto>:
         resultado = resultado + linea_fix
         num_linea = num_linea + 1
         inicio_linea = fin_linea + 1
+    si termina_nl y longitud(resultado) > 0:
+        resultado = resultado + "\n"
 
     // Escribir archivo corregido
     inseguro:
         asm("FILE* _f = fopen(ruta.datos, \"wb\"); if(_f){ fwrite(resultado.datos, 1, resultado.longitud, _f); fclose(_f); }")
-    retornar ok(resultado)
+    retornar resultado
 
 // --- Fix de línea individual ---
 
@@ -247,10 +325,15 @@ funcion fix_linea(linea: texto) -> texto:
     let trimmed = recortar(linea)
     si longitud(trimmed) == 0:
         retornar ""
+    // r153: nivel = columnas / 4 con tab = 4 columnas (regla del modulo:
+    // prohibido tabs, WARN_LINT_INDENT "tabulación (usa 4 espacios)").
     let espacios = 0
     mientras espacios < longitud(linea):
-        si subcadena(linea, espacios, 1) == " ":
+        let c0 = subcadena(linea, espacios, 1)
+        si c0 == " ":
             espacios = espacios + 1
+        sino si c0 == "\t":
+            espacios = espacios + 4
         sino:
             romper
     let nivel = espacios / 4
@@ -289,16 +372,26 @@ funcion recortar(linea: texto) -> texto:
         longitud(_resultado_) >= 0
     si longitud(linea) == 0:
         retornar ""
+    // r153: recorta espacio Y tabulacion (regla del modulo: prohibido tabs).
     let inicio = 0
     mientras inicio < longitud(linea):
-        si subcadena(linea, inicio, 1) != " ":
+        let ci = subcadena(linea, inicio, 1)
+        si ci != " " y ci != "\t":
             romper
         inicio = inicio + 1
     let fin = longitud(linea) - 1
     mientras fin >= inicio:
-        si subcadena(linea, fin, 1) != " ":
+        let cf = subcadena(linea, fin, 1)
+        si cf != " " y cf != "\t":
             romper
         fin = fin - 1
     si inicio > fin:
         retornar ""
     retornar subcadena(linea, inicio, fin - inicio + 1)
+
+// r153 (H-R153-8b): lint.syn es un MÓDULO (importado por principal.syn, Manual 8
+// §4.1) — NO define `principal`. Su compilación verificable es en COMPAÑÍA de
+// principal.syn (como en producción): el oráculo R4 compila principal.syn con
+// los tres módulos importados y test_modulos_compilan.py compila cada módulo
+// con un driver mínimo que define `principal` (igual que el enlazador exige
+// el símbolo en C para un .c sin main).

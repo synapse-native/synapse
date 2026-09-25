@@ -461,6 +461,13 @@ def visitar(ctx: GeneratorContext, nodo: Nodo):
             visitar(ctx, nodo.expr)
             return
         val = expr_a_c(ctx, nodo.expr)
+        if isinstance(nodo.expr, LlamadaFuncion) and nodo.expr.nombre.startswith('metodo:'):
+            # cumple Manual 3 §5.2 (H-R153-3): llamada a método como sentencia
+            # (p.ej. `lista.agregar(x);`) — el nombre contiene ':' (ilegal como
+            # C label) y el valor de retorno es descartado: emitir la llamada
+            # con cast void y ';' explícito.
+            ctx.write_line(f"(void)({val});")
+            return
         if isinstance(nodo.expr, ExprAsm):
             if nodo.expr.expr is not None:
                 expr_c = expr_a_c(ctx, nodo.expr.expr)
@@ -692,6 +699,31 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("#define verdadero 1")
     ctx.write_line("#define falso 0")
     ctx.write_line("")
+    # cumple Manual 2 §4.3 (H-R153-2): colecciones de la biblioteca estándar.
+    # El runtime REAL vive en runtime/core/lista.c y runtime/core/mapa.c
+    # (ME f325, slots int64, OBL-M6-5) y enlaza en todo build (F3-15: el
+    # pipeline compila runtime/core/*.c). Aquí solo se declara la interfaz:
+    # handles void* + funciones _syn_lista_*/_syn_mapa_* (OBL-M6-5).
+    ctx.write_line("// --- Colecciones stdlib (runtime/core/lista.c, mapa.c) ---")
+    ctx.write_line("extern void* _syn_lista_crear(void);")
+    ctx.write_line("extern int64_t _syn_lista_longitud(void* l);")
+    ctx.write_line("extern void _syn_lista_agregar(void* l, int64_t elemento);")
+    ctx.write_line("extern int64_t _syn_lista_obtener(void* l, int indice);")
+    ctx.write_line("extern void _syn_lista_establecer(void* l, int indice, int64_t valor);")
+    ctx.write_line("extern void _syn_lista_eliminar(void* l, int indice);")
+    ctx.write_line("extern void _syn_lista_liberar(void* l);")
+    ctx.write_line("extern void* _syn_mapa_crear(void);")
+    ctx.write_line("extern int64_t _syn_mapa_longitud(void* m);")
+    ctx.write_line("extern void _syn_mapa_poner(void* m, const char* clave, int64_t valor);")
+    ctx.write_line("extern int64_t _syn_mapa_obtener(void* m, const char* clave);")
+    ctx.write_line("extern int64_t _syn_mapa_contiene(void* m, const char* clave);")
+    ctx.write_line("extern void _syn_mapa_eliminar(void* m, const char* clave);")
+    ctx.write_line("extern void _syn_mapa_liberar(void* m);")
+    # cumple Manual 2 §4.3 (H-R153-2): leer_archivo delega en el runtime real.
+    ctx.write_line("extern CadenaSegura _syn_leer_archivo(CadenaSegura ruta);")
+    # cumple Manual 2 §4.1 (r153): subcadena delega en el runtime real (clampeo).
+    ctx.write_line("extern CadenaSegura _syn_texto_subcadena(CadenaSegura t, int64_t inicio, int64_t fin);")
+    ctx.write_line("")
     ctx.write_line("// --- OO AST node types ---")
     for t in ['Token', 'Nodo', 'ListaNodo', 'Programa',
               'Identificador', 'LiteralNumero', 'LiteralCadena',
@@ -743,6 +775,12 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("extern int _G_native_structs_count;")
     ctx.write_line("extern int _G_native_es_estructura(const char* n);")
     ctx.write_line("")
+    # r153 (H-R153-21): registro de constantes de texto de modulo (paridad
+    # orquestador.syn) — el 'OpBinaria +' consulta el registro para decidir
+    # concat vs suma.
+    ctx.write_line("extern char _G_native_consts[512][64];")
+    ctx.write_line("extern int _G_native_consts_count;")
+    ctx.write_line("")
     # F3-13: campos de struct con tipo Synapse (paridad orquestador.syn — el
     # generador nativo consulta el tipo del campo para detectar texto).
     ctx.write_line("extern char _G_native_struct_campos[256][64][64];")
@@ -754,6 +792,8 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("extern char _G_native_func_returns[2048][64];")
     ctx.write_line("extern int _G_native_func_returns_count;")
     ctx.write_line("extern int _G_native_tipo_retorno(const char* fn, char* out);")
+    # r153 (H-R153-26): variante span (sin el mapeo void* de H-R153-17c)
+    ctx.write_line("extern int _G_native_tipo_retorno_span(const char* fn, char* out);")
     ctx.write_line("")
     # ME-D6: constructores ADT (ok/err/algun/ninguno) — paridad orquestador.syn
     ctx.write_line("extern char _G_native_adt_ctrs[256][64];")
@@ -982,6 +1022,10 @@ class GeneradorC:
             ctx.write_line("int _G_safe_mode;  // M22.5: --safe flag for lifetime assertions")
             ctx.write_line("char _G_native_structs[256][64];")
             ctx.write_line("int _G_native_structs_count;")
+            # r153 (H-R153-21): definicion del registro de constantes de texto
+            # de modulo (paridad orquestador.syn, H-R153-21).
+            ctx.write_line("char _G_native_consts[512][64];")
+            ctx.write_line("int _G_native_consts_count;")
             ctx.write_line("int _G_native_es_estructura(const char* n) {")
             ctx.inc_indent()
             ctx.write_line("if (!n) return 0;")
@@ -1035,6 +1079,21 @@ class GeneradorC:
             ctx.write_line("strcpy(out, _G_native_func_returns[_i + 1024]); return 1;")
             ctx.dec_indent()
             ctx.write_line("}")
+            ctx.dec_indent()
+            ctx.write_line("}")
+            ctx.write_line("return 0;")
+            ctx.dec_indent()
+            ctx.write_line("}")
+            # r153 (H-R153-26): variante SIN el mapeo H-R153-17c — devuelve el
+            # SPAN Synapse crudo (`Lista<T>`/`Mapa<K,V>`). El let con retorno de
+            # funcion (H-R153-22b) necesita el span para registrar el tipo del
+            # for-en; el mapeo a void* de 17c lo hacía inalcanzable.
+            ctx.write_line("int _G_native_tipo_retorno_span(const char* fn, char* out) {")
+            ctx.inc_indent()
+            ctx.write_line("if (!fn || !out) return 0;")
+            ctx.write_line("for (int _i = 0; _i < _G_native_func_returns_count; _i++) {")
+            ctx.inc_indent()
+            ctx.write_line("if (strcmp(_G_native_func_returns[_i], fn) == 0) { strcpy(out, _G_native_func_returns[_i + 1024]); return 1; }")
             ctx.dec_indent()
             ctx.write_line("}")
             ctx.write_line("return 0;")
@@ -1637,6 +1696,10 @@ class GeneradorC:
                 # ME-B4: nombres de estructuras (definiciones para constructores nativos)
                 ctx.write_line("char _G_native_structs[256][64];")
                 ctx.write_line("int _G_native_structs_count;")
+                # r153 (H-R153-21): definicion del registro de constantes de
+                # texto de modulo (paridad orquestador.syn).
+                ctx.write_line("char _G_native_consts[512][64];")
+                ctx.write_line("int _G_native_consts_count;")
                 ctx.write_line("int _G_native_es_estructura(const char* n) {")
                 ctx.inc_indent()
                 ctx.write_line("if (!n) return 0;")
@@ -1690,6 +1753,19 @@ class GeneradorC:
                 ctx.write_line("strcpy(out, _G_native_func_returns[_i + 1024]); return 1;")
                 ctx.dec_indent()
                 ctx.write_line("}")
+                ctx.dec_indent()
+                ctx.write_line("}")
+                ctx.write_line("return 0;")
+                ctx.dec_indent()
+                ctx.write_line("}")
+                # r153 (H-R153-26): variante SIN mapeo (paridad modo modulo) —
+                # span Synapse crudo para H-R153-22b (let con retorno Lista<T>).
+                ctx.write_line("int _G_native_tipo_retorno_span(const char* fn, char* out) {")
+                ctx.inc_indent()
+                ctx.write_line("if (!fn || !out) return 0;")
+                ctx.write_line("for (int _i = 0; _i < _G_native_func_returns_count; _i++) {")
+                ctx.inc_indent()
+                ctx.write_line("if (strcmp(_G_native_func_returns[_i], fn) == 0) { strcpy(out, _G_native_func_returns[_i + 1024]); return 1; }")
                 ctx.dec_indent()
                 ctx.write_line("}")
                 ctx.write_line("return 0;")

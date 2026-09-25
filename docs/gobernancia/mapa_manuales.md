@@ -84,6 +84,7 @@ fallará con instrucción explícita si un archivo modificado no está mapeado.
   "runtime/core/concurrency.c": ["Manual 5 §2.1"],
   "runtime/core/axon.c": ["Manual 6 §5.1"],
   "runtime/core/cache.c": ["Manual 5 §11"],
+  "runtime/core/ast_nodos.h": ["Manual 2 §7.2", "Manual 2 §7.3"],
   "runtime/*": ["Manual 5"],
   "axon/*": ["Manual 6 §5.1"],
   "std/cluster*": ["Manual 5 §6"],

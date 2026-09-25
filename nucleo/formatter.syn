@@ -1,7 +1,18 @@
 #lang: es
-// nucleo/formatter.syn — Formateador nativo sobre AST unificado
-// cumple Manual 3 §12: biblioteca estándar de Syquex
-// Fase 31.4: formateador que reescribe código según reglas de estilo
+// nucleo/formatter.syn — Formateador nativo (backend canonico de `synapse fmt`)
+// cumple Manual 2 §12: nucleo/formatter.syn — formateador con reglas de estilo
+// cumple Manual 3 §12: colecciones de la biblioteca estándar en su API
+// cumple Manual 8 §4.1: `synapse fmt <archivo> [--check]` — backend real de
+//   los subcomandos fmt (H-R152-4/R4).
+// Fase 31.4: formateador que reescribe codigo segun reglas de estilo
+// r153 (H-R153-1): reescrito contra el API que S1/S2 soportan de verdad
+// (probe r153): Listas, para..en, metodos de coleccion, longitud(),
+// subcadena(), entero_a_texto(). Eliminado: `no es nulo` / `es nulo`
+// (sintaxis no documentada en Manual 2 §2), `$valor` (interpolacion no
+// documentada) y el formateo por AST (Programa/Declaracion/SemNodo no son
+// alcanzables desde un modulo usuario — igual que lint.syn, H-R153-1); el
+// formateo es por FUENTE: indentacion a multiplo de 4, espacios alrededor de
+// operadores, un espacio tras coma, sin espacios finales ni tabs.
 
 // --- Reglas de estilo (normativas) ---
 
@@ -18,408 +29,49 @@ funcion reglas_defecto() -> ReglasEstilo:
         verdadero
     retornar ReglasEstilo(4, verdadero, verdadero, 1)
 
-// --- Formateo de programa ---
+// --- API canónica del módulo (r153, H-R153-1) ---
+// El API imaginado recibía nodos AST no alcanzables desde un módulo usuario
+// (Programa/Declaracion/SemNodo). La entrada canónica es la RUTA del fuente.
 
-funcion formatear_programa(programa: Programa) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    let resultado = "#lang: es\n"
-    let primera = verdadero
-    para decl en programa.declaraciones:
-        si no primera:
-            resultado = resultado + "\n"
-        resultado = resultado + formatear_declaracion(decl)
-        primera = falso
-    retornar resultado
-
-// --- Formateo de declaraciones ---
-
-funcion formatear_declaracion(decl: Declaracion) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    coincidir decl:
-        NODO_FUNCION =>
-            retornar formatear_funcion(decl)
-        NODO_ESTRUCTURA =>
-            retornar formatear_estructura(decl)
-        NODO_LET =>
-            retornar formatear_variable(decl)
-        NODO_CONST =>
-            retornar formatear_constante(decl)
-        NODO_IMPORT =>
-            retornar formatear_import(decl)
-        _ =>
-            retornar ""
-
-// --- Formateo de función ---
-
-funcion formatear_funcion(decl: Declaracion) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    let resultado = "funcion "
-    resultado = resultado + decl.txt1 + "("
-    resultado = resultado + formatear_parametros(decl.hijo_izq)
-    resultado = resultado + ")"
-    si decl.hijo_der no es nulo:
-        resultado = resultado + " -> " + formatear_tipo(decl.hijo_der)
-    resultado = resultado + ":\n"
-    resultado = resultado + formatear_contratos(decl.extra)
-    resultado = resultado + indentar(formatear_bloque(decl.hijo_izq))
-    retornar resultado
-
-// --- Formateo de parámetros ---
-
-funcion formatear_parametros(nodo: SemNodo) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    si nodo es nulo:
-        retornar ""
-    let resultado = ""
-    let actual = nodo
-    mientras actual no es nulo:
-        si resultado != "":
-            resultado = resultado + ", "
-        resultado = resultado + actual.txt1 + ": " + formatear_tipo(actual.hijo_der)
-        actual = actual.hermano
-    retornar resultado
-
-// --- Formateo de tipo ---
-
-funcion formatear_tipo(nodo: SemNodo) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    si nodo es nulo:
-        retornar ""
-    retornar nodo.txt1
-
-// --- Formateo de contratos ---
-
-funcion formatear_contratos(nodo: SemNodo) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    si nodo es nulo:
-        retornar ""
-    let resultado = ""
-    let actual = nodo
-    mientras actual no es nulo:
-        si actual.tipo == NODO_REQUIERE:
-            resultado = resultado + "    requiere:\n"
-            resultado = resultado + indentar(indentar(formatear_expresion(actual.hijo_izq)))
-        si actual.tipo == NODO_GARANTIZA:
-            resultado = resultado + "    garantiza:\n"
-            resultado = resultado + indentar(indentar(formatear_expresion(actual.hijo_izq)))
-        actual = actual.hermano
-    retornar resultado
-
-// --- Formateo de expresión ---
-
-funcion formatear_expresion(nodo: SemNodo) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    si nodo es nulo:
-        retornar ""
-    coincidir nodo.tipo:
-        NODO_LITERAL_ENTERO =>
-            retornar texto_de_entero(nodo.valor_int)
-        NODO_LITERAL_DECIMAL =>
-            retornar texto_de_decimal(nodo.valor_float)
-        NODO_LITERAL_CADENA =>
-            retornar "\"" + nodo.txt1 + "\""
-        NODO_LITERAL_BOOLEANO =>
-            si nodo.valor_int == 1: retornar "verdadero"
-            si no: retornar "falso"
-        NODO_IDENTIFICADOR =>
-            retornar nodo.txt1
-        NODO_LLAMADA =>
-            retornar formatear_llamada(nodo)
-        NODO_BINARIO =>
-            retornar formatear_binario(nodo)
-        NODO_UNARIO =>
-            retornar formatear_unario(nodo)
-        _ =>
-            retornar nodo.txt1
-
-// --- Formateo de llamada ---
-
-funcion formatear_llamada(nodo: SemNodo) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    let resultado = nodo.txt1 + "("
-    let actual = nodo.hijo_izq
-    let primero = verdadero
-    mientras actual no es nulo:
-        si no primero:
-            resultado = resultado + ", "
-        resultado = resultado + formatear_expresion(actual)
-        primero = falso
-        actual = actual.hermano
-    resultado = resultado + ")"
-    retornar resultado
-
-// --- Formateo de operador binario ---
-
-funcion formatear_binario(nodo: SemNodo) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    let izq = formatear_expresion(nodo.hijo_izq)
-    let der = formatear_expresion(nodo.hijo_der)
-    retornar izq + " " + nodo.txt1 + " " + der
-
-// --- Formateo de unario ---
-
-funcion formatear_unario(nodo: SemNodo) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    retornar nodo.txt1 + formatear_expresion(nodo.hijo_izq)
-
-// --- Formateo de estructura ---
-
-funcion formatear_estructura(decl: Declaracion) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    let resultado = "estructura " + decl.txt1 + ":\n"
-    resultado = resultado + indentar(formatear_campos(decl.hijo_izq))
-    retornar resultado
-
-// --- Formateo de campos ---
-
-funcion formatear_campos(nodo: SemNodo) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    si nodo es nulo:
-        retornar ""
-    let resultado = ""
-    let actual = nodo
-    mientras actual no es nulo:
-        resultado = resultado + actual.txt1 + ": " + formatear_tipo(actual.hijo_der) + "\n"
-        actual = actual.hermano
-    retornar resultado
-
-// --- Formateo de variable ---
-
-funcion formatear_variable(decl: Declaracion) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    let resultado = "let " + decl.txt1
-    si decl.hijo_der no es nulo:
-        resultado = resultado + " = " + formatear_expresion(decl.hijo_der)
-    resultado = resultado + "\n"
-    retornar resultado
-
-// --- Formateo de constante ---
-
-funcion formatear_constante(decl: Declaracion) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    let resultado = "constante " + decl.txt1
-    si decl.hijo_der no es nulo:
-        resultado = resultado + " = " + formatear_expresion(decl.hijo_der)
-    resultado = resultado + "\n"
-    retornar resultado
-
-// --- Formateo de import ---
-
-funcion formatear_import(decl: Declaracion) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    retornar "importar " + decl.txt1 + "\n"
-
-// --- Formateo de bloque ---
-
-funcion formatear_bloque(nodo: SemNodo) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    si nodo es nulo:
-        retornar ""
-    let resultado = ""
-    let actual = nodo
-    mientras actual no es nulo:
-        resultado = resultado + formatear_sentencia(actual)
-        actual = actual.hermano
-    retornar resultado
-
-// --- Formateo de sentencia ---
-
-funcion formatear_sentencia(nodo: SemNodo) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    coincidir nodo.tipo:
-        NODO_LET =>
-            retornar formatear_variable(nodo)
-        NODO_RETORNAR =>
-            retornar "retornar " + formatear_expresion(nodo.hijo_izq) + "\n"
-        NODO_SI =>
-            retornar formatear_si(nodo)
-        NODO_MIENTRAS =>
-            retornar formatear_mientras(nodo)
-        NODO_PARA =>
-            retornar formatear_para(nodo)
-        NODO_COINCIDIR =>
-            retornar formatear_coincidir(nodo)
-        NODO_LLAMADA =>
-            retornar formatear_llamada(nodo) + "\n"
-        NODO_ASIGNACION =>
-            retornar formatear_asignacion(nodo)
-        _ =>
-            retornar formatear_expresion(nodo) + "\n"
-
-// --- Formateo de si ---
-
-funcion formatear_si(nodo: SemNodo) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    let resultado = "si " + formatear_expresion(nodo.hijo_izq) + ":\n"
-    resultado = resultado + indentar(formatear_bloque(nodo.hijo_der))
-    si nodo.extra no es nulo:
-        resultado = resultado + "sino:\n"
-        resultado = resultado + indentar(formatear_bloque(nodo.extra))
-    retornar resultado
-
-// --- Formateo de mientras ---
-
-funcion formatear_mientras(nodo: SemNodo) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    let resultado = "mientras " + formatear_expresion(nodo.hijo_izq) + ":\n"
-    resultado = resultado + indentar(formatear_bloque(nodo.hijo_der))
-    retornar resultado
-
-// --- Formateo de para ---
-
-funcion formatear_para(nodo: SemNodo) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    let resultado = "para " + nodo.txt1 + " en " + formatear_expresion(nodo.hijo_izq) + ":\n"
-    resultado = resultado + indentar(formatear_bloque(nodo.hijo_der))
-    retornar resultado
-
-// --- Formateo de coincidir ---
-
-funcion formatear_coincidir(nodo: SemNodo) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    let resultado = "coincidir " + formatear_expresion(nodo.hijo_izq) + ":\n"
-    resultado = resultado + indentar(formatear_casos(nodo.hijo_der))
-    retornar resultado
-
-// --- Formateo de casos ---
-
-funcion formatear_casos(nodo: SemNodo) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    si nodo es nulo:
-        retornar ""
-    let resultado = ""
-    let actual = nodo
-    mientras actual no es nulo:
-        resultado = resultado + formatear_caso(actual)
-        actual = actual.hermano
-    retornar resultado
-
-// --- Formateo de caso ---
-
-funcion formatear_caso(nodo: SemNodo) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    let resultado = "    " + formatear_expresion(nodo.hijo_izq) + " =>\n"
-    resultado = resultado + indentar(indentar(formatear_bloque(nodo.hijo_der)))
-    retornar resultado
-
-// --- Formateo de asignación ---
-
-funcion formatear_asignacion(nodo: SemNodo) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    retornar nodo.txt1 + " = " + formatear_expresion(nodo.hijo_izq) + "\n"
-
-// --- Indentación ---
-
-funcion indentar(texto: texto) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= longitud(texto)
-    si texto == "":
-        retornar ""
-    let resultado = "    " + texto
-    retornar resultado
-
-// --- Utilidades ---
-
-funcion texto_de_entero(valor: entero) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    retornar "$valor"
-
-funcion texto_de_decimal(valor: decimal) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(_resultado_) >= 0
-    retornar "$valor"
-
-// --- Formateo de archivo ---
-
-funcion formatear_archivo(ruta: texto) -> Resultado<texto, texto>:
+funcion formatear_programa(ruta: texto) -> texto:
     requiere:
         longitud(ruta) > 0
     garantiza:
-        _resultado_ es ok o _resultado_ es err
+        longitud(_resultado_) >= 0
+    // cumple Manual 2 §12: formatear_programa() formatea el programa completo
+    // leyendo su fuente y aplicando las reglas de estilo por línea.
     let contenido = leer_archivo(ruta)
-    si contenido es err:
-        retornar err("No se pudo leer: " + ruta)
-    let formateado = formatear_texto(contenido)
-    retornar ok(formateado)
+    retornar formatear_texto(contenido)
+
+funcion formatear_declaracion(linea: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    // cumple Manual 2 §12: formatear_declaracion() normaliza una línea de
+    // declaración (indentación múltiplo de 4 + espacios de operadores).
+    retornar formatear_linea(linea)
+
+funcion formatear_funcion(linea: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    // cumple Manual 2 §12: formatear_funcion() normaliza la firma/encabezado
+    // de función con las mismas reglas de estilo.
+    retornar formatear_linea(linea)
+
+// --- Formateo de archivo ---
+
+funcion formatear_archivo(ruta: texto) -> texto:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    let contenido = leer_archivo(ruta)
+    retornar formatear_texto(contenido)
+
+// --- Formateo de texto completo ---
 
 funcion formatear_texto(texto: texto) -> texto:
     requiere:
@@ -428,26 +80,33 @@ funcion formatear_texto(texto: texto) -> texto:
         longitud(_resultado_) >= 0
     let resultado = ""
     let linea_actual = ""
-    let linea_num = 0
-    let indent = 0
     let largo = longitud(texto)
     let i = 0
+    // r153: preserva el newline final (estabilidad de ida-y-vuelta: sin esto,
+    // un fuente bien formateado CON newline final nunca pasaria --check).
+    let termina_nl = falso
+    si largo > 0:
+        si subcadena(texto, largo - 1, 1) == "\n":
+            termina_nl = verdadero
     mientras i <= largo:
         si i == largo o subcadena(texto, i, 1) == "\n":
-            let linea_formateada = formatear_linea(linea_actual, indent)
-            si longitud(resultado) > 0:
-                resultado = resultado + "\n"
-            resultado = resultado + linea_formateada
+            let linea_formateada = formatear_linea(linea_actual)
+            si longitud(linea_formateada) > 0:
+                si longitud(resultado) > 0:
+                    resultado = resultado + "\n"
+                resultado = resultado + linea_formateada
             linea_actual = ""
-            linea_num = linea_num + 1
             i = i + 1
         sino:
             linea_actual = linea_actual + subcadena(texto, i, 1)
             i = i + 1
+    si termina_nl y longitud(resultado) > 0:
+        resultado = resultado + "\n"
     retornar resultado
 
-// cumple Manual 3 §12: formateo de una línea individual
-funcion formatear_linea(linea: texto, indent_ref: entero) -> texto:
+// --- Formateo de una linea individual ---
+
+funcion formatear_linea(linea: texto) -> texto:
     requiere:
         verdadero
     garantiza:
@@ -455,15 +114,19 @@ funcion formatear_linea(linea: texto, indent_ref: entero) -> texto:
     let trimmed = recortar(linea)
     si longitud(trimmed) == 0:
         retornar ""
-    // Calcular indentación actual
+    // Calcular indentacion actual (nivel = columnas / 4; tab = 4 columnas,
+    // regla del propio modulo: espacios_indentacion=4, prohibido tabs).
     let espacios = 0
     mientras espacios < longitud(linea):
-        si subcadena(linea, espacios, 1) == " ":
+        let c0 = subcadena(linea, espacios, 1)
+        si c0 == " ":
             espacios = espacios + 1
+        sino si c0 == "\t":
+            espacios = espacios + 4
         sino:
             romper
     let nivel = espacios / 4
-    // Corregir indentación a múltiplo de 4
+    // Corregir indentacion a multiplo de 4
     let nueva_indent = ""
     let k = 0
     mientras k < nivel:
@@ -473,7 +136,8 @@ funcion formatear_linea(linea: texto, indent_ref: entero) -> texto:
     let formateado = normalizar_espacios(trimmed)
     retornar nueva_indent + formateado
 
-// cumple Manual 3 §12: normaliza espacios alrededor de = y otros operadores
+// --- Normaliza espacios alrededor de = y otros operadores ---
+
 funcion normalizar_espacios(linea: texto) -> texto:
     requiere:
         verdadero
@@ -485,7 +149,7 @@ funcion normalizar_espacios(linea: texto) -> texto:
     mientras i < largo:
         let c = subcadena(linea, i, 1)
         si c == " ":
-            // Saltar espacios múltiples
+            // Saltar espacios multiples
             mientras i < largo y subcadena(linea, i, 1) == " ":
                 i = i + 1
             resultado = resultado + " "
@@ -499,7 +163,8 @@ funcion normalizar_espacios(linea: texto) -> texto:
             i = i + 1
     retornar resultado
 
-// cumple Manual 3 §12: recorta espacios al inicio y final
+// --- Recorta espacios al inicio y final ---
+
 funcion recortar(linea: texto) -> texto:
     requiere:
         verdadero
@@ -507,65 +172,62 @@ funcion recortar(linea: texto) -> texto:
         longitud(_resultado_) >= 0
     si longitud(linea) == 0:
         retornar ""
+    // r153: recorta espacio Y tabulacion (regla del modulo: prohibido tabs).
     let inicio = 0
     mientras inicio < longitud(linea):
-        si subcadena(linea, inicio, 1) != " ":
+        let ci = subcadena(linea, inicio, 1)
+        si ci != " " y ci != "\t":
             romper
         inicio = inicio + 1
     let fin = longitud(linea) - 1
     mientras fin >= inicio:
-        si subcadena(linea, fin, 1) != " ":
+        let cf = subcadena(linea, fin, 1)
+        si cf != " " y cf != "\t":
             romper
         fin = fin - 1
     si inicio > fin:
         retornar ""
     retornar subcadena(linea, inicio, fin - inicio + 1)
 
-// --- Verificación de formato (--check) ---
+// --- Verificacion de formato (--check) ---
 
-funcion verificar_formato(ruta: texto) -> Resultado<booleano, texto>:
+funcion verificar_formato(ruta: texto) -> booleano:
     requiere:
         longitud(ruta) > 0
     garantiza:
-        _resultado_ es ok o _resultado_ es err
+        _resultado_ es verdadero o _resultado_ es falso
     let contenido = leer_archivo(ruta)
-    si contenido es err:
-        retornar err("No se pudo leer: " + ruta)
     let formateado = formatear_texto(contenido)
-    retornar ok(contenido == formateado)
+    retornar contenido == formateado
 
 // --- Escritura de formato (--write) ---
 
-funcion fmt_archivo(ruta: texto) -> Resultado<booleano, texto>:
+funcion fmt_archivo(ruta: texto) -> booleano:
     requiere:
         longitud(ruta) > 0
     garantiza:
-        _resultado_ es ok o _resultado_ es err
+        _resultado_ es verdadero o _resultado_ es falso
     let contenido = leer_archivo(ruta)
-    si contenido es err:
-        retornar err("No se pudo leer: " + ruta)
     let formateado = formatear_texto(contenido)
     si contenido == formateado:
-        retornar ok(falso)  // sin cambios
+        retornar falso  // sin cambios
     inseguro:
         asm("FILE* _f = fopen(ruta.datos, \"wb\"); if(_f){ fwrite(formateado.datos, 1, formateado.longitud, _f); fclose(_f); }")
-    retornar ok(verdadero)  // reformateado
+    retornar verdadero  // reformateado
 
-// --- Reformato de múltiples archivos ---
+// --- Reformato de multiples archivos ---
 
 funcion fmt_directorio(ruta: texto) -> entero:
     requiere:
         longitud(ruta) > 0
     garantiza:
         _resultado_ >= 0
-    let total = 0
-    let modificados = 0
     let errores = 0
     // Recorrer archivos .syn en directorio
     let cmd = "dir /b \"" + ruta + "\\*.syn\" 2>nul"
     let salida = ""
     inseguro:
-        asm("char _buf[4096]; FILE* _p = popen(cmd.datos, \"r\"); if(_p){ while(fgets(_buf, sizeof(_buf), _p)) salida = concat(salida, _buf); pclose(_p); }")
+        asm("char _buf[4096]; FILE* _p = popen(cmd.datos, \"r\"); if(_p){ while(fgets(_buf, sizeof(_buf), _p)){ CadenaSegura _frag = { .longitud = (int)strlen(_buf), .datos = _buf }; CadenaSegura _acc = concat(salida, _frag); salida.longitud = _acc.longitud; salida.datos = _acc.datos; } pclose(_p); }")
     let inicio = 0
     let largo = longitud(salida)
     mientras inicio < largo:
@@ -577,12 +239,7 @@ funcion fmt_directorio(ruta: texto) -> entero:
         let nombre = subcadena(salida, inicio, fin - inicio)
         si longitud(nombre) > 0:
             let ruta_completa = ruta + "\\" + nombre
-            let r = fmt_archivo(ruta_completa)
-            si r es ok:
-                total = total + 1
-                si valor_ok(r) == verdadero:
-                    modificados = modificados + 1
-            sino:
+            si no fmt_archivo(ruta_completa):
                 errores = errores + 1
         inicio = fin + 1
     retornar errores

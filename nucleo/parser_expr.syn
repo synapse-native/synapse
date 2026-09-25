@@ -361,6 +361,74 @@ funcion parsear_primario(est: ParserEst) -> entero:
         // FASE A (A3.0): payload del nombre (identificador o llamada) —
         // el puente lo convierte a Identificador.nombre / LlamadaFuncion.nombre.
         nodo_guardar_token(est, nodo, pos_id)
+        // cumple Manual 2 §4.3 (H-R153-2/R3n, cumple Manual 3 §3): constructores de colección
+        // `Lista<T>()` / `Mapa<K,V>()` en EXPRESION — el puente produce un
+        // LlamadaFuncion cuyo nombre es el span completo ("Lista<entero>").
+        // Paridad S1 parser_expressions.py (rama Lista< tras identificador).
+        // r153 (H-R153-19): paridad estricta con parser_expressions.py L261 —
+        // la rama generica SOLO aplica si el nombre es 'Lista' o 'Mapa'. Sin
+        // el gate, CUALQUIER `ident < expr` (comparacion: mientras i < n,
+        // si a < b) entraba aqui y devoraba el resto del archivo buscando '>'
+        // -> "Error de sintaxis (linea 0, columna 0)" en todo programa con
+        // una comparacion '<' tras la introduccion de esta rama.
+        es_ctor_col = 0
+        inseguro:
+            asm("{ struct LexerBuffers* _lbc = (struct LexerBuffers*)lexer_buffers();")
+            asm("  if (_lbc && pos_id >= 0 && pos_id < _lbc->ntks) {")
+            asm("      CadenaSegura _v_c = ((struct TokenLex*)_lbc->tokens)[pos_id].valor;")
+            asm("      es_ctor_col = ((_v_c.longitud == 5 && _v_c.datos && memcmp(_v_c.datos, \"Lista\", 5) == 0) || (_v_c.longitud == 4 && _v_c.datos && memcmp(_v_c.datos, \"Mapa\", 4) == 0)) ? 1 : 0; } }")
+        si token_mirar(est) == T_MENOR y es_ctor_col == 1:
+            pos_g_ini = est.posicion
+            token_avanzar(est)
+            prof_g = 0
+            t_g = token_mirar(est)
+            mientras t_g != T_MAYOR o prof_g > 0:
+                si t_g == T_MENOR:
+                    prof_g = prof_g + 1
+                si t_g == T_MAYOR:
+                    prof_g = prof_g - 1
+                si t_g == T_FIN:
+                    romper
+                token_avanzar(est)
+                t_g = token_mirar(est)
+            token_esperar(est, T_MAYOR)
+            pos_g_fin = est.posicion - 1
+            si token_mirar(est) == T_PAREN_IZQ:
+                // Es un constructor genérico: renombrar el nodo a NODO_LLAMADA
+                // con nombre = span "Lista<entero>" y parsear argumentos.
+                inseguro:
+                    asm("est->nodos[nodo].tipo_nodo = 14")
+                nodo_guardar_span(est, nodo, pos_id, pos_g_fin, 1)
+                token_esperar(est, T_PAREN_IZQ)
+                r = 1
+                primer_arg = 0
+                ultimo_arg = 0
+                arg = 0
+                mientras r == 1:
+                    // r153 (H-R153-15): saltar NL entre argumentos (paridad S1)
+                    mientras token_mirar(est) == T_NUEVALINEA:
+                        token_avanzar(est)
+                    si token_mirar(est) == T_PAREN_DER:
+                        romper
+                    arg = parsear_expresion(est)
+                    si arg != 0:
+                        si primer_arg == 0:
+                            primer_arg = arg
+                        sino:
+                            inseguro:
+                                asm("est->nodos[ultimo_arg].hermano = arg")
+                        ultimo_arg = arg
+                    si token_mirar(est) == T_COMA:
+                        token_avanzar(est)
+                    sino:
+                        si arg == 0:
+                            romper
+                si primer_arg > 0:
+                    inseguro:
+                        asm("est->nodos[nodo].hijo_der = primer_arg")
+                token_esperar(est, T_PAREN_DER)
+                // Postfijo común (campo/índice) via el flujo de abajo
+                retornar nodo
         t2 = token_mirar(est)
         si t2 == T_PAREN_IZQ:
             inseguro:
@@ -401,6 +469,8 @@ funcion parsear_primario(est: ParserEst) -> entero:
                     ultimo_arg = arg
                 si token_mirar(est) == T_COMA:
                     token_avanzar(est)
+                    mientras token_mirar(est) == T_NUEVALINEA:
+                        token_avanzar(est)
                     siguiente
                 sino:
                     si arg == 0:
@@ -410,7 +480,14 @@ funcion parsear_primario(est: ParserEst) -> entero:
                 inseguro:
                     asm("est->nodos[nodo].hijo_der = primer_arg")
             token_esperar(est, T_PAREN_DER)
-        si t2 == T_PUNTO:
+        // r153 (H-R153-16): cadena postfija '.' en BUCLE — paridad S1
+        // _parsear_postfijo (parser_expressions.py): campo/método pueden seguir
+        // a una LLAMADA y encadenarse (ads.obtener(0).linea). Antes un único
+        // `si t2 == T_PUNTO`: el punto tras una llamada dejaba el cursor en
+        // '.campo' y el 'si' fallaba buscando ':' (error fantasma reportado en
+        // la sentencia siguiente). El cuerpo del bloque conserva indentación.
+        r_post = 1
+        mientras r_post == 1:
             si token_mirar(est) == T_PUNTO:
                 token_avanzar(est)
                 tok_campo = token_mirar(est)
@@ -420,12 +497,60 @@ funcion parsear_primario(est: ParserEst) -> entero:
                 si token_es_nombre(tok_campo) == 1:
                     pos_campo = est.posicion
                     token_avanzar(est)
-                    nodo2 = parser_nuevo_nodo(est, NODO_ACCESO_CAMPO, linea2, col2)
-                    // FASE A (A3.0): payload del nombre de campo
-                    nodo_guardar_token(est, nodo2, pos_campo)
-                    inseguro:
-                        asm("est->nodos[nodo2].hijo_izq = nodo")
-                    nodo = nodo2
+                    // cumple Manual 3 §3 (r153 R3n): `IDENT . IDENT (` →
+                    // NODO_METODO — llamada a método postfijo con el objeto
+                    // como receptor. Paridad S1 parser_expressions.py
+                    // (_parsear_postfijo): el puente produce LlamadaFuncion con
+                    // nombre "metodo:<nombre>" y el objeto como 1er argumento.
+                    si token_mirar(est) == T_PAREN_IZQ:
+                        nodo_m = parser_nuevo_nodo(est, NODO_METODO, linea2, col2)
+                        nodo_guardar_token(est, nodo_m, pos_campo)
+                        token_avanzar(est)
+                        r_m = 1
+                        primer_arg_m = 0
+                        ultimo_arg_m = 0
+                        arg_m = 0
+                        mientras r_m == 1:
+                            // r153 (H-R153-15): saltar NL entre argumentos
+                            mientras token_mirar(est) == T_NUEVALINEA:
+                                token_avanzar(est)
+                            si token_mirar(est) == T_PAREN_DER:
+                                romper
+                            arg_m = parsear_expresion(est)
+                            si arg_m != 0:
+                                si primer_arg_m == 0:
+                                    primer_arg_m = arg_m
+                                sino:
+                                    inseguro:
+                                        asm("est->nodos[ultimo_arg_m].hermano = arg_m")
+                                ultimo_arg_m = arg_m
+                            si token_mirar(est) == T_COMA:
+                                token_avanzar(est)
+                                mientras token_mirar(est) == T_NUEVALINEA:
+                                    token_avanzar(est)
+                                siguiente
+                            sino:
+                                si arg_m == 0:
+                                    romper
+                            r_m = 1
+                        si primer_arg_m > 0:
+                            inseguro:
+                                asm("est->nodos[nodo_m].hijo_der = primer_arg_m")
+                        token_esperar(est, T_PAREN_DER)
+                        inseguro:
+                            asm("est->nodos[nodo_m].hijo_izq = nodo")
+                        nodo = nodo_m
+                    sino:
+                        nodo2 = parser_nuevo_nodo(est, NODO_ACCESO_CAMPO, linea2, col2)
+                        // FASE A (A3.0): payload del nombre de campo
+                        nodo_guardar_token(est, nodo2, pos_campo)
+                        inseguro:
+                            asm("est->nodos[nodo2].hijo_izq = nodo")
+                        nodo = nodo2
+                // fin de la iteración postfija: consumido '.' + nombre [+ args]
+                siguiente
+            sino:
+                r_post = 0
         // AUDITORIA FASE A (A5/D-6): operador '?' postfijo (Manual 3 §7 L331-342).
         // `expr?` propaga el err del Resultado (retorna) y desempaqueta el valor ok.
         mientras token_mirar(est) == T_INTERROGACION:

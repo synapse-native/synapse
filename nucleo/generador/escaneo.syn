@@ -12,6 +12,38 @@
 # cumple Manual 8 4.1: compilador nativo S2
 
 // ----------------------------------------------------------
+// gen_escanear_constantes — r153 (H-R153-21): registrar nombres de CONSTANTES
+// a nivel de modulo (AsignacionVariable.es_constante=1 del puente, rama
+// NODO_CONSTANTE). El emisor del '+' (OpBinaria) consulta el registro para
+// decidir concat vs suma — paridad S1 tipo_de_expr: el tipo de la constante
+// es el de su expresion (LiteralCadena -> CadenaSegura).
+// ----------------------------------------------------------
+funcion gen_escanear_constantes(est: GeneradorCEst, programa: Programa) -> nulo:
+    // cumple Manual 2 §12 (r153): contratos en toda función pública —
+    // el escaneo es tolerante a programa vacío (while con guard) y no
+    // modifica su entrada, solo llena _G_native_consts (preludio del unity).
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    inseguro:
+        asm("extern char _G_native_consts[512][64]; extern int _G_native_consts_count;")
+        asm("_G_native_consts_count = 0;")
+        asm("struct ListaNodo* _gcc = programa.sentencias;")
+        asm("while (_gcc && _G_native_consts_count < 512) {")
+        asm("    struct Nodo* _gcn = _gcc->cabeza;")
+        asm("    if (_gcn && _gcn->tipo.datos && strcmp(_gcn->tipo.datos, \"AsignacionVariable\") == 0) {")
+        asm("        struct AsignacionVariable* _gca = (struct AsignacionVariable*)_gcn;")
+        asm("        if (_gca->es_constante == 1 && _gca->nombre.datos) {")
+        asm("            strncpy(_G_native_consts[_G_native_consts_count], _gca->nombre.datos, 63);")
+        asm("            _G_native_consts[_G_native_consts_count][63] = 0;")
+        asm("            _G_native_consts_count++;")
+        asm("        }")
+        asm("    }")
+        asm("    _gcc = _gcc->cola;")
+        asm("}")
+
+// ----------------------------------------------------------
 // gen_escanear_estructuras - (bloque extraido de generar())
 // ----------------------------------------------------------
 funcion gen_escanear_estructuras(est: GeneradorCEst, programa: Programa) -> nulo:

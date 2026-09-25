@@ -29,6 +29,12 @@ importar generator
 importar generator_pgo
 importar resolvedor_axon
 importar cache
+// cumple Manual 8 §4.1 (r153 R4, cumple Manual 1 §6, cumple Manual 9 §6.2): backend canónico de lint/fmt/test — los
+// módulos nucleo/lint.syn, formatter.syn y reports.syn compilan en AMBAS capas
+// (probe r153) y sustituyen a los bloques C embebidos de r152.
+importar lint
+importar formatter
+importar reports
 // M10.1: verificador formal nativo (modo --safe) — paridad S1
 // compilador/verificador_formal.py. En el unity build tambien debe figurar en
 // _files[] (mas abajo) para que stage1/2/3 lo incluyan al auto-compilarse.
@@ -69,7 +75,7 @@ funcion generar_etapa(ruta: cadena, salida: cadena) -> ResultadoEtapa:
         asm("struct ListaNodo* _merged = NULL;")
         asm("struct ListaNodo** _mcur = &_merged;")
         asm("int _is_usr = (ruta.longitud > 0 && ruta.datos != NULL && ruta.datos[0] != 0) ? 1 : 0;")
-        asm("const char* _files[] = {\"nucleo/tokens.syn\",\"nucleo/lexer.syn\",\"nucleo/lexer_keywords.syn\",\"nucleo/ast_nodes.syn\",\"nucleo/errores.syn\",\"nucleo/diagnostics.syn\",\"nucleo/parser_constantes.syn\",\"nucleo/parser_base.syn\",\"nucleo/parser_expr.syn\",\"nucleo/parser_stmt.syn\",\"nucleo/parser.syn\",\"nucleo/parser_sentencias.syn\",\"nucleo/parser_declaraciones.syn\",\"nucleo/parser_canales.syn\",\"nucleo/puente_ast.syn\",\"nucleo/tabla_simbolos.syn\",\"nucleo/analizador_semantico.syn\",\"nucleo/lifetimes.syn\",\"nucleo/memoria.syn\",\"nucleo/generator.syn\",\"nucleo/generator_pgo.syn\",\"nucleo/resolvedor_axon.syn\",\"nucleo/verificador_formal.syn\",\"nucleo/principal.syn\",NULL};")
+        asm("const char* _files[] = {\"nucleo/tokens.syn\",\"nucleo/lexer.syn\",\"nucleo/lexer_keywords.syn\",\"nucleo/ast_nodes.syn\",\"nucleo/errores.syn\",\"nucleo/diagnostics.syn\",\"nucleo/parser_constantes.syn\",\"nucleo/parser_base.syn\",\"nucleo/parser_expr.syn\",\"nucleo/parser_stmt.syn\",\"nucleo/parser.syn\",\"nucleo/parser_sentencias.syn\",\"nucleo/parser_declaraciones.syn\",\"nucleo/parser_canales.syn\",\"nucleo/puente_ast.syn\",\"nucleo/tabla_simbolos.syn\",\"nucleo/analizador_semantico.syn\",\"nucleo/lifetimes.syn\",\"nucleo/memoria.syn\",\"nucleo/generator.syn\",\"nucleo/generator_pgo.syn\",\"nucleo/resolvedor_axon.syn\",\"nucleo/verificador_formal.syn\",\"nucleo/lint.syn\",\"nucleo/formatter.syn\",\"nucleo/reports.syn\",\"nucleo/principal.syn\",NULL};")
         asm("int _ya_incluido = 0;")
         asm("// Paridad pipeline.py:485 / Manual 9 S9.1: unity build SOLO para el compilador")
         asm("// (la ruta del usuario coincide con un modulo de _files[] o termina en principal.syn).")
@@ -709,38 +715,50 @@ funcion generar_etapa(ruta: cadena, salida: cadena) -> ResultadoEtapa:
         asm("fprintf(stderr, \"[Synapse] Compilacion nativa exitosa\\n\");")
     retornar etapa_ok()
 
-// --- Backend real de los subcomandos lint/fmt/test (ME r152) ---
-// H-R152-4: nucleo/lint.syn, formatter.syn y reports.syn usan sintaxis que el
-// pipeline Python S1 no compila aun (metodos obj.metodo(), for-en, Lista<T>());
-// este backend C embebido reemplaza a los 5 externs fantasma (ba2c5ee) que
-// rompian el enlace del bootstrap (H-R151-3). Los reportes --junit/--json se
-// emiten en PARIDAD con nucleo/reports.syn (generar_junit/generar_json).
+// --- Backend real de los subcomandos lint/fmt/test (R4, H-R152-4 ratificado) ---
+// r153 R4 (Manual 8 §4.1): los backends canónicos son los módulos nucleo/
+// lint.syn, formatter.syn y reports.syn (compilan en AMBAS capas, probe r153);
+// cli_lint/cli_fmt/cli_test delegan en ellos. El C embebido se conserva SOLO
+// donde los módulos no cubren: mensajes a stderr (_cli_err, el escribir de
+// runtime imprime a stdout) y en cli_test la medición de tiempo/invocación del
+// exe compilado (capacidades del compilador, no del API de módulos).
+// _cli_err: imprime a stderr (paridad con los fprintf(stderr) de r152).
+funcion _cli_err(msg: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    inseguro:
+        asm("fprintf(stderr, \"%s\\n\", msg.datos); fflush(stderr);")
+
 // cumple Manual 8 §4.1: `synapse lint` ejecuta el linter nativo sobre el codigo fuente
 funcion cli_lint(ruta: texto, con_fix: booleano) -> entero:
     requiere:
         ruta.longitud > 0
     garantiza:
         _resultado_ >= 0
-    inseguro:
-        asm("{ extern CadenaSegura _syn_leer_archivo(CadenaSegura ruta); CadenaSegura _ac = _syn_leer_archivo(ruta); if(_ac.longitud == 0){ fprintf(stderr, \"[Lint] ERROR: no se pudo leer %s\\n\", ruta.datos); return 1; }")
-        asm("if(con_fix){ char* _out = (char*)malloc((size_t)_ac.longitud + 1); size_t _n = 0; int _col = 0;")
-        asm("for(int64_t _i = 0; _i < _ac.longitud; _i++){ char _c = _ac.datos[_i];")
-        asm("if(_c == 13) continue;")
-        asm("if(_c == 10){ _out[_n++] = 10; _col = 0; continue; }")
-        asm("if(_c == 32){ int64_t _j = _i; while(_j < _ac.longitud && _ac.datos[_j] == 32) _j++; char _nx = (_j < _ac.longitud) ? _ac.datos[_j] : 0; if(_nx == 10 || _nx == 0){ _i = _j - 1; continue; }")
-        asm("if(_col == 0){ int64_t _q = _j - _i; int64_t _nv = ((_q + 3) / 4) * 4; for(int64_t _k = 0; _k < _nv; _k++) _out[_n++] = 32; } else { _out[_n++] = 32; }")
-        asm("_i = _j - 1; continue; }")
-        asm("int64_t _fin = _i; while(_fin < _ac.longitud && _ac.datos[_fin] != 10 && _ac.datos[_fin] != 32) _fin++;")
-        asm("for(int64_t _j2 = _i; _j2 < _fin; _j2++) _out[_n++] = _ac.datos[_j2];")
-        asm("_col = 1; _i = _fin - 1; }")
-        asm("_out[_n] = 0; FILE* _f = fopen(ruta.datos, \"wb\"); if(!_f){ fprintf(stderr, \"[Lint] ERROR: no se pudo escribir %s\\n\", ruta.datos); free(_out); return 1; }")
-        asm("fwrite(_out, 1, _n, _f); fclose(_f); free(_out); fprintf(stderr, \"[Lint] Archivo corregido\\n\"); return 0; }")
-        asm("{ int _adv = 0; int _num = 1;")
-        asm("for(int64_t _i = 0; _i < _ac.longitud; ){ int64_t _fin = _i; while(_fin < _ac.longitud && _ac.datos[_fin] != 10) _fin++; int _esp = 0; while(_esp + _i < _fin && _ac.datos[_i + _esp] == 32) _esp++;")
-        asm("if(_esp > 0 && _esp % 4 != 0){ fprintf(stderr, \"[Lint] %s:%d: WARN_LINT_INDENT: indentacion %d no es multiplo de 4\\n\", ruta.datos, _num, _esp); _adv++; }")
-        asm("_num++; _i = _fin + 1; }")
-        asm("if(_adv > 0){ fprintf(stderr, \"[Lint] %d advertencia(s) encontrada(s)\\n\", _adv); return 1; }")
-        asm("fprintf(stderr, \"[Lint] Sin advertencias\\n\"); return 0; } }")
+    // Delega en nucleo/lint.syn (backend canonico R4)
+    si con_fix:
+        let corregido = lint_fix(ruta)
+        si longitud(corregido) == 0:
+            _cli_err("[Lint] ERROR: no se pudo leer " + ruta)
+            retornar 1
+        _cli_err("[Lint] Archivo corregido")
+        retornar 0
+    let ads = lint_archivo(ruta)
+    // H-R153-2: lint_archivo reporta "archivo vacio o ilegible" (linea 0) cuando
+    // el runtime no puede leer la ruta (paridad con el check del bloque C de r152).
+    // H-R153-17: detección con helper for-en — .obtener(0).linea (método+campo
+    // en cadena) no tiene emisión en la ruta unity nativa (probe r153).
+    si longitud(ads) == 1 y lint_tiene_aviso_en_linea(ads, 0):
+        _cli_err("[Lint] ERROR: no se pudo leer " + ruta)
+        retornar 1
+    si longitud(ads) > 0:
+        para a en ads:
+            _cli_err("[Lint] " + a.archivo + ":" + entero_a_texto(a.linea) + ": " + a.mensaje)
+        _cli_err("[Lint] " + entero_a_texto(longitud(ads)) + " advertencia(s) encontrada(s)")
+        retornar 1
+    _cli_err("[Lint] Sin advertencias")
     retornar 0
 
 // cumple Manual 8 §4.1: `synapse fmt` ejecuta el formateador nativo
@@ -749,22 +767,19 @@ funcion cli_fmt(ruta: texto, check: booleano) -> entero:
         ruta.longitud > 0
     garantiza:
         _resultado_ >= 0
-    inseguro:
-        asm("{ extern CadenaSegura _syn_leer_archivo(CadenaSegura ruta); CadenaSegura _ac = _syn_leer_archivo(ruta); if(_ac.longitud == 0){ fprintf(stderr, \"[Fmt] ERROR: no se pudo leer %s\\n\", ruta.datos); return 1; }")
-        asm("char* _out = (char*)malloc((size_t)_ac.longitud + 1); size_t _n = 0; int _col = 0;")
-        asm("for(int64_t _i = 0; _i < _ac.longitud; _i++){ char _c = _ac.datos[_i];")
-        asm("if(_c == 13) continue;")
-        asm("if(_c == 10){ _out[_n++] = 10; _col = 0; continue; }")
-        asm("if(_c == 32){ int64_t _j = _i; while(_j < _ac.longitud && _ac.datos[_j] == 32) _j++; char _nx = (_j < _ac.longitud) ? _ac.datos[_j] : 0; if(_nx == 10 || _nx == 0){ _i = _j - 1; continue; }")
-        asm("if(_col == 0){ int64_t _q = _j - _i; int64_t _nv = ((_q + 3) / 4) * 4; for(int64_t _k = 0; _k < _nv; _k++) _out[_n++] = 32; } else { _out[_n++] = 32; }")
-        asm("_i = _j - 1; continue; }")
-        asm("int64_t _fin = _i; while(_fin < _ac.longitud && _ac.datos[_fin] != 10 && _ac.datos[_fin] != 32) _fin++;")
-        asm("for(int64_t _j2 = _i; _j2 < _fin; _j2++) _out[_n++] = _ac.datos[_j2];")
-        asm("_col = 1; _i = _fin - 1; }")
-        asm("_out[_n] = 0;")
-        asm("if(check){ int _igual = ((size_t)_ac.longitud == _n) && (memcmp(_ac.datos, _out, _n) == 0); if(_igual){ fprintf(stderr, \"[Fmt] formato correcto\\n\"); return 0; } fprintf(stderr, \"[Fmt] formato incorrecto\\n\"); return 1; }")
-        asm("{ FILE* _f = fopen(ruta.datos, \"wb\"); if(!_f){ fprintf(stderr, \"[Fmt] ERROR: no se pudo escribir %s\\n\", ruta.datos); free(_out); return 1; }")
-        asm("fwrite(_out, 1, _n, _f); fclose(_f); free(_out); fprintf(stderr, \"[Fmt] archivo reformateado\\n\"); return 0; } }")
+    // Delega en nucleo/formatter.syn (backend canonico R4)
+    si check:
+        let ok = verificar_formato(ruta)
+        si ok:
+            _cli_err("[Fmt] formato correcto")
+            retornar 0
+        _cli_err("[Fmt] formato incorrecto")
+        retornar 1
+    let cambio = fmt_archivo(ruta)
+    si cambio:
+        _cli_err("[Fmt] archivo reformateado")
+    sino:
+        _cli_err("[Fmt] formato correcto")
     retornar 0
 
 // cumple Manual 9 §6.2: reportes junit/json para CI/CD (bootstrap verificable)
@@ -774,33 +789,55 @@ funcion cli_test(ruta: texto, formato: entero) -> entero:
         ruta.longitud > 0
     garantiza:
         _resultado_ >= 0
+    // Ejecuta la suite: compila el archivo con la pipeline del compilador y
+    // ejecuta el exe (bloque C de r152 conservado SOLO aqui: medición de
+    // tiempo e invocación del proceso — capacidades del compilador, R4) y
+    // escribe los reportes con los generadores canónicos de reports.syn (R4).
+    let _rc = 0
+    let _seg = 0.0
     inseguro:
         asm("{ char _sal_buf[1024]; snprintf(_sal_buf, sizeof(_sal_buf), \"%s.exe\", ruta.datos);")
         asm("CadenaSegura _salida = { .longitud = (int)strlen(_sal_buf), .datos = _sal_buf };")
         asm("struct ResultadoEtapa _re = generar_etapa(ruta, _salida);")
-        asm("if(_re.tag != 0){ fprintf(stderr, \"[Test] ERROR: compilacion fallo\\n\"); return 1; }")
+        asm("if(_re.tag != 0){ _rc = 2; _seg = 0.0; goto _ct_fin; }")
         // Workaround cmd.exe: comillas dobles para rutas con espacios
         asm("char _exe_cmd[1040]; snprintf(_exe_cmd, sizeof(_exe_cmd), \"\\\"\\\"%s\\\"\\\"\", _sal_buf);")
-        asm("unsigned long long _t0 = 0; double _seg = 0.0; int _rc;")
+        asm("unsigned long long _t0 = 0;")
         asm("#ifdef _WIN32")
         asm("unsigned long long __stdcall GetTickCount64(void);")
         asm("_t0 = GetTickCount64();")
-        asm("_rc = system(_exe_cmd);")
+        asm("_rc = (int)system(_exe_cmd);")
         asm("_seg = (double)(GetTickCount64() - _t0) / 1000.0;")
         asm("#else")
-        asm("_rc = system(_exe_cmd);")
+        asm("_rc = (int)system(_exe_cmd);")
+        asm("_seg = 0.0;")
         asm("#endif")
-        asm("if(_rc != 0){ fprintf(stderr, \"[Test] FALLO: el proceso de pruebas termino con codigo %d\\n\", _rc); } else { fprintf(stderr, \"[Test] todos los tests pasaron\\n\"); }")
-        asm("if(formato == 1){ char _rep[1024]; snprintf(_rep, sizeof(_rep), \"%s.junit.xml\", ruta.datos); FILE* _f = fopen(_rep, \"wb\"); if(_f){")
-        asm("fprintf(_f, \"<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?>\\n<testsuites>\\n  <testsuite name=\\\"%s\\\" tests=\\\"1\\\" failures=\\\"%d\\\" errors=\\\"0\\\" time=\\\"%.3f\\\">\\n    <testcase name=\\\"%s\\\" classname=\\\"%s\\\" time=\\\"%.3f\\\">\\n\", ruta.datos, (_rc != 0), _seg, ruta.datos, ruta.datos, _seg);")
-        asm("if(_rc != 0){ fprintf(_f, \"      <failure message=\\\"proceso termino con codigo %d\\\"/>\\n\", _rc); }")
-        asm("fprintf(_f, \"    </testcase>\\n  </testsuite>\\n</testsuites>\\n\"); fclose(_f); fprintf(stderr, \"[Test] Reporte JUnit: %s\\n\", _rep); } }")
-        asm("else if(formato == 2){ char _rep[1024]; snprintf(_rep, sizeof(_rep), \"%s.json\", ruta.datos); FILE* _f = fopen(_rep, \"wb\"); if(_f){")
-        asm("const char* _estado = (_rc == 0) ? \"passed\" : \"failed\";")
-        asm("fprintf(_f, \"{\\n  \\\"tests\\\": [\\n    {\\\"name\\\": \\\"%s\\\", \\\"suite\\\": \\\"%s\\\", \\\"status\\\": \\\"%s\\\", \\\"message\\\": \\\"\\\", \\\"time\\\": %.3f}\\n  ],\\n  \\\"summary\\\": {\\\"total\\\": 1, \\\"passed\\\": %d, \\\"failed\\\": %d, \\\"skipped\\\": 0, \\\"time\\\": %.3f}\\n}\\n\", ruta.datos, ruta.datos, _estado, _seg, (_rc == 0), (_rc != 0), _seg);")
-        asm("fclose(_f); fprintf(stderr, \"[Test] Reporte JSON: %s\\n\", _rep); } }")
-        asm("else if(formato == 3){ fprintf(stderr, \"[Test] --coverage: instrumentacion de aristas no implementada aun (H-R152-1)\\n\"); return 1; }")
-        asm("return (_rc != 0) ? 1 : 0; }")
+        asm("_ct_fin:; }")
+    // Reportes canónicos: delegan en nucleo/reports.syn (R4, Manual 9 §6.2).
+    // Lista de un elemento construida con la stdlib (Manual 2 §4.3).
+    let lst = Lista<ResultadoTest>()
+    let estado = "passed"
+    let mensaje = ""
+    si _rc == 2:
+        _cli_err("[Test] ERROR: compilacion fallo")
+        retornar 1
+    si _rc != 0:
+        estado = "failed"
+        mensaje = "proceso termino con codigo " + entero_a_texto(_rc)
+    lst.agregar(ResultadoTest(ruta, ruta, estado, mensaje, _seg))
+    si formato == 1:
+        escribir_reporte(ruta + ".junit.xml", generar_junit(lst))
+    sino:
+        si formato == 2:
+            escribir_reporte(ruta + ".json", generar_json(lst))
+        sino:
+            si formato == 3:
+                _cli_err("[Test] --coverage: instrumentacion de aristas no implementada aun (H-R152-1)")
+                retornar 1
+    si _rc != 0:
+        _cli_err("[Test] FALLO: el proceso de pruebas termino con codigo " + entero_a_texto(_rc))
+        retornar 1
+    _cli_err("[Test] todos los tests pasaron")
     retornar 0
 
 // ===========================================================================

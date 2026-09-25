@@ -28,6 +28,10 @@ funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
         asm("}")
         asm("if (_len > 10 && _t[0]=='R' && _t[1]=='e' && _t[2]=='s' && _t[3]=='u' && _t[4]=='l' && _t[5]=='t' && _t[6]=='a' && _t[7]=='d' && _t[8]=='o' && _t[9]=='<') { strcpy(_gen_tmp_buf, \"Resultado_T\"); return; }")
         asm("if (strcmp(_t, \"entero\")==0 || strcmp(_t, \"int\")==0) { strcpy(_gen_tmp_buf, \"int64_t\"); return; }")  // A5.2 D-7: entero -> int64_t (Manual 2 S4.1 L267-268)
+        // cumple Manual 2 §4.3 (r153 R3n): colecciones stdlib — handle del runtime
+        // (runtime/core/lista.c/mapa.c, slots int64, OBL-M6-5). Paridad S1 context.py.
+        asm("if (_t[0]=='L' && strncmp(_t, \"Lista<\", 6)==0) { strcpy(_gen_tmp_buf, \"void*\"); return; }")
+        asm("if (_t[0]=='M' && strncmp(_t, \"Mapa<\", 5)==0) { strcpy(_gen_tmp_buf, \"void*\"); return; }")
         asm("if (strcmp(_t, \"vacio\")==0 || strcmp(_t, \"nulo\")==0 || strcmp(_t, \"void\")==0) { strcpy(_gen_tmp_buf, \"void\"); return; }")
         asm("if (strcmp(_t, \"decimal\")==0 || strcmp(_t, \"real\")==0 || strcmp(_t, \"flotante\")==0 || strcmp(_t, \"float\")==0) { strcpy(_gen_tmp_buf, \"double\"); return; }")  // A5.2 D-7: decimal -> double (Manual 2 S4.1 L267-268)
         asm("if (strcmp(_t, \"Tensor\")==0 || strcmp(_t, \"tensor\")==0) { strcpy(_gen_tmp_buf, \"Tensor\"); return; }")

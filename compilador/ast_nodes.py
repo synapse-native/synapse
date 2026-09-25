@@ -1,3 +1,4 @@
+# cumple Manual 1 §6: infraestructura Python del compilador Synapse (r153)
 from enum import Enum, auto
 from dataclasses import dataclass, field
 from typing import List, Optional, Any
@@ -186,6 +187,13 @@ class SentenciaPara(Nodo):
     condicion: Optional[Nodo] = None
     incremento: Optional[Nodo] = None
     cuerpo: List[Nodo] = field(default_factory=list)
+    # cumple Manual 3 §3 (H-R153-1): bucle_para_rango —
+    # `para x en expr:` — variable e iterable del range-for.
+    # `variable` = nombre (str); `iterable` = Nodo expresión.
+    # Convención bucle_para (M2 §2.2): variable viaja en `inicializacion.nombre`
+    # y el iterable en `condicion` (el emisor distingue por presencia de `variable`).
+    variable: Optional[str] = None
+    iterable: Optional[Nodo] = None
 
 
 @dataclass

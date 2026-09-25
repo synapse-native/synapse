@@ -1,4 +1,4 @@
-# cumple Manual 1 1: infraestructura Python del compilador Synapse
+# cumple Manual 1 §6: infraestructura Python del compilador Synapse (regla de hierro del bootstrap)
 # cumple Manual 8 4: toolchain de construcción
 import re
 from typing import Dict
@@ -17,6 +17,21 @@ from compilador.diagnostics import ErrorCodes
 from compilador.symbol_table import Simbolo
 from compilador.semantic_scope import _tipo_normalizado, _FUNCIONES_BUILTIN
 from compilador.semantic_types import AnalizadorSemanticoTypes
+
+
+def _tipo_elemento_iterable(tipo_iterable: str) -> str:
+    """cumple Manual 3 §3 (H-R153-1): tipo del ELEMENTO de un iterable —
+    Lista<T> → T; Mapa<K,V> → K; texto → carácter (entero por ABI, M2 §4.1).
+    Desconocido → puntero (leniency del checker)."""
+    t = (tipo_iterable or '').strip()
+    if t.startswith('Lista<') and t.endswith('>'):
+        return t[6:-1].strip()
+    if t.startswith('Mapa<') and t.endswith('>'):
+        interior = t[5:-1]
+        return interior.split(',')[0].strip()
+    if t in ('texto', 'cadena', 'CadenaSegura'):
+        return 'entero'
+    return 'puntero'
 
 
 # F1.2d: tipos de conteo de referencias rc/arc/débil (Manual 2 §2 L151-153 y
@@ -606,6 +621,17 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
             self.tabla.salir_scope()
         elif isinstance(nodo, SentenciaPara):
             self.tabla.entrar_scope()
+            # cumple Manual 3 §3 (H-R153-1): bucle_para_rango (`para x en expr`)
+            # — ligar la variable al TIPO ELEMENTO del iterable (H-R90-15c ya
+            # reconoce Lista<T>/Mapa/texto como iterables válidos).
+            if getattr(nodo, 'variable', None):
+                tipo_iterable = self._inferir_tipo(nodo.condicion) or ''
+                tipo_elem = _tipo_elemento_iterable(tipo_iterable)
+                self.tabla.declarar(nodo.variable, tipo_elem, nodo, linea=nodo.linea, columna=nodo.columna)
+                for s in nodo.cuerpo:
+                    self._analizar_sentencia(s)
+                self.tabla.salir_scope()
+                return
             if nodo.inicializacion:
                 self._analizar_sentencia(nodo.inicializacion)
             if nodo.condicion:

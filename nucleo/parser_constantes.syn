@@ -152,4 +152,10 @@ constante NODO_LISTA_LIT = 55
 constante NODO_MAPA_LIT = 56
 constante NODO_PARA_EN = 57
 constante NODO_BLOQUE_SQ = 58
+// cumple Manual 3 §3 (r153 R3n, cumple Manual 2 §7.2): NODO_METODO — llamada a método postfijo
+// `IDENT . IDENT (` de la capa nativa. Paridad S1 parser_expressions.py
+// (_parsear_postfijo): el objeto viaja como primer argumento y el nombre es
+// "metodo:<nombre>". Numeración NUEVA al final (política ABI M6 §1.2: nada
+// existente se renumera).
+constante NODO_METODO = 59
 

@@ -10,6 +10,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <assert.h>
+#include <time.h>
 #ifdef _WIN32
 #include <io.h>
 #else
@@ -25,6 +26,24 @@ typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtua
 #define nulo ((void*)0)
 #define verdadero 1
 #define falso 0
+
+// --- Colecciones stdlib (runtime/core/lista.c, mapa.c) ---
+extern void* _syn_lista_crear(void);
+extern int64_t _syn_lista_longitud(void* l);
+extern void _syn_lista_agregar(void* l, int64_t elemento);
+extern int64_t _syn_lista_obtener(void* l, int indice);
+extern void _syn_lista_establecer(void* l, int indice, int64_t valor);
+extern void _syn_lista_eliminar(void* l, int indice);
+extern void _syn_lista_liberar(void* l);
+extern void* _syn_mapa_crear(void);
+extern int64_t _syn_mapa_longitud(void* m);
+extern void _syn_mapa_poner(void* m, const char* clave, int64_t valor);
+extern int64_t _syn_mapa_obtener(void* m, const char* clave);
+extern int64_t _syn_mapa_contiene(void* m, const char* clave);
+extern void _syn_mapa_eliminar(void* m, const char* clave);
+extern void _syn_mapa_liberar(void* m);
+extern CadenaSegura _syn_leer_archivo(CadenaSegura ruta);
+extern CadenaSegura _syn_texto_subcadena(CadenaSegura t, int64_t inicio, int64_t fin);
 
 // --- OO AST node types ---
 struct Token;
@@ -200,6 +219,9 @@ extern char _G_native_structs[256][64];
 extern int _G_native_structs_count;
 extern int _G_native_es_estructura(const char* n);
 
+extern char _G_native_consts[512][64];
+extern int _G_native_consts_count;
+
 extern char _G_native_struct_campos[256][64][64];
 extern char _G_native_struct_campos_tipo[256][64][64];
 extern int _G_native_struct_campos_count[256];
@@ -209,6 +231,7 @@ extern int _G_native_campo_tipo(const char* sn, const char* cn, char* out);
 extern char _G_native_func_returns[2048][64];
 extern int _G_native_func_returns_count;
 extern int _G_native_tipo_retorno(const char* fn, char* out);
+extern int _G_native_tipo_retorno_span(const char* fn, char* out);
 
 extern char _G_native_adt_ctrs[256][64];
 extern char _G_native_adt_ctrs_adt[256][64];
@@ -307,11 +330,11 @@ extern CadenaSegura leer_linea(void);
 extern Canal abrir(CadenaSegura ruta, CadenaSegura modo);
 extern CadenaSegura leer(Canal canal);
 extern void cerrar_archivo(Canal canal);
-extern Tensor crear_tensor(int filas, int columnas);
+extern Tensor crear_tensor(int64_t filas, int64_t columnas);
 extern Tensor suma_tensor(Tensor a, Tensor b);
 extern Tensor producto_punto(Tensor a, Tensor b);
 extern Tensor relu(Tensor a);
-extern Tensor reserva(int tamano);
+extern Tensor reserva(int64_t tamano);
 extern void libera(Tensor bloque);
 extern int64_t texto_a_entero(CadenaSegura str);
 extern double texto_a_decimal(CadenaSegura str);
@@ -367,6 +390,8 @@ int _G_scope_vars_kind[256];  // D-1.2: 0=texto,1=rc,2=arc,3=debil
 int _G_safe_mode;  // M22.5: --safe flag for lifetime assertions
 char _G_native_structs[256][64];
 int _G_native_structs_count;
+char _G_native_consts[512][64];
+int _G_native_consts_count;
 int _G_native_es_estructura(const char* n) {
     if (!n) return 0;
     for (int _i = 0; _i < _G_native_structs_count; _i++) {
@@ -400,6 +425,13 @@ int _G_native_tipo_retorno(const char* fn, char* out) {
         if (strcmp(_G_native_func_returns[_i], fn) == 0) {
             strcpy(out, _G_native_func_returns[_i + 1024]); return 1;
         }
+    }
+    return 0;
+}
+int _G_native_tipo_retorno_span(const char* fn, char* out) {
+    if (!fn || !out) return 0;
+    for (int _i = 0; _i < _G_native_func_returns_count; _i++) {
+        if (strcmp(_G_native_func_returns[_i], fn) == 0) { strcpy(out, _G_native_func_returns[_i + 1024]); return 1; }
     }
     return 0;
 }
@@ -506,6 +538,9 @@ int _G_listener_modo;
 char _G_lanzar_wrappers[8][4096];
 int _G_lanzar_wrappers_count;
 int _G_lanzar_count;
+
+void* _G_fn_garantizas_actuales = 0;
+char _G_fn_ret_tipo_c[64];
 
 char _G_tipo_aliases[128][64];
 char _G_tipo_aliases_base[128][64];

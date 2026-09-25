@@ -149,6 +149,38 @@ class ParserControlMixin(ParserBase):
         tok_para = self._esperar(TokenID.PARA)
         if tok_para is None:
             return None
+        # cumple Manual 3 §3 (H-R153-1): bucle_para_rango —
+        # `para x en expr:` (iteración sobre Lista/texto; "en" es identificador
+        # contextual, ver lexer.py nota TOKENS_CONTEXTUALES). Lookahead de 2:
+        # la variable está en el token actual y `en` en el siguiente.
+        _tok0 = self._mirar()
+        _tok1 = self.tokens[self.pos + 1] if self.pos + 1 < len(self.tokens) else _tok0
+        if (es_token_identificador(_tok0)
+                and es_token_identificador(_tok1)
+                and (_tok1.valor or '') == 'en'):
+            tok_var = self._avanzar()  # consume la variable
+            self._avanzar()            # consume 'en'
+            iterable = self._parsear_expresion()
+            if self._esperar(TokenID.COLON) is None:
+                self._sincronizar(_SYNC_STMT)
+                return None
+            if self._mirar().tipo == TokenID.NEWLINE:
+                cuerpo = self._parsear_bloque() or []
+            else:
+                cuerpo = []
+                stmt = self._parsear_sentencia()
+                if stmt is not None:
+                    cuerpo.append(stmt)
+            return SentenciaPara(
+                inicializacion=None,
+                condicion=iterable,  # convención del emisor: iterable en `condicion`
+                incremento=None,
+                cuerpo=cuerpo,
+                variable=tok_var.valor or '',
+                iterable=iterable,
+                linea=tok_para.linea,
+                columna=tok_para.columna,
+            )
         inicializacion = self._parsear_asignacion()
         if self._esperar(TokenID.MIENTRAS) is None:
             self._sincronizar(_SYNC_STMT)

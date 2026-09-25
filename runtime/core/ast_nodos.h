@@ -2,6 +2,9 @@
 #define AST_NODOS_H
 // cumple Manual 2 3: tabla canónica de tokens AST
 // cumple Manual 2 7: tabla canónica de nodos AST
+// cumple Manual 3 §3 (r153): nodos NODO_PARA_EN/NODO_METODO de la gramática de métodos y bucle para-en
+// cumple Manual 2 §7.2: tabla de constantes NODO_* (extensión r153 ratificada H-R153-NODE)
+// cumple Manual 2 §7.3: valores canónicos compartidos con parser_constantes.syn (AST aplanado unificado)
 
 /*
  * ast_nodos.h — Tabla canónica de constantes AST para el runtime C.
@@ -154,5 +157,6 @@
 #define NODO_MAPA_LIT            (56LL)
 #define NODO_PARA_EN             (57LL)
 #define NODO_BLOQUE_SQ           (58LL)
+#define NODO_METODO              (59LL)
 
 #endif /* AST_NODOS_H */

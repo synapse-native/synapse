@@ -115,6 +115,20 @@ Próximo paso:      Ratificar desviaciones restantes R149 §5 (llvm/wasm sin cab
 - **H-R146-1 (RESUELTO, df8ff5f):** el contexto inyectado al modelo no era determinista — el listado de la raíz incluía artefactos de build que cambian en cada compilación (_*.c/_*.o/synapse_bootstrap.exe generados por S1 en la raíz) y el modelo 1.3B repetía el listado multilinea en bucle agotando max_tokens (las respuestas variaban según la basura del momento). Fix: filtrar_listado() en principal.syn excluye artefactos por convención del repo (prefijo _, .c.o/.o/.syn.json/.exe) y comprime a UNA línea acotada a 2400 chars, aplicado a TOOL listar y al contexto estático. Respuestas deterministas y con contenido real verificado x2.
 - **Lección R146 (producto instalado = producto validado):** (1) al corregir binarios, reconstruir el instalador y reinstalar de inmediato — y verificar sha256 de lo instalado contra lo validado — para que la prueba interactiva del usuario ejerza el mismo binario que pasaron los oráculos; (2) los prompts de los oráculos no deben contener números literales ("nombra 3"): un modelo pequeño los copy-pastea como respuesta literal (determinista con temperature:0); (3) los artefactos que el propio build genera en la raíz contaminan cualquier listado inyectado a un agente — filtrar por convención, no limpiar a mano.
 
+### Decisiones y hallazgos del ME r153_s1_metodos_genericos (2026-09-25)
+
+- **H-R153-NODE (RATIFICADO, sesión 2026-09-25):** el Manual 2 §7.2 (tabla
+  "Constantes de Tipo de Nodo") solo llega hasta `NODO_DELEGAR=55`; los nodos
+  nuevos `NODO_PARA_EN=57` y `NODO_METODO=59` (R2/R3) NO existen en la tabla
+  canónica. Regla 3 (no inventar): no se fabricaron filas de manual. Decisión:
+  los valores 57/59 se emitieron sin colisión con la tabla vigente (verificado
+  grep en parser_constantes.syn), se implementaron end-to-end en AMBAS capas
+  (S1 pipeline Python + nativa compilándose a sí misma) y quedan ratificados
+  como extensión con DESVIACION declarada en el expediente r153
+  (docs/alineacion/r153_s1_metodos_genericos.md); la actualización de la tabla
+  §7.2 del Manual 2 es tarea del Arquitecto (los manuales son ley, no se
+  auto-editan).
+
 ### Archivos de interés rápido
 - `auditoria/registrar_lectura.py` — Gate de lectura previa (obligatorio antes de commit)
 - `auditoria/verificar_alineacion.py` — 0 brechas antes de commitear

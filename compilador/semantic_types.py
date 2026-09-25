@@ -1,3 +1,4 @@
+# cumple Manual 1 §6: infraestructura Python del compilador Synapse (r153)
 import re
 from typing import Dict, Optional, Set
 
@@ -9,7 +10,7 @@ from compilador.ast_nodes import (
     ExprPropagar, DefinicionFuncion, Parametro,
 )
 from compilador.diagnostics import ErrorCodes
-from compilador.semantic_scope import _tipo_normalizado, _FUNCIONES_BUILTIN, _BUILTIN_PARAMS_DEFAULT, AnalizadorSemanticoScope
+from compilador.semantic_scope import _tipo_normalizado, _FUNCIONES_BUILTIN, _firma_coleccion_polimorfica, _BUILTIN_PARAMS_DEFAULT, AnalizadorSemanticoScope
 # 2.4: Hindley-Milner (Manual 2 §8.2) — representación estructurada de tipos
 # (TipoKind) y unificación con occurs check para validar argumentos de tipo.
 from compilador.tipos import (
@@ -321,6 +322,71 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
                 self._inferir_tipo(a)
             return 'nulo'
 
+        # cumple Manual 2 §4.3 (H-R153-2): constructores de colección
+        # `Lista<T>()` / `Mapa<K,V>()` — tipos stdlib dinámicos; el emisor
+        # los resuelve al handle del runtime (runtime/core/lista.c/mapa.c).
+        if nodo.nombre.startswith(('Lista<', 'Mapa<')):
+            for a in nodo.argumentos:
+                self._inferir_tipo(a)
+            return nodo.nombre
+
+        # cumple Manual 2 §4.3 (H-R153-2): builtins polimórficos de colección
+        # (longitud/lista_*/mapa_*) — la firma se deriva del tipo real del
+        # primer argumento (instancia genérica Lista<T>/Mapa<K,V> o texto).
+        if nodo.argumentos:
+            _tipo0 = self._inferir_tipo(nodo.argumentos[0]) or ''
+            _fcol = _firma_coleccion_polimorfica(nodo.nombre, _tipo0)
+            if _fcol is not None:
+                _tipos_esp, _ret = _fcol
+                for a in nodo.argumentos:
+                    self._inferir_tipo(a)
+                if nodo.nombre in ('lista_agregar', 'lista_establecer'):
+                    # elemento es polimórfico: cualquier tipo cabe en el slot
+                    return _ret
+                return _ret
+
+        # cumple Manual 3 §5.2 (H-R153-3): métodos postfijos de colección
+        # (`x.metodo(...)`) — validados con la firma polimórfica del runtime.
+        if nodo.nombre.startswith('metodo:'):
+            met = nodo.nombre.split(':', 1)[1]
+            recv = nodo.argumentos[0] if nodo.argumentos else None
+            recv_tipo = self._inferir_tipo(recv) if recv is not None else ''
+            # H-R153-4: `obtener` retorna el TIPO DEL ELEMENTO (no 'puntero') —
+            # los slots int64 del runtime viajan por valor (escalares) o por
+            # dirección (structs/texto); el acceso a campo posterior
+            # (`l.obtener(0).campo`) exige conocer el tipo real para validar el
+            # campo contra la estructura (paridad emit_expressions.py).
+            if met == 'obtener' and recv_tipo.startswith('Lista<'):
+                for a in nodo.argumentos:
+                    self._inferir_tipo(a)
+                return recv_tipo[6:-1].strip() or 'puntero'
+            if met == 'obtener' and recv_tipo.startswith('Mapa<'):
+                for a in nodo.argumentos:
+                    self._inferir_tipo(a)
+                interior_v = recv_tipo[5:-1]
+                return interior_v.split(',')[1].strip() if ',' in interior_v else 'puntero'
+            firma = {
+                'agregar': ('Lista<', 'nulo'), 'longitud': (None, 'int'),
+                'establecer': ('Lista<', 'nulo'),
+                'eliminar': ('Lista<', 'nulo'), 'liberar': (None, 'nulo'),
+                'poner': ('Mapa<', 'nulo'), 'contiene': ('Mapa<', 'booleano'),
+            }.get(met)
+            if firma is None:
+                self.diag.reportar(
+                    ErrorCodes.ERR_SEM_FUNC_NO_DEFINIDA,
+                    self._token(nodo.linea, nodo.columna),
+                    nombre=met
+                )
+                return None
+            pref, ret = firma
+            if pref and recv_tipo and not recv_tipo.startswith(pref):
+                self.diag.reportar(
+                    ErrorCodes.ERR_SEM_FUNC_NO_DEFINIDA,
+                    self._token(nodo.linea, nodo.columna),
+                    nombre=f"{met} sobre {recv_tipo}"
+                )
+            return ret
+
         sim = self.tabla.buscar(nodo.nombre)
         # Las funciones definidas por el usuario tienen precedencia sobre los builtins
         if sim is not None and isinstance(sim.nodo, DefinicionFuncion):
@@ -370,6 +436,15 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
         if nodo.nombre in _FUNCIONES_BUILTIN:
             sig = _FUNCIONES_BUILTIN[nodo.nombre]
             tipos_esperados, tipo_retorno = sig
+            # cumple Manual 2 §4.3 (H-R153-2): builtins de colecciones
+            # polimórficas — lista_agregar/longitud/etc. operan sobre la
+            # INSTANCIACIÓN genérica (Lista<T> de cualquier T). La firma
+            # efectiva se deriva del tipo real del primer argumento.
+            if nodo.argumentos:
+                tipo_arg0 = self._inferir_tipo(nodo.argumentos[0]) or ''
+                firma_coleccion = _firma_coleccion_polimorfica(nodo.nombre, tipo_arg0)
+                if firma_coleccion is not None:
+                    tipos_esperados, tipo_retorno = firma_coleccion
             # H-R90-13: permitir omitir params con valor por defecto
             n_args = len(nodo.argumentos)
             n_params = len(tipos_esperados)
@@ -394,12 +469,23 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
                     # H-R90-15: len() acepta Lista<T> (Manual 3 §5.2)
                     if nodo.nombre == 'len' and tipo_arg and tipo_arg.startswith('Lista'):
                         continue
+                    # cumple Manual 2 §4.3 (H-R153-2): longitud() acepta
+                    # texto/Lista<T> y lista_agregar/obtener/etc. aceptan la
+                    # instanciación genérica real (firma polimórfica arriba).
+                    if _firma_coleccion_polimorfica(nodo.nombre, tipo_arg or '') is not None:
+                        continue
                     # H-R90-15b: [] lista literal (inferido como void*/nulo)
                     # compatible con Lista<T> en assignación de param
                     if tipo_arg in ('void*', 'nulo', 'puntero') and esperado.startswith('Lista'):
                         continue
                     # Allow void* to accept numeric types (pointer arithmetic)
                     if esperado == 'void*' and tipo_arg in ('int', 'float', 'decimal'):
+                        continue
+                    # r153 (H-R153-4): promoción entero -> decimal en parámetros
+                    # que esperan decimal (entero_a_texto/decimal_a_texto y
+                    # aritmética mixta del Manual 2 §4.1: los literales enteros
+                    # se promueven a decimal sin pérdida en división real).
+                    if esperado == 'decimal' and tipo_arg == 'int':
                         continue
                     # F3-7 (paridad nativo): `canal ->` devuelve void*; el canal
                     # es tipado en el Manual (Canal<int>, Manual 5 §3.2), así que
@@ -414,13 +500,23 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
             return tipo_retorno
 
         if nodo.nombre in self._estructuras:
-            if len(nodo.argumentos) != 0:
+            # r153 (H-R153-4, paridad nativa R27): el constructor de struct
+            # acepta la forma posicional `Punto(3, 4)` con un argumento por
+            # campo DECLARADO en orden (Manual 2 L67 declaracion_estructura;
+            # el nativo ya lo emitia como compound literal por campo) O la
+            # forma `Punto()` sin argumentos (zero-init, la que usan los
+            # módulos del compilador: CacheEntry(), ResultadoEtapa(), ...).
+            struct = self._estructuras[nodo.nombre]
+            n_campos = len(struct.campos)
+            if len(nodo.argumentos) != 0 and len(nodo.argumentos) != n_campos:
                 self.diag.reportar(
                     ErrorCodes.ERR_SEM_ARGUMENTOS_INVALIDOS,
                     self._token(nodo.linea, nodo.columna),
                     nombre=nodo.nombre,
-                    esperados=0
+                    esperados=n_campos
                 )
+            for arg in nodo.argumentos:
+                self._inferir_tipo(arg)
             return nodo.nombre
 
         # D-6/F1.2: constructores ADT (ok/err/algun/ninguno) — devuelven el ADT

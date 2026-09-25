@@ -125,6 +125,13 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     // ME-B4: definiciones nativas (paridad _emit_cabecera_comun)
     gen_emitir_linea(est, "char _G_native_structs[256][64];")
     gen_emitir_linea(est, "int _G_native_structs_count;")
+    // r153 (H-R153-21): registro de CONSTANTES de texto a nivel de modulo. El
+    // 'OpBinaria +' consulta este registro para decidir concat vs suma (paridad
+    // S1 emit_expressions.py tipo_de_expr Identificador: el tipo de la const
+    // es el de su LiteralCadena). Antes solo _G_fn_var_tipos (por funcion) era
+    // consultado y el reset por funcion de ME-B7 lo vaciaba en el call-site.
+    gen_emitir_linea(est, "char _G_native_consts[512][64];")
+    gen_emitir_linea(est, "int _G_native_consts_count;")
     // F3-13: campos de struct con tipo Synapse (paridad context.py _estructuras).
     // El generador nativo necesita el tipo del campo para detectar texto (ej.
     // ch.clave_publica_local de CanalRemoto -> texto) en OpBinaria/let — antes
@@ -162,8 +169,25 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "    if (!fn || !out) return 0;")
     gen_emitir_linea(est, "    for (int _i = 0; _i < _G_native_func_returns_count; _i++) {")
     gen_emitir_linea(est, "        if (strcmp(_G_native_func_returns[_i], fn) == 0) {")
-    gen_emitir_linea(est, "            strcpy(out, _G_native_func_returns[_i + 1024]); return 1;")
+    gen_emitir_linea(est, "            strcpy(out, _G_native_func_returns[_i + 1024]);")
+    gen_emitir_linea(est, "            // r153 (H-R153-17c): el registro guarda el SPAN Synapse (puede")
+    gen_emitir_linea(est, "            // ser `Lista<T>`/`Mapa<K,V>`); el consumidor (tipo_de_expr) decide")
+    gen_emitir_linea(est, "            // sobre tipos C -> mapear la coleccion a su handle void*.")
+    gen_emitir_linea(est, "            if (strncmp(out, \"Lista<\", 6) == 0 || strncmp(out, \"Mapa<\", 5) == 0) strcpy(out, \"void*\");")
+    gen_emitir_linea(est, "            return 1;")
     gen_emitir_linea(est, "        }")
+    gen_emitir_linea(est, "    }")
+    gen_emitir_linea(est, "    return 0;")
+    gen_emitir_linea(est, "}")
+    // r153 (H-R153-26): variante SIN el mapeo H-R153-17c — devuelve el SPAN
+    // Synapse crudo (`Lista<T>`/`Mapa<K,V>`). Necesaria para el let con retorno
+    // de funcion (H-R153-22b): el chequeo Lista</Mapa< sobre _rtb jamas activaba
+    // porque 17c ya devolvia 'void*'. Consumidores de 17c (OpBinaria texto en
+    // generator.syn; ExprPropagar L13204) NO dependen del span: quedan intactos.
+    gen_emitir_linea(est, "int _G_native_tipo_retorno_span(const char* fn, char* out) {")
+    gen_emitir_linea(est, "    if (!fn || !out) return 0;")
+    gen_emitir_linea(est, "    for (int _i = 0; _i < _G_native_func_returns_count; _i++) {")
+    gen_emitir_linea(est, "        if (strcmp(_G_native_func_returns[_i], fn) == 0) { strcpy(out, _G_native_func_returns[_i + 1024]); return 1; }")
     gen_emitir_linea(est, "    }")
     gen_emitir_linea(est, "    return 0;")
     gen_emitir_linea(est, "}")
@@ -394,6 +418,26 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "extern void fibra_esperar(int fibra_id);")
     gen_emitir_linea(est, "extern void fibra_terminar(void* resultado);")
     gen_emitir_linea(est, "extern void _syn_texto_liberar(CadenaSegura s);")
+    // cumple Manual 2 §4.3 (r153 R4n): paridad S1 — leer_archivo delega en el
+    // runtime real (igual que generator.py L723); lo usan lint.syn/reports.syn.
+    gen_emitir_linea(est, "extern CadenaSegura _syn_leer_archivo(CadenaSegura ruta);")
+    // cumple Manual 2 §4.3 (r153 R3n): runtime de colecciones — mismos externs
+    // que el preludio de compilador/generator.py (S1) para Lista<T>/Mapa<K,V>.
+    gen_emitir_linea(est, "extern void* _syn_lista_crear(void);")
+    gen_emitir_linea(est, "extern int64_t _syn_lista_longitud(void* l);")
+    gen_emitir_linea(est, "extern void _syn_lista_agregar(void* l, int64_t elemento);")
+    gen_emitir_linea(est, "extern int64_t _syn_lista_obtener(void* l, int indice);")
+    gen_emitir_linea(est, "extern void _syn_lista_establecer(void* l, int indice, int64_t valor);")
+    gen_emitir_linea(est, "extern void _syn_lista_eliminar(void* l, int indice);")
+    gen_emitir_linea(est, "extern void _syn_lista_liberar(void* l);")
+    gen_emitir_linea(est, "extern void* _syn_mapa_crear(void);")
+    gen_emitir_linea(est, "extern int64_t _syn_mapa_longitud(void* m);")
+    gen_emitir_linea(est, "extern void _syn_mapa_poner(void* m, const char* clave, int64_t valor);")
+    gen_emitir_linea(est, "extern int64_t _syn_mapa_obtener(void* m, const char* clave);")
+    gen_emitir_linea(est, "extern int64_t _syn_mapa_contiene(void* m, const char* clave);")
+    gen_emitir_linea(est, "extern void _syn_mapa_eliminar(void* m, const char* clave);")
+    gen_emitir_linea(est, "extern void _syn_mapa_liberar(void* m);")
+    gen_emitir_linea(est, "extern void* malloc(size_t); extern void free(void*);")
     gen_emitir_linea(est, "typedef struct CanalConcurrencia CanalConcurrencia;")
     gen_emitir_linea(est, "extern CanalConcurrencia* canal_crear(uint32_t capacidad);")
     gen_emitir_linea(est, "extern void canal_enviar(CanalConcurrencia* canal, void* paquete);")
@@ -405,6 +449,9 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
 
     // ME-B4: recolectar nombres de estructuras definidas en array nativo
     gen_escanear_estructuras(est, programa)
+
+    // r153 (H-R153-21): registrar constantes de texto de modulo para el '+ '
+    gen_escanear_constantes(est, programa)
 
     // ME-B6: recolectar tipos de retorno de funciones definidas en array nativo
     gen_escanear_retornos(est, programa)
@@ -623,6 +670,23 @@ funcion gen_visitar_top_level(est: GeneradorCEst, stmt: puntero) -> nulo:
 // Resuelve ctors ADT anidados (ok(ok(42))): un ctor como argumento aporta el
 // tipo C de su propia instancia (no el fallback 'int'/vacio). Es funcion del
 // COMPILADOR (no se emite al C del usuario: alli no existen los structs AST).
+// cumple Manual 3 §3 (r153 R2n): clasificación escalar del elemento para el
+// desencajonado del for-en nativo (paridad emit_control.py es_slot_direc).
+// Función del COMPILADOR (como _syn_nativo_expr_tipo_c): la usan los emisores
+// del generador nativo; el C del usuario no la necesita.
+funcion _syn_tipo_escalar(t: puntero) -> entero:
+    // cumple Manual 2 §12 (r153): contratos en toda función pública —
+    // clasificador puro: t nulo devuelve 0, t no nulo devuelve 1 si es escalar.
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ es verdadero o _resultado_ es falso
+    inseguro:
+        r = 0
+        asm("const char* _ts = (const char*)t;")
+        asm("r = (_ts != 0) && (strcmp(_ts, \"entero\") == 0 || strcmp(_ts, \"int\") == 0 || strcmp(_ts, \"decimal\") == 0 || strcmp(_ts, \"booleano\") == 0 || strcmp(_ts, \"puntero\") == 0);")
+        retornar r
+
 funcion _syn_nativo_expr_tipo_c(n: puntero, out: puntero) -> entero:
     inseguro:
         asm("    struct Nodo* _nn = (struct Nodo*)n; char* _oo = (char*)out;")
@@ -647,6 +711,36 @@ funcion _syn_nativo_expr_tipo_c(n: puntero, out: puntero) -> entero:
         asm("            return 0;")
         asm("        }")
         asm("        if (_lf->nombre.datos && _G_native_es_estructura(_lf->nombre.datos)) { snprintf(_oo, 63, \"struct %s\", _lf->nombre.datos); return 1; }")
+        asm("        // r153 (H-R153-15): llamadas con tipo Synapse generic concreto (`Lista<")
+        asm("        // Advertencia>` como retorno de una funcion importada) devuelven el")
+        asm("        // handle (void*); sin esto longitud(lint_archivo(...)) resolvia al")
+        asm("        // fallback (.longitud sobre void* -> gcc rc=1). Paridad S1 tipo_de_expr.")
+        asm("        if (_lf->nombre.datos && (strncmp(_lf->nombre.datos, \"Lista<\", 6) == 0 || strncmp(_lf->nombre.datos, \"Mapa<\", 5) == 0)) { strcpy(_oo, \"void*\"); return 1; }")
+        asm("        // cumple Manual 2 §4.3 (r153 R3n): Lista<T>()/Mapa<K,V>() -> handle void*.")
+        asm("        if (_lf->nombre.datos && (strncmp(_lf->nombre.datos, \"Lista<\", 6) == 0 || strncmp(_lf->nombre.datos, \"Mapa<\", 5) == 0)) { strcpy(_oo, \"void*\"); return 1; }")
+        asm("        // r153 (H-R153-10): metodos de coleccion — el tipo de retorno se")
+        asm("        // resuelve igual que en S1 emit_expressions.py tipo_de_expr (rama")
+        asm("        // metodo:): agregar/poner/liberar -> nulo (void); longitud -> int;")
+        asm("        // obtener -> elemento/valor (texto -> CadenaSegura); contiene ->")
+        asm("        // int (booleano).")
+        asm("        if (_lf->nombre.datos && strncmp(_lf->nombre.datos, \"metodo:\", 7) == 0) {")
+        asm("            const char* _mm10 = _lf->nombre.datos + 7;")
+        asm("            struct Nodo* _rv10 = (_lf->argumentos && _lf->argumentos->cabeza) ? _lf->argumentos->cabeza : 0;")
+        asm("            char _rt10[64]; _rt10[0] = 0;")
+        asm("            if (_rv10) { _syn_nativo_expr_tipo_c((void*)_rv10, (void*)_rt10); }")
+        asm("            if (!_rt10[0] && _rv10 && _rv10->tipo.datos) { strncpy(_rt10, _rv10->tipo.datos, 63); _rt10[63] = 0; }")
+        asm("            if (strcmp(_mm10, \"agregar\") == 0 || strcmp(_mm10, \"poner\") == 0 || strcmp(_mm10, \"liberar\") == 0 || strcmp(_mm10, \"establecer\") == 0 || strcmp(_mm10, \"eliminar\") == 0) { strcpy(_oo, \"void\"); return 1; }")
+        asm("            if (strcmp(_mm10, \"longitud\") == 0) { strcpy(_oo, \"int64_t\"); return 1; }")
+        asm("            if (strcmp(_mm10, \"contiene\") == 0) { strcpy(_oo, \"int\"); return 1; }")
+        asm("            if (strcmp(_mm10, \"obtener\") == 0 && _rt10[0] == 'L') {")
+        asm("                const char* _el10 = _rt10 + 6; size_t _en10 = strlen(_el10);")
+        asm("                if (_en10 > 0 && _el10[_en10-1] == '>') _en10--;")
+        asm("                char _eb10[64]; memcpy(_eb10, _el10, _en10 < 63 ? _en10 : 63); _eb10[_en10 < 63 ? _en10 : 63] = 0;")
+        asm("                if (strcmp(_eb10, \"texto\") == 0 || strcmp(_eb10, \"cadena\") == 0) { strcpy(_oo, \"CadenaSegura\"); return 1; }")
+        asm("                snprintf(_oo, 63, \"struct %s\", _eb10); return 1;")
+        asm("            }")
+        asm("            return 0;")
+        asm("        }")
         asm("        return 0;")
         asm("    }")
         asm("    if (strcmp(_t, \"ExprCrearCanal\") == 0) { strcpy(_oo, \"CanalConcurrencia*\"); return 1; }")
@@ -698,10 +792,25 @@ funcion _syn_nativo_expr_tipo_c(n: puntero, out: puntero) -> entero:
         asm("                    if (strcmp(_ft2, \"entero\") == 0) { strcpy(_oo, \"int64_t\"); return 1; }")
         asm("                    if (strcmp(_ft2, \"decimal\") == 0) { strcpy(_oo, \"double\"); return 1; }")
         asm("                    if (strcmp(_ft2, \"booleano\") == 0) { strcpy(_oo, \"int\"); return 1; }")
+        asm("                    // r153 (H-R153-18b): campo de coleccion (Lista<T>/Mapa<K,V>) -> handle void*.")
+        asm("                    // Antes caia al fallback 'struct Lista<T>' (tipo Synapse, no C) ->")
+        asm("                    // typeof invalido en el encajonado del metodo (H-R153-18b).")
+        asm("                    if (strncmp(_ft2, \"Lista<\", 6) == 0 || strncmp(_ft2, \"Mapa<\", 5) == 0) { strcpy(_oo, \"void*\"); return 1; }")
         asm("                    snprintf(_oo, 63, \"struct %s\", _ft2); return 1;")
         asm("                }")
         asm("            }")
         asm("        }")
+        asm("        return 0;")
+        asm("    }")
+        asm("    // r153 (H-R153-7): OpBinaria recursivo — paridad S1 tipo_de_expr (una")
+        asm("    // cadena de + de 3+ terminos con un texto en cualquier posicion debe")
+        asm("    // clasificar toda la expresion como texto; antes el nivel superior")
+        asm("    // resolvia al fallback entero y emitia entero_a_texto(concat(...)).")
+        asm("    if (strcmp(_t, \"OpBinaria\") == 0) {")
+        asm("        struct OpBinaria* _ob7 = (struct OpBinaria*)_nn;")
+        asm("        char _ob7t[64]; _ob7t[0] = 0;")
+        asm("        if (_ob7->izquierdo && _syn_nativo_expr_tipo_c((void*)_ob7->izquierdo, (void*)_ob7t)) { strcpy(_oo, _ob7t); return 1; }")
+        asm("        if (_ob7->derecho && _syn_nativo_expr_tipo_c((void*)_ob7->derecho, (void*)_ob7t)) { strcpy(_oo, _ob7t); return 1; }")
         asm("        return 0;")
         asm("    }")
         asm("    return 0;")

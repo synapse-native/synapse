@@ -374,16 +374,25 @@ funcion parsear_funcion(est: ParserEst) -> entero:
             asm("est->nodos[nodo_func].hijo_der = primer_param")
     si token_esperar(est, T_PAREN_DER) == 0:
         retornar 0
-    si token_esperar(est, T_FLECHA) == 0:
-        retornar 0
-    // tipo retorno — FASE A (A3.1): span completo (DefinicionFuncion.tipo_retorno)
-    // F2-2.4c (anti-cuelgue R2): si el tipo no termina en ':' (p.ej. tipos
-    // anidados A<B<C>,D> que el parser no soporta), el fallo se ignoraba y el
-    // INDENTAR quedaba sin consumir -> bucle infinito del cuerpo en T_INDENTAR.
-    // Reportar error limpio (paridad S1, que da error de sintaxis).
-    si parsear_tipo_retorno(est, nodo_func) == 0:
-        parser_error(est, "Se esperaba ':' tras el tipo de retorno", linea, col)
-        retornar 0
+    // r153 (H-R153-12): `-> tipo` OPCIONAL (cumple Manual 2 §2 L56:
+    // declaracion_funcion ::= ... [ "->" tipo ] [ contratos ] ":" ...).
+    // Las funciones nulas (`funcion f(x: entero):`) del modulo lint.syn no
+    // compilian (token_esperar(T_FLECHA) incondicional). Paridad S1
+    // parser_declarations.py L52-57: ausente -> tipo_retorno 'nulo'.
+    // cumple Manual 2 §4.3: habilita los módulos Lista/Mapa del backend lint/fmt/test (r153 R4).
+    si token_mirar(est) == T_FLECHA:
+        token_avanzar(est)
+        // tipo retorno — FASE A (A3.1): span completo (DefinicionFuncion.tipo_retorno)
+        // F2-2.4c (anti-cuelgue R2): si el tipo no termina en ':' (p.ej. tipos
+        // anidados A<B<C>,D> que el parser no soporta), el fallo se ignoraba y el
+        // INDENTAR quedaba sin consumir -> bucle infinito del cuerpo en T_INDENTAR.
+        // Reportar error limpio (paridad S1, que da error de sintaxis).
+        si parsear_tipo_retorno(est, nodo_func) == 0:
+            parser_error(est, "Se esperaba ':' tras el tipo de retorno", linea, col)
+            retornar 0
+    sino:
+        si token_esperar(est, T_DOSPUNTOS) == 0:
+            retornar 0
     // FASE A (A4.5): consumir INDENTAR ANTES de parsear_contratos, paridad con
     // Python parser (compilador/parser_declarations.py L79-80). Si hay NL antes
     // de INDENTAR, saltarlas (caso firma en linea y bloque en siguiente).

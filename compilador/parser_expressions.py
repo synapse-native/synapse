@@ -1,4 +1,4 @@
-# cumple Manual 1 1: infraestructura Python del compilador Synapse
+# cumple Manual 1 §6: infraestructura Python del compilador Synapse (regla de hierro del bootstrap)
 # cumple Manual 8 4: toolchain de construcción
 from typing import List, Optional
 
@@ -139,6 +139,21 @@ class ParserExpressionsMixin(ParserBase):
                 tok_campo = self._esperar_identificador()
                 if tok_campo is None:
                     break
+                # cumple Manual 3 §3 (H-R153-3): `IDENT . IDENT (` → llamada a
+                # método (postfijo). Se representa como LlamadaFuncion con el
+                # objeto como primer argumento; el emisor resuelve el backend
+                # (colecciones stdlib, Manual 3 §5.2). Sin tabla de métodos:
+                # inline por tipo de receptor.
+                if self._mirar().tipo == TokenID.LPAREN:
+                    llamada = self._parsear_llamada(
+                        Identificador(nombre=tok_campo.valor or '',
+                                      linea=expr.linea, columna=expr.columna))
+                    llamada.nombre = f"metodo:{tok_campo.valor or ''}"
+                    llamada.argumentos.insert(0, expr)
+                    llamada.linea = expr.linea
+                    llamada.columna = expr.columna
+                    expr = llamada
+                    continue
                 expr = ExprAccesoCampo(
                     objeto=expr,
                     nombre_campo=tok_campo.valor or tok_campo.tipo.name.lower(),
@@ -220,6 +235,43 @@ class ParserExpressionsMixin(ParserBase):
                     expr = Identificador(nombre='canal', linea=t.linea, columna=t.columna)
             else:
                 nombre = nombre_de_token(t)
+                # cumple Manual 2 §4.3 (H-R153-1): instanciación de colección
+                # genérica `Lista<T>()` / `Mapa<K,V>()` — el parser plano
+                # rechaza el `<` tras el nombre (misma razón por la que
+                # crear_canal<T> necesita rama propia). Se consume la lista de
+                # parámetros de tipo y se construye la llamada al constructor
+                # del runtime de colecciones (H-R153-2).
+                if (nombre in ('Lista', 'Mapa')
+                        and self._mirar().tipo == TokenID.LESS):
+                    self._avanzar()
+                    profundidad = 1
+                    partes = []
+                    while profundidad > 0:
+                        tok = self._mirar()
+                        if tok.tipo in (TokenID.EOF, TokenID.NEWLINE):
+                            break
+                        if tok.tipo == TokenID.LESS:
+                            profundidad += 1
+                        elif tok.tipo == TokenID.GREATER:
+                            profundidad -= 1
+                            if profundidad == 0:
+                                self._avanzar()
+                                break
+                        elif tok.tipo == TokenID.COMMA:
+                            partes.append(',')
+                            self._avanzar()
+                            continue
+                        partes.append(str(tok.valor or tok.tipo.name.lower()))
+                        self._avanzar()
+                    args_tipo = ''.join(partes).replace(' ', '')
+                    expr = LlamadaFuncion(
+                        nombre=f'{nombre}<{args_tipo}>',
+                        linea=t.linea,
+                        columna=t.columna,
+                    )
+                    if self._mirar().tipo == TokenID.LPAREN:
+                        self._parsear_llamada(expr)
+                    return self._parsear_postfijo(expr)
                 if nombre == 'tensor' and self._mirar().tipo == TokenID.LPAREN:
                     expr = self._parsear_tensor(t)
                 elif self._mirar().tipo == TokenID.LPAREN:
