@@ -383,6 +383,12 @@ typedef struct Nodo {
 
 ### 7.2. Constantes de Tipo de Nodo (Extracto)
 
+> Fuente canónica completa: `nucleo/parser_constantes.syn` (genera
+> `runtime/core/ast_nodos.h` vía `scripts/gen_ast_nodos_h.py`). La paridad
+> manual↔nativo↔header queda blindada por el oráculo
+> `tests/auditoria/test_paridad_nodos.py` (ME 33.1). Valores verificados
+> contra el nativo operativo (bootstrap S1→S2, 2026-09-26).
+
 | Constante | Valor | Descripción |
 |-----------|-------|-------------|
 | `NODO_PROGRAMA` | 1 | Raíz del archivo |
@@ -390,21 +396,29 @@ typedef struct Nodo {
 | `NODO_SI` | 3 | Condicional `si` |
 | `NODO_MIENTRAS` | 4 | Bucle `mientras` |
 | `NODO_RETORNAR` | 5 | Sentencia `retornar` |
-| `NODO_ASIGNACION` | 6 | Asignación `=` |
-| `NODO_LLAMADA` | 8 | Llamada a función |
-| `NODO_ESTRUCTURA` | 13 | Definición de estructura |
-| `NODO_CANAL` | 22 | Creación de canal |
-| `NODO_CONTRATO` | 46 | Bloque `requiere`/`garantiza` |
+| `NODO_EXPR` | 6 | Sentencia de expresión |
+| `NODO_ASIGNACION` | 7 | Asignación `=` |
+| `NODO_IDENTIFICADOR` | 8 | Identificador |
+| `NODO_LLAMADA` | 14 | Llamada a función |
+| `NODO_ESTRUCTURA` | 16 | Definición de estructura |
+| `NODO_IMPORTAR` | 17 | Importación |
+| `NODO_LANZAR` | 18 | `lanzar` (spawn) |
+| `NODO_ESCUCHAR` | 19 | `escuchar` (listen) |
+| `NODO_INSEGURO` | 24 | Bloque `inseguro` |
+| `NODO_RECUPERAR` | 27 | `recuperar` |
+| `NODO_TENSOR` | 28 | Creación de tensor |
+| `NODO_ACCESO_CAMPO` | 31 | Acceso a campo `obj.campo` |
+| `NODO_COINCIDIR` | 38 | `coincidir` (match) |
+| `NODO_CANAL_CREAR` | 41 | Creación de canal |
 | `NODO_PARA` | 45 | Bucle `para` |
-| `NODO_LANZAR` | 47 | `lanzar` (spawn) |
-| `NODO_ESCUCHAR` | 48 | `escuchar` (listen) |
-| `NODO_RECUPERAR` | 49 | `recuperar` |
-| `NODO_TENSOR` | 50 | Creación de tensor |
-| `NODO_IMPORT` | 51 | Importación |
-| `NODO_EXPORT` | 52 | Exportación (@export) |
-| `NODO_INSEGURO` | 53 | Bloque `inseguro` |
-| `NODO_COINCIDIR` | 54 | `coincidir` (match) |
-| `NODO_DELEGAR` | 55 | `delegar` (propagación de error) |
+| `NODO_CONTRATO` | 46 | Bloque `requiere`/`garantiza` |
+| `NODO_EXPORT` | 50 | Exportación (@export) |
+| `NODO_INTENTO` | 54 | `intentar` (bloque crítico) |
+| `NODO_LISTA_LIT` | 55 | Literal de lista |
+| `NODO_MAPA_LIT` | 56 | Literal de mapa |
+| `NODO_PARA_EN` | 57 | Bucle `para-en` (iteración sobre colección; ME r153) |
+| `NODO_BLOQUE_SQ` | 58 | Bloque Syquex (desenrollado por el traductor) |
+| `NODO_METODO` | 59 | Llamada a método postfijo `obj.metodo(...)` (ME r153) |
 
 ### 7.3. AST Aplanado (`SemNodo[]`)
 

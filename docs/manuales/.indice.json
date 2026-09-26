@@ -878,7 +878,7 @@
   },
   "2": {
    "archivo": "docs/manuales/MANUAL 2.md",
-   "sha256": "adbfff72333dee1e",
+   "sha256": "10421212d971a2d0",
    "secciones": [
     {
      "num": "1",
@@ -1485,135 +1485,200 @@
      "linea": 384,
      "oraciones": [
       {
-       "id": "cb2b7f7cff",
+       "id": "55c2513b1b",
        "linea": 386,
+       "texto": "> Fuente canónica completa: `nucleo/parser_constantes.syn` (genera"
+      },
+      {
+       "id": "0c21cd20e5",
+       "linea": 387,
+       "texto": "> `runtime/core/ast_nodos.h` vía `scripts/gen_ast_nodos_h.py`)."
+      },
+      {
+       "id": "bb855e9cae",
+       "linea": 388,
+       "texto": "> manual↔nativo↔header queda blindada por el oráculo"
+      },
+      {
+       "id": "041f799084",
+       "linea": 389,
+       "texto": "> `tests/auditoria/test_paridad_nodos.py` (ME 33.1)."
+      },
+      {
+       "id": "9b2c202aea",
+       "linea": 390,
+       "texto": "> contra el nativo operativo (bootstrap S1→S2, 2026-09-26)."
+      },
+      {
+       "id": "cb2b7f7cff",
+       "linea": 392,
        "texto": "| Constante | Valor | Descripción |"
       },
       {
        "id": "a111251945",
-       "linea": 387,
+       "linea": 393,
        "texto": "|-----------|-------|-------------|"
       },
       {
        "id": "498a3e995f",
-       "linea": 388,
+       "linea": 394,
        "texto": "| `NODO_PROGRAMA` | 1 | Raíz del archivo |"
       },
       {
        "id": "a785968b8a",
-       "linea": 389,
+       "linea": 395,
        "texto": "| `NODO_FUNCION` | 2 | Definición de función |"
       },
       {
        "id": "15053fff8e",
-       "linea": 390,
+       "linea": 396,
        "texto": "| `NODO_SI` | 3 | Condicional `si` |"
       },
       {
        "id": "244ccfd014",
-       "linea": 391,
+       "linea": 397,
        "texto": "| `NODO_MIENTRAS` | 4 | Bucle `mientras` |"
       },
       {
        "id": "174e9c2b43",
-       "linea": 392,
+       "linea": 398,
        "texto": "| `NODO_RETORNAR` | 5 | Sentencia `retornar` |"
       },
       {
-       "id": "ba20bf0b1a",
-       "linea": 393,
-       "texto": "| `NODO_ASIGNACION` | 6 | Asignación `=` |"
+       "id": "d5da58b118",
+       "linea": 399,
+       "texto": "| `NODO_EXPR` | 6 | Sentencia de expresión |"
       },
       {
-       "id": "5aee13f1af",
-       "linea": 394,
-       "texto": "| `NODO_LLAMADA` | 8 | Llamada a función |"
+       "id": "d399b2674a",
+       "linea": 400,
+       "texto": "| `NODO_ASIGNACION` | 7 | Asignación `=` |"
       },
       {
-       "id": "b42df90a3a",
-       "linea": 395,
-       "texto": "| `NODO_ESTRUCTURA` | 13 | Definición de estructura |"
+       "id": "104dfd47a7",
+       "linea": 401,
+       "texto": "| `NODO_IDENTIFICADOR` | 8 | Identificador |"
       },
       {
-       "id": "0b35d51e6c",
-       "linea": 396,
-       "texto": "| `NODO_CANAL` | 22 | Creación de canal |"
+       "id": "2441851371",
+       "linea": 402,
+       "texto": "| `NODO_LLAMADA` | 14 | Llamada a función |"
       },
       {
-       "id": "be90ff2265",
-       "linea": 397,
-       "texto": "| `NODO_CONTRATO` | 46 | Bloque `requiere`/`garantiza` |"
+       "id": "8f9318b074",
+       "linea": 403,
+       "texto": "| `NODO_ESTRUCTURA` | 16 | Definición de estructura |"
+      },
+      {
+       "id": "81e77b6a13",
+       "linea": 404,
+       "texto": "| `NODO_IMPORTAR` | 17 | Importación |"
+      },
+      {
+       "id": "eedb131e02",
+       "linea": 405,
+       "texto": "| `NODO_LANZAR` | 18 | `lanzar` (spawn) |"
+      },
+      {
+       "id": "f561ee925d",
+       "linea": 406,
+       "texto": "| `NODO_ESCUCHAR` | 19 | `escuchar` (listen) |"
+      },
+      {
+       "id": "bfd4eda072",
+       "linea": 407,
+       "texto": "| `NODO_INSEGURO` | 24 | Bloque `inseguro` |"
+      },
+      {
+       "id": "568b35f18f",
+       "linea": 408,
+       "texto": "| `NODO_RECUPERAR` | 27 | `recuperar` |"
+      },
+      {
+       "id": "344eb0ea3a",
+       "linea": 409,
+       "texto": "| `NODO_TENSOR` | 28 | Creación de tensor |"
+      },
+      {
+       "id": "5840fc9124",
+       "linea": 410,
+       "texto": "| `NODO_ACCESO_CAMPO` | 31 | Acceso a campo `obj.campo` |"
+      },
+      {
+       "id": "549ea364f9",
+       "linea": 411,
+       "texto": "| `NODO_COINCIDIR` | 38 | `coincidir` (match) |"
+      },
+      {
+       "id": "a0dbd0bcc2",
+       "linea": 412,
+       "texto": "| `NODO_CANAL_CREAR` | 41 | Creación de canal |"
       },
       {
        "id": "b292847729",
-       "linea": 398,
+       "linea": 413,
        "texto": "| `NODO_PARA` | 45 | Bucle `para` |"
       },
       {
-       "id": "a6dd910bf3",
-       "linea": 399,
-       "texto": "| `NODO_LANZAR` | 47 | `lanzar` (spawn) |"
+       "id": "be90ff2265",
+       "linea": 414,
+       "texto": "| `NODO_CONTRATO` | 46 | Bloque `requiere`/`garantiza` |"
       },
       {
-       "id": "66eb7d727c",
-       "linea": 400,
-       "texto": "| `NODO_ESCUCHAR` | 48 | `escuchar` (listen) |"
+       "id": "139ddea089",
+       "linea": 415,
+       "texto": "| `NODO_EXPORT` | 50 | Exportación (@export) |"
       },
       {
-       "id": "0af41c59d0",
-       "linea": 401,
-       "texto": "| `NODO_RECUPERAR` | 49 | `recuperar` |"
+       "id": "c7c8c5f8ae",
+       "linea": 416,
+       "texto": "| `NODO_INTENTO` | 54 | `intentar` (bloque crítico) |"
       },
       {
-       "id": "92f8af0f51",
-       "linea": 402,
-       "texto": "| `NODO_TENSOR` | 50 | Creación de tensor |"
+       "id": "158749a5da",
+       "linea": 417,
+       "texto": "| `NODO_LISTA_LIT` | 55 | Literal de lista |"
       },
       {
-       "id": "ca2726abde",
-       "linea": 403,
-       "texto": "| `NODO_IMPORT` | 51 | Importación |"
+       "id": "2b9fda75b5",
+       "linea": 418,
+       "texto": "| `NODO_MAPA_LIT` | 56 | Literal de mapa |"
       },
       {
-       "id": "f1c29b3589",
-       "linea": 404,
-       "texto": "| `NODO_EXPORT` | 52 | Exportación (@export) |"
+       "id": "f238111f35",
+       "linea": 419,
+       "texto": "| `NODO_PARA_EN` | 57 | Bucle `para-en` (iteración sobre colección; ME r153) |"
       },
       {
-       "id": "99c47995fc",
-       "linea": 405,
-       "texto": "| `NODO_INSEGURO` | 53 | Bloque `inseguro` |"
+       "id": "948f0e5cd3",
+       "linea": 420,
+       "texto": "| `NODO_BLOQUE_SQ` | 58 | Bloque Syquex (desenrollado por el traductor) |"
       },
       {
-       "id": "c27644803a",
-       "linea": 406,
-       "texto": "| `NODO_COINCIDIR` | 54 | `coincidir` (match) |"
-      },
-      {
-       "id": "0311ca49c9",
-       "linea": 407,
-       "texto": "| `NODO_DELEGAR` | 55 | `delegar` (propagación de error) |"
+       "id": "28311332ff",
+       "linea": 421,
+       "texto": "| `NODO_METODO` | 59 | Llamada a método postfijo `obj.metodo(...)` (ME r153) |"
       }
      ]
     },
     {
      "num": "7.3",
      "titulo": "AST Aplanado (`SemNodo[]`)",
-     "linea": 409,
+     "linea": 423,
      "oraciones": [
       {
        "id": "ac24c3dafe",
-       "linea": 411,
+       "linea": 425,
        "texto": "Para el análisis semántico, la linked-list se aplana a un array contiguo."
       },
       {
        "id": "7e2efef9bf",
-       "linea": 411,
+       "linea": 425,
        "texto": "Este es el **AST canónico unificado** que comparten Synapse y Syquex."
       },
       {
        "id": "a5e68c3a92",
-       "linea": 447,
+       "linea": 461,
        "texto": "**Regla de determinismo:** La tabla de símbolos se serializa y se itera siempre en orden lexicográfico por nombre para garantizar que el código generado y los hashes de caché sean idénticos en todas las ejecuciones."
       }
      ]
@@ -1621,32 +1686,32 @@
     {
      "num": "8",
      "titulo": "ANÁLISIS SEMÁNTICO Y SISTEMA DE TIPOS",
-     "linea": 451,
+     "linea": 465,
      "oraciones": []
     },
     {
      "num": "8.1",
      "titulo": "Ejecución en Tres Fases",
-     "linea": 453,
+     "linea": 467,
      "oraciones": [
       {
        "id": "21d6fabc24",
-       "linea": 455,
+       "linea": 469,
        "texto": "El analizador semántico opera estrictamente en tres pasadas secuenciales:"
       },
       {
        "id": "812b6708a8",
-       "linea": 457,
+       "linea": 471,
        "texto": "**Pasada 1 (Estructuras y Tipos Globales):** Recorre el AST para registrar todas las definiciones de estructuras, tipos algebraicos y constantes globales en la tabla de símbolos principal."
       },
       {
        "id": "122a649ea4",
-       "linea": 459,
+       "linea": 473,
        "texto": "**Pasada 2 (Firmas de Funciones):** Analiza las cabeceras de todas las funciones, validando los tipos de los parámetros, los tipos de retorno y los contratos lógicos (`requiere`/`garantiza`)."
       },
       {
        "id": "fb73489a42",
-       "linea": 461,
+       "linea": 475,
        "texto": "**Pasada 3 (Cuerpos de Código y Verificación de Ownership):** Analiza sintácticamente los bloques internos de cada función, evaluando expresiones, asignaciones, llamadas y flujos de control. Además, verifica el ownership, el borrowing y los lifetimes, y ejecuta el motor ATP en modo `--safe`."
       }
      ]
@@ -1654,26 +1719,26 @@
     {
      "num": "8.2",
      "titulo": "Inferencia de Tipos (Hindley‑Milner)",
-     "linea": 463,
+     "linea": 477,
      "oraciones": [
       {
        "id": "2a25879437",
-       "linea": 465,
+       "linea": 479,
        "texto": "Synapse utiliza un algoritmo de inferencia de tipos basado en **Hindley‑Milner** (algoritmo W)."
       },
       {
        "id": "58aab96a3b",
-       "linea": 465,
+       "linea": 479,
        "texto": "Las variables de tipo se representan como `TVar(id)`."
       },
       {
        "id": "f9ec4cf9ea",
-       "linea": 465,
+       "linea": 479,
        "texto": "La unificación incluye *occurs check* para evitar tipos recursivos."
       },
       {
        "id": "a8bac2a085",
-       "linea": 465,
+       "linea": 479,
        "texto": "Si una expresión tiene tipo ambiguo (ej. `[]`), se emite `ERR_SEM_TYPE_AMBIGUOUS`."
       }
      ]
@@ -1681,31 +1746,31 @@
     {
      "num": "8.3",
      "titulo": "Tipos Algebraicos de Datos (ADTs)",
-     "linea": 495,
+     "linea": 509,
      "oraciones": [
       {
        "id": "ecf9668256",
-       "linea": 497,
+       "linea": 511,
        "texto": "El sistema de tipos incorpora uniones etiquetadas nativas para representar estados de éxito o fallo:"
       },
       {
        "id": "4030a2af30",
-       "linea": 499,
+       "linea": 513,
        "texto": "`Resultado<T, E>`: Envuelve un valor de éxito tipo `T` (`ok`) o un error tipo `E` (`err`)."
       },
       {
        "id": "cbae54740a",
-       "linea": 500,
+       "linea": 514,
        "texto": "`Opcion<T>`: Envuelve un valor existente `T` (`algun`) o la ausencia de valor (`ninguno`)."
       },
       {
        "id": "35b0da4717",
-       "linea": 502,
+       "linea": 516,
        "texto": "**Regla Semántica:** El uso de estos tipos exige de manera obligatoria la instrucción de control `coincidir`."
       },
       {
        "id": "6a82e64435",
-       "linea": 502,
+       "linea": 516,
        "texto": "Omitir un caso en la coincidencia genera un error de compilación estático (`ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED`)."
       }
      ]
@@ -1713,16 +1778,16 @@
     {
      "num": "9",
      "titulo": "EL PACTO: SEGURIDAD DE MEMORIA (OWNERSHIP & BORROWING)",
-     "linea": 506,
+     "linea": 520,
      "oraciones": [
       {
        "id": "542639bf15",
-       "linea": 508,
+       "linea": 522,
        "texto": "Synapse prescinde totalmente de un Recolector de Basura (Garbage Collector) y prohíbe el uso de asignación manual de memoria (`malloc`/`free`) en el código de usuario."
       },
       {
        "id": "c0a23f1bc0",
-       "linea": 508,
+       "linea": 522,
        "texto": "La gestión de memoria se rige por un modelo estricto de **Posesión Única**."
       }
      ]
@@ -1730,26 +1795,26 @@
     {
      "num": "9.1",
      "titulo": "Reglas de Posesión (Ownership)",
-     "linea": 510,
+     "linea": 524,
      "oraciones": [
       {
        "id": "dc0e627417",
-       "linea": 512,
+       "linea": 526,
        "texto": "Cada recurso en memoria (heap, canal, archivo, tensor) tiene un **único propietario** (una variable o ámbito que lo enlaza)."
       },
       {
        "id": "8dcb34c27d",
-       "linea": 514,
+       "linea": 528,
        "texto": "Cuando el propietario actual sale de su ámbito de visibilidad (*scope*), el compilador inyecta de forma automática y determinista el código de liberación en el emisor C (RAII estático)."
       },
       {
        "id": "79e51d55aa",
-       "linea": 516,
+       "linea": 530,
        "texto": "**Semántica de Movimiento (*Move Semantics*):** Al asignar una variable propietaria a otra o pasarla como argumento de función por valor, la posesión se transfiere (*move*). La variable original queda invalidada en el ámbito origen."
       },
       {
        "id": "cf9835b06c",
-       "linea": 518,
+       "linea": 532,
        "texto": "**Detección de Use‑After‑Move:** Si el analizador semántico detecta que una variable invalidada por un *move* previo es consultada o reutilizada, aborta la compilación de inmediato con el error crítico `ERR_MEM_USE_AFTER_MOVE`."
       }
      ]
@@ -1757,26 +1822,26 @@
     {
      "num": "9.2",
      "titulo": "Préstamo (Borrowing)",
-     "linea": 520,
+     "linea": 534,
      "oraciones": [
       {
        "id": "9da3dc77eb",
-       "linea": 522,
+       "linea": 536,
        "texto": "| Tipo de préstamo | Sintaxis | Mutabilidad | Regla |"
       },
       {
        "id": "8a45e1f789",
-       "linea": 523,
+       "linea": 537,
        "texto": "|------------------|----------|-------------|-------|"
       },
       {
        "id": "bc377d9205",
-       "linea": 524,
+       "linea": 538,
        "texto": "| Inmutable | `&T` | Solo lectura | Múltiples préstamos inmutables simultáneos permitidos. |"
       },
       {
        "id": "002a0dc8bb",
-       "linea": 525,
+       "linea": 539,
        "texto": "| Mutable | `&mut T` | Lectura + escritura | Solo un préstamo mutable a la vez, y no puede coexistir con inmutables. |"
       }
      ]
@@ -1784,51 +1849,51 @@
     {
      "num": "9.3",
      "titulo": "Análisis de Lifetimes",
-     "linea": 527,
+     "linea": 541,
      "oraciones": [
       {
        "id": "d441c34092",
-       "linea": 529,
+       "linea": 543,
        "texto": "El análisis de lifetimes determina el tiempo de vida de cada referencia."
       },
       {
        "id": "6d27c236a6",
-       "linea": 529,
+       "linea": 543,
        "texto": "La representación interna es:"
       },
       {
        "id": "ec99fad7f5",
-       "linea": 548,
+       "linea": 562,
        "texto": "**Recolección:** Recorrer AST para identificar variables y scopes."
       },
       {
        "id": "609b44220f",
-       "linea": 549,
+       "linea": 563,
        "texto": "**Asignación:** Asignar lifetimes a cada variable y préstamo."
       },
       {
        "id": "fcbf7ac827",
-       "linea": 550,
+       "linea": 564,
        "texto": "**Restricciones:** Recolectar restricciones de uso (ej. `'a` debe vivir al menos tanto como `'b`)."
       },
       {
        "id": "771b96c159",
-       "linea": 551,
+       "linea": 565,
        "texto": "**Resolución:** Resolver el grafo de restricciones (unificación de regiones)."
       },
       {
        "id": "890c65585b",
-       "linea": 552,
+       "linea": 566,
        "texto": "**Verificación:** Confirmar que no hay ciclos y que ningún lifetime excede el ámbito de su propietario."
       },
       {
        "id": "7dce15368a",
-       "linea": 555,
+       "linea": 569,
        "texto": "`ERR_MEM_LIFETIME_MISMATCH`: Un préstamo vive más que el valor prestado."
       },
       {
        "id": "8789c3399b",
-       "linea": 556,
+       "linea": 570,
        "texto": "`ERR_MEM_LIFETIME_CYCLE`: Ciclo en la dependencia de lifetimes."
       }
      ]
@@ -1836,57 +1901,57 @@
     {
      "num": "10",
      "titulo": "MANEJO DE ERRORES Y TAXONOMÍA",
-     "linea": 560,
+     "linea": 574,
      "oraciones": []
     },
     {
      "num": "10.1",
      "titulo": "Categorías de Errores",
-     "linea": 562,
+     "linea": 576,
      "oraciones": [
       {
        "id": "4653e2e77b",
-       "linea": 564,
+       "linea": 578,
        "texto": "| Categoría | Rango | Ejemplo |"
       },
       {
        "id": "eb5a213d78",
-       "linea": 565,
+       "linea": 579,
        "texto": "|-----------|-------|---------|"
       },
       {
        "id": "d8934fb47d",
-       "linea": 566,
+       "linea": 580,
        "texto": "| Léxico | `ERR_LEX_*` | `ERR_LEX_TAB_DETECTED`, `ERR_LEX_MISSING_LANG` |"
       },
       {
        "id": "df9839c859",
-       "linea": 567,
+       "linea": 581,
        "texto": "| Sintáctico | `ERR_SYNTAX_*` | `ERR_SYNTAX_EXPECTED_TOKEN`, `ERR_INDENT_INVALID` |"
       },
       {
        "id": "b4385f6f7a",
-       "linea": 568,
+       "linea": 582,
        "texto": "| Semántico | `ERR_SEM_*` | `ERR_SEM_TYPE_AMBIGUOUS`, `ERR_SEM_REDEFINICION` |"
       },
       {
        "id": "dcc1840483",
-       "linea": 569,
+       "linea": 583,
        "texto": "| Memoria | `ERR_MEM_*` | `ERR_MEM_USE_AFTER_MOVE`, `ERR_MEM_LIFETIME_MISMATCH` |"
       },
       {
        "id": "07fccfb152",
-       "linea": 570,
+       "linea": 584,
        "texto": "| Caché | `ERR_CACHE_*` | `ERR_CACHE_CORRUPT`, `ERR_CACHE_VERSION_MISMATCH` |"
       },
       {
        "id": "6f8674a086",
-       "linea": 571,
+       "linea": 585,
        "texto": "| Verificación (ATP) | `ERR_ATP_*` | `ERR_ATP_TAUTOLOGY_FAILED`, `ERR_ATP_NON_TERMINATING`, `ERR_ATP_TIMEOUT` |"
       },
       {
        "id": "cabbea9f2a",
-       "linea": 572,
+       "linea": 586,
        "texto": "| Axon | `ERR_AXON_*` | `ERR_AXON_COMPROMISED`, `ERR_AXON_VERSION` |"
       }
      ]
@@ -1894,21 +1959,21 @@
     {
      "num": "10.2",
      "titulo": "Manejo de Errores en el Compilador",
-     "linea": 574,
+     "linea": 588,
      "oraciones": [
       {
        "id": "ac1d1e55b8",
-       "linea": 576,
+       "linea": 590,
        "texto": "El compilador nunca debe detenerse en el primer error; debe continuar analizando para detectar tantos errores como sea posible."
       },
       {
        "id": "9c0f1384ec",
-       "linea": 577,
+       "linea": 591,
        "texto": "Los errores se reportan a través del `DiagnosticManager` con mensajes en el idioma del archivo (según `#lang:`)."
       },
       {
        "id": "05f143659a",
-       "linea": 578,
+       "linea": 592,
        "texto": "Cada error incluye: código de error, ubicación exacta (archivo, línea, columna), mensaje explicativo y, cuando sea posible, sugerencias de corrección."
       }
      ]
@@ -1916,32 +1981,32 @@
     {
      "num": "11",
      "titulo": "INTEGRACIÓN CON SYQUEX Y OPENSYN",
-     "linea": 582,
+     "linea": 596,
      "oraciones": []
     },
     {
      "num": "11.1",
      "titulo": "AST Canónico Unificado",
-     "linea": 584,
+     "linea": 598,
      "oraciones": [
       {
        "id": "6e3f2b5e23",
-       "linea": 586,
+       "linea": 600,
        "texto": "Syquex traduce su AST al mismo `SemNodo[]` que Synapse."
       },
       {
        "id": "40b0b4a2e2",
-       "linea": 588,
+       "linea": 602,
        "texto": "Compartir el 100% del backend (generación de C/LLVM/WASM)."
       },
       {
        "id": "74963acfe7",
-       "linea": 589,
+       "linea": 603,
        "texto": "Compatibilidad binaria absoluta entre ambos lenguajes."
       },
       {
        "id": "7a0a2e2916",
-       "linea": 590,
+       "linea": 604,
        "texto": "Herencia del optimizador, sanitizadores y motor ATP."
       }
      ]
@@ -1949,11 +2014,11 @@
     {
      "num": "11.2",
      "titulo": "Exportación para FFI",
-     "linea": 592,
+     "linea": 606,
      "oraciones": [
       {
        "id": "11cde924c0",
-       "linea": 594,
+       "linea": 608,
        "texto": "La directiva `@export` permite que funciones de Synapse sean visibles desde Syquex y desde otros lenguajes (Python, Java, TypeScript) mediante bindings generados automáticamente."
       }
      ]
@@ -1961,31 +2026,31 @@
     {
      "num": "11.3",
      "titulo": "OpenSyn como Asistente",
-     "linea": 600,
+     "linea": 614,
      "oraciones": [
       {
        "id": "3baa2c692d",
-       "linea": 602,
+       "linea": 616,
        "texto": "OpenSyn opera sobre el AST unificado, por lo que puede:"
       },
       {
        "id": "469486395c",
-       "linea": 603,
+       "linea": 617,
        "texto": "Explicar código Synapse o Syquex."
       },
       {
        "id": "6c44e47ce5",
-       "linea": 604,
+       "linea": 618,
        "texto": "Generar código Synapse o Syquex a partir de descripciones en lenguaje natural."
       },
       {
        "id": "07fb70dfe9",
-       "linea": 605,
+       "linea": 619,
        "texto": "Transpilar código Python a Syquex."
       },
       {
        "id": "d0d5e4bd9e",
-       "linea": 606,
+       "linea": 620,
        "texto": "Generar bindings automáticos para librerías C."
       }
      ]
@@ -1993,61 +2058,61 @@
     {
      "num": "12",
      "titulo": "PRUEBAS OBLIGATORIAS PARA ESTA ETAPA",
-     "linea": 610,
+     "linea": 624,
      "oraciones": [
       {
        "id": "3aba9521c2",
-       "linea": 612,
+       "linea": 626,
        "texto": "| Test | Comando | Criterio |"
       },
       {
        "id": "63ccb37d3b",
-       "linea": 613,
+       "linea": 627,
        "texto": "|------|---------|----------|"
       },
       {
        "id": "4e902a9c50",
-       "linea": 614,
+       "linea": 628,
        "texto": "| Lexer multi‑idioma | `pytest tests/unit/test_lexer.py -v` | 100% pass, >95% cobertura |"
       },
       {
        "id": "52e0146e99",
-       "linea": 615,
+       "linea": 629,
        "texto": "| Parser EBNF | `pytest tests/unit/test_parser.py -v` | 100% pass, >95% cobertura |"
       },
       {
        "id": "74bd4749fc",
-       "linea": 616,
+       "linea": 630,
        "texto": "| Contratos requiere/garantiza | `pytest tests/integration/test_contracts.py -v` | 100% pass |"
       },
       {
        "id": "8677375468",
-       "linea": 617,
+       "linea": 631,
        "texto": "| Tipos algebraicos (match exhaustivo) | `pytest tests/integration/test_match.py -v` | Detección de ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED |"
       },
       {
        "id": "1d0fddf463",
-       "linea": 618,
+       "linea": 632,
        "texto": "| Ownership (move) | `pytest tests/integration/test_ownership.py -v` | Detección de ERR_MEM_USE_AFTER_MOVE |"
       },
       {
        "id": "010f87b582",
-       "linea": 619,
+       "linea": 633,
        "texto": "| Borrowing checker | `pytest tests/integration/test_borrowing.py -v` | 100% pass |"
       },
       {
        "id": "cccabb6def",
-       "linea": 620,
+       "linea": 634,
        "texto": "| Lifetimes | `pytest tests/integration/test_lifetimes.py -v` | 0 errores de compilación |"
       },
       {
        "id": "73d552e00c",
-       "linea": 621,
+       "linea": 635,
        "texto": "| Inferencia de tipos (Hindley‑Milner) | `pytest tests/unit/test_type_inference.py -v` | Casos de inferencia básica y polimórfica |"
       },
       {
        "id": "ae246d65f3",
-       "linea": 622,
+       "linea": 636,
        "texto": "| Serialización AST | `pytest tests/unit/test_ast_serialization.py -v` | Serialización y deserialización correcta a `.syn.json` |"
       }
      ]
@@ -2055,11 +2120,11 @@
     {
      "num": "13",
      "titulo": "EJEMPLO COMPLETO",
-     "linea": 626,
+     "linea": 640,
      "oraciones": [
       {
        "id": "b01b683ed7",
-       "linea": 628,
+       "linea": 642,
        "texto": "**Código fuente (`programa.syn`):**"
       }
      ]
@@ -2067,21 +2132,21 @@
     {
      "num": "14",
      "titulo": "SIGUIENTES PASOS",
-     "linea": 710,
+     "linea": 724,
      "oraciones": [
       {
        "id": "30f8dee7e4",
-       "linea": 712,
+       "linea": 726,
        "texto": "Con la sintaxis y semántica de Synapse definidas, el siguiente manual (Manual 3) se centrará en la **sintaxis y semántica de Syquex**, el lenguaje de alto nivel hermano de Synapse."
       },
       {
        "id": "647d32bfc5",
-       "linea": 716,
+       "linea": 730,
        "texto": "*Este manual proporciona la base sintáctica y semántica de Synapse."
       },
       {
        "id": "bb04db3c10",
-       "linea": 716,
+       "linea": 730,
        "texto": "La implementación del compilador debe seguir fielmente esta especificación para garantizar la compatibilidad y el determinismo.*"
       }
      ]
