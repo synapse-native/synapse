@@ -10177,6 +10177,14 @@
             }
           },
           {
+            "tipo": "entero",
+            "nombre": "intentos_menu",
+            "expresion": {
+              "tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
             "tipo": "SentenciaMientras",
             "condicion": {
               "tipo": "ExpresionArit",
@@ -10207,6 +10215,77 @@
               }
             },
             "cuerpo": [
+              {
+                "tipo": "SentenciaSi",
+                "condicion": {
+                  "tipo": "ExpresionArit",
+                  "izquierda": {
+                    "tipo": "Identificador",
+                    "nombre": "entrada"
+                  },
+                  "operador": "==",
+                  "derecha": {
+                    "tipo": "LiteralCadena",
+                    "valor": ""
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "tipo": "AsignacionVariable",
+                    "nombre": "intentos_menu",
+                    "expresion": {
+                      "tipo": "ExpresionArit",
+                      "izquierda": {
+                        "tipo": "Identificador",
+                        "nombre": "intentos_menu"
+                      },
+                      "operador": "+",
+                      "derecha": {
+                        "tipo": "LiteralNumero",
+                        "valor": 1
+                      }
+                    }
+                  },
+                  {
+                    "tipo": "SentenciaSi",
+                    "condicion": {
+                      "tipo": "ExpresionArit",
+                      "izquierda": {
+                        "tipo": "Identificador",
+                        "nombre": "intentos_menu"
+                      },
+                      "operador": ">=",
+                      "derecha": {
+                        "tipo": "LiteralNumero",
+                        "valor": 3
+                      }
+                    },
+                    "cuerpo": [
+                      {
+                        "tipo": "SentenciaExpr",
+                        "expr": {
+                          "tipo": "LlamadaFuncion",
+                          "nombre": "escribir_linea",
+                          "argumentos": [
+                            {
+                              "tipo": "LiteralCadena",
+                              "valor": "  [EOF] Entrada cerrada. Seleccionando Modo Oráculo por defecto."
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "tipo": "SentenciaRetornar",
+                        "valor": {
+                          "tipo": "LiteralCadena",
+                          "valor": "2"
+                        },
+                        "es_transferencia": false
+                      }
+                    ]
+                  }
+                ]
+              },
               {
                 "tipo": "SentenciaExpr",
                 "expr": {
@@ -25127,6 +25206,14 @@
         "tipo": "Bloque",
         "sentencias": [
           {
+            "tipo": "entero",
+            "nombre": "eof_consecutivos",
+            "expresion": {
+              "tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
             "tipo": "SentenciaExpr",
             "expr": {
               "tipo": "LlamadaFuncion",
@@ -25769,9 +25856,97 @@
                     },
                     "cuerpo": [
                       {
+                        "tipo": "AsignacionVariable",
+                        "nombre": "eof_consecutivos",
+                        "expresion": {
+                          "tipo": "ExpresionArit",
+                          "izquierda": {
+                            "tipo": "Identificador",
+                            "nombre": "eof_consecutivos"
+                          },
+                          "operador": "+",
+                          "derecha": {
+                            "tipo": "LiteralNumero",
+                            "valor": 1
+                          }
+                        }
+                      },
+                      {
+                        "tipo": "SentenciaSi",
+                        "condicion": {
+                          "tipo": "ExpresionArit",
+                          "izquierda": {
+                            "tipo": "Identificador",
+                            "nombre": "eof_consecutivos"
+                          },
+                          "operador": ">=",
+                          "derecha": {
+                            "tipo": "LiteralNumero",
+                            "valor": 3
+                          }
+                        },
+                        "cuerpo": [
+                          {
+                            "tipo": "SentenciaExpr",
+                            "expr": {
+                              "tipo": "LlamadaFuncion",
+                              "nombre": "escribir_linea",
+                              "argumentos": [
+                                {
+                                  "tipo": "LiteralCadena",
+                                  "valor": ""
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "tipo": "SentenciaExpr",
+                            "expr": {
+                              "tipo": "LlamadaFuncion",
+                              "nombre": "escribir_linea",
+                              "argumentos": [
+                                {
+                                  "tipo": "LiteralCadena",
+                                  "valor": "  [EOF] Entrada cerrada. Saliendo."
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "tipo": "SentenciaExpr",
+                            "expr": {
+                              "tipo": "LlamadaFuncion",
+                              "nombre": "escribir_linea",
+                              "argumentos": [
+                                {
+                                  "tipo": "LiteralCadena",
+                                  "valor": ""
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "tipo": "SentenciaRetornar",
+                            "valor": {
+                              "tipo": "LiteralNumero",
+                              "valor": 0
+                            },
+                            "es_transferencia": false
+                          }
+                        ]
+                      },
+                      {
                         "tipo": "SentenciaSiguiente"
                       }
                     ]
+                  },
+                  {
+                    "tipo": "AsignacionVariable",
+                    "nombre": "eof_consecutivos",
+                    "expresion": {
+                      "tipo": "LiteralNumero",
+                      "valor": 0
+                    }
                   },
                   {
                     "tipo": "SentenciaSi",

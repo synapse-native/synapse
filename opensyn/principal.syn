@@ -264,7 +264,16 @@ funcion mostrar_menu_bienvenida() -> texto:
 
     entrada = leer_linea()
 
+    // ME eof_cierre_chat (R2, H-AUD-OP-1): 3 lecturas vacías seguidas = EOF →
+    // selección por defecto (Modo Oráculo) en lugar de bucle infinito.
+    // cumple Manual 7 §2.1
+    let intentos_menu: entero = 0
     mientras entrada != "1" y entrada != "2":
+        si entrada == "":
+            intentos_menu = intentos_menu + 1
+            si intentos_menu >= 3:
+                escribir_linea("  [EOF] Entrada cerrada. Seleccionando Modo Oráculo por defecto.")
+                retornar "2"
         escribir_linea("  Entrada invalida. Ingresa 1 o 2.")
         escribir_linea("  Opcion [1/2]: ")
         entrada = leer_linea()
@@ -1417,6 +1426,10 @@ funcion chat_tui() -> entero:
 // --- Modo Oraculo (IA Local) ---
 
 funcion modo_oraculo() -> entero:
+    // ME eof_cierre_chat (R1, H-AUD-OP-1): leer_linea colapsa EOF y línea vacía en
+    // ""; 3 lecturas vacías seguidas = fin de entrada → salida limpia rc=0
+    // (antes: bucle infinito de "Tu>"). cumple Manual 7 §2.1
+    let eof_consecutivos: entero = 0
     // cumple Manual 7 §2.1: auto-iniciar llama-server si no esta corriendo
     iniciar_llama_server()
     si _syn_tui_iniciar() == 0:
@@ -1473,7 +1486,16 @@ funcion modo_oraculo() -> entero:
                 escribir_linea("")
                 retornar 0
             si prompt == "":
+                // ME eof_cierre_chat (R1): EOF llega como línea vacía; 3 seguidas
+                // cierran el chat (H-AUD-OP-1). cumple Manual 7 §2.1
+                eof_consecutivos = eof_consecutivos + 1
+                si eof_consecutivos >= 3:
+                    escribir_linea("")
+                    escribir_linea("  [EOF] Entrada cerrada. Saliendo.")
+                    escribir_linea("")
+                    retornar 0
                 siguiente
+            eof_consecutivos = 0
             // --- Comandos del chat ---
             // ME-1 (R1): comandos de modo
             si prompt == "/ask":

@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "e76364ddd0a7b712",
+ "expediente": "docs/alineacion/eof_cierre_chat.md",
+ "fecha": "2026-09-25",
+ "archivos": [
+  "opensyn/principal.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_eof_cierre.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}
