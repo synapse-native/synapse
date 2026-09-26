@@ -48,6 +48,16 @@ funcion leer_linea() -> texto:
         longitud(resultado) >= 0
     retornar _syn_leer_linea()
 
+// stdin_eof(): 1 = stdin agotado (EOF), 0 = hay (posiblemente más) entrada.
+// Permite a los bucles de lectura distinguir EOF de línea vacía (H-EOF-1):
+// leer_linea() retorna "" en ambos casos; consultar stdin_eof() tras una
+// lectura vacía decide si el flujo terminó o el usuario presionó Enter.
+// cumple Manual 2 §5.1: contrato garantiza sobre el dominio del resultado
+funcion stdin_eof() -> entero:
+    garantiza:
+        resultado == 0 o resultado == 1
+    retornar _syn_stdin_eof()
+
 // ============================================================
 // §1.7.1 — Leer bytes (lectura binaria de stdin)
 // ============================================================
@@ -64,6 +74,7 @@ externo funcion _syn_leer(c: Canal) -> texto
 externo funcion _syn_escribir(texto: texto) -> nulo
 externo funcion _syn_escribir_linea(texto: texto) -> nulo
 externo funcion _syn_leer_linea() -> texto
+externo funcion _syn_stdin_eof() -> entero
 externo funcion _syn_leer_bytes(cantidad: entero) -> texto
 
 // ============================================================

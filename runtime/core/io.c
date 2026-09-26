@@ -55,7 +55,8 @@ static void _syn_ensure_stdout_binary_init(void) {
 
 // ============================================================
 // Consola real + colores ANSI (estilo OpenCode/Freebuff)
-// cumple Manual 7 8: banner y prompt del chat interactivo local.
+// cumple Manual 7 1.1: banner y prompt del chat interactivo local
+// (identidad visual del asistente; re-ancla de cita fabricada "Manual 7 §8", M7 termina en §4.2 — H-EOF-RT-1).
 // cumple Manual 7 2.3: el System Prompt del agente se presenta en consola
 // real con ANSI (banner/prompt ❯) y sin escapes en pipes; _syn_es_consola y
 // _syn_ansi son las guardas de presentación del prompt del agente (R2).
@@ -163,6 +164,21 @@ void escribir_linea(CadenaSegura contenido) {
 // cumple Manual 5 3: mutex protege _buf estático contra data races
 static pthread_mutex_t _leer_linea_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+// cumple Manual 5 §2.6: flag de EOF de stdin — distingue fin de flujo (EOF) de
+// línea vacía del usuario (H-EOF-1). Protegido por _leer_linea_mutex.
+static int _syn_stdin_eof_flag = 0;
+
+// _syn_stdin_eof(): 1 = stdin agotado (EOF), 0 = hay (posiblemente más) entrada.
+// El flag lo marca _syn_leer_linea al detectar EOF y lo consulta la capa
+// aplicación (std.io stdin_eof) para cerrar bucles de lectura deterministamente.
+// cumple Manual 5 §2.6: API pública de consulta de EOF (H-EOF-1)
+int _syn_stdin_eof(void) {
+    pthread_mutex_lock(&_leer_linea_mutex);
+    int _eof = _syn_stdin_eof_flag;
+    pthread_mutex_unlock(&_leer_linea_mutex);
+    return _eof;
+}
+
 // Forward declaration — implementación real en _syn_leer_linea (ReadFile Windows)
 CadenaSegura _syn_leer_linea(void);
 
@@ -217,6 +233,8 @@ CadenaSegura _syn_leer_linea(void) {
                 pthread_mutex_unlock(&_leer_linea_mutex);
                 return (CadenaSegura){ .longitud = _len, .datos = _dup };
             }
+            // cumple Manual 5 §2.6: fgets NULL en consola = EOF (H-EOF-1)
+            _syn_stdin_eof_flag = 1;
             pthread_mutex_unlock(&_leer_linea_mutex);
             return (CadenaSegura){ .longitud = 0, .datos = "" };
         }
@@ -233,6 +251,8 @@ CadenaSegura _syn_leer_linea(void) {
             BOOL ok = ReadFile(hstdin, _buf + _pos, 1, &_leidos, NULL);
             if (!ok || _leidos == 0) {
                 if (_pos == 0) {
+                    // cumple Manual 5 §2.6: ReadFile sin datos al inicio = EOF (H-EOF-1)
+                    _syn_stdin_eof_flag = 1;
                     pthread_mutex_unlock(&_leer_linea_mutex);
                     return (CadenaSegura){ .longitud = 0, .datos = "" };
                 }
@@ -277,6 +297,8 @@ CadenaSegura _syn_leer_linea(void) {
         pthread_mutex_unlock(&_leer_linea_mutex);
         return (CadenaSegura){ .longitud = _len, .datos = _dup };
     }
+    // cumple Manual 5 §2.6: fgets NULL en POSIX = EOF (H-EOF-1)
+    _syn_stdin_eof_flag = 1;
     pthread_mutex_unlock(&_leer_linea_mutex);
     return (CadenaSegura){ .longitud = 0, .datos = "" };
 #endif

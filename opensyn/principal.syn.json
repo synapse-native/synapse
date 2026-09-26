@@ -1039,6 +1039,59 @@
     },
     {
       "tipo": "FuncionDef",
+      "nombre": "stdin_eof",
+      "parametros": [],
+      "tipo_retorno": "entero",
+      "contratos": {
+        "requiere": [],
+        "garantiza": [
+          {
+            "tipo": "ExpresionArit",
+            "izquierda": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "resultado"
+              },
+              "operador": "==",
+              "derecha": {
+                "tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "operador": "||",
+            "derecha": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "resultado"
+              },
+              "operador": "==",
+              "derecha": {
+                "tipo": "LiteralNumero",
+                "valor": 1
+              }
+            }
+          }
+        ]
+      },
+      "cuerpo": {
+        "tipo": "Bloque",
+        "sentencias": [
+          {
+            "tipo": "SentenciaRetornar",
+            "valor": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "_syn_stdin_eof",
+              "argumentos": []
+            },
+            "es_transferencia": false
+          }
+        ]
+      }
+    },
+    {
+      "tipo": "FuncionDef",
       "nombre": "leer_bytes",
       "parametros": [
         {
@@ -1166,6 +1219,13 @@
       "nombre": "_syn_leer_linea",
       "parametros": [],
       "tipo_retorno": "texto",
+      "kind": "funcion"
+    },
+    {
+      "tipo": "DeclaracionExterna",
+      "nombre": "_syn_stdin_eof",
+      "parametros": [],
+      "tipo_retorno": "entero",
       "kind": "funcion"
     },
     {
@@ -10230,6 +10290,45 @@
                   }
                 },
                 "cuerpo": [
+                  {
+                    "tipo": "SentenciaSi",
+                    "condicion": {
+                      "tipo": "ExpresionArit",
+                      "izquierda": {
+                        "tipo": "LlamadaFuncion",
+                        "nombre": "stdin_eof",
+                        "argumentos": []
+                      },
+                      "operador": "==",
+                      "derecha": {
+                        "tipo": "LiteralNumero",
+                        "valor": 1
+                      }
+                    },
+                    "cuerpo": [
+                      {
+                        "tipo": "SentenciaExpr",
+                        "expr": {
+                          "tipo": "LlamadaFuncion",
+                          "nombre": "escribir_linea",
+                          "argumentos": [
+                            {
+                              "tipo": "LiteralCadena",
+                              "valor": "  [EOF] Entrada cerrada. Seleccionando Modo Oráculo por defecto."
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "tipo": "SentenciaRetornar",
+                        "valor": {
+                          "tipo": "LiteralCadena",
+                          "valor": "2"
+                        },
+                        "es_transferencia": false
+                      }
+                    ]
+                  },
                   {
                     "tipo": "AsignacionVariable",
                     "nombre": "intentos_menu",
@@ -25855,6 +25954,71 @@
                       }
                     },
                     "cuerpo": [
+                      {
+                        "tipo": "SentenciaSi",
+                        "condicion": {
+                          "tipo": "ExpresionArit",
+                          "izquierda": {
+                            "tipo": "LlamadaFuncion",
+                            "nombre": "stdin_eof",
+                            "argumentos": []
+                          },
+                          "operador": "==",
+                          "derecha": {
+                            "tipo": "LiteralNumero",
+                            "valor": 1
+                          }
+                        },
+                        "cuerpo": [
+                          {
+                            "tipo": "SentenciaExpr",
+                            "expr": {
+                              "tipo": "LlamadaFuncion",
+                              "nombre": "escribir_linea",
+                              "argumentos": [
+                                {
+                                  "tipo": "LiteralCadena",
+                                  "valor": ""
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "tipo": "SentenciaExpr",
+                            "expr": {
+                              "tipo": "LlamadaFuncion",
+                              "nombre": "escribir_linea",
+                              "argumentos": [
+                                {
+                                  "tipo": "LiteralCadena",
+                                  "valor": "  [EOF] Entrada cerrada. Saliendo."
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "tipo": "SentenciaExpr",
+                            "expr": {
+                              "tipo": "LlamadaFuncion",
+                              "nombre": "escribir_linea",
+                              "argumentos": [
+                                {
+                                  "tipo": "LiteralCadena",
+                                  "valor": ""
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "tipo": "SentenciaRetornar",
+                            "valor": {
+                              "tipo": "LiteralNumero",
+                              "valor": 0
+                            },
+                            "es_transferencia": false
+                          }
+                        ]
+                      },
                       {
                         "tipo": "AsignacionVariable",
                         "nombre": "eof_consecutivos",

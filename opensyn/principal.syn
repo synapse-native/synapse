@@ -270,6 +270,11 @@ funcion mostrar_menu_bienvenida() -> texto:
     let intentos_menu: entero = 0
     mientras entrada != "1" y entrada != "2":
         si entrada == "":
+            // ME eof_runtime_api (H-EOF-1): EOF real → modo por defecto de
+            // inmediato. cumple Manual 7 §2.1
+            si stdin_eof() == 1:
+                escribir_linea("  [EOF] Entrada cerrada. Seleccionando Modo Oráculo por defecto.")
+                retornar "2"
             intentos_menu = intentos_menu + 1
             si intentos_menu >= 3:
                 escribir_linea("  [EOF] Entrada cerrada. Seleccionando Modo Oráculo por defecto.")
@@ -1486,8 +1491,15 @@ funcion modo_oraculo() -> entero:
                 escribir_linea("")
                 retornar 0
             si prompt == "":
-                // ME eof_cierre_chat (R1): EOF llega como línea vacía; 3 seguidas
-                // cierran el chat (H-AUD-OP-1). cumple Manual 7 §2.1
+                // ME eof_runtime_api (H-EOF-1): EOF real del runtime cierra de
+                // inmediato (stdin_eof 1 = stdin agotado). cumple Manual 7 §2.1
+                si stdin_eof() == 1:
+                    escribir_linea("")
+                    escribir_linea("  [EOF] Entrada cerrada. Saliendo.")
+                    escribir_linea("")
+                    retornar 0
+                // Línea vacía del usuario: contador de respaldo r155 (3 seguidas
+                // cierran; H-AUD-OP-1). cumple Manual 7 §2.1
                 eof_consecutivos = eof_consecutivos + 1
                 si eof_consecutivos >= 3:
                     escribir_linea("")
