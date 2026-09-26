@@ -7,15 +7,17 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-09-25** (H-AUD-OP-1/2/3 de la auditoría de operatividad OpenSyn REPARADOS — ME eof_cierre_chat 830074a, ME opensyn_exe_fresco 9a9170c, ME marker_tdd 1f5f7e3)
+Última actualización: **2026-09-26** (H-EOF-1 RESUELTA — ME eof_runtime_api 8375ec6: API stdin_eof en runtime/core/io.c + binding std/io.syn + consumo OpenSyn)
 
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      REPARACIÓN HALLAZGOS AUDITORÍA-OP COMPLETADA — H-AUD-OP-1 (830074a: chat/menú
-cierran ante EOF), H-AUD-OP-2 (9a9170c: exe fresco + guard de frescura),
-                   H-AUD-OP-3 (1f5f7e3: markers tdd/e2e registrados) — deudas H-EOF-1/H-EOF-3
-                   registradas con resolución (runtime io.c y config relativa→absoluta)
+Fase roadmap:      DEUDA H-EOF-1 RESUELTA (8375ec6: API stdin_eof en runtime — EOF real ≠
+                   línea vacía; OpenSyn cierra por EOF inmediato, contadores r155 de respaldo)
+                   REPARACIÓN HALLAZGOS AUDITORÍA-OP COMPLETADA — H-AUD-OP-1 (830074a: chat/menú
+                   cierran ante EOF), H-AUD-OP-2 (9a9170c: exe fresco + guard de frescura),
+                   H-AUD-OP-3 (1f5f7e3: markers tdd/e2e registrados) — deuda restante H-EOF-3
+                   (config relativa→absoluta) con resolución asignada
                    ME r153_s1_metodos_genericos COMPLETADO (d9e842c) — H-R152-4 CERRADA por Opción A: métodos/genéricos/for-en en S1+S2 y backend lint/fmt/test flipped a los módulos .syn
                    ME r151_linea_base COMPLETADO (5db1dab) + ME r152_bootstrap_link COMPLETADO (dbb9717) — H-R151-3 RESUELTA: bootstrap S1/S2 vuelve a ENLAZAR (Manual 1 §6)
                    FASE 32 COMPLETA — Agente de Codificación Avanzado + Memoria Persistente (5/5 ME)
@@ -34,7 +36,7 @@ Estado:            r153 (Opción A de H-R152-4, ratificada 2026-09-20): R1 built
                    expediente r153 verificado (evidencia d5fb40c8d7530258; 40 CUMPLE +
                    3 DESVIACION ratificadas H-R153-NODE).
                    r151/r152: bootstrap restaurado (ver histórico de sesión 2026-09-20).
-Commit fase:       1f5f7e3 (test(config): markers tdd/e2e) sobre 9a9170c (test(auditoria): guard frescura exe) sobre 830074a (fix(opensyn): cierre EOF chat/menú) — sobre d9e842c (feat(r153))
+Commit fase:       8375ec6 (feat(runtime): API de EOF stdin) sobre 070a9be (docs post-commit R155-157) — sobre 1f5f7e3/9a9170c/830074a (H-AUD-OP-3/2/1)
 Próximo ME:        Fase 33 DEFINIDA — anexo en ROADMAP.md (2026-09-25, sesion post-commit
                    R154): ratificar el anexo y abrir ME 33.1 (tabla M2 §7.2 + oráculo de
                    paridad de nodos) o 33.3 (desviaciones R149 §5), ambas sin dependencias
@@ -45,7 +47,9 @@ Próximo paso:      Ejecutar el anexo Fase 33 de ROADMAP.md — 33.1 actualiza t
                    33.3 ratifica desviaciones R149 §5 (llvm/wasm sin cablear, stubs
                    debugger, axon_build.exe, 3 FFI std.cluster); 33.4 extiende el
                    subconjunto paritario (H-R153-3); 33.5 certificación
-Últimos commits:    1f5f7e3 (test(config): registrar markers tdd y e2e en pytest.ini — H-AUD-OP-3, oráculo detectó además e2e sin registrar)
+Últimos commits:    8375ec6 (feat(runtime): API de EOF de stdin — stdin_eof distingue EOF de línea vacía, H-EOF-1 RESUELTA; cita fabricada io.c L58 re-anclada)
+                    070a9be (docs: post-commit R155/R156/R157 — reportes, bitácora y memoria)
+                    1f5f7e3 (test(config): registrar markers tdd y e2e en pytest.ini — H-AUD-OP-3, oráculo detectó además e2e sin registrar)
                     9a9170c (test(auditoria): oráculo de frescura y humo para dist/bin/opensyn.exe — H-AUD-OP-2, exe regenerado 23:22 con fix EOF)
                     830074a (fix(opensyn): cierre determinista del chat y menú ante EOF de stdin — H-AUD-OP-1, contadores eof_consecutivos/intentos_menu)
                     d9e842c (feat(r153): métodos, genéricos y for-en en S1+S2 — flip backend lint/fmt/test a los módulos .syn)
@@ -63,6 +67,7 @@ Próximo paso:      Ejecutar el anexo Fase 33 de ROADMAP.md — 33.1 actualiza t
 |--------|-------------|---------|
 | `1f5f7e3` | R157/ME marker_tdd (H-AUD-OP-3): markers `tdd` y `e2e` registrados en pytest.ini; oráculo de colección limpia (0 PytestUnknownMarkWarning en 3085 tests, `-m tdd` operativa 144). H-TDD-1: `e2e` sin registrado detectado por el oráculo y resuelto en el mismo commit |
 | `9a9170c` | R156/ME opensyn_exe_fresco (H-AUD-OP-2): dist/bin/opensyn.exe regenerado con pipeline real main.py (23:22, con fix EOF); guard OBL-EXE-R2 permanente: mtime(exe) > último commit de principal.syn; smoke dual-modo rc==0. dist/bin/ untracked → artefacto no commiteable |
+| `8375ec6` | R158/ME eof_runtime_api (H-EOF-1 RESUELTA): runtime/core/io.c marca flag de EOF en sus 3 puntos y expone _syn_stdin_eof() (M5 §2.6); binding stdin_eof() con garantiza (M2 §5.1); OpenSyn cierra por EOF real (contadores r155 de respaldo); mapa con entradas explícitas io.c/std-io.syn; oráculo 5/5 + regresión r155 GREEN; H-EOF-RT-1: cita fabricada preexistente "Manual 7 §8" re-anclada a M7 §1.1 |
 | `830074a` | R155/ME eof_cierre_chat (H-AUD-OP-1): chat modo línea y menú de bienvenida cierran ante EOF (3 lecturas vacías → rc=0 / Modo Oráculo por defecto); oráculo E2E GREEN (compila con main.py y ejecuta con stdin cerrado); H-EOF-1 (io.c colapsa EOF/vacío) y H-EOF-3 (config relativa al cwd rechazada; fallbacks PF disparan modo antes del menú) = deudas con resolución |
 | `d9e842c` | R154/ME r153_s1_metodos_genericos: métodos, genéricos y for-en en S1+S2 — flip del backend lint/fmt/test a los módulos .syn (Opción A de H-R152-4) — R1 builtins Lista/Mapa/longitud (lista.c/mapa.c, encajonado por dirección, Manual 2 §4.3); R2 para-en S1+nativo (NODO_PARA_EN=57, Manual 3 §3); R3 métodos postfijo metodo:<tipo>:<nombre> (NODO_METODO=59); R4 principal.syn importa lint/formatter/reports (Manual 8 §4.1); R6 RAII de retorno (M2 §9.1); R5 bootstrap S1→S2 verde. H-R153-NODE ratificada (tabla M2 §7.2 por actualizar — Arquitecto). Oráculos 8/8, TDD módulos 3, matriz 35/35, expediente verificado (evidencia d5fb40c8d7530258) |
 | `dbb9717` | R153/ME r152_bootstrap_link: bootstrap S1 restaurado (H-R151-3, Manual 1 §6) — R1: par F5-1 emitido en _emit_cabecera_comun (paridad con bloque 'modulo'); R2: subcomandos lint/fmt/test con backend real cli_lint/cli_fmt/cli_test (contratos Manual 2 §5.1; C embebido por H-R152-4), 5 externs fantasma eliminados; junit/json reales (Manual 9 §6.2); --coverage honesto rc=1 (H-R152-1). S1/S2 rc=0 con comando CI; test_r3_param_adt GREEN (TDD); oráculo r152 8/8; matriz 35/35; expediente verificado |
@@ -143,14 +148,20 @@ Próximo paso:      Ejecutar el anexo Fase 33 de ROADMAP.md — 33.1 actualiza t
   Cierre (ME eof_cierre_chat, R155): contadores en capa aplicación — `eof_consecutivos`
   en el bucle de chat modo línea y `intentos_menu` en el menú de bienvenida;
   3 lecturas vacías = EOF → cierre limpio rc=0 / Modo Oráculo por defecto. Oráculo
-  E2E permanente (stdin cerrado sin "salir" → rc==0 exigido). Deudas derivadas:
-  H-EOF-1 y H-EOF-3 (abajo).
-- **H-EOF-1 (NUEVO, DEUDA — resolución asignada):** causa raíz runtime de H-AUD-OP-1:
-  `_syn_leer_linea()` (runtime/core/io.c:195) colapsa EOF y línea vacía en
-  {longitud=0} — indistinguibles en capa aplicación. Fix de API del runtime FUERA de
-  alcance del ME (io.c sin mapeo en mapa_alineacion, LSP sensible). Resolución:
-  ME futuro de runtime — API que distinga EOF de línea vacía (p.ej. retorno
-  centinela), actualizando los bucles lectores de principal.syn.
+  E2E permanente (stdin cerrado sin "salir" → rc==0 exigido). Refinamiento final
+  con la API de EOF del runtime: ver H-EOF-1 (RESUELTO, 8375ec6). Deuda derivada
+  restante: H-EOF-3 (abajo).
+- **H-EOF-1 (RESUELTO, 8375ec6):** causa raíz runtime de H-AUD-OP-1:
+  `_syn_leer_linea()` (runtime/core/io.c) colapsaba EOF y línea vacía en
+  {longitud=0} — indistinguibles en capa aplicación. Cierre (ME eof_runtime_api,
+  R158): flag `_syn_stdin_eof_flag` marcado en los 3 puntos EOF de io.c (consola
+  fgets NULL, pipe ReadFile sin datos al inicio, POSIX fgets NULL) + API
+  `_syn_stdin_eof()` thread-safe (M5 §2.6); binding `stdin_eof()` con garantiza
+  (M2 §5.1); OpenSyn consulta stdin_eof en chat modo línea y menú — EOF real
+  cierra de inmediato, contadores r155 de respaldo. Mapa de alineación con
+  entradas explícitas runtime/core/io.c → M5 §2.6 y std/io.syn → M2 §5.1.
+  H-EOF-RT-1: cita fabricada preexistente en io.c L58 ("Manual 7 §8") re-anclada
+  a M7 §1.1.
 - **H-EOF-3 (NUEVO, DEUDA — resolución asignada):** la lectura de config RELATIVA
   al cwd NO funciona: `_validar_ruta_segura` (std/sistema.syn:16) rechaza rutas
   relativas → `leer_modo_config` (principal.syn) cae siempre a los fallbacks HOME/

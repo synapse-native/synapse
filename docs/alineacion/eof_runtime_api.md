@@ -1,7 +1,7 @@
 # Expediente de alineación eof_runtime_api
 
 base: HEAD  # commit sobre el que se leyó el manual
-cambio_hash:
+cambio_hash: 91767dd6c13f4cec
 
 > Una ancla por requisito. `estado:` CUMPLE | DESVIACION.
 > CUMPLE exige `evidencia: archivo:linea` con el comentario
