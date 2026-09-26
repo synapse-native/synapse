@@ -200,7 +200,9 @@ Próximo paso:      Ejecutar el anexo Fase 33 de ROADMAP.md — 33.1 actualiza t
   real main.py (23:22, incluye fix EOF) + guard permanente de frescura
   (mtime(exe) > último commit del fuente, OBL-EXE-R2). Nota: dist/bin/ es untracked
   → el guard protege el artefacto local; sincronizarlo en CI queda a diseño de
-  release. Deuda menor: dist/bin/synapse_lsp.exe (10-sep) fuera del hallazgo.
+  release. Deuda menor CERRADA (2026-09-26): dist/bin/synapse_lsp.exe regenerado
+  con main.py nucleo/lsp_v3.syn (post-R159) + smoke JSON-RPC initialize GREEN +
+  suite LSP 33 passed/2 skipped (skips preexistentes por backend).
 - **H-AUD-OP-3 (RESUELTO, 1f5f7e3):** marker `@pytest.mark.tdd` sin registrar en
   `pytest.ini` → 8 PytestUnknownMarkWarning en tests/opensyn. Cambio de CONFIG de
   tests (no de tests, regla 5 intacta): `tdd:` añadido a markers; el oráculo de
