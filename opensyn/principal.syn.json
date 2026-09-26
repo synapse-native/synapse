@@ -168,10 +168,247 @@
         }
       ],
       "tipo_retorno": "texto",
-      "contratos": null,
+      "contratos": {
+        "requiere": [
+          {
+            "tipo": "ExpresionArit",
+            "izquierda": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "longitud",
+              "argumentos": [
+                {
+                  "tipo": "Identificador",
+                  "nombre": "ruta"
+                }
+              ]
+            },
+            "operador": ">",
+            "derecha": {
+              "tipo": "LiteralNumero",
+              "valor": 0
+            }
+          }
+        ],
+        "garantiza": [
+          {
+            "tipo": "ExpresionArit",
+            "izquierda": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "ExpresionArit",
+                "izquierda": {
+                  "tipo": "Identificador",
+                  "nombre": "resultado"
+                },
+                "operador": "==",
+                "derecha": {
+                  "tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              },
+              "operador": "||",
+              "derecha": {
+                "tipo": "ExpresionArit",
+                "izquierda": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "subcadena",
+                  "argumentos": [
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "resultado"
+                    },
+                    {
+                      "tipo": "LiteralNumero",
+                      "valor": 1
+                    },
+                    {
+                      "tipo": "LiteralNumero",
+                      "valor": 2
+                    }
+                  ]
+                },
+                "operador": "==",
+                "derecha": {
+                  "tipo": "LiteralCadena",
+                  "valor": ":"
+                }
+              }
+            },
+            "operador": "||",
+            "derecha": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "LlamadaFuncion",
+                "nombre": "subcadena",
+                "argumentos": [
+                  {
+                    "tipo": "Identificador",
+                    "nombre": "resultado"
+                  },
+                  {
+                    "tipo": "LiteralNumero",
+                    "valor": 0
+                  },
+                  {
+                    "tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecha": {
+                "tipo": "LiteralCadena",
+                "valor": "/"
+              }
+            }
+          }
+        ]
+      },
       "cuerpo": {
         "tipo": "Bloque",
         "sentencias": [
+          {
+            "tipo": "AsignacionVariable",
+            "nombre": "cwd",
+            "expresion": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "_syn_normalizar_ruta",
+              "argumentos": [
+                {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "_syn_obtener_cwd",
+                  "argumentos": []
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "AsignacionVariable",
+            "nombre": "absoluta",
+            "expresion": {
+              "tipo": "Identificador",
+              "nombre": "ruta"
+            }
+          },
+          {
+            "tipo": "SentenciaSi",
+            "condicion": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "ExpresionArit",
+                "izquierda": {
+                  "tipo": "ExpresionArit",
+                  "izquierda": {
+                    "tipo": "LlamadaFuncion",
+                    "nombre": "subcadena",
+                    "argumentos": [
+                      {
+                        "tipo": "Identificador",
+                        "nombre": "ruta"
+                      },
+                      {
+                        "tipo": "LiteralNumero",
+                        "valor": 1
+                      },
+                      {
+                        "tipo": "LiteralNumero",
+                        "valor": 2
+                      }
+                    ]
+                  },
+                  "operador": "!=",
+                  "derecha": {
+                    "tipo": "LiteralCadena",
+                    "valor": ":"
+                  }
+                },
+                "operador": "&&",
+                "derecha": {
+                  "tipo": "ExpresionArit",
+                  "izquierda": {
+                    "tipo": "LlamadaFuncion",
+                    "nombre": "subcadena",
+                    "argumentos": [
+                      {
+                        "tipo": "Identificador",
+                        "nombre": "ruta"
+                      },
+                      {
+                        "tipo": "LiteralNumero",
+                        "valor": 0
+                      },
+                      {
+                        "tipo": "LiteralNumero",
+                        "valor": 1
+                      }
+                    ]
+                  },
+                  "operador": "!=",
+                  "derecha": {
+                    "tipo": "LiteralCadena",
+                    "valor": "/"
+                  }
+                }
+              },
+              "operador": "&&",
+              "derecha": {
+                "tipo": "ExpresionArit",
+                "izquierda": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "subcadena",
+                  "argumentos": [
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "ruta"
+                    },
+                    {
+                      "tipo": "LiteralNumero",
+                      "valor": 0
+                    },
+                    {
+                      "tipo": "LiteralNumero",
+                      "valor": 2
+                    }
+                  ]
+                },
+                "operador": "!=",
+                "derecha": {
+                  "tipo": "LiteralCadena",
+                  "valor": "\\\\"
+                }
+              }
+            },
+            "cuerpo": [
+              {
+                "tipo": "AsignacionVariable",
+                "nombre": "absoluta",
+                "expresion": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "concat",
+                  "argumentos": [
+                    {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "concat",
+                      "argumentos": [
+                        {
+                          "tipo": "Identificador",
+                          "nombre": "cwd"
+                        },
+                        {
+                          "tipo": "LiteralCadena",
+                          "valor": "/"
+                        }
+                      ]
+                    },
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "ruta"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
           {
             "tipo": "AsignacionVariable",
             "nombre": "normalizada",
@@ -181,18 +418,9 @@
               "argumentos": [
                 {
                   "tipo": "Identificador",
-                  "nombre": "ruta"
+                  "nombre": "absoluta"
                 }
               ]
-            }
-          },
-          {
-            "tipo": "AsignacionVariable",
-            "nombre": "cwd",
-            "expresion": {
-              "tipo": "LlamadaFuncion",
-              "nombre": "_syn_obtener_cwd",
-              "argumentos": []
             }
           },
           {
@@ -9548,6 +9776,214 @@
     },
     {
       "tipo": "FuncionDef",
+      "nombre": "ruta_config_absoluta",
+      "parametros": [],
+      "tipo_retorno": "texto",
+      "contratos": {
+        "requiere": [
+          {
+            "tipo": "ExpresionArit",
+            "izquierda": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "longitud",
+              "argumentos": [
+                {
+                  "tipo": "Identificador",
+                  "nombre": "ARCHIVO_CONFIG"
+                }
+              ]
+            },
+            "operador": ">",
+            "derecha": {
+              "tipo": "LiteralNumero",
+              "valor": 0
+            }
+          }
+        ],
+        "garantiza": [
+          {
+            "tipo": "ExpresionArit",
+            "izquierda": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "longitud",
+              "argumentos": [
+                {
+                  "tipo": "Identificador",
+                  "nombre": "resultado"
+                }
+              ]
+            },
+            "operador": ">",
+            "derecha": {
+              "tipo": "LiteralNumero",
+              "valor": 0
+            }
+          }
+        ]
+      },
+      "cuerpo": {
+        "tipo": "Bloque",
+        "sentencias": [
+          {
+            "tipo": "AsignacionVariable",
+            "nombre": "cwd",
+            "expresion": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "_syn_obtener_cwd",
+              "argumentos": []
+            }
+          },
+          {
+            "tipo": "SentenciaSi",
+            "condicion": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "cwd"
+              },
+              "operador": "==",
+              "derecha": {
+                "tipo": "LiteralCadena",
+                "valor": ""
+              }
+            },
+            "cuerpo": [
+              {
+                "tipo": "SentenciaRetornar",
+                "valor": {
+                  "tipo": "Identificador",
+                  "nombre": "ARCHIVO_CONFIG"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "tipo": "AsignacionVariable",
+            "nombre": "ultimo",
+            "expresion": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "subcadena",
+              "argumentos": [
+                {
+                  "tipo": "Identificador",
+                  "nombre": "cwd"
+                },
+                {
+                  "tipo": "ExpresionArit",
+                  "izquierda": {
+                    "tipo": "LlamadaFuncion",
+                    "nombre": "longitud",
+                    "argumentos": [
+                      {
+                        "tipo": "Identificador",
+                        "nombre": "cwd"
+                      }
+                    ]
+                  },
+                  "operador": "-",
+                  "derecha": {
+                    "tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                },
+                {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "longitud",
+                  "argumentos": [
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "cwd"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaSi",
+            "condicion": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "ExpresionArit",
+                "izquierda": {
+                  "tipo": "Identificador",
+                  "nombre": "ultimo"
+                },
+                "operador": "==",
+                "derecha": {
+                  "tipo": "LiteralCadena",
+                  "valor": "\\"
+                }
+              },
+              "operador": "||",
+              "derecha": {
+                "tipo": "ExpresionArit",
+                "izquierda": {
+                  "tipo": "Identificador",
+                  "nombre": "ultimo"
+                },
+                "operador": "==",
+                "derecha": {
+                  "tipo": "LiteralCadena",
+                  "valor": "/"
+                }
+              }
+            },
+            "cuerpo": [
+              {
+                "tipo": "SentenciaRetornar",
+                "valor": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "concat",
+                  "argumentos": [
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "cwd"
+                    },
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "ARCHIVO_CONFIG"
+                    }
+                  ]
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "tipo": "SentenciaRetornar",
+            "valor": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "concat",
+              "argumentos": [
+                {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "concat",
+                  "argumentos": [
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "cwd"
+                    },
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "\\"
+                    }
+                  ]
+                },
+                {
+                  "tipo": "Identificador",
+                  "nombre": "ARCHIVO_CONFIG"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      }
+    },
+    {
+      "tipo": "FuncionDef",
       "nombre": "leer_modo_config",
       "parametros": [],
       "tipo_retorno": "texto",
@@ -9563,8 +9999,9 @@
               "nombre": "leer_archivo",
               "argumentos": [
                 {
-                  "tipo": "Identificador",
-                  "nombre": "ARCHIVO_CONFIG"
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "ruta_config_absoluta",
+                  "argumentos": []
                 }
               ]
             }
@@ -9944,8 +10381,9 @@
               "nombre": "escribir_archivo",
               "argumentos": [
                 {
-                  "tipo": "Identificador",
-                  "nombre": "ARCHIVO_CONFIG"
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "ruta_config_absoluta",
+                  "argumentos": []
                 },
                 {
                   "tipo": "Identificador",

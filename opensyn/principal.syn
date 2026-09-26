@@ -199,9 +199,30 @@ funcion iniciar_llama_server() -> nulo:
 
 // --- Funciones auxiliares de configuracion ---
 
+// ME config_ruta_absoluta (H-EOF-3): el config RELATIVO al cwd se resuelve a
+// ABSOLUTO antes de validar — _validar_ruta_segura (std.sistema) rechaza rutas
+// relativas por longitud, así que la lectura caía siempre a los fallbacks
+// HOME/Program Files y el menú de bienvenida era inrunnable en instalación
+// pre-configurada.
+// cumple Manual 7 §2.1
+
+funcion ruta_config_absoluta() -> texto:
+    requiere:
+        longitud(ARCHIVO_CONFIG) > 0
+    garantiza:
+        longitud(resultado) > 0
+    cwd = _syn_obtener_cwd()
+    si cwd == "":
+        retornar ARCHIVO_CONFIG
+    ultimo = subcadena(cwd, longitud(cwd) - 1, longitud(cwd))
+    si ultimo == "\\" o ultimo == "/":
+        // Raíz de unidad (D:\) ya termina en separador: no duplicar
+        retornar concat(cwd, ARCHIVO_CONFIG)
+    retornar concat(concat(cwd, "\\"), ARCHIVO_CONFIG)
+
 funcion leer_modo_config() -> texto:
     // cumple Manual 7 §2.1: buscar config en cwd, luego en HOME y en app (instalador pre-configura)
-    contenido = leer_archivo(ARCHIVO_CONFIG)
+    contenido = leer_archivo(ruta_config_absoluta())
     si contenido == "":
         // Fallback via _syn_leer_archivo directo (bypass _validar_ruta_segura cwd-only) — cumple Manual 7 §2.1
         home = obtener_env("USERPROFILE")
@@ -236,7 +257,10 @@ funcion leer_modo_config() -> texto:
 
 funcion guardar_modo_config(modo: texto) -> entero:
     linea = concat("modo_oraculo=", modo)
-    retornar escribir_archivo(ARCHIVO_CONFIG, linea)
+    // ME config_ruta_absoluta (H-EOF-3): escribir en la ruta ABSOLUTA del cwd
+    // (la relativa era rechazada por el sandbox — ver ruta_config_absoluta)
+    // cumple Manual 7 §2.1
+    retornar escribir_archivo(ruta_config_absoluta(), linea)
 
 // --- Menu de Inicializacion de Entorno Soberano ---
 

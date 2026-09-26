@@ -49,6 +49,7 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "runtime/core/memory.c": ["Manual 4 §2"],
   "runtime/core/io.c": ["Manual 5 §2.6"],
   "std/io.syn": ["Manual 2 §5.1"],
+  "std/sistema.syn": ["Manual 2 §5.1"],
   "runtime/core/concurrency.c": ["Manual 5 §2.1"],
   "runtime/core/ollama.c": ["Manual 7 §2.2"],
   "runtime/core/tui.c": ["Manual 5 §1"],

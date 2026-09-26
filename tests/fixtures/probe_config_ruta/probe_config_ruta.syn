@@ -1,0 +1,48 @@
+#lang: es
+// tests/fixtures/probe_config_ruta/probe_config_ruta.syn
+// Fixture del oraculo del ME config_ruta_absoluta (H-EOF-3, R5b del plan).
+// Probe minimo que ejercita el sandbox de std.sistema de extremo a extremo en
+// el cwd real del proceso. ALCANCE REAL del sandbox en el pipeline Python S1:
+//   - escribir_archivo/eliminar_archivo -> wrapper con _validar_ruta_segura
+//   - leer_archivo/existe_archivo       -> BUILTINS del compilador (H-R153-2,
+//     Manual 2 §4.3) que delegan directo en el runtime SIN sandbox (H-CFG-2)
+// Por eso el probe verifica LO QUE EL SANDBOX GOBIERNA (escrituras) y el
+// roundtrip observable con la ruta relativa del config:
+//   rc 0  -> escritura relativa OK + escape ../.. rechazado + ruta absoluta
+//            fuera del cwd rechazada
+//   rc 1  -> escritura relativa FALLO (sandbox sigue roto)
+//   rc 2  -> escape ../.. NO rechazado (path traversal abierto — regresion)
+//   rc 3  -> escritura absoluta fuera del cwd NO rechazada (fuga del sandbox)
+// cumple Manual 2 §5.1
+
+importar std.io
+importar std.sistema
+
+constante NOMBRE = "probe_cfg_ruta.txt"
+
+funcion principal() -> entero:
+    // 1) Escritura RELATIVA en el cwd (H-EOF-3: antes devolvia -1 SIEMPRE —
+    //    el sandbox rechazaba toda ruta relativa y el modo del menu no
+    //    persistia nunca via escribir_archivo)
+    rc = escribir_archivo(NOMBRE, " contenido-probe ")
+    si rc != 0:
+        escribir_linea("[PROBE] escribir relativa fallo")
+        retornar 1
+    contenido = leer_archivo(NOMBRE)
+    si contenido != " contenido-probe ":
+        escribir_linea("[PROBE] roundtrip relativo fallo")
+        retornar 1
+    // 2) Escape ../.. debe ser RECHAZADO por el sandbox (H-EOF-3b: el
+    //    comparador exige borde de componente y prefijo cwd)
+    rc2 = escribir_archivo("../../probe_cfg_ruta_escape.txt", "x")
+    si rc2 == 0:
+        escribir_linea("[PROBE] escape ../.. NO rechazado")
+        retornar 2
+    // 3) Escritura ABSOLUTA fuera del cwd debe ser rechazada por el sandbox
+    home_cfg = concat(concat(_syn_obtener_cwd(), "/../"), "probe_cfg_ruta_abs.txt")
+    rc3 = escribir_archivo(home_cfg, "x")
+    si rc3 == 0:
+        escribir_linea("[PROBE] escritura fuera del cwd NO rechazada")
+        retornar 3
+    escribir_linea("[PROBE] OK")
+    retornar 0

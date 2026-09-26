@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 // ============================================================
 // PATH TRAVERSAL PROTECTION — std.sistema helpers
@@ -40,41 +41,63 @@ CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
 }
 
 CadenaSegura _syn_normalizar_ruta(CadenaSegura ruta) {
+    // cumple Manual 5 §1: función pura, sin estado compartido; separador de
+    // PLATAFORMA en la salida (Windows '\', POSIX '/') para que el resultado
+    // sea comparable byte a byte con el cwd crudo del SO (H-EOF-3a: antes
+    // emitía '/' y el comparador por prefijo nunca matcheaba en Windows).
+    char sep = '/';
+#ifdef _WIN32
+    sep = '\\';
+#endif
     char buf[4096];
     int len = ruta.longitud < 4095 ? ruta.longitud : 4095;
     memcpy(buf, ruta.datos, (size_t)len);
     buf[len] = '\0';
-    // Resolve . and ..
-    char normalized[4096];
-    int nlen = 0;
+    // Resolucion de componentes con PILA (rew ME config_ruta_absoluta): el
+    // bucle original retrocedia el componente equivocado cuando el caracter
+    // previo era el separador recien emitido — "X/../Y" normalizaba a "XY"
+    // (componente fusionado) y ".." podia sobrevivir literal; con la pila,
+    // "." se descarta, ".." desapila, y ".." sobre raiz relativa se CONSERVA
+    // ("../x") para que el comparador por prefijo lo rechace (sandbox sano).
+    int comp_start[2048];
+    int comp_len[2048];
+    int ncomp = 0;
+    int es_absoluta = (len > 0 && (buf[0] == '/' || buf[0] == '\\'));
     int i = 0;
     while (i < len) {
-        if (buf[i] == '/' || buf[i] == '\\') {
-            // Skip double separators
-            while (i < len && (buf[i] == '/' || buf[i] == '\\')) i++;
-            continue;
-        }
-        // Check for ..
-        if (buf[i] == '.' && i + 1 < len && buf[i+1] == '.') {
-            if (i + 2 >= len || buf[i+2] == '/' || buf[i+2] == '\\') {
-                // Go back one component
-                while (nlen > 0 && normalized[nlen-1] != '/' && normalized[nlen-1] != '\\') nlen--;
-                if (nlen > 0) nlen--; // remove separator
-                i += 2;
-                if (i < len && (buf[i] == '/' || buf[i] == '\\')) i++;
-                continue;
+        while (i < len && (buf[i] == '/' || buf[i] == '\\')) i++;
+        if (i >= len) break;
+        int s = i;
+        while (i < len && buf[i] != '/' && buf[i] != '\\') i++;
+        int l = i - s;
+        if (l == 1 && buf[s] == '.') continue; // "."
+        if (l == 2 && buf[s] == '.' && buf[s+1] == '.') {
+            if (ncomp > 0) {
+                int ts = comp_start[ncomp-1];
+                int tl = comp_len[ncomp-1];
+                int top_puntos = (tl == 2 && buf[ts] == '.' && buf[ts+1] == '.');
+                if (!top_puntos) { ncomp--; continue; }
+                // top es "..": apilar ("../.." no colapsa sobre raiz relativa)
+            } else if (es_absoluta) {
+                continue; // ".." sobre raiz absoluta: fuera del sandbox
             }
+            // ncomp==0 relativa: conservar ".." (el prefijo cwd no matcheara)
         }
-        // Copy component
-        while (i < len && buf[i] != '/' && buf[i] != '\\') {
-            if (nlen < 4095) normalized[nlen++] = buf[i];
-            i++;
-        }
-        if (i < len && nlen < 4095) normalized[nlen++] = '/';
+        if (ncomp < 2048) { comp_start[ncomp] = s; comp_len[ncomp] = l; ncomp++; }
     }
-    if (nlen > 0 && normalized[nlen-1] == '/') nlen--;
+    char normalized[4096];
+    int nlen = 0;
+    if (es_absoluta && nlen < 4095) normalized[nlen++] = sep;
+    for (int k = 0; k < ncomp; k++) {
+        if (k > 0 && nlen < 4095) normalized[nlen++] = sep;
+        for (int j = 0; j < comp_len[k] && nlen < 4095; j++) {
+            normalized[nlen++] = buf[comp_start[k] + j];
+        }
+    }
     if (nlen == 0) { normalized[nlen++] = '.'; }
     normalized[nlen] = '\0';
+    // cumple Manual 2 §9.1: resultado en pool_alloc (RAII estatico del pool,
+    // move semantics al retornar por valor)
     char* result = (char*)pool_alloc((size_t)(nlen + 1));
     if (!result) return ruta;
     memcpy(result, normalized, (size_t)(nlen + 1));
@@ -99,8 +122,35 @@ CadenaSegura _syn_obtener_cwd(void) {
 }
 
 int _syn_ruta_en_directorio(CadenaSegura ruta, CadenaSegura dir) {
+    // cumple Manual 5 §1: función pura; comparación por prefijo con BORDE de
+    // componente (H-EOF-3b: memcmp ciego aceptaba 'proyecto_synapse_evil' como
+    // hijo de 'proyecto_synapse') e insensible a mayúsculas SOLO en Windows
+    // (NTFS no distingue; POSIX sí). Punto de montaje distinto → fuera.
+    if (dir.longitud <= 0) return 0;
     if (ruta.longitud < dir.longitud) return 0;
-    return memcmp(ruta.datos, dir.datos, (size_t)dir.longitud) == 0;
+    // Punto de montaje (letra de unidad / raíz): primera componente distinta → 0.
+    {
+        char a = ruta.datos[0];
+        char b = dir.datos[0];
+#ifdef _WIN32
+        a = (char)tolower((int)(unsigned char)a);
+        b = (char)tolower((int)(unsigned char)b);
+#endif
+        if (a != b) return 0;
+    }
+    for (int i = 0; i < dir.longitud; i++) {
+        char a = ruta.datos[i];
+        char b = dir.datos[i];
+#ifdef _WIN32
+        a = (char)tolower((int)(unsigned char)a);
+        b = (char)tolower((int)(unsigned char)b);
+#endif
+        if (a != b) return 0;
+    }
+    if (ruta.longitud == dir.longitud) return 1; // ruta == dir
+    if (dir.datos[dir.longitud - 1] == '/' || dir.datos[dir.longitud - 1] == '\\') return 1;
+    char nx = ruta.datos[dir.longitud];
+    return nx == '/' || nx == '\\';
 }
 
 // ============================================================

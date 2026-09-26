@@ -13,11 +13,26 @@ externo funcion _syn_ruta_en_directorio(ruta: texto, dir: texto) -> entero
 
 // Helper: Valida y normaliza ruta para prevenir path traversal
 // Retorna ruta normalizada si es segura, "" si es insegura
+// ME config_ruta_absoluta (H-EOF-3): una ruta RELATIVA al cwd se resuelve a
+// absoluta (cwd + "/" + ruta) ANTES de normalizar — el normalizador no antepone
+// el cwd por sí solo y el comparador exige contener al cwd como prefijo, así
+// que toda ruta relativa era rechazada por longitud y leer_modo_config caía
+// siempre a los fallbacks HOME/Program Files (menú inrunnable en instalación
+// pre-configurada). El escape ".." que sale del cwd sigue rechazado por el
+// comparador de prefijos (no se acepta ".." como cwd: también colapsa a ".").
 funcion _validar_ruta_segura(ruta: texto) -> texto:
-    // Normalizar ruta: resolver . y ..
-    normalizada = _syn_normalizar_ruta(ruta)
-    // Verificar que no escape del directorio de trabajo
-    cwd = _syn_obtener_cwd()
+    // cumple Manual 2 §5.1: contratos de dominio sobre el resultado
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        resultado == "" o subcadena(resultado, 1, 2) == ":" o subcadena(resultado, 0, 1) == "/"
+    cwd = _syn_normalizar_ruta(_syn_obtener_cwd())
+    absoluta = ruta
+    si subcadena(ruta, 1, 2) != ":" y subcadena(ruta, 0, 1) != "/" y subcadena(ruta, 0, 2) != "\\\\":
+        // Ruta relativa: resolver contra el cwd ("/" lo absorbe el normalizador
+        // y emite el separador de plataforma en Windows y POSIX)
+        absoluta = concat(concat(cwd, "/"), ruta)
+    normalizada = _syn_normalizar_ruta(absoluta)
     si no _syn_ruta_en_directorio(normalizada, cwd):
         retornar ""
     retornar normalizada

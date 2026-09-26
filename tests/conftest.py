@@ -193,7 +193,12 @@ _RT_BINARIOS_EXTRA = [
     # FASE 24: Texto manipulación (Manual 3 §12.1) — enlaza texto.o (impl _syn_texto_*)
     ("test_texto", "test_texto.c", ["texto.o"], []),
     # FASE 24: Tiempo fecha/hora (Manual 3 §12.1) — enlaza tiempo.o (impl _syn_tiempo_*)
-    ("test_tiempo", "test_tiempo.c", ["tiempo.o"], []),
+    # ME config_ruta_absoluta (reparacion de infraestructura): tiempo.c usa
+    # pool_alloc (runtime/core/tiempo.c:112,123,134) -> sin el objeto de
+    # memoria el enlace falla con 'undefined reference to pool_alloc'
+    # (15 errores preexistentes). memory.c compila como synapse_rt_memory.o
+    # (_RT_CORE_OBJ_ESPECIALES).
+    ("test_tiempo", "test_tiempo.c", ["tiempo.o", "synapse_rt_memory.o"], []),
     # FASE 24: DB SQLite bundled (Manual 3 §12.1)
     # cumple Manual 3 12.1: enlazar db.o (impl _syn_db_*) + todo el runtime.
     # db.o depende de sqlite3.o y del resto del runtime; por eso objs=None
