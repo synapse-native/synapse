@@ -7,12 +7,15 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-09-26** (H-EOF-1 RESUELTA — ME eof_runtime_api 8375ec6: API stdin_eof en runtime/core/io.c + binding std/io.syn + consumo OpenSyn)
+Última actualización: **2026-09-26** (H-EOF-3 RESUELTA — ME config_ruta_absoluta 96e72f4: sandbox de std.sistema operativo + config relativa→absoluta; H-CFG-2 registrada)
 
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      DEUDA H-EOF-1 RESUELTA (8375ec6: API stdin_eof en runtime — EOF real ≠
+Fase roadmap:      DEUDA H-EOF-3 RESUELTA (96e72f4: sandbox de std.sistema operativo —
+                   separador de plataforma, borde de componente, normalizador con pila;
+                   config del cwd relativa→absoluta decide el modo de OpenSyn)
+                   DEUDA H-EOF-1 RESUELTA (8375ec6: API stdin_eof en runtime — EOF real ≠
                    línea vacía; OpenSyn cierra por EOF inmediato, contadores r155 de respaldo)
                    REPARACIÓN HALLAZGOS AUDITORÍA-OP COMPLETADA — H-AUD-OP-1 (830074a: chat/menú
                    cierran ante EOF), H-AUD-OP-2 (9a9170c: exe fresco + guard de frescura),
@@ -36,18 +39,19 @@ Estado:            r153 (Opción A de H-R152-4, ratificada 2026-09-20): R1 built
                    expediente r153 verificado (evidencia d5fb40c8d7530258; 40 CUMPLE +
                    3 DESVIACION ratificadas H-R153-NODE).
                    r151/r152: bootstrap restaurado (ver histórico de sesión 2026-09-20).
-Commit fase:       8375ec6 (feat(runtime): API de EOF stdin) sobre 070a9be (docs post-commit R155-157) — sobre 1f5f7e3/9a9170c/830074a (H-AUD-OP-3/2/1)
-Próximo ME:        Fase 33 DEFINIDA — anexo en ROADMAP.md (2026-09-25, sesion post-commit
-                   R154): ratificar el anexo y abrir ME 33.1 (tabla M2 §7.2 + oráculo de
-                   paridad de nodos) o 33.3 (desviaciones R149 §5), ambas sin dependencias
-                   cruzadas
+Commit fase:       96e72f4 (fix(sandbox): rutas relativas + sandbox std.sistema operativo) sobre 8375ec6 (feat(runtime): API de EOF stdin) — sobre 070a9be (docs post-commit R155-157) y 1f5f7e3/9a9170c/830074a (H-AUD-OP-3/2/1)
+Próximo ME:        Ratificaciones pendientes del Arquitecto: H-CFG-2 (sandbox para lecturas
+                   builtin), H-R144-3 (cierre modelos.toml). Fase 33 DEFINIDA — anexo en
+                   ROADMAP.md (2026-09-25, sesion post-commit R154): abrir ME 33.1 (tabla
+                   M2 §7.2 + oráculo de paridad de nodos) o 33.3 (desviaciones R149 §5)
 Próximo paso:      Ejecutar el anexo Fase 33 de ROADMAP.md — 33.1 actualiza tabla M2 §7.2
                    con NODO_PARA_EN=57/NODO_METODO=59 (H-R153-NODE, tarea del Arquitecto);
                    33.2 cierra H-R152-1 (--coverage con instrumentación de aristas);
                    33.3 ratifica desviaciones R149 §5 (llvm/wasm sin cablear, stubs
                    debugger, axon_build.exe, 3 FFI std.cluster); 33.4 extiende el
                    subconjunto paritario (H-R153-3); 33.5 certificación
-Últimos commits:    8375ec6 (feat(runtime): API de EOF de stdin — stdin_eof distingue EOF de línea vacía, H-EOF-1 RESUELTA; cita fabricada io.c L58 re-anclada)
+Últimos commits:    96e72f4 (fix(sandbox): rutas relativas y sandbox de std.sistema operativos — H-EOF-3 RESUELTA; H-CFG-2 registrada: lecturas builtin sin sandbox)
+                    8375ec6 (feat(runtime): API de EOF de stdin — stdin_eof distingue EOF de línea vacía, H-EOF-1 RESUELTA; cita fabricada io.c L58 re-anclada)
                     070a9be (docs: post-commit R155/R156/R157 — reportes, bitácora y memoria)
                     1f5f7e3 (test(config): registrar markers tdd y e2e en pytest.ini — H-AUD-OP-3, oráculo detectó además e2e sin registrar)
                     9a9170c (test(auditoria): oráculo de frescura y humo para dist/bin/opensyn.exe — H-AUD-OP-2, exe regenerado 23:22 con fix EOF)
@@ -65,6 +69,7 @@ Próximo paso:      Ejecutar el anexo Fase 33 de ROADMAP.md — 33.1 actualiza t
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
 |--------|-------------|---------|
+| `96e72f4` | R159/ME config_ruta_absoluta (H-EOF-3 RESUELTA): sandbox de std.sistema operativo — `_syn_normalizar_ruta` con separador de plataforma (H-EOF-3a: antes '/' vs cwd '\\' = sandbox teatro), `_syn_ruta_en_directorio` con borde de componente (H-EOF-3b), normalizador REESCRITO con pila de componentes (H-CFG-1: antes X/../Y → XY); std/sistema.syn resuelve relativa→absoluta + contratos M2 §5.1; principal.syn `ruta_config_absoluta()` en leer/guardar config; test_tiempo reparado (synapse_rt_memory.o, H-CFG-3, 15 errores de link preexistentes). H-CFG-2 REGISTRADA (lecturas builtin sin sandbox — Arquitecto). Oráculo 5/5 sin skips |
 | `1f5f7e3` | R157/ME marker_tdd (H-AUD-OP-3): markers `tdd` y `e2e` registrados en pytest.ini; oráculo de colección limpia (0 PytestUnknownMarkWarning en 3085 tests, `-m tdd` operativa 144). H-TDD-1: `e2e` sin registrado detectado por el oráculo y resuelto en el mismo commit |
 | `9a9170c` | R156/ME opensyn_exe_fresco (H-AUD-OP-2): dist/bin/opensyn.exe regenerado con pipeline real main.py (23:22, con fix EOF); guard OBL-EXE-R2 permanente: mtime(exe) > último commit de principal.syn; smoke dual-modo rc==0. dist/bin/ untracked → artefacto no commiteable |
 | `8375ec6` | R158/ME eof_runtime_api (H-EOF-1 RESUELTA): runtime/core/io.c marca flag de EOF en sus 3 puntos y expone _syn_stdin_eof() (M5 §2.6); binding stdin_eof() con garantiza (M2 §5.1); OpenSyn cierra por EOF real (contadores r155 de respaldo); mapa con entradas explícitas io.c/std-io.syn; oráculo 5/5 + regresión r155 GREEN; H-EOF-RT-1: cita fabricada preexistente "Manual 7 §8" re-anclada a M7 §1.1 |
@@ -101,6 +106,23 @@ Próximo paso:      Ejecutar el anexo Fase 33 de ROADMAP.md — 33.1 actualiza t
 - **H-CONTROL-3 (RESUELTO en working tree):** el MTO validaba solo formato. Fix: `auditar_calidad_tests.py --solo-mto` (pre-commit + CI) valida OBL con Manual § real; SIN_OBL fatal en modo incremental; detección SNIFF ampliada (SNIFF_AMP, fatal con --estricto-sniff). DEUDA VISIBLE: MTO cita 10 secciones renumeradas inexistentes (Manual 7 §6.3/§7, Manual 8 §6.3, Manual 9 §9) y 30 GREEN sin test citador — requieren ratificación del Arquitecto (regla 5).
 - **H-CONTROL-4 (RESUELTO en working tree):** vínculo plan↔código laxo, sello no bloqueante, evidencia desanclada, .syq fuera del alcance, D-9 sin C/opensyn, hook borraba archivos rastreados por patrón, base CI vacía, parser de bitácora hardcodeaba 2026. Fix: vínculo ESTRICTO multi-plan (--plan repetible; hook/CI contrastan TODOS los planes juntos); cambio_hash mismatch BLOQUEA; sello con frescura + --exigir-sello; evidencia CI comiteada exigida (evidencia_ci_ok); .syq en PROD_EXTS/CI; D-9 escanea opensyn/syquex/runtime-core y MODULOS_D9 acepta .c (11 módulos registrados); limpieza del hook SOLO no-rastreados; bitácora con fecha AAAA-MM-DD. Detalle: docs/plan_ME_control_solido.md + docs/verificacion_ME_control_solido.md + docs/GOBERNANZA_BRANCH_PROTECTION.md.
 - **H-TEST-FIX-1 (RESUELTO, fix_test_seccion):** tests/test_auditoria_alineacion.py::test_seccion_es_de_manual fallaba porque la cadena de prueba no contenía el carácter §. Fix: agregar § faltante a "cumple Manual 2 §3 en el codigo". Plan MTS docs/plan_ME_test_seccion_fix.md.
+- **H-CFG-2 (REGISTRADO, 96e72f4 — requiere ratificación del Arquitecto):**
+  `leer_archivo`/`existe_archivo` son BUILTINS del S1 Python
+  (compilador/semantic_scope.py:53-56, decisión ratificada H-R153-2 citando
+  Manual 2 §4.3) que delegan DIRECTO en `_syn_leer_archivo` SIN sandbox;
+  `escribir_archivo`/`eliminar_archivo` sí lo pasan → la LECTURA fuera del cwd
+  no está protegida en el pipeline Python. Resolución asignada: ME futuro de
+  hardening (quitar del builtin o enraizar el sandbox en el runtime); los tests
+  no se tocan (regla 5).
+- **H-CFG-1 (RESUELTO, 96e72f4):** el normalizador retrocedía el componente
+  equivocado al resolver '..' cuando el carácter previo era el separador recién
+  emitido (X/../Y → XY, '..' podía sobrevivir literal); reescrito con pila de
+  componentes ('.' descarta, '..' desapila, '..' sobre raíz relativa se conserva
+  para que el sandbox lo rechace). Detectado por el debug E2E del propio ME.
+- **H-CFG-3 (RESUELTO, 96e72f4 — infraestructura de tests):** `test_tiempo`
+  enlazaba "tiempo.o" sin "synapse_rt_memory.o" (tiempo.c usa pool_alloc) → 15
+  errores de link PREEXISTENTES (verificados con baseline git stash); reparado
+  en harness tests/conftest.py (la especificación C no se tocó).
 - **D-ALINEACION-F31 (RATIFICADO, 469780a):** secciones Manual 6 §5, Manual 5 §2, Manual 1 §1, Manual 1 §5 no tienen oraciones indexadas en .indice.json (el índice solo indexa subsecciones 5.1/5.3, 2.1, 1.1). El código CUMPLE las secciones del manual pero el gate de alineación no puede verificar citas literales sin oraciones en el índice. Decisión: marcar como DESVIACION en expediente f31_deficiencias.md con nota justificativa. Resolución: re-indexar manuales para incluir secciones padre o aceptar deuda.
 - **H-F29-T5b (RESUELTO):** bug RAII preexistente en `runtime/core/sistema.c:24 concat()` con CadenaSegura retornada por FFI — usaba `malloc()` pero liberada con `pool_free()`. Fix commit `478f047`: cambiado a `pool_alloc()`. Mismo bug corregido en `_syn_sha256()`/`_syn_sha256_archivo()` (axon.c:37,63) y `_syn_home()` (modelo.c:781 — usaba `strdup()` que internamente llama `malloc`).
 - **test_binding_typescript:** GREEN (ME_29_T2 completado) — bindings TypeScript implementados en opensyn/bindings_generator.py.
@@ -162,12 +184,16 @@ Próximo paso:      Ejecutar el anexo Fase 33 de ROADMAP.md — 33.1 actualiza t
   entradas explícitas runtime/core/io.c → M5 §2.6 y std/io.syn → M2 §5.1.
   H-EOF-RT-1: cita fabricada preexistente en io.c L58 ("Manual 7 §8") re-anclada
   a M7 §1.1.
-- **H-EOF-3 (NUEVO, DEUDA — resolución asignada):** la lectura de config RELATIVA
-  al cwd NO funciona: `_validar_ruta_segura` (std/sistema.syn:16) rechaza rutas
-  relativas → `leer_modo_config` (principal.syn) cae siempre a los fallbacks HOME/
-  Program Files; el menú de bienvenida es inrunnable en instalación pre-configurada
-  (el E2E del menú lleva skip condicional por esto). Resolución: ME futuro —
-  normalizar ruta de config relativa→absoluta antes de validar.
+- **H-EOF-3 (RESUELTA, 96e72f4 — ME config_ruta_absoluta):** la lectura de config
+  RELATIVA al cwd NO funcionaba: `_validar_ruta_segura` rechazaba TODAS las rutas
+  (relativas por longitud; absolutas por separador '/' vs '\' del cwd crudo —
+  sandbox teatro, todo consumidor real vivía en bypass asm). Cierre en 3 capas:
+  runtime (separador de plataforma H-EOF-3a + comparador con borde de componente
+  H-EOF-3b + normalizador con pila de componentes H-CFG-1), std/sistema.syn
+  (resolución relativa→absoluta ANTES de normalizar + contratos M2 §5.1),
+  principal.syn (ruta_config_absoluta en leer/guardar). Oráculo 5/5 sin skips;
+  el E2E del menú (inmutable) mantiene su skip por dato de instalación PF (la
+  demostración del fix vive en OBL-CFG-R3).
 - **H-AUD-OP-2 (RESUELTO, 9a9170c):** `dist/bin/opensyn.exe` (17-sep 21:11) era STALE —
   anterior a la última edición de `opensyn/principal.syn` (17-sep 22:19, fix
   H-R149-WIP). Cierre (ME opensyn_exe_fresco, R156): exe regenerado con el pipeline
