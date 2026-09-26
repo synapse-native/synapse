@@ -7,12 +7,16 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-09-25** (ME r153_s1_metodos_genericos COMPLETADO — commit d9e842c, H-R152-4 cerrada por Opción A)
+Última actualización: **2026-09-25** (H-AUD-OP-1/2/3 de la auditoría de operatividad OpenSyn REPARADOS — ME eof_cierre_chat 830074a, ME opensyn_exe_fresco 9a9170c, ME marker_tdd 1f5f7e3)
 
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      ME r153_s1_metodos_genericos COMPLETADO (d9e842c) — H-R152-4 CERRADA por Opción A: métodos/genéricos/for-en en S1+S2 y backend lint/fmt/test flipped a los módulos .syn
+Fase roadmap:      REPARACIÓN HALLAZGOS AUDITORÍA-OP COMPLETADA — H-AUD-OP-1 (830074a: chat/menú
+cierran ante EOF), H-AUD-OP-2 (9a9170c: exe fresco + guard de frescura),
+                   H-AUD-OP-3 (1f5f7e3: markers tdd/e2e registrados) — deudas H-EOF-1/H-EOF-3
+                   registradas con resolución (runtime io.c y config relativa→absoluta)
+                   ME r153_s1_metodos_genericos COMPLETADO (d9e842c) — H-R152-4 CERRADA por Opción A: métodos/genéricos/for-en en S1+S2 y backend lint/fmt/test flipped a los módulos .syn
                    ME r151_linea_base COMPLETADO (5db1dab) + ME r152_bootstrap_link COMPLETADO (dbb9717) — H-R151-3 RESUELTA: bootstrap S1/S2 vuelve a ENLAZAR (Manual 1 §6)
                    FASE 32 COMPLETA — Agente de Codificación Avanzado + Memoria Persistente (5/5 ME)
                    FASE 31 COMPLETADA — Herramientas Nativas (ME-1..ME-5)
@@ -30,7 +34,7 @@ Estado:            r153 (Opción A de H-R152-4, ratificada 2026-09-20): R1 built
                    expediente r153 verificado (evidencia d5fb40c8d7530258; 40 CUMPLE +
                    3 DESVIACION ratificadas H-R153-NODE).
                    r151/r152: bootstrap restaurado (ver histórico de sesión 2026-09-20).
-Commit fase:       d9e842c (feat(r153): métodos, genéricos y for-en en S1+S2) sobre dbb9717 (fix(r152): bootstrap restaurado)
+Commit fase:       1f5f7e3 (test(config): markers tdd/e2e) sobre 9a9170c (test(auditoria): guard frescura exe) sobre 830074a (fix(opensyn): cierre EOF chat/menú) — sobre d9e842c (feat(r153))
 Próximo ME:        Fase 33 DEFINIDA — anexo en ROADMAP.md (2026-09-25, sesion post-commit
                    R154): ratificar el anexo y abrir ME 33.1 (tabla M2 §7.2 + oráculo de
                    paridad de nodos) o 33.3 (desviaciones R149 §5), ambas sin dependencias
@@ -41,7 +45,10 @@ Próximo paso:      Ejecutar el anexo Fase 33 de ROADMAP.md — 33.1 actualiza t
                    33.3 ratifica desviaciones R149 §5 (llvm/wasm sin cablear, stubs
                    debugger, axon_build.exe, 3 FFI std.cluster); 33.4 extiende el
                    subconjunto paritario (H-R153-3); 33.5 certificación
-Últimos commits:    d9e842c (feat(r153): métodos, genéricos y for-en en S1+S2 — flip backend lint/fmt/test a los módulos .syn)
+Últimos commits:    1f5f7e3 (test(config): registrar markers tdd y e2e en pytest.ini — H-AUD-OP-3, oráculo detectó además e2e sin registrar)
+                    9a9170c (test(auditoria): oráculo de frescura y humo para dist/bin/opensyn.exe — H-AUD-OP-2, exe regenerado 23:22 con fix EOF)
+                    830074a (fix(opensyn): cierre determinista del chat y menú ante EOF de stdin — H-AUD-OP-1, contadores eof_consecutivos/intentos_menu)
+                    d9e842c (feat(r153): métodos, genéricos y for-en en S1+S2 — flip backend lint/fmt/test a los módulos .syn)
                     dbb9717 (fix(r152): restaurar el enlace del bootstrap S1 — R1 par F5-1, R2 backend lint/fmt/test)
                     5db1dab (test(r151): alinear línea base MTO/TDD — bootstrap on-demand, cita real M7 §2.2)
                     f36849c (fix(r150): cerrar hallazgos funcionales std↔runtime — matriz 35/35, CI, D-R150-9 ratificada)
@@ -54,6 +61,9 @@ Próximo paso:      Ejecutar el anexo Fase 33 de ROADMAP.md — 33.1 actualiza t
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
 |--------|-------------|---------|
+| `1f5f7e3` | R157/ME marker_tdd (H-AUD-OP-3): markers `tdd` y `e2e` registrados en pytest.ini; oráculo de colección limpia (0 PytestUnknownMarkWarning en 3085 tests, `-m tdd` operativa 144). H-TDD-1: `e2e` sin registrado detectado por el oráculo y resuelto en el mismo commit |
+| `9a9170c` | R156/ME opensyn_exe_fresco (H-AUD-OP-2): dist/bin/opensyn.exe regenerado con pipeline real main.py (23:22, con fix EOF); guard OBL-EXE-R2 permanente: mtime(exe) > último commit de principal.syn; smoke dual-modo rc==0. dist/bin/ untracked → artefacto no commiteable |
+| `830074a` | R155/ME eof_cierre_chat (H-AUD-OP-1): chat modo línea y menú de bienvenida cierran ante EOF (3 lecturas vacías → rc=0 / Modo Oráculo por defecto); oráculo E2E GREEN (compila con main.py y ejecuta con stdin cerrado); H-EOF-1 (io.c colapsa EOF/vacío) y H-EOF-3 (config relativa al cwd rechazada; fallbacks PF disparan modo antes del menú) = deudas con resolución |
 | `d9e842c` | R154/ME r153_s1_metodos_genericos: métodos, genéricos y for-en en S1+S2 — flip del backend lint/fmt/test a los módulos .syn (Opción A de H-R152-4) — R1 builtins Lista/Mapa/longitud (lista.c/mapa.c, encajonado por dirección, Manual 2 §4.3); R2 para-en S1+nativo (NODO_PARA_EN=57, Manual 3 §3); R3 métodos postfijo metodo:<tipo>:<nombre> (NODO_METODO=59); R4 principal.syn importa lint/formatter/reports (Manual 8 §4.1); R6 RAII de retorno (M2 §9.1); R5 bootstrap S1→S2 verde. H-R153-NODE ratificada (tabla M2 §7.2 por actualizar — Arquitecto). Oráculos 8/8, TDD módulos 3, matriz 35/35, expediente verificado (evidencia d5fb40c8d7530258) |
 | `dbb9717` | R153/ME r152_bootstrap_link: bootstrap S1 restaurado (H-R151-3, Manual 1 §6) — R1: par F5-1 emitido en _emit_cabecera_comun (paridad con bloque 'modulo'); R2: subcomandos lint/fmt/test con backend real cli_lint/cli_fmt/cli_test (contratos Manual 2 §5.1; C embebido por H-R152-4), 5 externs fantasma eliminados; junit/json reales (Manual 9 §6.2); --coverage honesto rc=1 (H-R152-1). S1/S2 rc=0 con comando CI; test_r3_param_adt GREEN (TDD); oráculo r152 8/8; matriz 35/35; expediente verificado |
 | `5db1dab` | R152/ME r151_linea_base: 4 fallos de línea base alineados con MTO/TDD (solo tests) — puente_canonico 54/57 traducidos (R1/R2), S1 on-demand (R3, destapó H-R151-3), cita fabricada "M7 §7.2" eliminada + skip honesto + benchmark real /v1/chat/completions (R4, H-R151-1); oráculo r151 3 GREEN (anti-fabricación) |
@@ -125,21 +135,40 @@ Próximo paso:      Ejecutar el anexo Fase 33 de ROADMAP.md — 33.1 actualiza t
 
 ### Hallazgos de la auditoría de operatividad OpenSyn (2026-09-25, AUDITORIA-OP-OPENSYN)
 
-- **H-AUD-OP-1 (NUEVO, ALTO — resolución asignada):** el chat en modo oráculo NO
+- **H-AUD-OP-1 (RESUELTO, 830074a):** el chat en modo oráculo NO
   termina ante EOF de stdin: si el pipe se cierra sin enviar "salir",
   `chat_tui` (opensyn/principal.syn) re-imprime "Tu>" en bucle infinito. Evidencia:
   `echo "status" | timeout 12 dist/bin/opensyn.exe` → rc=124 y log de 21 MB
   (~210.000 prompts). Los oráculos no lo detectan porque siempre envían "salir".
-  Resolución: ME futuro — la lectura de línea debe distinguir EOF de línea vacía y
-  romper el bucle; añadir oráculo de stdin cerrado sin "salir" (rc=0 exigido).
-- **H-AUD-OP-2 (NUEVO, MEDIO):** `dist/bin/opensyn.exe` (17-sep 21:11) es STALE —
+  Cierre (ME eof_cierre_chat, R155): contadores en capa aplicación — `eof_consecutivos`
+  en el bucle de chat modo línea y `intentos_menu` en el menú de bienvenida;
+  3 lecturas vacías = EOF → cierre limpio rc=0 / Modo Oráculo por defecto. Oráculo
+  E2E permanente (stdin cerrado sin "salir" → rc==0 exigido). Deudas derivadas:
+  H-EOF-1 y H-EOF-3 (abajo).
+- **H-EOF-1 (NUEVO, DEUDA — resolución asignada):** causa raíz runtime de H-AUD-OP-1:
+  `_syn_leer_linea()` (runtime/core/io.c:195) colapsa EOF y línea vacía en
+  {longitud=0} — indistinguibles en capa aplicación. Fix de API del runtime FUERA de
+  alcance del ME (io.c sin mapeo en mapa_alineacion, LSP sensible). Resolución:
+  ME futuro de runtime — API que distinga EOF de línea vacía (p.ej. retorno
+  centinela), actualizando los bucles lectores de principal.syn.
+- **H-EOF-3 (NUEVO, DEUDA — resolución asignada):** la lectura de config RELATIVA
+  al cwd NO funciona: `_validar_ruta_segura` (std/sistema.syn:16) rechaza rutas
+  relativas → `leer_modo_config` (principal.syn) cae siempre a los fallbacks HOME/
+  Program Files; el menú de bienvenida es inrunnable en instalación pre-configurada
+  (el E2E del menú lleva skip condicional por esto). Resolución: ME futuro —
+  normalizar ruta de config relativa→absoluta antes de validar.
+- **H-AUD-OP-2 (RESUELTO, 9a9170c):** `dist/bin/opensyn.exe` (17-sep 21:11) era STALE —
   anterior a la última edición de `opensyn/principal.syn` (17-sep 22:19, fix
-  H-R149-WIP). Compilación fresca del fuente actual: rc=0 y smoke idéntico (sin
-  defecto de usuario observable). Resolución: regenerar dist/bin en el próximo ME +
-  verificación de frescura fuente→exe en el release (lección R144/R146).
-- **H-AUD-OP-3 (NUEVO, MENOR):** marker `@pytest.mark.tdd` sin registrar en
+  H-R149-WIP). Cierre (ME opensyn_exe_fresco, R156): exe regenerado con el pipeline
+  real main.py (23:22, incluye fix EOF) + guard permanente de frescura
+  (mtime(exe) > último commit del fuente, OBL-EXE-R2). Nota: dist/bin/ es untracked
+  → el guard protege el artefacto local; sincronizarlo en CI queda a diseño de
+  release. Deuda menor: dist/bin/synapse_lsp.exe (10-sep) fuera del hallazgo.
+- **H-AUD-OP-3 (RESUELTO, 1f5f7e3):** marker `@pytest.mark.tdd` sin registrar en
   `pytest.ini` → 8 PytestUnknownMarkWarning en tests/opensyn. Cambio de CONFIG de
-  tests (no de tests, regla 5 intacta): añadir `tdd:` a markers.
+  tests (no de tests, regla 5 intacta): `tdd:` añadido a markers; el oráculo de
+  colección limpia detectó además `e2e` sin registrar (H-TDD-1) → registrados ambos,
+  0 PytestUnknownMarkWarning en la suite (oráculo permanente OBL-TDD-R1/R2).
 - **H-R144-3 (PROPUESTA DE CIERRE):** `opensyn/modelos.toml` actual tiene URLs
   HuggingFace LFS reales + SHA-256 reales, 0 placeholders (grep 2026-09-25) —
   ratificar cierre el Arquitecto.
