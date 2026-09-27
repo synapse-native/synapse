@@ -7,12 +7,14 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-09-26** (H-CFG-4/H-CFG-5 RESUELTAS — ME reparacion_imports_ffi 4697132: imports con fallback a raíz + FFI lista/mapa con handle entero y firmas únicas; bootstrap S1 reparado; H-CFG-2 de R159 sigue pendiente de ratificación)
+Última actualización: **2026-09-27** (Fase 33.2 COMPLETADA — ME coverage_aristas d0386f3: --coverage con instrumentación de aristas en S1+nativo, runtime JSON + informe HTML; H-R152-1 CERRADA; H-CFG-2 de R159 sigue pendiente de ratificación)
 
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      DEUDA H-CFG-4/H-CFG-5 RESUELTAS (4697132: ME reparacion_imports_ffi —
+Fase roadmap:      FASE 33.2 COMPLETADA — ME coverage_aristas (d0386f3): --coverage con
+                   instrumentación de aristas en S1+nativo; H-R152-1 CERRADA
+                   DEUDA H-CFG-4/H-CFG-5 RESUELTAS (4697132: ME reparacion_imports_ffi —
                    imports con fallback a la raíz del repo, FFI lista/mapa con handle
                    entero M6 §3.1 + firmas únicas; bootstrap S1 reparado — H-CFG-5b)
                    DEUDA H-EOF-3 RESUELTA (96e72f4: sandbox de std.sistema operativo —
@@ -31,7 +33,13 @@ Fase roadmap:      DEUDA H-CFG-4/H-CFG-5 RESUELTAS (4697132: ME reparacion_impor
                    FASE 30-c ME_opensyn_best — ME-1..ME-6 TODOS COMPLETADOS
                    FASE 30-b HARDENING — OpenSyn TUI + IA local (R141/R142/R143) COMPLETADA
                    FASE 30 COMPLETADA — Instalación Unificada y Distribución Final
-Estado:            r153 (Opción A de H-R152-4, ratificada 2026-09-20): R1 builtins Lista/Mapa/
+Estado:            Fase 33.2 COMPLETA (d0386f3): nucleo/coverage.syn único (emisor cov_* +
+                   reporte covrep_*/HTML), runtime/core/coverage.c/.h (buffer estático,
+                   volcado JSON atexit), sondas _syn_cov OFF por defecto en S1 y nativo,
+                   cli_test --coverage con JSON+HTML reales (Coverage: 66% en el probe);
+                   oráculo 4/4, integration 6/6, unit 514/514; contrastar PASA;
+                   expediente 34 anclas CUMPLE (evidencia b888fe497b9ae83c).
+                   r153 (Opción A de H-R152-4, ratificada 2026-09-20): R1 builtins Lista/Mapa/
                    longitud delegando en runtime/core lista.c/mapa.c (ME f325 consumido);
                    R2 para-en paridad S1+nativo (T_EN, NODO_PARA_EN=57); R3 métodos postfijo
                    metodo:<tipo>:<nombre> (NODO_METODO=59); R4 cli_lint/fmt/test delegan en
@@ -42,17 +50,17 @@ Estado:            r153 (Opción A de H-R152-4, ratificada 2026-09-20): R1 built
                    expediente r153 verificado (evidencia d5fb40c8d7530258; 40 CUMPLE +
                    3 DESVIACION ratificadas H-R153-NODE).
                    r151/r152: bootstrap restaurado (ver histórico de sesión 2026-09-20).
-Commit fase:       4697132 (fix(compilador): imports fallback a raíz + FFI lista/mapa — H-CFG-4/H-CFG-5 RESUELTAS, bootstrap S1 reparado) sobre e780627 (docs manual2 §7.2, ME 33.1) sobre 96e72f4 (fix(sandbox): H-EOF-3) y 8375ec6 (feat(runtime): API de EOF stdin)
+Commit fase:       d0386f3 (feat(coverage): --coverage con instrumentación de aristas en S1 y generador nativo — H-R152-1 CERRADA) sobre 4697132 (fix(compilador): imports fallback a raíz + FFI lista/mapa — H-CFG-4/H-CFG-5 RESUELTAS, bootstrap S1 reparado) sobre e780627 (docs manual2 §7.2, ME 33.1) sobre 96e72f4 (fix(sandbox): H-EOF-3) y 8375ec6 (feat(runtime): API de EOF stdin)
 Próximo ME:        Ratificaciones pendientes del Arquitecto: H-CFG-2 (sandbox para lecturas
                    builtin), H-R144-3 (cierre modelos.toml), 3 SIN_CITA heredados de
                    Fase 32 en tests/opensyn (ver lección R160). Fase 33 restante:
-                   33.2 (--coverage con instrumentación de aristas), 33.4 (extender
-                   subconjunto paritario H-R153-3), 33.5 (certificación). 33.1 COMPLETADO (e780627)
-Próximo paso:      Fase 33 restante — 33.2 cierra H-R152-1 (--coverage con instrumentación
-                   de aristas); 33.4 extiende el subconjunto paritario (H-R153-3);
+                   33.4 (extender subconjunto paritario H-R153-3), 33.5 (certificación).
+                   33.1 COMPLETADO (e780627). 33.2 COMPLETADO (d0386f3)
+Próximo paso:      Fase 33 restante — 33.4 extiende el subconjunto paritario (H-R153-3);
                    33.5 certificación; 33.3 pendiente de ratificación del Arquitecto
                    (desviaciones R149 §5). Ratificar H-CFG-2/H-R144-3/SIN_CITA Fase 32
-Últimos commits:    4697132 (fix(compilador): imports con fallback a raíz + FFI lista/mapa con handle entero y firmas únicas — H-CFG-4/H-CFG-5 RESUELTAS; bootstrap S1 reparado H-CFG-5b)
+Últimos commits:    d0386f3 (feat(coverage): --coverage con instrumentación de aristas en S1 y generador nativo — H-R152-1 CERRADA)
+                    4697132 (fix(compilador): imports con fallback a raíz + FFI lista/mapa con handle entero y firmas únicas — H-CFG-4/H-CFG-5 RESUELTAS; bootstrap S1 reparado H-CFG-5b)
                     e780627 (docs(manual2): tabla §7.2 corregida contra el nativo + filas NODO_PARA_EN=57/NODO_METODO=59 + oráculo de paridad 3-vías — ME 33.1)
                     96e72f4 (fix(sandbox): rutas relativas y sandbox de std.sistema operativos — H-EOF-3 RESUELTA; H-CFG-2 registrada: lecturas builtin sin sandbox)
                     8375ec6 (feat(runtime): API de EOF de stdin — stdin_eof distingue EOF de línea vacía, H-EOF-1 RESUELTA; cita fabricada io.c L58 re-anclada)
@@ -73,6 +81,7 @@ Próximo paso:      Fase 33 restante — 33.2 cierra H-R152-1 (--coverage con in
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
 |--------|-------------|---------|
+| `d0386f3` | R161/ME coverage_aristas (Fase 33.2, H-R152-1 CERRADA): --coverage con instrumentación de aristas en AMBAS capas. R1 runtime/core/coverage.c/.h NUEVOS — buffer estático de aristas (M5 §2.6), catálogo de ramas del emisor, volcado JSON atexit, OFF salvo SYNAPSE_COVERAGE=1. R2 S1: sondas _syn_cov(l,d) en emit_control/generator/context + --coverage en pipeline.py/cli.py (sin la bandera el C emitido es byte-idéntico, M1 §6). R3 nativo: nucleo/coverage.syn ÚNICO (emisor cov_* + reporte covrep_parsear/coverage_generar_html) + sondas en generador/{orquestador,recorrido,nodos_flujo}.syn + unity generator.syn regenerada. R4: cli_test formato 3 — SYNAPSE_COVERAGE=1 → compilar → ejecutar → covrep_parsear(<base>.coverage.json) → HTML `Coverage: 66%` + aristas no ejecutadas. Oráculo NUEVO test_oraculos_coverage.py 4/4 (E2E real: 3 ramas, 2 cubiertas, sino listada; sin --coverage el C no lleva sondas; MTO --solo-mto); integration 6/6; unit 514/514; contrastar PASA; 0 brechas; expediente 34 anclas (evidencia b888fe497b9ae83c). Lecciones: retorno CadenaSegura con buffer estático (no de stack — concat pisa el stack antes del memcpy), el reset no borra la ruta externa fijada por generar_etapa, offsets del parser JSON (+20/+11), exes stage1/stage2 stale tras editar nucleo/*.syn, citas del expediente LITERALES (bullets sin guion no se indexan; M9 §6.1 lleva prefijo □), gate de lectura exige sección explícita por archivo |
 | `4697132` | R160/ME reparacion_imports_ffi (H-CFG-4/H-CFG-5 RESUELTAS): R1 imports — resolvedor_axon.py convención de paquete + fallback a la RAÍZ del repo (E-603 según carpeta del fuente) y pipeline.py resuelve imports encadenados contra el DIRECTORIO del módulo importado + precedencia del principal del USUARIO (M1 §3.1). R2 FFI — prototipos canónicos ÚNICOS (fin conflicting-types test_puente_ffi), casts (void*)(intptr_t)(h)/(intptr_t)crear() en 3 bordes del emisor y variables Lista<T>/Mapa<K,V> como intptr_t; H-CFG-5b: la regresión destapó que void* + asignación (intptr_t) ROMPÍA el bootstrap S1 (M1 §6) — reparado alineando el emisor al manual. R3 MTO — 10 citas muertas re-ancladas (M7 §4.2, M9 §5.x/§2.x/§4.1); deuda MTO 30→29 GREEN sin citar (oráculo nuevo cita OBL-M1-02). Oráculo NUEVO 6/6 sin skips; puente_ffi 12/12; unit 514/514; contrastar PASA; expediente 10 anclas CUMPLE (evidencia a14b5fb6f7623963). Lección: auditar_calidad_tests full-scan NUNCA como oráculo directo de plan — envoltorio --solo-mto en el oráculo del ME |
 | `96e72f4` | R159/ME config_ruta_absoluta (H-EOF-3 RESUELTA): sandbox de std.sistema operativo — `_syn_normalizar_ruta` con separador de plataforma (H-EOF-3a: antes '/' vs cwd '\\' = sandbox teatro), `_syn_ruta_en_directorio` con borde de componente (H-EOF-3b), normalizador REESCRITO con pila de componentes (H-CFG-1: antes X/../Y → XY); std/sistema.syn resuelve relativa→absoluta + contratos M2 §5.1; principal.syn `ruta_config_absoluta()` en leer/guardar config; test_tiempo reparado (synapse_rt_memory.o, H-CFG-3, 15 errores de link preexistentes). H-CFG-2 REGISTRADA (lecturas builtin sin sandbox — Arquitecto). Oráculo 5/5 sin skips |
 | `1f5f7e3` | R157/ME marker_tdd (H-AUD-OP-3): markers `tdd` y `e2e` registrados en pytest.ini; oráculo de colección limpia (0 PytestUnknownMarkWarning en 3085 tests, `-m tdd` operativa 144). H-TDD-1: `e2e` sin registrado detectado por el oráculo y resuelto en el mismo commit |
