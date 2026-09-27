@@ -7,12 +7,15 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-09-26** (H-EOF-3 RESUELTA — ME config_ruta_absoluta 96e72f4: sandbox de std.sistema operativo + config relativa→absoluta; H-CFG-2 registrada)
+Última actualización: **2026-09-26** (H-CFG-4/H-CFG-5 RESUELTAS — ME reparacion_imports_ffi 4697132: imports con fallback a raíz + FFI lista/mapa con handle entero y firmas únicas; bootstrap S1 reparado; H-CFG-2 de R159 sigue pendiente de ratificación)
 
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      DEUDA H-EOF-3 RESUELTA (96e72f4: sandbox de std.sistema operativo —
+Fase roadmap:      DEUDA H-CFG-4/H-CFG-5 RESUELTAS (4697132: ME reparacion_imports_ffi —
+                   imports con fallback a la raíz del repo, FFI lista/mapa con handle
+                   entero M6 §3.1 + firmas únicas; bootstrap S1 reparado — H-CFG-5b)
+                   DEUDA H-EOF-3 RESUELTA (96e72f4: sandbox de std.sistema operativo —
                    separador de plataforma, borde de componente, normalizador con pila;
                    config del cwd relativa→absoluta decide el modo de OpenSyn)
                    DEUDA H-EOF-1 RESUELTA (8375ec6: API stdin_eof en runtime — EOF real ≠
@@ -39,18 +42,19 @@ Estado:            r153 (Opción A de H-R152-4, ratificada 2026-09-20): R1 built
                    expediente r153 verificado (evidencia d5fb40c8d7530258; 40 CUMPLE +
                    3 DESVIACION ratificadas H-R153-NODE).
                    r151/r152: bootstrap restaurado (ver histórico de sesión 2026-09-20).
-Commit fase:       96e72f4 (fix(sandbox): rutas relativas + sandbox std.sistema operativo) sobre 8375ec6 (feat(runtime): API de EOF stdin) — sobre 070a9be (docs post-commit R155-157) y 1f5f7e3/9a9170c/830074a (H-AUD-OP-3/2/1)
+Commit fase:       4697132 (fix(compilador): imports fallback a raíz + FFI lista/mapa — H-CFG-4/H-CFG-5 RESUELTAS, bootstrap S1 reparado) sobre e780627 (docs manual2 §7.2, ME 33.1) sobre 96e72f4 (fix(sandbox): H-EOF-3) y 8375ec6 (feat(runtime): API de EOF stdin)
 Próximo ME:        Ratificaciones pendientes del Arquitecto: H-CFG-2 (sandbox para lecturas
-                   builtin), H-R144-3 (cierre modelos.toml). Fase 33 DEFINIDA — anexo en
-                   ROADMAP.md (2026-09-25, sesion post-commit R154): abrir ME 33.1 (tabla
-                   M2 §7.2 + oráculo de paridad de nodos) o 33.3 (desviaciones R149 §5)
-Próximo paso:      Ejecutar el anexo Fase 33 de ROADMAP.md — 33.1 actualiza tabla M2 §7.2
-                   con NODO_PARA_EN=57/NODO_METODO=59 (H-R153-NODE, tarea del Arquitecto);
-                   33.2 cierra H-R152-1 (--coverage con instrumentación de aristas);
-                   33.3 ratifica desviaciones R149 §5 (llvm/wasm sin cablear, stubs
-                   debugger, axon_build.exe, 3 FFI std.cluster); 33.4 extiende el
-                   subconjunto paritario (H-R153-3); 33.5 certificación
-Últimos commits:    96e72f4 (fix(sandbox): rutas relativas y sandbox de std.sistema operativos — H-EOF-3 RESUELTA; H-CFG-2 registrada: lecturas builtin sin sandbox)
+                   builtin), H-R144-3 (cierre modelos.toml), 3 SIN_CITA heredados de
+                   Fase 32 en tests/opensyn (ver lección R160). Fase 33 restante:
+                   33.2 (--coverage con instrumentación de aristas), 33.4 (extender
+                   subconjunto paritario H-R153-3), 33.5 (certificación). 33.1 COMPLETADO (e780627)
+Próximo paso:      Fase 33 restante — 33.2 cierra H-R152-1 (--coverage con instrumentación
+                   de aristas); 33.4 extiende el subconjunto paritario (H-R153-3);
+                   33.5 certificación; 33.3 pendiente de ratificación del Arquitecto
+                   (desviaciones R149 §5). Ratificar H-CFG-2/H-R144-3/SIN_CITA Fase 32
+Últimos commits:    4697132 (fix(compilador): imports con fallback a raíz + FFI lista/mapa con handle entero y firmas únicas — H-CFG-4/H-CFG-5 RESUELTAS; bootstrap S1 reparado H-CFG-5b)
+                    e780627 (docs(manual2): tabla §7.2 corregida contra el nativo + filas NODO_PARA_EN=57/NODO_METODO=59 + oráculo de paridad 3-vías — ME 33.1)
+                    96e72f4 (fix(sandbox): rutas relativas y sandbox de std.sistema operativos — H-EOF-3 RESUELTA; H-CFG-2 registrada: lecturas builtin sin sandbox)
                     8375ec6 (feat(runtime): API de EOF de stdin — stdin_eof distingue EOF de línea vacía, H-EOF-1 RESUELTA; cita fabricada io.c L58 re-anclada)
                     070a9be (docs: post-commit R155/R156/R157 — reportes, bitácora y memoria)
                     1f5f7e3 (test(config): registrar markers tdd y e2e en pytest.ini — H-AUD-OP-3, oráculo detectó además e2e sin registrar)
@@ -69,6 +73,7 @@ Próximo paso:      Ejecutar el anexo Fase 33 de ROADMAP.md — 33.1 actualiza t
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
 |--------|-------------|---------|
+| `4697132` | R160/ME reparacion_imports_ffi (H-CFG-4/H-CFG-5 RESUELTAS): R1 imports — resolvedor_axon.py convención de paquete + fallback a la RAÍZ del repo (E-603 según carpeta del fuente) y pipeline.py resuelve imports encadenados contra el DIRECTORIO del módulo importado + precedencia del principal del USUARIO (M1 §3.1). R2 FFI — prototipos canónicos ÚNICOS (fin conflicting-types test_puente_ffi), casts (void*)(intptr_t)(h)/(intptr_t)crear() en 3 bordes del emisor y variables Lista<T>/Mapa<K,V> como intptr_t; H-CFG-5b: la regresión destapó que void* + asignación (intptr_t) ROMPÍA el bootstrap S1 (M1 §6) — reparado alineando el emisor al manual. R3 MTO — 10 citas muertas re-ancladas (M7 §4.2, M9 §5.x/§2.x/§4.1); deuda MTO 30→29 GREEN sin citar (oráculo nuevo cita OBL-M1-02). Oráculo NUEVO 6/6 sin skips; puente_ffi 12/12; unit 514/514; contrastar PASA; expediente 10 anclas CUMPLE (evidencia a14b5fb6f7623963). Lección: auditar_calidad_tests full-scan NUNCA como oráculo directo de plan — envoltorio --solo-mto en el oráculo del ME |
 | `96e72f4` | R159/ME config_ruta_absoluta (H-EOF-3 RESUELTA): sandbox de std.sistema operativo — `_syn_normalizar_ruta` con separador de plataforma (H-EOF-3a: antes '/' vs cwd '\\' = sandbox teatro), `_syn_ruta_en_directorio` con borde de componente (H-EOF-3b), normalizador REESCRITO con pila de componentes (H-CFG-1: antes X/../Y → XY); std/sistema.syn resuelve relativa→absoluta + contratos M2 §5.1; principal.syn `ruta_config_absoluta()` en leer/guardar config; test_tiempo reparado (synapse_rt_memory.o, H-CFG-3, 15 errores de link preexistentes). H-CFG-2 REGISTRADA (lecturas builtin sin sandbox — Arquitecto). Oráculo 5/5 sin skips |
 | `1f5f7e3` | R157/ME marker_tdd (H-AUD-OP-3): markers `tdd` y `e2e` registrados en pytest.ini; oráculo de colección limpia (0 PytestUnknownMarkWarning en 3085 tests, `-m tdd` operativa 144). H-TDD-1: `e2e` sin registrado detectado por el oráculo y resuelto en el mismo commit |
 | `9a9170c` | R156/ME opensyn_exe_fresco (H-AUD-OP-2): dist/bin/opensyn.exe regenerado con pipeline real main.py (23:22, con fix EOF); guard OBL-EXE-R2 permanente: mtime(exe) > último commit de principal.syn; smoke dual-modo rc==0. dist/bin/ untracked → artefacto no commiteable |
@@ -101,6 +106,33 @@ Próximo paso:      Ejecutar el anexo Fase 33 de ROADMAP.md — 33.1 actualiza t
 
 ### Deudas / Hallazgos críticos activos
 
+- **H-CFG-4 (RESUELTO, 4697132 — ME reparacion_imports_ffi):** la resolución de imports
+  fallaba (E-603) cuando el fuente vivía fuera de la raíz (probes en $TEMP, tests/):
+  `importar opensyn` solo buscaba en dir_base. Cierre: resolvedor_axon.py añade
+  convención de PAQUETE (<base>/<mod>/principal.syn) y fallback de búsqueda a la RAÍZ
+  del repo; pipeline.py resuelve imports ENCADENADOS contra el directorio del MÓDULO
+  importado (no del fuente raíz) y descarta el principal IMPORTADO cuando el propio
+  archivo define el suyo (Manual 1 §3.1). Repro exacto cubierto por el oráculo del ME.
+- **H-CFG-5 (RESUELTO, 4697132 — ME reparacion_imports_ffi):** las FFI de colecciones
+  declaradas `externo funcion _syn_lista_*` duplicaban los prototipos canónicos del
+  header compartido con tipos incompatibles (handle entero Synapse vs void* C) →
+  conflicting-types en test_puente_ffi. Cierre (Manual 6 §3.1 + M2 §4.1): entran a
+  _C_FUNCTIONS_NEED_DATOS (sin duplicación), casts explícitos (void*)(intptr_t)(h) /
+  (intptr_t)crear() en los 3 bordes del emisor y prototipos únicos en generator.py.
+- **H-CFG-5b (RESUELTO en el mismo ME, 4697132):** hallado por la regresión unit —
+  la mitad R2 del plan dejaba el modelo de tipos a medias: traducir_tipo_c declaraba
+  variables Lista<T>/Mapa<K,V> como void* mientras los creadores emitían (intptr_t) →
+  `void* x = (intptr_t)_syn_lista_crear()` ROMPÍA el bootstrap S1 (Regla de hierro
+  M1 §6, test_r3_param_adt_s1 RED). Cierre: las variables de colección se declaran
+  intptr_t (mismo ancho que void* en x86-64) y el for-en castea su temporal
+  (void*)(intptr_t)(...) — alineado al manual, sin relajar el oráculo (lección TDD).
+- **Lección R160 (gobernanza de oráculos, verificada):** un plan MTS jamás debe citar
+  `auditoria/auditar_calidad_tests.py` (escaneo completo) como oráculo directo: su modo
+  full-scan reporta SIN_CITA fatales de deuda preexistente fuera de alcance (hoy 3 en
+  tests/opensyn/test_{memoria_cifrada,pipeline_multiagente,verificacion_aot}.py de
+  Fase 32, requieren ratificación del Arquitecto) y contrastar.py no acepta argumentos
+  ni tolera fallos no atribuibles. Forma canónica del repo: envoltorio
+  `--solo-mto` dentro del oráculo test_*.py del ME (patrón test_oraculos_<ME>.py).
 - **H-CONTROL-1 (RESUELTO en working tree, ME-control_solido):** el job CI `auditoria` usaba `steps.base.outputs.ref` SIN definir el paso `id: base` → base vacía → `git diff "" HEAD` → 0 brechas FALSAS: el gate de bitácora más fuerte del servidor estaba muerto (fallo abierto). Fix: paso `id: base` propio + fallo por exit code (pipefail). Además `nonnull_base` degrada base vacía a HEAD~1 en verificar_alineacion/contrastar.
 - **H-CONTROL-2 (RESUELTO en working tree):** NINGUNA capa ejecutaba los oráculos MTS: CI pasaba `--sin-oraculos` a alineacion.py y el hook solo los corría con ALINEACION_ORACULOS=1 (jamás establecida). Fix: CI sin `--sin-oraculos`; hook los corre por defecto (opt-out=0); contrastar.py EJECUTA cada oráculo del plan (pytest release: SKIP/vacío/fallo = FAIL; scripts: exigen marca OK/PASS/SIN BRECHAS). Oráculo nuevo: tests/auditoria/test_gate_mts_oraculos.py (15 GREEN, OBL-MCTRL-01..04).
 - **H-CONTROL-3 (RESUELTO en working tree):** el MTO validaba solo formato. Fix: `auditar_calidad_tests.py --solo-mto` (pre-commit + CI) valida OBL con Manual § real; SIN_OBL fatal en modo incremental; detección SNIFF ampliada (SNIFF_AMP, fatal con --estricto-sniff). DEUDA VISIBLE: MTO cita 10 secciones renumeradas inexistentes (Manual 7 §6.3/§7, Manual 8 §6.3, Manual 9 §9) y 30 GREEN sin test citador — requieren ratificación del Arquitecto (regla 5).
