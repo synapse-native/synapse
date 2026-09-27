@@ -235,6 +235,28 @@ class GeneratorContext:
             'memcpy': ['void*', 'void*', 'size_t'],
             'memset': ['void*', 'int', 'size_t'],
             'memmove': ['void*', 'void*', 'size_t'],
+            # cumple Manual 6 §3.1: FFI con handle entero del lado Synapse ↔
+            # void*/const char* del lado C; UNA sola declaración canónica.
+            # cumple Manual 2 §4.1: entero es int64_t — casts explícitos en el C.
+            # H-CFG-5 (ME reparacion_imports_ffi): FFI de lista/mapa — ya están declarados
+            # canónicamente en el header compartido con las firmas de la
+            # implementación (void*/const char*, runtime/core/lista.c/mapa.c).
+            # Un `externo funcion _syn_lista_*` en .syn (handle entero)
+            # duplicaba la declaración con tipos incompatibles → conflicting
+            # types en _synapse_shared.h (test_puente_ffi_lista_mapa, fallo
+            # preexistente verificado con baseline git stash).
+            '_syn_lista_crear': [], '_syn_lista_longitud': ['void*'],
+            '_syn_lista_agregar': ['void*', 'int64_t'],
+            '_syn_lista_obtener': ['void*', 'int'],
+            '_syn_lista_establecer': ['void*', 'int', 'int64_t'],
+            '_syn_lista_eliminar': ['void*', 'int'],
+            '_syn_lista_limpiar': ['void*'], '_syn_lista_liberar': ['void*'],
+            '_syn_mapa_crear': [], '_syn_mapa_longitud': ['void*'],
+            '_syn_mapa_poner': ['void*', 'const char*', 'int64_t'],
+            '_syn_mapa_obtener': ['void*', 'const char*'],
+            '_syn_mapa_contiene': ['void*', 'const char*'],
+            '_syn_mapa_eliminar': ['void*', 'const char*'],
+            '_syn_mapa_limpiar': ['void*'], '_syn_mapa_liberar': ['void*'],
         }
 
         # OO types that have FULL typedef definitions in the header
@@ -581,11 +603,17 @@ class GeneratorContext:
             if (base, args) in self._instancias_adt:
                 return self._instancias_adt[(base, args)]['nombre_c']
             # H-R90-15 + cumple Manual 2 §4.3 (H-R153-2): Lista<T>/Mapa<K,V>
-            # son handles opacos del runtime de colecciones (runtime/core/
-            # lista.c/mapa.c, slots int64) — void* en C. El emisor de llamadas
+            # son handles del runtime de colecciones (runtime/core/
+            # lista.c/mapa.c, slots int64). El emisor de llamadas
             # y de for-en usa los builtins _syn_lista_*/_syn_mapa_*.
+            # cumple Manual 6 §3.1 + Manual 2 §4.1 (H-CFG-5): el handle es
+            # `entero` (int64_t) del lado Synapse — en C se declara intptr_t
+            # (mismo ancho que void* en x86-64) para que `let l = lista_crear()`
+            # y las asignaciones/parámetros de handle compilen SIN casts
+            # int↔puntero implícitos; los bordes FFI castea el emisor de
+            # llamadas ((void*)(intptr_t)(h) / (intptr_t)_syn_lista_crear()).
             if base in ('Lista', 'Mapa'):
-                return 'void*'
+                return 'intptr_t'
         if tipo_synapse.startswith('Resultado<'):
             return 'Resultado_T'
         # M22.6: Handle pointer types (e.g. int* -> int*, not struct int*)

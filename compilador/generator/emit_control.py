@@ -71,7 +71,12 @@ def _emitir_para_en(ctx, nodo, var_en: str, iterable_en):
         tipo_elem_c = ctx.traducir_tipo_c(tipo_elem)
         es_slot_direc = tipo_elem_c not in ('int64_t', 'double')
         tmp_lista = f"_fe_list_{abs(hash(str(id(nodo)))) % 100000}"
-        ctx.write_line(f"void* {tmp_lista} = (void*)({iterable_c});")
+        # cumple Manual 6 §3.1: el handle es entero (intptr_t en C, H-CFG-5);
+        # el cast explícito (void*)(intptr_t)(...) acepta handle entero o
+        # void* heredado — sin conversión implícita int↔puntero.
+        # cumple Manual 1 §6: sin esto el bootstrap S1 no compila (regla de
+        # hierro — ninguna característica rompe el bootstrap).
+        ctx.write_line(f"void* {tmp_lista} = (void*)(intptr_t)({iterable_c});")
         ctx.write_line(f"for (int64_t _fe_i = 0; _fe_i < _syn_lista_longitud({tmp_lista}); _fe_i++) {{")
         ctx.inc_indent()
         slot_c = f"_syn_lista_obtener({tmp_lista}, (int)_fe_i)"

@@ -48,8 +48,8 @@ debe dejar en verde. Toda prueba (`test_*.py`) debe mapear a una entrada `OBL-*`
 
 ## M7 — OpenSyn (IA / RAG / validación)
 - OBL-M7-01 | Manual 7 §2.3 | Inyección de contexto estático (reglas Syquex) en prompt | integración | GREEN
-- OBL-M7-02 | Manual 7 §6.3 | Bucle de validación 3 intentos | integración | GREEN
-- OBL-M7-03 | Manual 7 §7 | Transpilación Python→Syquex: el .syq generado COMPILA | integración | GREEN
+- OBL-M7-02 | Manual 7 §4.2 | Bucle de validación 3 intentos | integración | GREEN
+- OBL-M7-03 | Manual 6 §6.2 | Transpilación Python→Syquex: el .syq generado COMPILA | integración | GREEN
 
 ## M8 — HERRAMIENTAS DE DESARROLLO (F27, ACTIVO)
 - OBL-M8-01 | Manual 8 §1.2 | LSP initialize/initialized/shutdown | integración | GREEN
@@ -60,7 +60,7 @@ debe dejar en verde. Toda prueba (`test_*.py`) debe mapear a una entrada `OBL-*`
 - OBL-M8-06 | Manual 8 §5.2/§5.3/§5.4 | Debugger time-travel + breakpoints reversibles | TDD | GREEN (C tests 206/206 PASS + pytest 9/9 PASS, 2026-08-31)
 - OBL-M8-07 | Manual 8 §4.2/§5/§7 | CLI run / debug / opensyn | TDD | GREEN (test_cli_run_debug.py 16/16 PASS, 2026-08-31)
 - OBL-M8-08 | Manual 8 §1.4 | completion_symbols real (gap FFI RAII) | TDD | GREEN (verificado 2026-08-31)
-- OBL-M8-09 | Manual 8 §6.3 / Manual 7 §6.3 | Bucle de validación integrado en LSP | integración | GREEN
+- OBL-M8-09 | Manual 8 §5.4 / Manual 7 §4.2 | Bucle de validación integrado en LSP | integración | GREEN
 - OBL-M8-10 | Manual 6 §5 | Aislamiento de workspaces en Axon (.axon/cache/, lockfile SHA-256) | integración | GREEN
 - OBL-M8-11 | Manual 3 §12 | Framework de testing nativo lib/pruebas.syq (assert, test, suite) | integración | GREEN
 - OBL-M8-12 | Manual 2 §12 | Linter nativo nucleo/lint.syn (5 reglas WARN_LINT_*) | integración | GREEN
@@ -70,12 +70,12 @@ debe dejar en verde. Toda prueba (`test_*.py`) debe mapear a una entrada `OBL-*`
 
 ## M9 — Distribución / F29 / F30
 - OBL-M9-01 | Manual 9 §5.7 / F29 | Detección de hardware `std/os.syn` | TDD | GREEN (ME-1 commit acd7bf8, 5/5 PASS)
-- OBL-M9-02 | Manual 9 §9 / F29 | Installer OpenSyn (`opensyn/installer.syn`) | TDD | RED ← ME_29_T2
-- OBL-M9-03 | Manual 9 §9 / F29 | Gestión de modelos OpenSyn | TDD | RED ← ME_29_T3
-- OBL-M9-04 | Manual 9 §9 / F30 | Instaladores .iss/.sh/.dmg unificados | TDD | RED ← ME_30_T1
-- OBL-M9-05 | Manual 9 §9 / F30 | Makefile / build.py reproducible | TDD | RED ← ME_30_T2
-- OBL-M9-06 | Manual 9 §9 / F30 | Distribución final empaquetada y firmada | TDD | RED ← ME_30_T3
-- OBL-M9-07 | Manual 9 §9 / F30 / Hito 8 | Release unificado (lanzamiento público) | TDD | RED ← ME_30_T4
+- OBL-M9-02 | Manual 9 §5.2 §5.3 / F29 | Installer OpenSyn (`opensyn/installer.syn`) | TDD | RED ← ME_29_T2
+- OBL-M9-03 | Manual 9 §5.6 / F29 | Gestión de modelos OpenSyn | TDD | RED ← ME_29_T3
+- OBL-M9-04 | Manual 9 §2.5 / F30 | Instaladores .iss/.sh/.dmg unificados | TDD | RED ← ME_30_T1
+- OBL-M9-05 | Manual 9 §2.3 / F30 | Makefile / build.py reproducible | TDD | RED ← ME_30_T2
+- OBL-M9-06 | Manual 9 §4.1 / F30 | Distribución final empaquetada y firmada | TDD | RED ← ME_30_T3
+- OBL-M9-07 | Manual 9 §4.1 / F30 / Hito 8 | Release unificado (lanzamiento público) | TDD | RED ← ME_30_T4
 
 ---
 

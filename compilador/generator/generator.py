@@ -707,6 +707,10 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("// --- Colecciones stdlib (runtime/core/lista.c, mapa.c) ---")
     ctx.write_line("extern void* _syn_lista_crear(void);")
     ctx.write_line("extern int64_t _syn_lista_longitud(void* l);")
+    # cumple Manual 6 §3.1: prototipos canónicos ÚNICOS en el header compartido
+    # (H-CFG-5: un externo duplicado en .syn daba conflicting types).
+    ctx.write_line("extern void _syn_lista_limpiar(void* l);")
+    ctx.write_line("extern void _syn_mapa_limpiar(void* m);")
     ctx.write_line("extern void _syn_lista_agregar(void* l, int64_t elemento);")
     ctx.write_line("extern int64_t _syn_lista_obtener(void* l, int indice);")
     ctx.write_line("extern void _syn_lista_establecer(void* l, int indice, int64_t valor);")

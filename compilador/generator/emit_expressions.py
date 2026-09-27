@@ -165,9 +165,9 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
                 elem_tipo = recv_tipo[6:-1].strip()
                 if met == 'agregar' and resto:
                     slot = _encajonar_slot(ctx, resto[0], elem_tipo)
-                    return f"_syn_lista_agregar({recv_c}, {slot})"
+                    return f"_syn_lista_agregar((void*)(intptr_t)({recv_c}), {slot})"
                 if met == 'longitud':
-                    return f"_syn_lista_longitud({recv_c})"
+                    return f"_syn_lista_longitud((void*)(intptr_t)({recv_c}))"
                 if met == 'obtener' and resto:
                     # H-R153-4: los slots int64 del runtime viajan por VALOR para
                     # escalares y por DIRECCIÓN para structs/texto (_encajonar_slot).
@@ -175,17 +175,17 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
                     # desencajonar la dirección: el tipo C del elemento decide el
                     # deref (paridad _emitir_para_en rama es_slot_direc).
                     elem_c = ctx.traducir_tipo_c(elem_tipo)
-                    raw = f"_syn_lista_obtener({recv_c}, (int)({resto[0]}))"
+                    raw = f"_syn_lista_obtener((void*)(intptr_t)({recv_c}), (int)({resto[0]}))"
                     if elem_c not in ('int64_t', 'double'):
                         return f"(*({elem_c}*)(intptr_t)({raw}))"
                     return f"({elem_c})({raw})"
                 if met == 'establecer' and len(resto) >= 2:
                     slot = _encajonar_slot(ctx, resto[1], elem_tipo)
-                    return f"_syn_lista_establecer({recv_c}, (int)({resto[0]}), {slot})"
+                    return f"_syn_lista_establecer((void*)(intptr_t)({recv_c}), (int)({resto[0]}), {slot})"
                 if met == 'eliminar' and resto:
-                    return f"_syn_lista_eliminar({recv_c}, (int)({resto[0]}))"
+                    return f"_syn_lista_eliminar((void*)(intptr_t)({recv_c}), (int)({resto[0]}))"
                 if met == 'liberar':
-                    return f"_syn_lista_liberar({recv_c})"
+                    return f"_syn_lista_liberar((void*)(intptr_t)({recv_c}))"
             if recv_tipo.startswith('Mapa<'):
                 if met == 'poner' and len(resto) >= 2:
                     val_tipo = recv_tipo[5:-1].split(',')[1].strip() \
@@ -525,10 +525,12 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
 
         # cumple Manual 2 §4.3 (H-R153-2): constructores de colección
         # `Lista<T>()` — handle void* del runtime (runtime/core/lista.c).
+        # cumple Manual 6 §3.1: handle entero del lado Synapse ↔ void* del lado C.
+        # H-CFG-5: el handle viaja como entero (Manual 6 §3.1) → cast al C.
         if nombre.startswith('Lista<'):
-            return "_syn_lista_crear()"
+            return "(intptr_t)_syn_lista_crear()"
         if nombre.startswith('Mapa<'):
-            return "_syn_mapa_crear()"
+            return "(intptr_t)_syn_mapa_crear()"
         # cumple Manual 3 §5.2 (H-R153-3): llamada a método postfija — la rama
         # de tipo_de_expr ya resolvió el C completo; replicarlo aquí.
         if nombre.startswith('metodo:'):
@@ -692,39 +694,39 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         if nombre == 'longitud' and _arg0_tipo in ('texto', 'cadena', 'CadenaSegura'):
             return f"({args[0]}).longitud"
         if nombre == 'longitud' and _arg0_tipo.startswith('Lista'):
-            return f"_syn_lista_longitud({args[0]})"
+            return f"_syn_lista_longitud((void*)(intptr_t)({args[0]}))"
         if nombre == 'longitud' and _arg0_tipo.startswith('Mapa'):
-            return f"_syn_mapa_longitud({args[0]})"
+            return f"_syn_mapa_longitud((void*)(intptr_t)({args[0]}))"
         if nombre == 'lista_crear':
-            return "_syn_lista_crear()"
+            return "(intptr_t)_syn_lista_crear()"
         if nombre == 'lista_agregar':
             elem_tipo = tipo_de_expr(ctx, nodo.argumentos[1]) if len(nodo.argumentos) > 1 else ''
             slot = _encajonar_slot(ctx, args[1], elem_tipo)
-            return f"_syn_lista_agregar({args[0]}, {slot})"
+            return f"_syn_lista_agregar((void*)(intptr_t)({args[0]}), {slot})"
         if nombre == 'lista_obtener':
-            return f"_syn_lista_obtener({args[0]}, (int)({args[1]}))"
+            return f"_syn_lista_obtener((void*)(intptr_t)({args[0]}), (int)({args[1]}))"
         if nombre == 'lista_establecer':
             elem_tipo = tipo_de_expr(ctx, nodo.argumentos[2]) if len(nodo.argumentos) > 2 else ''
             slot = _encajonar_slot(ctx, args[2], elem_tipo)
-            return f"_syn_lista_establecer({args[0]}, (int)({args[1]}), {slot})"
+            return f"_syn_lista_establecer((void*)(intptr_t)({args[0]}), (int)({args[1]}), {slot})"
         if nombre == 'lista_eliminar':
-            return f"_syn_lista_eliminar({args[0]}, (int)({args[1]}))"
+            return f"_syn_lista_eliminar((void*)(intptr_t)({args[0]}), (int)({args[1]}))"
         if nombre == 'lista_liberar':
-            return f"_syn_lista_liberar({args[0]})"
+            return f"_syn_lista_liberar((void*)(intptr_t)({args[0]}))"
         if nombre == 'mapa_crear':
-            return "_syn_mapa_crear()"
+            return "(intptr_t)_syn_mapa_crear()"
         if nombre == 'mapa_poner':
             val_tipo = tipo_de_expr(ctx, nodo.argumentos[2]) if len(nodo.argumentos) > 2 else ''
             slot = _encajonar_slot(ctx, args[2], val_tipo)
-            return f"_syn_mapa_poner({args[0]}, ({args[1]}).datos, {slot})"
+            return f"_syn_mapa_poner((void*)(intptr_t)({args[0]}), ({args[1]}).datos, {slot})"
         if nombre == 'mapa_obtener':
-            return f"_syn_mapa_obtener({args[0]}, ({args[1]}).datos)"
+            return f"_syn_mapa_obtener((void*)(intptr_t)({args[0]}), ({args[1]}).datos)"
         if nombre == 'mapa_contiene':
-            return f"_syn_mapa_contiene({args[0]}, ({args[1]}).datos)"
+            return f"_syn_mapa_contiene((void*)(intptr_t)({args[0]}), ({args[1]}).datos)"
         if nombre == 'mapa_eliminar':
-            return f"_syn_mapa_eliminar({args[0]}, ({args[1]}).datos)"
+            return f"_syn_mapa_eliminar((void*)(intptr_t)({args[0]}), ({args[1]}).datos)"
         if nombre == 'mapa_liberar':
-            return f"_syn_mapa_liberar({args[0]})"
+            return f"_syn_mapa_liberar((void*)(intptr_t)({args[0]}))"
 
         # cumple Manual 2 §4.3 (H-R153-2): leer_archivo/existe_archivo builtins —
         # delegan en el runtime real (runtime/core/io.c _syn_leer_archivo y
@@ -774,19 +776,32 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
             expected_types = ctx._C_FUNCTIONS_NEED_DATOS[nombre]
             adjusted = []
             for i, a in enumerate(args):
-                if i < len(expected_types) and expected_types[i] == 'char*':
-                    # Skip .datos if arg is already char* (ExprObtenerDireccion
-                    # of texto produces .datos → tipo_de_expr returns 'puntero')
-                    arg_tipo = ''
-                    if nodo.argumentos and i < len(nodo.argumentos):
-                        arg_tipo = tipo_de_expr(ctx, nodo.argumentos[i])
-                    if arg_tipo == 'puntero':
+                if i < len(expected_types) and expected_types[i] in ('char*', 'const char*'):
+                    # cumple Manual 6 §3.1: args char*/const char* reciben la
+                    # cadena como .datos (CadenaSegura = struct, M2 §4.1).
+                    # H-CFG-5: el esperado es char*/const char*: si el arg ya trae
+                    # .datos (puntero crudo) se deja; si no, se añade .datos —
+                    # cubre literales y parámetros texto (que llegan como
+                    # CadenaSegura en los wrappers del módulo).
+                    if a.endswith('.datos'):
                         adjusted.append(a)
                     else:
                         adjusted.append(f"({a}).datos")
+                elif (i < len(expected_types) and expected_types[i] == 'void*'
+                      and nodo.argumentos and i < len(nodo.argumentos)):
+                    # H-CFG-5: handle declarado `entero` en .syn (Manual 6 §3.1
+                    # FFI con handle entero) hacia implementación void* — cast
+                    # explícito (int64_t→void* hace warning sin cast, y gcc 16
+                    # lo trata como error en el módulo).
+                    adjusted.append(f"(void*)(intptr_t)({a})")
                 else:
                     adjusted.append(a)
-            return f"{nombre}({', '.join(adjusted)})"
+            # H-CFG-5: retorno void* → handle entero (lista_crear/mapa_crear
+            # retornan el handle): cast (intptr_t) para evitar int-from-pointer
+            ret = f"{nombre}({', '.join(adjusted)})"
+            if expected_types == [] or (len(expected_types) == 0):
+                ret = f"(intptr_t){ret}"
+            return ret
 
         # Add .datos for string args passed to puntero (void*) or &texto params (FFI)
         if nombre in ctx._func_param_types:

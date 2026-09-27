@@ -493,7 +493,13 @@ def compilar_desde_texto(ruta_archivo: str, archivos_procesados: Set[str],
                 return Programa(), diag_local
             if mostrar_tokens:
                 print(f"\n[Importando: {stmt.ruta} -> {ruta_importada}]")
-            ast_importado, diag_import = compilar_desde_texto(ruta_importada, archivos_procesados, dir_base, mostrar_tokens, None, dependencias)
+            # H-CFG-4: los imports ENCADENADOS se resuelven contra el
+            # directorio del MODULO importado (resolución estándar), no contra
+            # el dir_base del fuente raíz — opensyn/principal.syn importa
+            # 'permisos' que vive en opensyn/, y el fuente raíz puede estar
+            # en cualquier parte (probe temporal, tests/).
+            dir_importado = os.path.dirname(os.path.abspath(ruta_importada))
+            ast_importado, diag_import = compilar_desde_texto(ruta_importada, archivos_procesados, dir_importado, mostrar_tokens, None, dependencias)
             if diag_import.hay_errores():
                 return ast, diag_import
             for s in ast_importado.sentencias:
@@ -508,6 +514,15 @@ def compilar_desde_texto(ruta_archivo: str, archivos_procesados: Set[str],
     # compilador). Los duplicados del PROPIO archivo del usuario no se
     # descartan: llegan al AnalizadorSemanticoChecker y ERR_SEM_REDEFINICION
     # los reporta con linea/columna (paridad nativo principal.syn _seen_sym).
+    # H-CFG-4: EXCEPCION del first-wins para el PUNTO DE ENTRADA — si el
+    # archivo del usuario define `principal` y un modulo importado tambien
+    # lo trae (p.ej. opensyn/principal.syn), gana el del USUARIO: se descarta
+    # el principal IMPORTADO (el ejecutable es del usuario, no del paquete;
+    # Manual 1 §3.1: todo programa ejecutable requiere SU punto de entrada).
+    usuario_define_principal = any(
+        not de_importacion and isinstance(s, DefinicionFuncion)
+        and getattr(s, 'nombre', None) == 'principal'
+        for s, de_importacion in zip(nuevas_sentencias, _origenes))
     vistos = set()
     sentencias_dedup = []
     for s, de_importacion in zip(nuevas_sentencias, _origenes):
@@ -515,6 +530,11 @@ def compilar_desde_texto(ruta_archivo: str, archivos_procesados: Set[str],
             nombre = getattr(s, 'nombre', None)
             if nombre:
                 if de_importacion and nombre in vistos:
+                    continue
+                # H-CFG-4: el principal del MODULO importado se descarta si
+                # el propio archivo define el suyo (precedencia del usuario)
+                if (de_importacion and nombre == 'principal'
+                        and usuario_define_principal):
                     continue
                 vistos.add(nombre)
         sentencias_dedup.append(s)
