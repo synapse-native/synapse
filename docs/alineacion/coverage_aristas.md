@@ -1,7 +1,7 @@
 # Expediente de alineación coverage_aristas
 
 base: HEAD 22f7562  # commit sobre el que se leyó el manual
-cambio_hash: b888fe497b9ae83c  # lo re-sella --verificar
+cambio_hash: b888fe497b9ae83c
 
 > Una ancla por requisito. `estado:` CUMPLE | DESVIACION.
 > CUMPLE exige `evidencia: archivo:linea` con el comentario
