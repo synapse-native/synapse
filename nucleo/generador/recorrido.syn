@@ -1,6 +1,7 @@
 #lang: es
 // cumple Manual 1 5: generador de código
 # cumple Manual 8 4.1: compilador nativo S2
+# cumple Manual 1 §6: regla de hierro del bootstrap — sondas de cobertura OFF sin --coverage
 // ============================================================
 // recorrido.syn - recorrido top-level del AST (orden alfabetico + dispatch)
 // ============================================================
@@ -285,6 +286,11 @@ funcion gen_recorrer_toplevel(est: GeneradorCEst, programa: Programa) -> nulo:
         asm("gen_emitir_str(est, \"int main(int argc, char** argv) {\");")
         asm("gen_emitir_str(est, \"    _g_argc = argc;\");")
         asm("gen_emitir_str(est, \"    _g_argv = argv;\");")
+        // cumple Manual 8 §4.2 (ME coverage_aristas): config + catálogo de ramas
+        // en main (paridad con _emit_main del S1; OFF = no emite nada; cumple Manual 1 §6).
+        // La ruta base la fija ya el orquestador con cov_fijar_ruta_base(ruta); cumple Manual 2 §12: la
+        // instrumentación emitida la valida el oráculo del ME (pytest tests/auditoria).
+        cov_emitir_prologo_main(est)
         asm("gen_emitir_str(est, \"    pool_init(64, 4096);\");")
         // F17: PGO — registrar atexit(__pgo_dump) dentro del main
         pgo_registrar_atexit(est)

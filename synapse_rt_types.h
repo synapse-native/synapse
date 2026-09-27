@@ -380,6 +380,17 @@ CadenaSegura canal_recibir_texto(CanalConcurrencia* canal, bool* cerrado);
 void canal_destruir(CanalConcurrencia* canal);
 
 // ============================================================
+// Defined in runtime/core/coverage.c (ME coverage_aristas, Fase 33.2):
+// cumple Manual 9 §6.1: synapse test --coverage genera informes de cobertura.
+// Instrumentación de aristas — la bandera es OFF por defecto
+// (SYNAPSE_COVERAGE=1); sin ella el proceso no se altera (Manual 1 §6).
+// ============================================================
+void _syn_cov(int64_t l, int64_t d);
+void _syn_cov_habilitar(void);
+void _syn_cov_volcar(void);
+void _syn_cov_configurar(const char* archivo_fuente, const char* ruta_salida);
+
+// ============================================================
 // Defined in synapse_rt.c:
 // ============================================================
 Canal abrir(CadenaSegura ruta, CadenaSegura modo);

@@ -1,0 +1,354 @@
+#lang: es
+# cumple Manual 9 §6.1: synapse test --coverage genera informes de cobertura.
+# cumple Manual 9 §6.2: reportes de cobertura en la validación cruzada CI/CD.
+# cumple Manual 8 §4.2: --coverage genera informe de cobertura en HTML.
+# cumple Manual 1 §6: bandera OFF por defecto — el C emitido es byte-idéntico.
+# cumple Manual 2 §1.1: módulo Synapse del nucleo (directiva #lang en línea 1;
+# auto-hospedaje — los .syn del nucleo compilan en ambas capas).
+#
+// nucleo/coverage.syn — ME coverage_aristas (Fase 33.2, H-R152-1).
+// Módulo ÚNICO con las DOS mitades del ME (patrón generator_pgo.syn: módulo
+// fuera del unity del generador, referencias globales):
+//   PARTE 1 (EMISIÓN, nativo): cov_estado_administrar/cov_iniciar/
+//     cov_fijar_ruta_base/cov_activa/cov_nueva_rama/cov_emitir_sonda/
+//     cov_emitir_prologo_main — consumidas por nucleo/generador/*.syn y
+//     nucleo/generator.syn (UNITY regenerado).
+//   PARTE 2 (REPORTE): covrep_administrar/covrep_parsear/coverage_generar_html
+//     — consumidas por nucleo/principal.syn (cli_test --coverage, formato 3).
+//
+// Estado en statics C locales a las funciones administradoras (patrón PGO:
+// sin símbolos compartidos entre bloques asm de funciones distintas). Los
+// accesores de texto usan COPIAS de buffer (char a char) para no depender de
+// los statics de otra función.
+
+// ============================================================
+// PARTE 1 — EMISIÓN de la instrumentación de aristas (generador nativo)
+// ============================================================
+
+// ----------------------------------------------------------
+// cov_estado_administrar — estado del emisor nativo
+//   modo 0 = reset                     modo 3 = nueva clave secuencial
+//   modo 1 = consultar bandera         modo 4 = registrar par l:d
+//   modo 2 = fijar bandera (arg)       modo 5 = longitud del catálogo
+//   modo 7 = fijar ruta base (ptr)     modo 6 = char i del catálogo (arg)
+//                                      modo 8 = char i de la ruta (arg)
+// ----------------------------------------------------------
+funcion cov_estado_administrar(modo: entero, arg: entero, l: entero, d: entero) -> entero:
+    requiere:
+        modo >= 0
+    garantiza:
+        _resultado_ >= -1
+    r = 0
+    inseguro:
+        asm("static int _cov_on = 0;")
+        asm("static int _cov_seq = 0;")
+        asm("static char _cov_pares[8192];")
+        asm("static char _cov_ruta[640];")
+        // ME coverage_aristas: el reset (modo 0, cov_iniciar desde generar()) NO
+        // borra _cov_ruta — la ruta del .syn del usuario la fijó generar_etapa
+        // ANTES (cov_fijar_ruta_base) y debe sobrevivir al reset; borrarla aquí
+        // dejaba nom="" en el prólogo del main emitido (probe E2E lo detectó).
+        asm("if (modo == 0) { _cov_on = 0; _cov_seq = 0; _cov_pares[0] = 0; r = 0; }")
+        asm("else if (modo == 1) { r = _cov_on; }")
+        asm("else if (modo == 2) { _cov_on = (int)arg; r = _cov_on; }")
+        asm("else if (modo == 3) { _cov_seq++; r = _cov_seq; }")
+        asm("else if (modo == 4) {")
+        asm("    char _par[32]; snprintf(_par, sizeof(_par), \"%s%d:%d\", (_cov_pares[0] ? \",\" : \"\"), (int)l, (int)d);")
+        asm("    if (strlen(_cov_pares) + strlen(_par) < sizeof(_cov_pares) - 1) strcat(_cov_pares, _par);")
+        asm("    r = 0;")
+        asm("}")
+        asm("else if (modo == 5) { r = (int)strlen(_cov_pares); }")
+        asm("else if (modo == 6) { r = (arg >= 0 && arg < (long long)strlen(_cov_pares)) ? (int)(unsigned char)_cov_pares[arg] : -1; }")
+        asm("else if (modo == 7) { snprintf(_cov_ruta, sizeof(_cov_ruta), \"%s\", (const char*)(intptr_t)arg); r = 0; }")
+        asm("else if (modo == 8) { r = (arg >= 0 && arg < (long long)strlen(_cov_ruta)) ? (int)(unsigned char)_cov_ruta[arg] : -1; }")
+        asm("else if (modo == 9) { r = (_cov_ruta[0] == 0) ? 1 : 0; }")
+    retornar r
+
+// ----------------------------------------------------------
+// cov_iniciar — reset + bandera por entorno (paridad S1:
+// SYNAPSE_COVERAGE=1 activa la instrumentación del nativo).
+// ----------------------------------------------------------
+funcion cov_iniciar() -> nulo:
+    garantiza:
+        _resultado_ == nulo
+    let ign = 0
+    inseguro:
+        asm("ign = cov_estado_administrar(0, 0, 0, 0);")
+        asm("(void)ign;")
+        asm("const char* _ce = getenv(\"SYNAPSE_COVERAGE\");")
+        asm("if (_ce && _ce[0] == '1') { ign = cov_estado_administrar(2, 1, 0, 0); }")
+
+// Ruta base (sin extensión) del fuente en compilación — la fija el
+// orquestador al iniciar (generar) y la consume el prólogo del main.
+funcion cov_fijar_ruta_base(ruta: texto) -> nulo:
+    garantiza:
+        _resultado_ == nulo
+    let ign = 0
+    inseguro:
+        asm("ign = cov_estado_administrar(7, (long long)(intptr_t)(ruta.datos ? ruta.datos : \"\"), 0, 0);")
+        asm("(void)ign;")
+
+// ¿La ruta base está sin fijar? (el orquestador solo fija 'synapse_unity.c'
+// si generar_etapa no fijó antes la ruta real del .syn del usuario)
+funcion cov_ruta_base_vacia() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
+    retornar cov_estado_administrar(9, 0, 0, 0)
+
+funcion cov_activa() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
+    retornar cov_estado_administrar(1, 0, 0, 0)
+
+// ----------------------------------------------------------
+// cov_nueva_rama — registra una rama nueva y retorna su CLAVE secuencial
+// (el emisor nativo asigna claves de emisión; el S1 usa linea<<8|ordinal —
+// claves opacas para el runtime, que solo las registra).
+// ----------------------------------------------------------
+funcion cov_nueva_rama() -> entero:
+    requiere:
+        cov_activa() == 1
+    garantiza:
+        _resultado_ > 0
+    retornar cov_estado_administrar(3, 0, 0, 0)
+
+// ----------------------------------------------------------
+// cov_emitir_sonda — registra una rama nueva y emite su sonda en el C
+// generado (la MISMA frontera que pgo_emitir_incremento_bb: si-true,
+// si-else, mientras, para). OFF = no registra ni emite nada.
+// ----------------------------------------------------------
+funcion cov_emitir_sonda(est: GeneradorCEst) -> nulo:
+    requiere:
+        cov_activa() == 0 o cov_activa() == 1
+    garantiza:
+        _resultado_ == nulo
+    si cov_activa() != 1:
+        retornar
+    let clave = cov_estado_administrar(3, 0, 0, 0)
+    let ignorar = cov_estado_administrar(4, 0, clave, 0)
+    inseguro:
+        asm("(void)ignorar;")
+        asm("char _s[64]; snprintf(_s, sizeof(_s), \"    _syn_cov(%dLL, 0LL);\", (int)clave);")
+        asm("gen_emitir_str(est, _s);")
+
+// ----------------------------------------------------------
+// cov_emitir_prologo_main — config + catálogo dentro del main() generado
+// (paridad con _emit_main del S1; se emite antes de pool_init en
+// recorrido.syn). La RUTA y el CATÁLOGO viajan por COPIA carácter a
+// carácter (modos 8/6) — los statics del administrador no son visibles
+// desde otra función.
+// ----------------------------------------------------------
+funcion cov_emitir_prologo_main(est: GeneradorCEst) -> nulo:
+    requiere:
+        cov_activa() == 0 o cov_activa() == 1
+    garantiza:
+        _resultado_ == nulo
+    si cov_activa() != 1:
+        retornar
+    // Ruta base carácter a carácter (modo 8; termina con -1).
+    let ruta_txt = ""
+    let ir = 0
+    mientras ir < 640:
+        let cr = cov_estado_administrar(8, ir, 0, 0)
+        si cr < 0:
+            romper
+        si cr != 0:
+            ruta_txt = ruta_txt + _cov_char(cr)
+        ir = ir + 1
+    // Nombre base: el último componente (después del último / o \).
+    let pos = -1
+    let iq = 0
+    mientras iq < longitud(ruta_txt):
+        si subcadena(ruta_txt, iq, 1) == "/" o subcadena(ruta_txt, iq, 1) == "\\":
+            pos = iq
+        iq = iq + 1
+    let nom: texto = ruta_txt
+    si pos >= 0:
+        nom = subcadena(ruta_txt, pos + 1, longitud(ruta_txt) - pos - 1)
+    // Catálogo carácter a carácter (modo 6; termina con -1).
+    let catalogo = ""
+    let i = 0
+    mientras i < 8192:
+        let c = cov_estado_administrar(6, i, 0, 0)
+        si c < 0:
+            romper
+        si c != 0:
+            catalogo = catalogo + _cov_char(c)
+        i = i + 1
+    // Ruta de salida: SOLO el nombre base (nom). El probe hereda el cwd del
+    // compilador (system), así que el runtime escribe <nom>.coverage.json en
+    // ese cwd y cli_test lo busca en el SUYO con el mismo nom — coinciden
+    // siempre, sin hornear rutas absolutas en literales del C generado (una
+    // ruta horneada se corrompía: el concat del prólogo pisaba el buffer
+    // estático del administrador; probe E2E lo detectó).
+    let linea_cfg = "    _syn_cov_configurar(\"" + nom + "\", \"" + nom + "\");"
+    inseguro:
+        asm("gen_emitir_str(est, linea_cfg.datos);")
+        asm("gen_emitir_str(est, \"    _syn_cov_habilitar();\");")
+    si longitud(catalogo) > 0:
+        let linea_cat = "    _syn_cov_ramas_estaticas(\"" + catalogo + "\");"
+        inseguro:
+            asm("gen_emitir_str(est, linea_cat.datos);")
+
+// Helper local: código de carácter (0-127 ASCII) -> texto de 1 char.
+// Buffer ESTATICO (patrón _gen_tmp_buf de emision_c.syn): un buffer de stack
+// local moriría al retornar y concat() pisa ese stack con pool_alloc (mutex
+// + syscalls) ANTES del memcpy — el contenido llegaba como \0 (verificado con
+// probe). Con static la dirección es estable; el contenido solo debe vivir
+// hasta la copia del concat de la misma sentencia (un solo consumidor).
+funcion _cov_char(codigo: entero) -> texto:
+    requiere:
+        codigo >= 0
+    garantiza:
+        longitud(_resultado_) <= 1
+    let salida = ""
+    inseguro:
+        asm("static char _b[2];")
+        asm("_b[0] = (char)codigo; _b[1] = 0;")
+        asm("salida = (CadenaSegura){ .longitud = 1, .datos = _b };")
+    retornar salida
+
+// ============================================================
+// PARTE 2 — REPORTE: parseo del volcado JSON de runtime/core/coverage.c
+// y generación del informe HTML de aristas reales (consumido por
+// cli_test --coverage en nucleo/principal.syn; extiende generar_coverage
+// de reports.syn, que recibe contadores y queda intacta para OBL-M8-15).
+// ============================================================
+
+// ----------------------------------------------------------
+// covrep_administrar — parseo del volcado de runtime/core/coverage.c
+//   modo 0 = parsear (arg = puntero a la ruta como entero)
+//   modo 1 = aristas cubiertas    modo 4 = char i no-cubiertas (arg)
+//   modo 2 = total estimado       modo 5 = longitud no-cubiertas
+// ----------------------------------------------------------
+funcion covrep_administrar(modo: entero, arg: entero) -> entero:
+    requiere:
+        modo >= 0
+    garantiza:
+        _resultado_ >= -1
+    r = 0
+    inseguro:
+        asm("static int _rep_cub = 0;")
+        asm("static int _rep_tot = 0;")
+        asm("static char _rep_nocub[4096];")
+        asm("if (modo == 1) { r = _rep_cub; }")
+        asm("else if (modo == 2) { r = _rep_tot; }")
+        asm("else if (modo == 5) { r = (int)strlen(_rep_nocub); }")
+        asm("else if (modo == 4) { r = (arg >= 0 && arg < (long long)strlen(_rep_nocub)) ? (int)(unsigned char)_rep_nocub[arg] : -1; }")
+        asm("else if (modo == 0) {")
+        asm("    FILE* _f = fopen((const char*)(intptr_t)arg, \"rb\");")
+        asm("    if (!_f) { r = 1; } else {")
+        asm("        static char _repbuf[262144];")
+        asm("        size_t _n = fread(_repbuf, 1, sizeof(_repbuf) - 1, _f); _repbuf[_n] = 0; fclose(_f);")
+        asm("        const char* _p = strstr(_repbuf, \"\\\"total_estimado\\\":\");")
+        asm("        if (_p) { _rep_tot = atoi(_p + 17); }")
+        asm("        _p = strstr(_repbuf, \"\\\"aristas_cubiertas\\\":\");")
+        asm("        if (_p) { _rep_cub = atoi(_p + 20); }")
+        asm("        _p = strstr(_repbuf, \"\\\"ramas\\\":[\");")
+        asm("        while (_p) {")
+        asm("            _p = strstr(_p, \"\\\"cubierta\\\":\");")
+        asm("            if (!_p) break;")
+        asm("            if (strncmp(_p + 11, \"false\", 5) == 0) {")
+        asm("                const char* _q = _p;")
+        asm("                while (_q > _repbuf && strncmp(_q, \"\\\"l\\\":\", 4) != 0) _q--;")
+        asm("                if (_q > _repbuf) {")
+        asm("                    long _l = strtol(_q + 4, NULL, 10);")
+        asm("                    char _par[24]; _par[0] = 0;")
+        asm("                    snprintf(_par, sizeof(_par), \"%s%ld\", (_rep_nocub[0] ? \",\" : \"\"), _l);")
+        asm("                    if (strlen(_rep_nocub) + strlen(_par) < sizeof(_rep_nocub) - 1) strcat(_rep_nocub, _par);")
+        asm("                }")
+        asm("            }")
+        asm("            _p = _p + 11;")
+        asm("        }")
+        asm("        r = 0;")
+        asm("    }")
+        asm("}")
+    retornar r
+
+// Parsear el volcado JSON (rc 0 = ok; 1 = no se pudo leer).
+funcion covrep_parsear(ruta_json: texto) -> entero:
+    requiere:
+        longitud(ruta_json) > 0
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
+    let ptr = 0
+    inseguro:
+        asm("ptr = (long long)(intptr_t)(ruta_json.datos);")
+    retornar covrep_administrar(0, ptr)
+
+// Claves NO cubiertas como texto ("1025,4097" o "" si todas cubiertas).
+// Los bytes del buffer (0-255) se transmiten vía char i (modo 4) y se
+// reconstruyen con el código de carácter (helper local, sin std).
+funcion covrep_nocubiertas() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ != nulo
+    let n = covrep_administrar(5, 0)
+    let salida = ""
+    let i = 0
+    mientras i < n:
+        let c = covrep_administrar(4, i)
+        si c >= 0:
+            salida = salida + _cov_char(c)
+        i = i + 1
+    retornar salida
+
+// ----------------------------------------------------------
+// coverage_generar_html — informe de aristas (extiende generar_coverage
+// de reports.syn, que recibe contadores y queda intacta para OBL-M8-15).
+// Exige covrep_parsear() ejecutado antes.
+// ----------------------------------------------------------
+funcion coverage_generar_html(fuente: texto) -> texto:
+    requiere:
+        longitud(fuente) > 0
+    garantiza:
+        longitud(_resultado_) > 0
+    let cubiertas = covrep_administrar(1, 0)
+    let total = covrep_administrar(2, 0)
+    let porcentaje = 0
+    si total > 0:
+        porcentaje = (cubiertas * 100) / total
+    let clase = "failed"
+    si total > 0 y porcentaje >= 80:
+        clase = "passed"
+    let html = "<!DOCTYPE html>\n"
+    html = html + "<html lang=\"es\">\n<head>\n  <meta charset=\"UTF-8\">\n"
+    html = html + "  <title>Synapse Edge Coverage Report</title>\n"
+    html = html + "  <style>\n    body { font-family: monospace; margin: 20px; }\n"
+    html = html + "    .passed { color: green; }\n    .failed { color: red; }\n"
+    html = html + "    .summary { background: #f0f0f0; padding: 10px; }\n  </style>\n</head>\n<body>\n"
+    html = html + "  <h1>Coverage: " + entero_a_texto(porcentaje) + "%</h1>\n"
+    html = html + "  <div class=\"summary\">\n"
+    html = html + "    <p>Archivo: " + fuente + "</p>\n"
+    html = html + "    <p>Aristas cubiertas: " + entero_a_texto(cubiertas) + " de " + entero_a_texto(total) + "</p>\n"
+    html = html + "    <p class=\"" + clase + "\">" + entero_a_texto(porcentaje) + "% de aristas</p>\n"
+    html = html + "  </div>\n"
+    let nocub = covrep_nocubiertas()
+    si longitud(nocub) > 0:
+        html = html + "  <h2>Aristas no ejecutadas</h2>\n  <ul>\n"
+        html = html + cov_listar(nocub)
+        html = html + "  </ul>\n"
+    html = html + "</body>\n</html>\n"
+    retornar html
+
+// Lista <li> por clave no cubierta ("1025,4097" -> una fila por clave).
+funcion cov_listar(claves: texto) -> texto:
+    requiere:
+        longitud(claves) > 0
+    garantiza:
+        _resultado_ != nulo
+    let html = ""
+    let inicio = 0
+    let i = 0
+    mientras i <= longitud(claves):
+        si i == longitud(claves) o subcadena(claves, i, 1) == ",":
+            si i > inicio:
+                html = html + "    <li>rama " + subcadena(claves, inicio, i - inicio) + "</li>\n"
+            inicio = i + 1
+        i = i + 1
+    retornar html

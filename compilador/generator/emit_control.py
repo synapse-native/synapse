@@ -20,20 +20,56 @@ def _visitar_stmt(ctx, nodo):
     return _v(ctx, nodo)
 
 
+# ---- cumple Manual 8 §4.2 (ME coverage_aristas, H-R152-1): sondas de cobertura
+# ---- de aristas; cumple Manual 1 §6: OFF por defecto, sin --coverage el C
+# ---- emitido es idéntico al previo (bootstrap diff 0). Cada salto de control
+# registra una rama
+# (clave estable linea<<8|ordinal, padre = rama léxica contenedora) y el C
+# emitido llama _syn_cov(clave, 0) tras la evaluación de la condición. La
+# anidación la resuelve el EMISOR (pila _coverage_stack); el runtime solo
+# registra el conjunto de ramas alcanzadas (coverage.c). OFF por defecto:
+# sin --coverage el C emitido es idéntico al previo (bootstrap diff 0).
+def _cov_probe_push(ctx, nodo) -> str:
+    """Sonda que ABRE rama léxica (push): el cuerpo contenedor cuelga de ella."""
+    if not ctx._coverage_on:
+        return ''
+    return ctx.cov_sonda(getattr(nodo, 'linea', 0) or 1)
+
+
+def _cov_probe_hermana(ctx, nodo) -> str:
+    """Sonda de rama HERMANA (sino/caso): mismo padre, sin push."""
+    if not ctx._coverage_on:
+        return ''
+    return ctx.cov_sonda_hija(getattr(nodo, 'linea', 0) or 1)
+
+
+def _cov_pop(ctx):
+    """Cierra la rama léxica abierta por _cov_probe_push."""
+    if ctx._coverage_on:
+        ctx.cov_pop()
+
+
 def visitar_si(ctx: GeneratorContext, nodo: SentenciaSi):
     """Genera código C para if/else."""
     cond = expr_a_c(ctx, nodo.condicion)
+    sonda = _cov_probe_push(ctx, nodo)
     ctx.write_line(f"if ({cond}) {{")
     ctx.inc_indent()
+    if sonda:
+        ctx.write_line(sonda)
     ctx.push_scope()
     for s in nodo.cuerpo:
         _visitar_stmt(ctx, s)
     ctx.pop_scope()
     ctx.dec_indent()
     ctx.write_line("}")
+    _cov_pop(ctx)
     if nodo.cuerpo_sino:
+        sonda_sino = _cov_probe_hermana(ctx, nodo)
         ctx.write_line("else {")
         ctx.inc_indent()
+        if sonda_sino:
+            ctx.write_line(sonda_sino)
         ctx.push_scope()
         for s in nodo.cuerpo_sino:
             _visitar_stmt(ctx, s)
@@ -45,14 +81,18 @@ def visitar_si(ctx: GeneratorContext, nodo: SentenciaSi):
 def visitar_mientras(ctx: GeneratorContext, nodo: SentenciaMientras):
     """Genera código C para while."""
     cond = expr_a_c(ctx, nodo.condicion)
+    sonda = _cov_probe_push(ctx, nodo)
     ctx.write_line(f"while ({cond}) {{")
     ctx.inc_indent()
+    if sonda:
+        ctx.write_line(sonda)
     ctx.push_scope()
     for s in nodo.cuerpo:
         _visitar_stmt(ctx, s)
     ctx.pop_scope()
     ctx.dec_indent()
     ctx.write_line("}")
+    _cov_pop(ctx)
 
 
 def _emitir_para_en(ctx, nodo, var_en: str, iterable_en):
@@ -79,6 +119,9 @@ def _emitir_para_en(ctx, nodo, var_en: str, iterable_en):
         ctx.write_line(f"void* {tmp_lista} = (void*)(intptr_t)({iterable_c});")
         ctx.write_line(f"for (int64_t _fe_i = 0; _fe_i < _syn_lista_longitud({tmp_lista}); _fe_i++) {{")
         ctx.inc_indent()
+        sonda = _cov_probe_push(ctx, nodo)
+        if sonda:
+            ctx.write_line(sonda)
         slot_c = f"_syn_lista_obtener({tmp_lista}, (int)_fe_i)"
         if es_slot_direc:
             ctx.write_line(f"{tipo_elem_c} {var_en} = *({tipo_elem_c}*)(intptr_t){slot_c};")
@@ -93,6 +136,7 @@ def _emitir_para_en(ctx, nodo, var_en: str, iterable_en):
         ctx.dec_indent()
         ctx.dec_indent()
         ctx.write_line("}")
+        _cov_pop(ctx)
         ctx.pop_scope()
         return
     if tipo_iterable in ('texto', 'cadena', 'CadenaSegura'):
@@ -181,12 +225,16 @@ def visitar_para(ctx: GeneratorContext, nodo: SentenciaPara):
     else:
         ctx.write_line(f"for ({init_code}; {cond_code}; {inc_code}) {{")
     ctx.inc_indent()
+    sonda = _cov_probe_push(ctx, nodo)
+    if sonda:
+        ctx.write_line(sonda)
     ctx.push_scope()
     for s in nodo.cuerpo:
         _visitar_stmt(ctx, s)
     ctx.pop_scope()
     ctx.dec_indent()
     ctx.write_line("}")
+    _cov_pop(ctx)
 
 
 def visitar_coincidir(ctx: GeneratorContext, nodo: NodoCoincidir):
@@ -228,6 +276,10 @@ def visitar_coincidir(ctx: GeneratorContext, nodo: NodoCoincidir):
             ctx.write_line(f"case {tag_c}:")
         ctx.write_line("{")  # Wrap body in {} to allow declarations after label
         ctx.inc_indent()
+        # ME coverage_aristas: cada caso es una ARISTA hermana del switch
+        sonda_caso = _cov_probe_hermana(ctx, nodo)
+        if sonda_caso:
+            ctx.write_line(sonda_caso)
         ctx.push_scope()
         if "(" in patron and ")" in patron:
             var_name = patron.split("(")[1].rstrip(")")

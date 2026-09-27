@@ -1,4 +1,4 @@
-# cumple Manual 1 §1: Synapse es el lenguaje de programación nativo, compilado y de grado de sistemas
+# cumple Manual 1 §1.1: Synapse es el lenguaje de programación nativo, compilado y de grado de sistemas
 import os
 import re
 
@@ -1024,6 +1024,18 @@ class GeneradorC:
             ctx.write_line("int _G_scope_vars_total;")
             ctx.write_line("int _G_scope_vars_kind[256];  // D-1.2: 0=texto,1=rc,2=arc,3=debil")
             ctx.write_line("int _G_safe_mode;  // M22.5: --safe flag for lifetime assertions")
+            # cumple Manual 8 §4.2 (ME coverage_aristas): API de cobertura
+            # (runtime/core/coverage.c) — SOLO con --coverage.
+            # cumple Manual 2 §5.1 (H-R152-1): prototipos de las funciones del
+            # runtime en la cabecera común del C emitido.
+            # cumple Manual 1 §6: sin la bandera el C emitido es byte-idéntico
+            # al previo (bootstrap determinista, diff binario 0).
+            if ctx._coverage_on:
+                ctx.write_line("void _syn_cov(int64_t l, int64_t d);")
+                ctx.write_line("void _syn_cov_habilitar(void);")
+                ctx.write_line("void _syn_cov_configurar(const char* f, const char* r);")
+                ctx.write_line("void _syn_cov_ramas_estaticas(const char* pares);")
+                ctx.write_line("void _syn_cov_volcar(void);")
             ctx.write_line("char _G_native_structs[256][64];")
             ctx.write_line("int _G_native_structs_count;")
             # r153 (H-R153-21): definicion del registro de constantes de texto
@@ -1380,6 +1392,14 @@ class GeneradorC:
         if ctx.is_no_std():
             ctx.write_line("int main(void) {")
             ctx.inc_indent()
+            # ME coverage_aristas: configuración + catálogo DENTRO de main()
+            if ctx._coverage_on:
+                # cumple Manual 8 §4.2: cobertura de aristas (H-R152-1)
+                ctx.write_line(ctx.cov_config_macro())
+                ctx.write_line("_syn_cov_habilitar();")
+                _pares_ns = ctx.cov_ramas_estaticas_c()
+                if _pares_ns:
+                    ctx.write_line(f'_syn_cov_ramas_estaticas("{_pares_ns}");')
             ctx.write_line("pool_init(POOL_BLOQUES, TAMANO_BLOQUE);")
             ctx.write_line(f"int64_t _ret = {principal}();")
             ctx.write_line("pool_destroy(); // TMS: liberar pool antes de report (Manual 6 §4.4)")
@@ -1395,6 +1415,14 @@ class GeneradorC:
             ctx.write_line("_g_argv = argv;")
             if ctx._safe_mode:
                 ctx.write_line("_G_safe_mode = 1;  // --safe activo: aserciones de lifetimes")
+            # ME coverage_aristas: configuración + catálogo DENTRO de main()
+            if ctx._coverage_on:
+                # cumple Manual 8 §4.2: cobertura de aristas (H-R152-1)
+                ctx.write_line(ctx.cov_config_macro())
+                ctx.write_line("_syn_cov_habilitar();")
+                _pares_cov = ctx.cov_ramas_estaticas_c()
+                if _pares_cov:
+                    ctx.write_line(f'_syn_cov_ramas_estaticas("{_pares_cov}");')
             ctx.write_line("pool_init(POOL_BLOQUES, TAMANO_BLOQUE);")
             ret_tipo = ctx._func_return_types.get(principal, 'int')
             # principal() is renamed to _principal_impl() in C to avoid
@@ -1626,6 +1654,14 @@ class GeneradorC:
             ctx.write_line("extern char _G_scope_vars_names[256][64];")
             ctx.write_line("extern int _G_scope_vars_total;")
             ctx.write_line("extern int _G_safe_mode;  // M22.5: --safe flag")
+            # ME coverage_aristas: prototipos de la API de cobertura visibles
+            # en el header compartido (los módulos _*.c emiten sondas).
+            if ctx._coverage_on:
+                ctx.write_line("void _syn_cov(int64_t l, int64_t d);")
+                ctx.write_line("void _syn_cov_habilitar(void);")
+                ctx.write_line("void _syn_cov_configurar(const char* f, const char* r);")
+                ctx.write_line("void _syn_cov_ramas_estaticas(const char* pares);")
+                ctx.write_line("void _syn_cov_volcar(void);")
             # F5-1 (Manual 2 §5.1): garantiza globals del codegen (usados via
             # asm() en funciones.syn/nodos_flujo.syn para emitir asserts)
             ctx.write_line("extern void* _G_fn_garantizas_actuales;  // F5-1")

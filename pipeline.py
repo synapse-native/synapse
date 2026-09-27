@@ -645,7 +645,8 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                         target: str = 'native',
                         modo_release: bool = False,
                         modo_debug: bool = False,
-                        check_only: bool = False) -> int:
+                        check_only: bool = False,
+                        modo_coverage: bool = False) -> int:
     _module_asts.clear()
     _imports_usados.clear()
     diag = DiagnosticManager()
@@ -742,6 +743,11 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         # M22.1: Activar borrow checker en modo --safe
         if modo_safe:
             generador.ctx.enable_safe_mode()
+        # cumple Manual 8 §4.2 (ME coverage_aristas, H-R152-1): --coverage
+        # activa la instrumentación de aristas en el emisor (OFF por defecto,
+        # bootstrap determinista; la bandera llega por entorno desde cli.py).
+        if modo_coverage:
+            generador.ctx.enable_coverage_mode(ruta_archivo, ruta_archivo.rsplit('.', 1)[0])
         codigo_c = generador.generar()  # modo='completo' por defecto
 
         ruta_base = ruta_archivo.rsplit('.', 1)[0]
@@ -898,6 +904,13 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             if not mod_func_names:
                 continue
             gen_mod = GeneradorC(copy.deepcopy(ast))  # AST aplanado para info de tipos
+            # cumple Manual 1 §3.1 (pipeline compartido, backend común): los
+            # módulos _*.c también llevan las sondas; cumple Manual 8 §4.2
+            # (ME coverage_aristas): el módulo con 'principal' emite además la
+            # config + catálogo en su main (el exe enlaza la ruta modular).
+            if modo_coverage:
+                gen_mod.ctx.enable_coverage_mode(
+                    ruta_mod_abs, ruta_mod_abs.rsplit('.', 1)[0])
             codigo_mod = gen_mod.generar(modo='modulo', include_header='_synapse_shared.h',
                                          scope_names=mod_func_names)
             with open(ruta_mod_c, 'w', encoding='utf-8') as f:

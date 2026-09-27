@@ -35,6 +35,9 @@ importar cache
 importar lint
 importar formatter
 importar reports
+importar coverage
+// cumple Manual 9 §6.2 (ME coverage_aristas): informe HTML de aristas reales
+// (covrep_parsear/coverage_generar_html) consumido por cli_test formato 3.
 // M10.1: verificador formal nativo (modo --safe) — paridad S1
 // compilador/verificador_formal.py. En el unity build tambien debe figurar en
 // _files[] (mas abajo) para que stage1/2/3 lo incluyan al auto-compilarse.
@@ -75,7 +78,7 @@ funcion generar_etapa(ruta: cadena, salida: cadena) -> ResultadoEtapa:
         asm("struct ListaNodo* _merged = NULL;")
         asm("struct ListaNodo** _mcur = &_merged;")
         asm("int _is_usr = (ruta.longitud > 0 && ruta.datos != NULL && ruta.datos[0] != 0) ? 1 : 0;")
-        asm("const char* _files[] = {\"nucleo/tokens.syn\",\"nucleo/lexer.syn\",\"nucleo/lexer_keywords.syn\",\"nucleo/ast_nodes.syn\",\"nucleo/errores.syn\",\"nucleo/diagnostics.syn\",\"nucleo/parser_constantes.syn\",\"nucleo/parser_base.syn\",\"nucleo/parser_expr.syn\",\"nucleo/parser_stmt.syn\",\"nucleo/parser.syn\",\"nucleo/parser_sentencias.syn\",\"nucleo/parser_declaraciones.syn\",\"nucleo/parser_canales.syn\",\"nucleo/puente_ast.syn\",\"nucleo/tabla_simbolos.syn\",\"nucleo/analizador_semantico.syn\",\"nucleo/lifetimes.syn\",\"nucleo/memoria.syn\",\"nucleo/generator.syn\",\"nucleo/generator_pgo.syn\",\"nucleo/resolvedor_axon.syn\",\"nucleo/verificador_formal.syn\",\"nucleo/lint.syn\",\"nucleo/formatter.syn\",\"nucleo/reports.syn\",\"nucleo/principal.syn\",NULL};")
+        asm("const char* _files[] = {\"nucleo/tokens.syn\",\"nucleo/lexer.syn\",\"nucleo/lexer_keywords.syn\",\"nucleo/ast_nodes.syn\",\"nucleo/errores.syn\",\"nucleo/diagnostics.syn\",\"nucleo/parser_constantes.syn\",\"nucleo/parser_base.syn\",\"nucleo/parser_expr.syn\",\"nucleo/parser_stmt.syn\",\"nucleo/parser.syn\",\"nucleo/parser_sentencias.syn\",\"nucleo/parser_declaraciones.syn\",\"nucleo/parser_canales.syn\",\"nucleo/puente_ast.syn\",\"nucleo/tabla_simbolos.syn\",\"nucleo/analizador_semantico.syn\",\"nucleo/lifetimes.syn\",\"nucleo/memoria.syn\",\"nucleo/generator.syn\",\"nucleo/generator_pgo.syn\",\"nucleo/resolvedor_axon.syn\",\"nucleo/verificador_formal.syn\",\"nucleo/lint.syn\",\"nucleo/formatter.syn\",\"nucleo/reports.syn\",\"nucleo/coverage.syn\",\"nucleo/principal.syn\",NULL};")
         asm("int _ya_incluido = 0;")
         asm("// Paridad pipeline.py:485 / Manual 9 S9.1: unity build SOLO para el compilador")
         asm("// (la ruta del usuario coincide con un modulo de _files[] o termina en principal.syn).")
@@ -591,6 +594,11 @@ funcion generar_etapa(ruta: cadena, salida: cadena) -> ResultadoEtapa:
         asm("    fprintf(stderr,\"[Synapse] Verificacion formal superada - codigo verificado\\n\");")
         asm("}")
         asm("// 4. Generar codigo C desde AST (Manual 3 S3.1: la Etapa 4 emite synapse_unity.c)")
+        // ME coverage_aristas (Manual 9 §6.2): fijar la ruta base REAL del .syn
+        // del usuario ANTES de generar() — el JSON de cobertura debe llamarse
+        // <fuente>.coverage.json (cli_test lo consume), no synapse_unity.c.*
+        asm("extern void cov_fijar_ruta_base(CadenaSegura);")
+        asm("cov_fijar_ruta_base(ruta);")
         asm("extern int64_t generar(struct Programa, CadenaSegura);")  // A5.2 D-7: entero -> int64_t
         asm("CadenaSegura _salida_c = { .longitud = 15, .datos = \"synapse_unity.c\" };")
         asm("int _gen_rc = generar(_ast, _salida_c);")
@@ -795,6 +803,16 @@ funcion cli_test(ruta: texto, formato: entero) -> entero:
     // escribe los reportes con los generadores canónicos de reports.syn (R4).
     let _rc = 0
     let _seg = 0.0
+    // cumple Manual 8 §4.2 (ME coverage_aristas, H-R152-1): con --coverage la
+    // compilación genera el C instrumentado (cov_iniciar lee esta variable;
+    // generar_etapa corre EN PROCESO) y el probe vuelca su JSON al salir.
+    si formato == 3:
+        inseguro:
+            asm("#ifdef _WIN32")
+            asm("_putenv(\"SYNAPSE_COVERAGE=1\");")
+            asm("#else")
+            asm("setenv(\"SYNAPSE_COVERAGE\", \"1\", 1);")
+            asm("#endif")
     inseguro:
         asm("{ char _sal_buf[1024]; snprintf(_sal_buf, sizeof(_sal_buf), \"%s.exe\", ruta.datos);")
         asm("CadenaSegura _salida = { .longitud = (int)strlen(_sal_buf), .datos = _sal_buf };")
@@ -832,8 +850,34 @@ funcion cli_test(ruta: texto, formato: entero) -> entero:
             escribir_reporte(ruta + ".json", generar_json(lst))
         sino:
             si formato == 3:
-                _cli_err("[Test] --coverage: instrumentacion de aristas no implementada aun (H-R152-1)")
-                retornar 1
+                // ME coverage_aristas (H-R152-1 CERRADO): el JSON del probe
+                // (volcado atexit de runtime/core/coverage.c) → informe HTML
+                // de aristas reales con % y no-ejecutadas (nucleo/coverage.syn).
+                // El probe hereda el cwd del compilador (system) y el runtime
+                // escribe <nom>.coverage.json en SU cwd: buscar aquí, no junto
+                // al fuente (que puede estar en otra carpeta).
+                // prototipos de coverage.syn (emisión alfabética: cli_test se
+                // emite antes que covrep_*/coverage_* en el unity nativo — el
+                // implicit declaration rompería el retorno CadenaSegura).
+                inseguro:
+                    asm("extern int64_t covrep_parsear(CadenaSegura);")
+                    asm("extern CadenaSegura coverage_generar_html(CadenaSegura);")
+                let nombre_base: texto = ruta
+                let pos_barra = -1
+                let ib = 0
+                mientras ib < longitud(nombre_base):
+                    si subcadena(nombre_base, ib, 1) == "/" o subcadena(nombre_base, ib, 1) == "\\":
+                        pos_barra = ib
+                    ib = ib + 1
+                si pos_barra >= 0:
+                    nombre_base = subcadena(nombre_base, pos_barra + 1, longitud(nombre_base) - pos_barra - 1)
+                let rj = covrep_parsear(nombre_base + ".coverage.json")
+                si rj != 0:
+                    _cli_err("[Test] --coverage: el probe no volco el JSON de aristas")
+                    retornar 1
+                let html_cov: texto = coverage_generar_html(ruta)
+                let ign_rc = escribir_reporte(ruta + ".coverage.html", html_cov)
+                _cli_err("[Test] Informe de cobertura: " + ruta + ".coverage.html")
     si _rc != 0:
         _cli_err("[Test] FALLO: el proceso de pruebas termino con codigo " + entero_a_texto(_rc))
         retornar 1

@@ -1000,6 +1000,10 @@ def main():
         modo_safe = "--safe" in sys.argv
         check_only = "--check" in sys.argv
         generar_sbom_flag = "--sbom" in sys.argv
+        # cumple Manual 8 §4.1: el CLI se subdivide en subcomandos por dominio
+        # (build/lint/fmt/test); cumple Manual 8 §4.2 (ME coverage_aristas):
+        # --coverage instrumenta aristas; OFF por defecto.
+        modo_coverage = "--coverage" in sys.argv
         clave_sbom = args.sign or ""
         codigo = ejecutar_compilador(build_file, mostrar_tokens=False,
                                      output_lang=None, dump_ast=False,
@@ -1007,6 +1011,7 @@ def main():
                                      output_path=output_path,
                                      incremental=incremental,
                                      generar_sbom=generar_sbom_flag,
+                                     modo_coverage=modo_coverage,
                                      firmar_binario=bool(clave_sbom),
                                      clave_sbom=clave_sbom,
                                     target=target,
@@ -1437,7 +1442,8 @@ def main():
                                      clave_sbom=args.sign or '',
                                      target="native",
                                      modo_release=args.release,
-                                     modo_debug=args.debug)
+                                     modo_debug=args.debug,
+                                     modo_coverage="--coverage" in sys.argv)
         sys.exit(codigo)
 
 

@@ -350,6 +350,22 @@ class GeneratorContext:
         self._scope_depth = 0
         self._safe_mode = False  # --safe flag for borrow checking
 
+        # cumple Manual 8 §4.2 (ME coverage_aristas, H-R152-1): instrumentación
+        # de aristas — OFF por defecto; con --coverage el emisor inserta una
+        # sonda _syn_cov(clave, padre) en cada salto de control (si/sino,
+        # mientras, para, para-en, coincidir) y emite en main() el catálogo
+        # estático de ramas; el runtime runtime/core/coverage.c registra y
+        # vuelca el JSON que consume nucleo/coverage.syn (informe HTML).
+        # cumple Manual 1 §6 (regla de hierro del bootstrap): sin la bandera el
+        # C emitido es byte-idéntico al previo (diff binario 0).
+        self._coverage_on = False
+        self._coverage_fuente = ''       # nombre del fuente .syn (informe)
+        self._coverage_ruta_base = ''    # ruta de salida sin extensión
+        self._coverage_ramas = []        # [(clave, padre)] en orden de emisión
+        self._coverage_padre = {}        # clave -> padre (lookup de sondas)
+        self._coverage_stack = []        # pila de anidación léxica de ramas
+        self._coverage_ordinal = {}      # linea -> ordinales asignados
+
         # Emit flags
         self._gen_tok_emitido = False
         self._gen_parse_emitido = False
@@ -519,6 +535,59 @@ class GeneratorContext:
             # WeakRef: rc_weak_release checks !w->header internally (§4.2)
             return ('rc_weak_release', f'&{var_name}', '')
         return ('', '', '')
+
+    # ---- ME coverage_aristas (Manual 8 §4.2): registro de ramas y sondas ----
+    def enable_coverage_mode(self, ruta_fuente: str, ruta_base: str = ''):
+        """Activa la instrumentación de aristas para ESTA compilación.
+        ruta_fuente: nombre del .syn (aparece en el informe); ruta_base:
+        prefijo de salida del JSON (por defecto el fuente sin extensión)."""
+        self._coverage_on = True
+        self._coverage_fuente = ruta_fuente
+        self._coverage_ruta_base = ruta_base or ruta_fuente.rsplit('.', 1)[0]
+
+    def _cov_registrar_rama(self, linea: int) -> int:
+        """Registra una rama en la línea `linea` y retorna su CLAVE estable
+        (linea<<8 | ordinal). El padre es la rama léxica contenedora (pila)."""
+        ord_ = self._coverage_ordinal.get(linea, 0)
+        self._coverage_ordinal[linea] = ord_ + 1
+        clave = (linea << 8) | (ord_ & 0xFF)
+        padre = self._coverage_stack[-1] if self._coverage_stack else 0
+        self._coverage_ramas.append((clave, padre))
+        self._coverage_padre[clave] = padre
+        return clave
+
+    def cov_sonda(self, linea: int) -> str:
+        """C de la sonda de la rama que ABRIMOS en esta línea (push)."""
+        clave = self._cov_registrar_rama(linea)
+        self._coverage_stack.append(clave)
+        return f"_syn_cov({clave}LL, 0LL);"
+
+    def cov_sonda_hija(self, linea: int) -> str:
+        """C de la sonda de una rama HERMANA/subordinada en esta línea (sin
+        push: la ejecución de la rama implica la del padre, la pila sigue)."""
+        clave = self._cov_registrar_rama(linea)
+        return f"_syn_cov({clave}LL, 0LL);"
+
+    def cov_pop(self):
+        """Cierra la rama léxica actual (fin del bloque contenedor)."""
+        if self._coverage_stack:
+            self._coverage_stack.pop()
+
+    def cov_config_macro(self) -> str:
+        """Línea de configuración del runtime insertada al inicio de main().
+        Escapa backslashes de la ruta Windows (un '\\t' crudo en el literal C
+        corrompía la ruta de salida y el JSON no se volcaba)."""
+        fuente = self._coverage_fuente.replace('\\', '/').split('/')[-1].replace('"', '')
+        base = self._coverage_ruta_base.replace('\\', '\\\\').replace('"', '')
+        return (f'_syn_cov_configurar("{fuente}", "{base}");')
+
+    def cov_ramas_estaticas_c(self) -> str:
+        """Literal C del catálogo estático "l:d,l:d,..." (ramas en orden)."""
+        pares = ','.join(f"{l}:{d}" for l, d in self._coverage_ramas)
+        return pares.replace('"', '')
+
+    def cov_total_ramas(self) -> int:
+        return len(self._coverage_ramas)
 
     def register_var(self, nombre: str, tipo: str, desde_llamada: bool):
         if self._scope_stack and desde_llamada and self._tipo_tiene_destructor(tipo):

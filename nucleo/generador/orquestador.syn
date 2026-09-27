@@ -11,6 +11,18 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     est = GeneradorCEst()
     // F17: Inicializar estado PGO (instrumentación de contadores de bloques básicos)
     pgo_inicializar()
+    // cumple Manual 8 §4.2 (ME coverage_aristas): reset + bandera del catálogo
+    // de ramas (OFF salvo SYNAPSE_COVERAGE=1 — el C emitido sin la bandera es
+    // byte-idéntico: cumple Manual 1 §6).
+    // cov_fijar_ruta_base: la ruta REAL del .syn del usuario la fija ANTES
+    // generar_etapa (principal.syn) — se consulta ANTES del reset (cov_iniciar
+    // limpia el estado) y solo se fija 'synapse_unity.c' si no hay ninguna
+    // (generar() recibe el nombre del C intermedio, no del fuente; el JSON de
+    // cobertura debe llamarse <fuente>.coverage.json).
+    let cov_externa = cov_ruta_base_vacia()
+    cov_iniciar()
+    si cov_externa == 1:
+        cov_fijar_ruta_base(ruta)
     inseguro:
         asm("fprintf(stderr, \"[Orquestador] Abriendo archivo...\\n\"); fflush(stderr);")
         asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos;")
@@ -675,8 +687,9 @@ funcion gen_visitar_top_level(est: GeneradorCEst, stmt: puntero) -> nulo:
 // Función del COMPILADOR (como _syn_nativo_expr_tipo_c): la usan los emisores
 // del generador nativo; el C del usuario no la necesita.
 funcion _syn_tipo_escalar(t: puntero) -> entero:
-    // cumple Manual 2 §12 (r153): contratos en toda función pública —
-    // clasificador puro: t nulo devuelve 0, t no nulo devuelve 1 si es escalar.
+    // cumple Manual 2 §12 (r153): contratos en toda función pública (tabla de
+    // pruebas obligatorias) — clasificador puro: t nulo devuelve 0, t no nulo
+    // devuelve 1 si es escalar.
     requiere:
         verdadero
     garantiza:
