@@ -89,6 +89,11 @@ _FUNCIONES_COLECCION_POLIMORFICAS: Dict[str, Tuple[str, str]] = {
     'lista_liberar': ('Lista<', 'nulo'),
     'longitud': ('Lista<', 'int'),
     'mapa_longitud': ('Mapa<', 'int'),
+    # cumple Manual 2 §4.3 (33.4b): claves()/valores() de Mapa (M3 §5.2
+    # keys()/values() en modo es) — aceptan el resultado de la otra
+    # (encadenado m.claves() es Lista<texto> para longitud).
+    'mapa_claves': ('Mapa<', 'puntero'),
+    'mapa_valores': ('Mapa<', 'puntero'),
 }
 
 

@@ -370,6 +370,10 @@ class ArgumentoTransferido(Nodo):
 class DefinicionEstructura(Nodo):
     nombre: str = ''
     campos: List[Parametro] = field(default_factory=list)
+    # cumple Manual 2 §2 (33.4b): parametro de tipo de la estructura generica
+    # (`estructura Caja(T):` — declaracion_estructura ::= "estructura"
+    # IDENTIFICADOR [ "(" IDENTIFICADOR ")" ]?): vacio si concreta.
+    param_generico: str = ''
 
 
 @dataclass

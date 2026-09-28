@@ -176,6 +176,16 @@ class ParserDeclarationsMixin(ParserBase):
         if tok_nombre is None:
             self._sincronizar(_SYNC_TOP)
             return None
+        # cumple Manual 2 §2 (33.4b): parametro de tipo de la estructura
+        # generica entre PARENTESIS (M2 §2: [ "(" IDENTIFICADOR ")" ]?) —
+        # la ley NO define `Caja<T>` con corchetes angulares.
+        param_generico = ''
+        if self._mirar().tipo == TokenID.LPAREN:
+            self._avanzar()
+            tok_par = self._esperar(TokenID.IDENTIFIER)
+            if tok_par is not None:
+                param_generico = tok_par.valor
+                self._esperar(TokenID.RPAREN)
         if self._esperar(TokenID.COLON) is None:
             self._sincronizar(_SYNC_STMT)
             return None
@@ -226,6 +236,7 @@ class ParserDeclarationsMixin(ParserBase):
             campos=campos,
             linea=tok_nombre.linea,
             columna=tok_nombre.columna,
+            param_generico=param_generico,
         )
 
     def _parsear_importar_c(self) -> Optional[ImportarC]:

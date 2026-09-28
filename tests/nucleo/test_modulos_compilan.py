@@ -80,6 +80,61 @@ def _compilar(fuente_syn: Path) -> tuple:
     return p.returncode, exe, p.stdout + p.stderr
 
 
+# ME 33.4b (cumple Manual 2 §2 y §8.2, Manual 3 §5.2): módulo de prueba
+# `estructura Caja(T)` instanciada + `para k en m` + `m[k]` + `m.claves()`.
+# RED primero (el parser S1 rechazaba `estructura Caja(T):`), GREEN tras
+# implementar genéricos + para-en mapa (docs/plan_ME_33.4b_genericos_para_mapa.md).
+_PROG_334B = """#lang: es
+
+estructura Caja(T):
+    valor: T
+
+funcion principal() -> entero:
+    let m = Mapa<texto, entero>()
+    m.poner("a", 1)
+    m.poner("b", 2)
+    let suma = 0
+    para k en m:
+        suma = suma + m[k]
+    si suma != 3:
+        retornar 1
+    let ks = m.claves()
+    si longitud(ks) != 2:
+        retornar 2
+    let c = Caja(suma)
+    si c.valor != 3:
+        retornar 3
+    si Caja(7).valor != 7:
+        retornar 4
+    retornar 0
+"""
+
+
+@pytest.mark.timeout(900)
+def test_s1_soporta_genericos_y_para_mapa():
+    """Manual 2 §2 (estructura genérica con paréntesis) + §8.2 (instanciación
+    con inferencia) + Manual 3 §5.2 (Mapa: [], claves()): el módulo compila y
+    ejecuta rc=0 — D-33.4b-1: `para k en mapa` itera CLAVES, valor via m[k]."""
+    _construir_s1_si_falta()
+    tmp = FIXTURES / "tmp_334b_genericos.syn"
+    tmp.parent.mkdir(parents=True, exist_ok=True)
+    tmp.write_text(_PROG_334B, encoding="utf-8")
+    try:
+        rc, exe, log = _compilar(tmp)
+        assert rc == 0, f"S1 no compila genéricos+para-mapa (rc={rc}):\n{log[-2000:]}"
+        out = subprocess.run([str(exe)], capture_output=True, text=True,
+                             timeout=30)
+        assert out.returncode == 0, (
+            f"El módulo 33.4b falló en ejecución: rc={out.returncode} "
+            f"(stdout={out.stdout}, stderr={out.stderr})"
+        )
+    finally:
+        for suf in (".syn", ".exe", ".c", ".o"):
+            f = tmp.with_suffix(suf)
+            if f.exists():
+                f.unlink()
+
+
 @pytest.mark.timeout(900)
 def test_s1_soporta_lista_metodos_y_for_en():
     """Manual 2 §4.3 + Manual 3 §3: Lista<T>() con .agregar (structs),

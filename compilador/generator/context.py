@@ -257,7 +257,18 @@ class GeneratorContext:
             '_syn_mapa_contiene': ['void*', 'const char*'],
             '_syn_mapa_eliminar': ['void*', 'const char*'],
             '_syn_mapa_limpiar': ['void*'], '_syn_mapa_liberar': ['void*'],
+            # cumple Manual 2 §4.3 (33.4b): claves()/valores() de Mapa (M3 §5.2
+            # "keys()/values()") → listas del runtime con claves reales (char*)
+            # y valores (int64). El extern del header va en generator.py.
+            '_syn_mapa_claves': ['void*'], '_syn_mapa_valores': ['void*'],
         }
+        # cumple Manual 2 §2/§8.2 (33.4b): estructuras genericas de usuario
+        # (`estructura Caja(T):`). Plantillas por nombre: {param, campos};
+        # instancias monomorfizadas `Nombre_T`: {campos tipados, param}; el
+        # typedef C se emite perezosamente (orden alfabético, M1 §7.1).
+        self._genericas = {}
+        self._instancias_genericas = {}
+        self._typedefs_genericos_emitidos = set()
 
         # OO types that have FULL typedef definitions in the header
         # (these must be skipped by visitar_estructura to avoid redefinition)

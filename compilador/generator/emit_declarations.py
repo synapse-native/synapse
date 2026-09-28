@@ -195,6 +195,17 @@ def visitar_estructura(ctx: GeneratorContext, nodo: DefinicionEstructura):
     El resto de tipos OO necesitan definiciones completas para sizeof() y
     declaraciones de variables en el código C auto-hospedado.
     """
+    # cumple Manual 2 §2 (33.4b): estructura generica `estructura Caja(T):`
+    # (declaracion_estructura M2 §2). Se registra la PLANTILLA (param + campos)
+    # y NO se emite typedef: T no tiene tipo C hasta la instanciación, que se
+    # monomorfiza por inferencia HM (M2 §8.2, algoritmo W) en emit_expressions.
+    param_gen = getattr(nodo, 'param_generico', '')
+    if param_gen:
+        ctx._genericas[nodo.nombre] = {
+            'param': param_gen,
+            'campos': [(c.nombre, c.tipo) for c in nodo.campos],
+        }
+        return
     campos_pointer = set()
     for c in nodo.campos:
         if c.tipo in ctx._estructuras or c.tipo == nodo.nombre:
@@ -251,6 +262,32 @@ def visitar_estructura(ctx: GeneratorContext, nodo: DefinicionEstructura):
 # ================================================================
 # Type declaration (Manual 2 §2 declaracion_tipo / §4.2)
 # ================================================================
+
+def _volcar_typedefs_genericos(ctx: GeneratorContext):
+    """cumple Manual 2 §2 (33.4b): emite los typedefs de TODAS las instancias
+    de estructuras genéricas de usuario monomorfizadas (`Caja_T`) registradas
+    a fecha de hoy (pre-scan de generator.py + instanciaciones durante la
+    emisión) que aún no estén emitidas. Orden alfabético (determinismo, M1
+    §7.1). Se invoca en el pre-bloque de declaraciones y antes de cada
+    función, para que cualquier uso posterior vea el tipo completo."""
+    nuevas = [n for n in ctx._instancias_genericas
+              if n not in ctx._typedefs_genericos_emitidos]
+    if not nuevas:
+        return
+    for nombre_inst in sorted(nuevas):
+        info = ctx._instancias_genericas.get(nombre_inst)
+        if not info:
+            continue
+        ctx.write_line(f"typedef struct {nombre_inst} {{")
+        ctx.inc_indent()
+        for campo, tipo in info['campos']:
+            tipo_c = ctx.traducir_tipo_c(tipo)
+            ctx.write_line(f"{tipo_c} {campo};")
+        ctx.dec_indent()
+        ctx.write_line(f"}} {nombre_inst};")
+        ctx.write_line("")
+        ctx._typedefs_genericos_emitidos.add(nombre_inst)
+
 
 def _emitir_typedefs_instancias(ctx: GeneratorContext):
     """R17 (D-2): emite los typedefs de TODAS las instanciaciones de ADT

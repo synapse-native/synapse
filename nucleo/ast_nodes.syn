@@ -153,6 +153,10 @@ estructura DefinicionEstructura:
     tipo: texto
     nombre: texto
     campos: ListaParametro
+    // cumple Manual 2 §2 (33.4b): parametro de tipo de la estructura generica
+    // (`estructura Caja(T):`) — vacío si concreta; paridad S1
+    // DefinicionEstructura.param_generico.
+    param_generico: texto
     // R21: linea/columna reales (ERR_SEM_REDEFINICION pasada 1, paridad S1)
     linea: entero
     columna: entero

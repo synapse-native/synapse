@@ -10,6 +10,123 @@
 // generar() invoca en el mismo orden -> el C generado no cambia.
 
 // ----------------------------------------------------------
+// gen_escanear_genericas - 33.4b: estructuras genericas de usuario
+// cumple Manual 2 §2 y §8.2 (33.4b): `estructura Caja(T):` (gramática) —
+// registra plantillas, escanea instanciaciones `Caja(expr)` en cuerpos
+// (T unificado con el tipo del argumento, M2 §8.2 inferencia HM) y emite
+// los typedefs monomorfizados ANTES del recorrido top-level (paridad
+// pre-bloque D-2 / S1 _recolectar_instancias_genericas +
+// _volcar_typedefs_genericos).
+// ----------------------------------------------------------
+funcion gen_escanear_genericas(est: GeneradorCEst, programa: Programa) -> nulo:
+    // cumple Manual 2 §12 (33.4b): contratos en toda función pública —
+    // el escaneo es tolerante a programa vacío (while con guard), no modifica
+    // su entrada y solo llena los registros _G_native_gen* + emite typedefs
+    // monomorfizados (max 64 plantillas/instancias, dedup por (base, T)).
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    inseguro:
+        asm("extern char _G_native_gen[64][64]; extern char _G_native_gen_param[64][64]; extern char _G_native_gen_campos[64][8][64]; extern char _G_native_gen_campos_tipo_syn[64][8][64]; extern int _G_native_gen_ncampos[64]; extern int _G_native_gen_count;")
+        asm("extern char _G_native_gen_inst_type[64][64]; extern char _G_native_gen_inst_c[64][64]; extern char _G_native_gen_inst_base[64][64]; extern int _G_native_gen_inst_count;")
+        asm("_G_native_gen_count = 0; _G_native_gen_inst_count = 0;")
+        asm("// Fase A: registrar plantillas genericas (DefinicionEstructura con param_generico)")
+        asm("struct ListaNodo* _gec2 = programa.sentencias;")
+        asm("while (_gec2 && _G_native_gen_count < 64) {")
+        asm("    struct Nodo* _gen2 = _gec2->cabeza;")
+        asm("    if (_gen2 && _gen2->tipo.datos && strcmp(_gen2->tipo.datos, \"DefinicionEstructura\") == 0) {")
+        asm("        struct DefinicionEstructura* _ged2 = (struct DefinicionEstructura*)_gen2;")
+        asm("        if (_ged2->nombre.datos && _ged2->param_generico.datos && _ged2->param_generico.datos[0]) {")
+        asm("            int _gi2 = _G_native_gen_count++;")
+        asm("            strncpy(_G_native_gen[_gi2], _ged2->nombre.datos, 63); _G_native_gen[_gi2][63] = 0;")
+        asm("            strncpy(_G_native_gen_param[_gi2], _ged2->param_generico.datos, 63); _G_native_gen_param[_gi2][63] = 0;")
+        asm("            int _gcf2 = 0;")
+        asm("            struct ListaParametro* _gcp2 = _ged2->campos;")
+        asm("            while (_gcp2 && _gcf2 < 8) {")
+        asm("                struct Parametro* _gpp2 = (struct Parametro*)_gcp2->cabeza;")
+        asm("                if (_gpp2 && _gpp2->nombre.datos && _gpp2->tipo_param.datos) {")
+        asm("                    strncpy(_G_native_gen_campos[_gi2][_gcf2], _gpp2->nombre.datos, 63); _G_native_gen_campos[_gi2][_gcf2][63] = 0;")
+        asm("                    strncpy(_G_native_gen_campos_tipo_syn[_gi2][_gcf2], _gpp2->tipo_param.datos, 63); _G_native_gen_campos_tipo_syn[_gi2][_gcf2][63] = 0;")
+        asm("                    _gcf2++;")
+        asm("                }")
+        asm("                _gcp2 = _gcp2->cola;")
+        asm("            }")
+        asm("            _G_native_gen_ncampos[_gi2] = _gcf2;")
+        asm("        }")
+        asm("    }")
+        asm("    _gec2 = _gec2->cola;")
+        asm("}")
+        asm("fprintf(stderr, \"[Orquestador] 33.4b: %d genericas de usuario registradas\\n\", _G_native_gen_count); fflush(stderr);")
+        asm("// Fase B: escanear instanciaciones `Base(expr)` en cuerpos — la")
+        asm("// unificación de T es por el TIPO DEL ARGUMENTO (M2 §8.2, algoritmo W).")
+        asm("struct ListaNodo* _gefd = programa.sentencias;")
+        asm("while (_gefd && _G_native_gen_inst_count < 64) {")
+        asm("    struct Nodo* _gefn = _gefd->cabeza;")
+        asm("    if (_gefn && _gefn->tipo.datos && strcmp(_gefn->tipo.datos, \"DefinicionFuncion\") == 0) {")
+        asm("        struct DefinicionFuncion* _geff = (struct DefinicionFuncion*)_gefn;")
+        asm("        struct ListaNodo* _gefb = _geff->cuerpo;")
+        asm("        while (_gefb && _G_native_gen_inst_count < 64) {")
+        asm("            struct Nodo* _gefs = _gefb->cabeza;")
+        asm("            if (_gefs && _gefs->tipo.datos && strcmp(_gefs->tipo.datos, \"DeclaracionVariable\") == 0) {")
+        asm("                struct DeclaracionVariable* _gedv = (struct DeclaracionVariable*)_gefs;")
+        asm("                struct Nodo* _gex = _gedv->expresion;")
+        asm("                if (_gex && _gex->tipo.datos && strcmp(_gex->tipo.datos, \"LlamadaFuncion\") == 0) {")
+        asm("                    struct LlamadaFuncion* _gelf = (struct LlamadaFuncion*)_gex;")
+        asm("                    extern int _G_native_gen_es(const char* n);")
+        asm("                    if (_gelf->nombre.datos && _G_native_gen_es(_gelf->nombre.datos) && _gelf->argumentos && _gelf->argumentos->cabeza) {")
+        asm("                        struct Nodo* _gearg = _gelf->argumentos->cabeza;")
+        asm("                        extern int64_t _syn_nativo_expr_tipo_c(void* n, void* out);")
+        asm("                        char _geargt[64]; _geargt[0] = 0;")
+        asm("                        _syn_nativo_expr_tipo_c((void*)_gearg, (void*)_geargt);")
+        asm("                        const char* _gtt = _geargt[0] ? _geargt : \"entero\";")
+        asm("                        char _gtb[64]; _gtb[0] = 0;")
+        asm("                        if (strncmp(_gtt, \"struct \", 7) == 0) { _gtt += 7; }")
+        asm("                        int _gtn = 0; for (const char* _gq = _gtt; *_gq && _gtn < 62; _gq++) { if (*_gq != ' ') _gtb[_gtn++] = *_gq; }")
+        asm("                        _gtb[_gtn] = 0; _gtt = _gtb;")
+        asm("                        // 33.4b: normalizar alias C -> nombre Synapse (paridad S1 _registrar_instancia_generica)")
+        asm("                        if (strcmp(_gtb, \"int64_t\") == 0) strcpy(_gtb, \"entero\"); else if (strcmp(_gtb, \"double\") == 0) strcpy(_gtb, \"decimal\"); else if (strcmp(_gtb, \"int\") == 0) strcpy(_gtb, \"booleano\"); else if (strcmp(_gtb, \"char*\") == 0) strcpy(_gtb, \"texto\"); else if (strcmp(_gtb, \"char\") == 0) strcpy(_gtb, \"caracter\");")
+        asm("                        int _gdup = 0;")
+        asm("                        for (int _gx = 0; _gx < _G_native_gen_inst_count; _gx++) { if (strcmp(_G_native_gen_inst_base[_gx], _gelf->nombre.datos) == 0 && strcmp(_G_native_gen_inst_type[_gx], _gtt) == 0) { _gdup = 1; break; } }")
+        asm("                        if (!_gdup) {")
+        asm("                            int _gii = _G_native_gen_inst_count++;")
+        asm("                            strncpy(_G_native_gen_inst_base[_gii], _gelf->nombre.datos, 63); _G_native_gen_inst_base[_gii][63] = 0;")
+        asm("                            strncpy(_G_native_gen_inst_type[_gii], _gtt, 63); _G_native_gen_inst_type[_gii][63] = 0;")
+        asm("                            snprintf(_G_native_gen_inst_c[_gii], 63, \"%s_%s\", _gelf->nombre.datos, _gtt); _G_native_gen_inst_c[_gii][63] = 0;")
+        asm("                        }")
+        asm("                    }")
+        asm("                }")
+        asm("            }")
+        asm("            _gefb = _gefb->cola;")
+        asm("        }")
+        asm("    }")
+        asm("    _gefd = _gefd->cola;")
+        asm("}")
+        asm("// Fase C: typedefs monomorfizados (antes del recorrido top-level, paridad R17)")
+        asm("for (int _gde = 0; _gde < _G_native_gen_inst_count; _gde++) {")
+        asm("    char _gsh[4096];")
+        asm("    snprintf(_gsh, 4096, \"typedef struct %s {\", _G_native_gen_inst_c[_gde]);")
+        asm("    gen_emitir_str(est, _gsh);")
+        asm("    int _gbi = -1;")
+        asm("    for (int _gb = 0; _gb < _G_native_gen_count; _gb++) { if (strcmp(_G_native_gen[_gb], _G_native_gen_inst_base[_gde]) == 0) { _gbi = _gb; break; } }")
+        asm("    if (_gbi >= 0) {")
+        asm("        for (int _gf = 0; _gf < _G_native_gen_ncampos[_gbi]; _gf++) {")
+        asm("            const char* _gft = _G_native_gen_campos_tipo_syn[_gbi][_gf];")
+        asm("            if (strcmp(_gft, _G_native_gen_param[_gbi]) == 0) { _gft = _G_native_gen_inst_type[_gde]; }")
+        asm("            traducir_tipo_c((void*)_gft);")
+        asm("            extern char _gen_tmp_buf[4096];")
+        asm("            char _gfl[4096];")
+        asm("            snprintf(_gfl, 4096, \"    %s %s;\", _gen_tmp_buf, _G_native_gen_campos[_gbi][_gf]);")
+        asm("            gen_emitir_str(est, _gfl);")
+        asm("        }")
+        asm("    }")
+        asm("    char _gsc[4096];")
+        asm("    snprintf(_gsc, 4096, \"} %s;\", _G_native_gen_inst_c[_gde]);")
+        asm("    gen_emitir_str(est, _gsc);")
+        asm("    gen_emitir_str(est, \"\");")
+        asm("}")
+
+// ----------------------------------------------------------
 // gen_escanear_adt_instancias - (bloque extraido de generar())
 // ----------------------------------------------------------
 funcion gen_escanear_adt_instancias(est: GeneradorCEst, programa: Programa) -> nulo:

@@ -19,6 +19,22 @@ funcion parsear_estructura_def(est: ParserEst) -> entero:
     nodo = parser_nuevo_nodo(est, NODO_ESTRUCTURA, linea, col)
     // FASE A (A3.0): payload del nombre de la estructura (DefinicionEstructura.nombre)
     nodo_guardar_token(est, nodo, pos_nombre)
+    // cumple Manual 2 §2 (33.4b): parametro de tipo de la estructura generica
+    // [ "(" IDENTIFICADOR ")" ]? — `estructura Caja(T):`. La ley NO define
+    // `Caja<T>` con corchetes angulares. El parámetro viaja en el nodo
+    // (hijo_der = NODO_PARAMETRO con payload nombre) para el generador.
+    si token_mirar(est) == T_PAREN_IZQ:
+        token_avanzar(est)
+        pos_par = est.posicion
+        linea_par = token_linea(est, est.posicion)
+        col_par = token_columna(est, est.posicion)
+        token_avanzar(est)
+        nodo_par = parser_nuevo_nodo(est, NODO_PARAMETRO, linea_par, col_par)
+        nodo_guardar_token(est, nodo_par, pos_par)
+        si token_esperar(est, T_PAREN_DER) == 0:
+            retornar 0
+        inseguro:
+            asm("est->nodos[nodo].hijo_der = nodo_par")
     si token_esperar(est, T_DOSPUNTOS) == 0:
         retornar 0
     si token_mirar(est) == T_NUEVALINEA:

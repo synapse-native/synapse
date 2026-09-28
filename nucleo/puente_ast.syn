@@ -440,6 +440,8 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->tipo = puente_cs_str((void*)\"DefinicionEstructura\");")
             asm("  _p->nombre = puente_cs_str(puente_str(idx));")
             asm("  _p->campos = (struct ListaParametro*)puente_lista_param(hi);")
+            asm("  // cumple Manual 2 §2 (33.4b): parametro de tipo generico (hijo_der)")
+            asm("  if (hd) { _p->param_generico = puente_cs_str(puente_str(hd)); }")
             asm("  // R21: linea/columna reales (ERR_SEM_REDEFINICION pasada 1)")
             asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")

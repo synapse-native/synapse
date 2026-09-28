@@ -219,6 +219,19 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
                         for c_nombre, c_tipo in ctors:
                             t_conc = args[params.index(c_tipo)] if c_tipo in params else c_tipo
                             inst_campos.append(Parametro(nombre=c_nombre, tipo=t_conc))
+                # cumple Manual 2 §8.2 (33.4b): instanciación de estructura
+                # genérica de usuario (`Caja<entero>`) — los campos con el
+                # parámetro de tipo se sustituyen por el argumento concreto
+                # (unificación del algoritmo W; paridad D-2 de ADT).
+                elif args and hasattr(self, '_estructuras'):
+                    _gs = self._estructuras.get(_b)
+                    _pgen = getattr(_gs, 'param_generico', '') if _gs else ''
+                    if _gs is not None and _pgen and len(args) == 1:
+                        inst_campos = [
+                            Parametro(nombre=c.nombre,
+                                      tipo=args[0] if c.tipo == _pgen else c.tipo)
+                            for c in _gs.campos
+                        ]
                 base_tipo = _b
             struct = self._estructuras.get(base_tipo)
             if struct is None:
@@ -371,6 +384,14 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
                 'eliminar': ('Lista<', 'nulo'), 'liberar': (None, 'nulo'),
                 'poner': ('Mapa<', 'nulo'), 'contiene': ('Mapa<', 'booleano'),
             }.get(met)
+            # cumple Manual 2 §4.3 (33.4b): claves()/valores() de Mapa
+            # (M3 §5.2 keys()/values() en modo es) — retornan Lista<K>/Lista<V>.
+            if firma is None and recv_tipo.startswith('Mapa<') and met in ('claves', 'keys'):
+                interior_k = recv_tipo[5:-1]
+                return f"Lista<{interior_k.split(',')[0].strip()}>"
+            if firma is None and recv_tipo.startswith('Mapa<') and met in ('valores', 'values'):
+                interior_v2 = recv_tipo[5:-1]
+                return f"Lista<{interior_v2.split(',')[1].strip() if ',' in interior_v2 else 'puntero'}>"
             if firma is None:
                 self.diag.reportar(
                     ErrorCodes.ERR_SEM_FUNC_NO_DEFINIDA,
@@ -517,6 +538,16 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
                 )
             for arg in nodo.argumentos:
                 self._inferir_tipo(arg)
+            # cumple Manual 2 §8.2 (33.4b): instanciación de estructura genérica
+            # de usuario `Caja(5)` — T se unifica con el tipo del argumento
+            # (algoritmo W) y retorna el span de instancia `Caja<entero>`
+            # (paridad D-2 de ADT); el acceso a campo sustituye T.
+            _pgen = getattr(struct, 'param_generico', '')
+            if (_pgen and len(nodo.argumentos) == 1
+                    and any(c.tipo == _pgen for c in struct.campos)):
+                _t_arg = self._inferir_tipo(nodo.argumentos[0])
+                if _t_arg:
+                    return f"{nodo.nombre}<{_t_arg}>"
             return nodo.nombre
 
         # D-6/F1.2: constructores ADT (ok/err/algun/ninguno) — devuelven el ADT

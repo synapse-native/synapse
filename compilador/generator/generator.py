@@ -20,7 +20,7 @@ from compilador.ast_nodes import (
 from .context import GeneratorContext, _dividir_args_tipo
 from .emit_control import visitar_si, visitar_mientras, visitar_para, visitar_coincidir
 from .emit_declarations import (
-    visitar_funcion, visitar_estructura,
+    visitar_funcion, visitar_estructura, _volcar_typedefs_genericos,
     visitar_declaracion, visitar_asignacion,
     visitar_asignacion_campo, visitar_enviar_canal,
     visitar_import_c, visitar_externa, visitar_constante,
@@ -30,9 +30,74 @@ from .emit_declarations import (
     _emitir_typedefs_instancias,
 )
 from .emit_expressions import (
-    expr_a_c, tipo_de_expr, visitar_log,
+    expr_a_c, tipo_de_expr, visitar_log, _registrar_instancia_generica,
 )
 from .emit_contracts import emit_contract_header
+
+
+def _recolectar_instancias_genericas(ctx: GeneratorContext):
+    """cumple Manual 2 §2/§8.2 (33.4b): pre-scan de instanciaciones de
+    estructuras genéricas de usuario (`let c = Caja(5)` — M2 §2: sin `<>`,
+    el T se UNIFICA con el tipo del argumento por inferencia Hindley-Milner,
+    algoritmo W, M2 §8.2). Registra cada instancia única `Nombre_T` en
+    ctx._instancias_genericas con los campos tipados; el pre-bloque de
+    typedefs (paridad D-2 de los ADT) las emite antes de todo uso."""
+    from compilador.ast_nodes import (
+        LlamadaFuncion, DeclaracionVariable, DefinicionFuncion,
+        SentenciaRetornar, SentenciaExpr,
+    )
+
+    def _registrar_llamada(nodo):
+        if not (isinstance(nodo, LlamadaFuncion)
+                and nodo.nombre in ctx._genericas
+                and nodo.argumentos):
+            return
+        arg_tipo = tipo_de_expr(ctx, nodo.argumentos[0])
+        if not arg_tipo or arg_tipo == 'int':
+            # tipo_de_expr cae a 'int' si aún no resuelve; el ctor en
+            # emit_expressions re-registrará con el tipo real si difiere.
+            arg_tipo = 'entero'
+        if arg_tipo == 'puntero':
+            arg_tipo = 'void*'
+        if arg_tipo.startswith('struct '):
+            arg_tipo = arg_tipo[7:]
+        # M2 §3: enteros/decimales/booleanos/texto tienen alias primitivos —
+        # normalizar al canónico para que el mangle de la instancia sea único
+        # (entero e int → misma instancia Caja_entero).
+        _alias = {'int': 'entero', 'float': 'decimal', 'real': 'decimal',
+                  'bool': 'booleano', 'cadena': 'texto', 'string': 'texto'}
+        arg_tipo = _alias.get(arg_tipo, arg_tipo)
+        _registrar_instancia_generica(ctx, nodo.nombre, arg_tipo)
+
+    def _walk(nodo):
+        if isinstance(nodo, (DefinicionFuncion,)):
+            for s in getattr(nodo, 'cuerpo', []) or []:
+                _walk(s)
+            return
+        if isinstance(nodo, DeclaracionVariable):
+            _registrar_llamada(nodo.expresion)
+            if nodo.expresion:
+                _walk(nodo.expresion)
+            return
+        if isinstance(nodo, (SentenciaExpr, SentenciaRetornar)):
+            _registrar_llamada(getattr(nodo, 'expresion', None))
+        for attr in ('cuerpo', 'cuerpo_sino', 'sentencias', 'argumentos',
+                     'expresion', 'objeto', 'condicion', 'inicializacion',
+                     'incremento', 'valor', 'cuerpo_critico', 'cuerpo_atrapar'):
+            hijo = getattr(nodo, attr, None)
+            if hijo is None:
+                continue
+            if isinstance(hijo, list):
+                for h in hijo:
+                    if hasattr(h, '__dict__'):
+                        _walk(h)
+            elif hasattr(hijo, '__dict__'):
+                _walk(hijo)
+
+    for s in ctx.programa.sentencias:
+        if isinstance(s, DefinicionFuncion):
+            for st in s.cuerpo or []:
+                _walk(st)
 
 
 def _recolectar_instancias_adt(ctx: GeneratorContext):
@@ -239,8 +304,14 @@ def _preprocess_lanzar(ctx: GeneratorContext):
     def _col_vars_local(nodo):
         """Recolecta declaraciones/asignaciones en un ambito para inferir tipos."""
         local_vars = {}
+        saved_vars = dict(ctx._variables)
         def _scan_local(stmts):
             for st in stmts:
+                # cumple Manual 2 §8.2 (33.4b): publicar los locales acumulados
+                # para que un let encadenado (ej. ks = m.claves()) resuelva el
+                # tipo del receptor igual que lo vera el emisor en orden de
+                # visita — antes ctx._variables estaba vacio y `m` caia a 'int'.
+                ctx._variables.update(local_vars)
                 if isinstance(st, DeclaracionVariable):
                     if st.expresion:
                         t_syn = tipo_de_expr(ctx, st.expresion)
@@ -258,6 +329,8 @@ def _preprocess_lanzar(ctx: GeneratorContext):
                 if hasattr(st, 'cuerpo_sino') and getattr(st, 'cuerpo_sino'):
                     _scan_local(st.cuerpo_sino)
         _scan_local(nodo)
+        ctx._variables.clear()
+        ctx._variables.update(saved_vars)
         return local_vars
 
     def _scan_node(nodo, local_vars=None):
@@ -397,6 +470,10 @@ def visitar(ctx: GeneratorContext, nodo: Nodo):
         )
 
     if isinstance(nodo, DefinicionFuncion):
+        # cumple Manual 2 §2 (33.4b): typedefs genericos monomorfizados
+        # pendientes (una instancia puede registrarse dentro de una función
+        # anterior) — orden alfabético (M1 §7.1, determinismo).
+        _volcar_typedefs_genericos(ctx)
         if ctx._in_function_scope:
             # Hoist nested function to file scope (clang no soporta nested functions)
             _saved = {
@@ -723,6 +800,10 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("extern int64_t _syn_mapa_contiene(void* m, const char* clave);")
     ctx.write_line("extern void _syn_mapa_eliminar(void* m, const char* clave);")
     ctx.write_line("extern void _syn_mapa_liberar(void* m);")
+    # cumple Manual 2 §4.3 (33.4b): claves()/valores() de Mapa (M3 §5.2) —
+    # listas del runtime con claves reales (char*) y valores (int64).
+    ctx.write_line("extern void* _syn_mapa_claves(void* m);")
+    ctx.write_line("extern void* _syn_mapa_valores(void* m);")
     # cumple Manual 2 §4.3 (H-R153-2): leer_archivo delega en el runtime real.
     ctx.write_line("extern CadenaSegura _syn_leer_archivo(CadenaSegura ruta);")
     # cumple Manual 2 §4.1 (r153): subcadena delega en el runtime real (clampeo).
@@ -822,6 +903,21 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("extern int _G_native_adt_inst_nfields[64];")
     ctx.write_line("extern int _G_native_adt_inst_count;")
     ctx.write_line("extern int _G_native_adt_inst_ctr(const char* base, int tag, const char* tipo_c, char* out);")
+    ctx.write_line("")
+    # cumple Manual 2 §2 y §8.2 (33.4b): estructuras genericas de usuario
+    # (`estructura Caja(T):`) — monomorfizacion de instancias; paridad orquestador.syn.
+    ctx.write_line("extern char _G_native_gen[64][64];")
+    ctx.write_line("extern char _G_native_gen_param[64][64];")
+    ctx.write_line("extern char _G_native_gen_campos[64][8][64];")
+    ctx.write_line("extern char _G_native_gen_campos_tipo_syn[64][8][64];")
+    ctx.write_line("extern int _G_native_gen_ncampos[64];")
+    ctx.write_line("extern int _G_native_gen_count;")
+    ctx.write_line("extern char _G_native_gen_inst_type[64][64];")
+    ctx.write_line("extern char _G_native_gen_inst_c[64][64];")
+    ctx.write_line("extern char _G_native_gen_inst_base[64][64];")
+    ctx.write_line("extern int _G_native_gen_inst_count;")
+    ctx.write_line("extern int _G_native_gen_es(const char* n);")
+    ctx.write_line("extern int _G_native_gen_resolver(const char* base, const char* tipo_syn, char* out);")
     ctx.write_line("")
     ctx.write_line("// ME-B7: dedup de funciones emitidas y hoisting de variables (paridad orquestador nativo)")
     ctx.write_line("extern char _G_emit_func_names[2048][64];")
@@ -1220,6 +1316,32 @@ class GeneradorC:
             ctx.dec_indent()
             ctx.write_line("}")
             ctx.write_line("")
+            # cumple Manual 2 §2 y §8.2 (33.4b): definiciones genericas de usuario (paridad orquestador.syn)
+            ctx.write_line("char _G_native_gen[64][64];")
+            ctx.write_line("char _G_native_gen_param[64][64];")
+            ctx.write_line("char _G_native_gen_campos[64][8][64];")
+            ctx.write_line("char _G_native_gen_campos_tipo_syn[64][8][64];")
+            ctx.write_line("int _G_native_gen_ncampos[64];")
+            ctx.write_line("int _G_native_gen_count;")
+            ctx.write_line("char _G_native_gen_inst_type[64][64];")
+            ctx.write_line("char _G_native_gen_inst_c[64][64];")
+            ctx.write_line("char _G_native_gen_inst_base[64][64];")
+            ctx.write_line("int _G_native_gen_inst_count;")
+            ctx.write_line("int _G_native_gen_es(const char* n) {")
+            ctx.inc_indent()
+            ctx.write_line("if (!n) return 0;")
+            ctx.write_line("for (int _i = 0; _i < _G_native_gen_count; _i++) { if (strcmp(_G_native_gen[_i], n) == 0) return 1; }")
+            ctx.write_line("return 0;")
+            ctx.dec_indent()
+            ctx.write_line("}")
+            ctx.write_line("int _G_native_gen_resolver(const char* base, const char* tipo_syn, char* out) {")
+            ctx.inc_indent()
+            ctx.write_line("if (!base || !out) return 0;")
+            ctx.write_line("for (int _i = 0; _i < _G_native_gen_inst_count; _i++) { if (strcmp(_G_native_gen_inst_base[_i], base) == 0 && strcmp(_G_native_gen_inst_type[_i], tipo_syn) == 0) { strcpy(out, _G_native_gen_inst_c[_i]); return 1; } }")
+            ctx.write_line("return 0;")
+            ctx.dec_indent()
+            ctx.write_line("}")
+            ctx.write_line("")
             # ME-B7: dedup de funciones emitidas y hoisting de variables
             ctx.write_line("char _G_emit_func_names[2048][64];")
             ctx.write_line("int _G_emit_func_count;")
@@ -1537,6 +1659,15 @@ class GeneradorC:
         # Construir mapa de _estructuras
         for s in ctx.programa.sentencias:
             if isinstance(s, DefinicionEstructura):
+                # cumple Manual 2 §2 (33.4b): estructura genérica de usuario
+                # (`estructura Caja(T):`) — registrar PLANTILLA (no struct
+                # concreto): se monomorfiza por instanciación (M2 §8.2, HM).
+                if getattr(s, 'param_generico', ''):
+                    ctx._genericas[s.nombre] = {
+                        'param': s.param_generico,
+                        'campos': [(c.nombre, c.tipo) for c in s.campos],
+                    }
+                    continue
                 es_adt = any(
                     c.nombre == 'tag' and c.tipo in ('entero', 'int')
                     for c in s.campos
@@ -1612,6 +1743,10 @@ class GeneradorC:
         # genéricos en todo el programa (retornos, params, let, campos) y registrar
         # un struct C especializado por cada instanciación concreta.
         _recolectar_instancias_adt(ctx)
+        # cumple Manual 2 §2/§8.2 (33.4b): monomorfización de estructuras
+        # genéricas de usuario (`Caja(5)`, inferencia HM) — pre-scan ANTES del
+        # header mode para que el pre-bloque de typedefs las vea.
+        _recolectar_instancias_genericas(ctx)
 
         # H-R90-15: pre-scan dedicado — detectar uso de `dividir` builtin (no
         # definido localmente) ANTES del header mode, para emitir el stub inline.
@@ -1681,8 +1816,12 @@ class GeneradorC:
             # R17: typedefs de instanciaciones de ADT ANTES de los structs
             # (un campo que referencia una instancia emitida después rompía el C)
             _emitir_typedefs_instancias(ctx)
+            # cumple Manual 2 §2 (33.4b): typedefs de instancias genéricas de
+            # usuario monomorfizadas — mismo pre-bloque que los ADT (D-2).
+            _volcar_typedefs_genericos(ctx)
             estructuras = sorted(
-                [s for s in ctx.programa.sentencias if isinstance(s, DefinicionEstructura)],
+                [s for s in ctx.programa.sentencias if isinstance(s, DefinicionEstructura)
+                 and not getattr(s, 'param_generico', '')],
                 key=lambda e: e.nombre
             )
             for s in estructuras:
@@ -1916,6 +2055,32 @@ class GeneradorC:
                 ctx.dec_indent()
                 ctx.write_line("}")
                 ctx.write_line("")
+                # cumple Manual 2 §2 y §8.2 (33.4b): definiciones genericas de usuario (paridad orquestador.syn)
+                ctx.write_line("char _G_native_gen[64][64];")
+                ctx.write_line("char _G_native_gen_param[64][64];")
+                ctx.write_line("char _G_native_gen_campos[64][8][64];")
+                ctx.write_line("char _G_native_gen_campos_tipo_syn[64][8][64];")
+                ctx.write_line("int _G_native_gen_ncampos[64];")
+                ctx.write_line("int _G_native_gen_count;")
+                ctx.write_line("char _G_native_gen_inst_type[64][64];")
+                ctx.write_line("char _G_native_gen_inst_c[64][64];")
+                ctx.write_line("char _G_native_gen_inst_base[64][64];")
+                ctx.write_line("int _G_native_gen_inst_count;")
+                ctx.write_line("int _G_native_gen_es(const char* n) {")
+                ctx.inc_indent()
+                ctx.write_line("if (!n) return 0;")
+                ctx.write_line("for (int _i = 0; _i < _G_native_gen_count; _i++) { if (strcmp(_G_native_gen[_i], n) == 0) return 1; }")
+                ctx.write_line("return 0;")
+                ctx.dec_indent()
+                ctx.write_line("}")
+                ctx.write_line("int _G_native_gen_resolver(const char* base, const char* tipo_syn, char* out) {")
+                ctx.inc_indent()
+                ctx.write_line("if (!base || !out) return 0;")
+                ctx.write_line("for (int _i = 0; _i < _G_native_gen_inst_count; _i++) { if (strcmp(_G_native_gen_inst_base[_i], base) == 0 && strcmp(_G_native_gen_inst_type[_i], tipo_syn) == 0) { strcpy(out, _G_native_gen_inst_c[_i]); return 1; } }")
+                ctx.write_line("return 0;")
+                ctx.dec_indent()
+                ctx.write_line("}")
+                ctx.write_line("")
                 # ME-B7: dedup de funciones emitidas y hoisting de variables
                 ctx.write_line("char _G_emit_func_names[2048][64];")
                 ctx.write_line("int _G_emit_func_count;")
@@ -2006,6 +2171,9 @@ class GeneradorC:
         # R17: typedefs de instanciaciones de ADT ANTES de los structs
         # (un campo que referencia una instancia emitida después rompía el C)
         _emitir_typedefs_instancias(ctx)
+        # cumple Manual 2 §2 (33.4b): typedefs de instancias genéricas de
+        # usuario — mismo pre-bloque que los ADT (D-2), antes de estructuras.
+        _volcar_typedefs_genericos(ctx)
 
         # Manual 8 §8.2: orden alfabético estricto para estructuras
         estructuras = sorted(

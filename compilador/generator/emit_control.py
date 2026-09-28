@@ -106,6 +106,43 @@ def _emitir_para_en(ctx, nodo, var_en: str, iterable_en):
     tipo_iterable = tipo_de_expr(ctx, iterable_en)
     iterable_c = expr_a_c(ctx, iterable_en)
     ctx.push_scope()
+    # cumple Manual 2 §4.3 (33.4b): `para k en mapa` — k itera las CLAVES del
+    # mapa (M3 §5.2: Mapa soporta keys()/values()/iter(); en modo es:
+    # claves()/valores()). D-33.4b-1: la ley (M3 §3) define para-en con UN
+    # identificador — el valor se obtiene con m[k] (indexado, 33.4a). El
+    # runtime (_syn_mapa_claves, runtime/core/mapa.c 33.4b) retorna una lista
+    # con las claves ENCAJONADAS como CadenaSegura* (paridad _encajonar_slot:
+    # slots por DIRECCIÓN para texto, H-R153-2) → el desencajonado es el
+    # deref estándar de Lista<texto>. Antes S1 casteba el handle a
+    # struct ListaNodo* y SEGFAULTABA (probe p_mapa_s1 rc=139).
+    if tipo_iterable.startswith('Mapa<'):
+        _interior = tipo_iterable[5:-1]
+        _k = _interior.split(',')[0].strip() if ',' in _interior else 'texto'
+        _kslot_c = ctx.traducir_tipo_c(_k)
+        es_slot_direc_k = _kslot_c not in ('int64_t', 'double')
+        tmp_claves = f"_fe_claves_{abs(hash(str(id(nodo)))) % 100000}"
+        tmp_i = f"_fe_i_{abs(hash(str(id(nodo)))) % 100000}"
+        ctx.write_line(f"void* {tmp_claves} = _syn_mapa_claves((void*)(intptr_t)({iterable_c}));")
+        ctx.write_line(f"for (int64_t {tmp_i} = 0; {tmp_i} < _syn_lista_longitud({tmp_claves}); {tmp_i}++) {{")
+        ctx.inc_indent()
+        slot_k = f"_syn_lista_obtener({tmp_claves}, (int){tmp_i})"
+        if es_slot_direc_k:
+            ctx.write_line(f"{_kslot_c} {var_en} = *({_kslot_c}*)(intptr_t){slot_k};")
+        else:
+            ctx.write_line(f"{_kslot_c} {var_en} = ({_kslot_c}){slot_k};")
+        ctx._variables[var_en] = _k
+        ctx.inc_indent()
+        ctx.push_scope()
+        for s in nodo.cuerpo:
+            _visitar_stmt(ctx, s)
+        ctx.pop_scope()
+        ctx.dec_indent()
+        ctx.dec_indent()
+        ctx.write_line("}")
+        ctx.write_line(f"_syn_lista_liberar({tmp_claves});")
+        _cov_pop(ctx)
+        ctx.pop_scope()
+        return
     if tipo_iterable.startswith('Lista<'):
         tipo_elem = tipo_iterable[6:-1].strip()
         tipo_elem_c = ctx.traducir_tipo_c(tipo_elem)

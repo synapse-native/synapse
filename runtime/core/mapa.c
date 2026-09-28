@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include "synapse_rt_types.h"
 
 #define MAPA_CAP_INICIAL 32
 #define MAPA_VACIO 0
@@ -88,9 +89,9 @@ static int _mapa_buscar(MapaSyn* m, const char* clave) {
 
 // --- Operaciones ---
 
-int64_t _syn_mapa_longitud(void* m) {
+int _syn_mapa_longitud(void* m) {
     if (!m) return 0;
-    return (int64_t)((MapaSyn*)m)->longitud;
+    return ((MapaSyn*)m)->longitud;
 }
 
 void _syn_mapa_poner(void* m, const char* clave, int64_t valor) {
@@ -129,7 +130,7 @@ int64_t _syn_mapa_obtener(void* m, const char* clave) {
     return ((MapaSyn*)m)->pares[idx].valor;
 }
 
-int64_t _syn_mapa_contiene(void* m, const char* clave) {
+int _syn_mapa_contiene(void* m, const char* clave) {
     if (!m || !clave) return 0;
     return _mapa_buscar((MapaSyn*)m, clave) >= 0 ? 1 : 0;
 }
@@ -162,12 +163,16 @@ void _syn_mapa_limpiar(void* m) {
 // --- Claves/Valores (retornan listas simples de punteros) ---
 
 void* _syn_mapa_claves(void* m) {
-    // Retorna una ListaSyn con los índices de las claves
-    // (simplificación: el caller debe usar _syn_lista_obtener para acceder)
+    // cumple Manual 2 §4.3 (33.4b): lista con las CLAVES reales del mapa.
+    // Los slots viajan ENCAJONADOS como CadenaSegura* (heap, paridad
+    // _encajonar_slot del emisor: los slots int64 viajan por VALOR para
+    // escalares y por DIRECCIÓN para structs/texto — H-R153-2/H-R153-4).
+    // Así el desencajonado de Lista<texto> (deref de la dirección) es
+    // uniforme en S1 y nativo, y `para k en mapa` (M3 §5.2 keys()/iter())
+    // entrega la clave como texto.
     if (!m) return NULL;
     MapaSyn* mp = (MapaSyn*)m;
 
-    // Crear lista de enteros (hash de cada clave como proxy)
     extern void* _syn_lista_crear(void);
     extern void _syn_lista_agregar(void*, int64_t);
 
@@ -176,7 +181,15 @@ void* _syn_mapa_claves(void* m) {
 
     for (int i = 0; i < mp->capacidad; i++) {
         if (mp->pares[i].estado == MAPA_OCUPADO) {
-            _syn_lista_agregar(lista, (int64_t)(intptr_t)mp->pares[i].clave);
+            CadenaSegura* caja = (CadenaSegura*)malloc(sizeof(CadenaSegura));
+            if (!caja) continue;  // OOM safety
+            size_t n = strlen(mp->pares[i].clave);
+            char* dup = (char*)malloc(n + 1);
+            if (!dup) { free(caja); continue; }  // OOM safety
+            memcpy(dup, mp->pares[i].clave, n + 1);
+            caja->longitud = (int)n;
+            caja->datos = dup;
+            _syn_lista_agregar(lista, (int64_t)(intptr_t)caja);
         }
     }
     return lista;

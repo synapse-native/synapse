@@ -102,6 +102,15 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
             # ctx._variables. Manual 2 §3: tipos primitivos y struct por
             # nombre. Aceptar tanto "X" como "struct X".
             nombre_struct = obj_tipo
+        # cumple Manual 2 §2/§8.2 (33.4b): acceso a campo sobre instancia
+        # genérica monomorfizada (Caja_T) — resolver el tipo del campo en la
+        # instancia registrada (T ya unificado, inferencia HM).
+        inst_gen = ctx._instancias_genericas.get(nombre_struct)
+        if inst_gen:
+            for c_nombre, c_tipo in inst_gen['campos']:
+                if c_nombre == nodo.nombre_campo:
+                    return c_tipo
+            return 'int'
         info = ctx._estructuras.get(nombre_struct)
         if info:
             # D-2: para una instanciación registrada usar sus campos tipados.
@@ -156,67 +165,39 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         # resuelven contra el runtime de colecciones stdlib (M2 §4.3,
         # runtime/core/lista.c/mapa.c, H-R153-2) según el tipo del receptor.
         if nombre.startswith('metodo:'):
+            # cumple Manual 3 §5.2 (H-R153-3, refactor 33.4b): TIPO de retorno
+            # de métodos de colección — el C lo emite _metodo_a_c desde
+            # expr_a_c. Antes ESTA rama devolvía el C COMPLETO (quirk r153:
+            # los `let x = metodo(...)` tomaban el C como tipo) y la rama de
+            # tipos era código muerto.
             met = nombre.split(':', 1)[1]
-            recv = nodo.argumentos[0]
-            recv_tipo = tipo_de_expr(ctx, recv)
-            recv_c = expr_a_c(ctx, recv)
-            resto = [expr_a_c(ctx, a) for a in nodo.argumentos[1:]]
+            recv = nodo.argumentos[0] if nodo.argumentos else None
+            recv_tipo = tipo_de_expr(ctx, recv) if recv is not None else ''
             if recv_tipo.startswith('Lista<'):
-                elem_tipo = recv_tipo[6:-1].strip()
-                if met == 'agregar' and resto:
-                    slot = _encajonar_slot(ctx, resto[0], elem_tipo)
-                    return f"_syn_lista_agregar((void*)(intptr_t)({recv_c}), {slot})"
+                elem = recv_tipo[6:-1].strip()
+                if met in ('agregar', 'establecer', 'eliminar', 'liberar'):
+                    return 'nulo'
                 if met == 'longitud':
-                    return f"_syn_lista_longitud((void*)(intptr_t)({recv_c}))"
-                if met == 'obtener' and resto:
-                    # H-R153-4: los slots int64 del runtime viajan por VALOR para
-                    # escalares y por DIRECCIÓN para structs/texto (_encajonar_slot).
-                    # El acceso posterior a campo (`l.obtener(0).campo`) exige
-                    # desencajonar la dirección: el tipo C del elemento decide el
-                    # deref (paridad _emitir_para_en rama es_slot_direc).
-                    elem_c = ctx.traducir_tipo_c(elem_tipo)
-                    raw = f"_syn_lista_obtener((void*)(intptr_t)({recv_c}), (int)({resto[0]}))"
-                    if elem_c not in ('int64_t', 'double'):
-                        return f"(*({elem_c}*)(intptr_t)({raw}))"
-                    return f"({elem_c})({raw})"
-                if met == 'establecer' and len(resto) >= 2:
-                    slot = _encajonar_slot(ctx, resto[1], elem_tipo)
-                    return f"_syn_lista_establecer((void*)(intptr_t)({recv_c}), (int)({resto[0]}), {slot})"
-                if met == 'eliminar' and resto:
-                    return f"_syn_lista_eliminar((void*)(intptr_t)({recv_c}), (int)({resto[0]}))"
-                if met == 'liberar':
-                    return f"_syn_lista_liberar((void*)(intptr_t)({recv_c}))"
+                    return 'int'
+                if met == 'obtener':
+                    return elem
             if recv_tipo.startswith('Mapa<'):
-                # cumple Manual 2 §4.3 (33.4a): cast del handle en TODAS las
-                # llamadas de mapa — el receptor viaja como entero intptr_t
-                # (H-CFG-5); sin el cast gcc: "makes pointer from integer
-                # without a cast" (la rama Lista ya lo hacía, esta no).
-                # cumple Manual 6 §3.1: el handle entero del lado Synapse es el
-                # void* del lado C — convención FFI de colecciones.
-                # cumple Manual 2 §12: la prueba obligatoria de la etapa
-                # (oráculo E2E 33.4a) valida las llamadas del runtime.
-                if met == 'poner' and len(resto) >= 2:
-                    val_tipo = recv_tipo[5:-1].split(',')[1].strip() \
-                        if ',' in recv_tipo[5:-1] else 'puntero'
-                    slot = _encajonar_slot(ctx, resto[1], val_tipo)
-                    return f"_syn_mapa_poner((void*)(intptr_t)({recv_c}), ({resto[0]}).datos, {slot})"
-                if met == 'obtener' and resto:
-                    # H-R153-4: desencajonado por dirección para structs/texto
-                    # (igual que Lista.obtener; el valor viaja en slot int64).
-                    interior_m = recv_tipo[5:-1]
-                    val_tipo_m = interior_m.split(',')[1].strip() \
-                        if ',' in interior_m else 'puntero'
-                    val_c_m = ctx.traducir_tipo_c(val_tipo_m)
-                    raw_m = f"_syn_mapa_obtener((void*)(intptr_t)({recv_c}), ({resto[0]}).datos)"
-                    if val_c_m not in ('int64_t', 'double'):
-                        return f"(*({val_c_m}*)(intptr_t)({raw_m}))"
-                    return f"({val_c_m})({raw_m})"
-                if met == 'contiene' and resto:
-                    return f"_syn_mapa_contiene((void*)(intptr_t)({recv_c}), ({resto[0]}).datos)"
+                interior = recv_tipo[5:-1]
+                valor = interior.split(',')[1].strip() if ',' in interior else 'puntero'
+                if met in ('poner', 'eliminar', 'liberar'):
+                    return 'nulo'
                 if met == 'longitud':
-                    return f"_syn_mapa_longitud((void*)(intptr_t)({recv_c}))"
-                if met == 'liberar':
-                    return f"_syn_mapa_liberar((void*)(intptr_t)({recv_c}))"
+                    return 'int'
+                if met == 'contiene':
+                    return 'booleano'
+                if met == 'obtener':
+                    return valor
+                # cumple Manual 2 §4.3 (33.4b): claves()/valores() (M3 §5.2
+                # keys()/values() en modo es) — retornan Lista<K>/Lista<V>.
+                if met in ('claves', 'keys'):
+                    return f"Lista<{interior.split(',')[0].strip()}>"
+                if met in ('valores', 'values'):
+                    return f"Lista<{valor}>"
             # Método desconocido sobre struct de usuario: SIN tabla de métodos
             # (H-R153-3) — error claro en compilación, no en ejecución.
             raise SystemExit(
@@ -261,6 +242,13 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
                     return 'booleano'
                 if met == 'obtener':
                     return valor
+                # cumple Manual 2 §4.3 (33.4b): claves()/valores() (M3 §5.2)
+                # retornan listas del runtime; el elemento es la clave K /
+                # el valor V (los slots traen char* de las claves reales).
+                if met in ('claves', 'keys'):
+                    return f"Lista<{interior.split(',')[0].strip()}>"
+                if met in ('valores', 'values'):
+                    return f"Lista<{valor}>"
             return 'int'
         if nombre in ctx._func_return_types:
             return ctx._func_return_types[nombre]
@@ -271,6 +259,12 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         # Struct constructor call
         if nombre in ctx._estructuras:
             return nombre
+        # cumple Manual 2 §2/§8.2 (33.4b): instanciación de estructura
+        # genérica de usuario `Caja(5)` — el tipo real de T se UNIFICA con el
+        # del argumento (inferencia Hindley-Milner, algoritmo W, M2 §8.2).
+        if nombre in ctx._genericas:
+            arg_tipo = tipo_de_expr(ctx, nodo.argumentos[0]) if nodo.argumentos else ''
+            return _registrar_instancia_generica(ctx, nombre, arg_tipo)
         # R20: ctor ADT (ok/err/algun/ninguno) -> resolver la instanciación por
         # el tipo del argumento (recursivo para ctors anidados ok(ok(42))).
         # Paridad nativa _syn_expr_tipo_c. Antes caía al fallback 'int' y
@@ -341,6 +335,40 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         return 'void'
 
     return 'int'
+
+
+def _registrar_instancia_generica(ctx: GeneratorContext, nombre: str,
+                                  arg_tipo: str) -> str:
+    """cumple Manual 2 §8.2 (33.4b): monomorfización de una estructura
+    genérica de usuario (Opción A de los ADT, D-2): unifica el parámetro T
+    con el tipo del argumento del constructor (inferencia HM, algoritmo W),
+    registra la instancia `Nombre_T` con los campos tipados y programa su
+    typedef perezoso. Devuelve el nombre Synapse de la instancia."""
+    plantilla = ctx._genericas[nombre]
+    param = plantilla['param']
+    tipo_t = arg_tipo or 'entero'
+    # M2 §3 (33.4b): normalizar alias primitivos al canónico para un mangle
+    # único de la instancia (entero e int → Caja_entero).
+    _alias = {'int': 'entero', 'float': 'decimal', 'real': 'decimal',
+              'bool': 'booleano', 'cadena': 'texto', 'string': 'texto'}
+    tipo_t = _alias.get(tipo_t, tipo_t)
+    nombre_inst = f"{nombre}_{tipo_t}"
+    nombre_inst = nombre_inst.replace('<', '_').replace('>', '')
+    if nombre_inst in ctx._instancias_genericas:
+        previa = ctx._instancias_genericas[nombre_inst]
+        if previa.get('param_tipo') not in ('', tipo_t):
+            pass  # campo con T distinto en la misma instancia: primera unificación gana
+    else:
+        campos = []
+        for campo, tipo in plantilla['campos']:
+            if tipo == param:
+                campos.append((campo, tipo_t))
+            else:
+                campos.append((campo, tipo))
+        ctx._instancias_genericas[nombre_inst] = {
+            'campos': campos, 'param_tipo': tipo_t, 'base': nombre,
+        }
+    return nombre_inst
 
 
 def _resolver_instancia_adt(ctx: GeneratorContext, adt: str, tag: int,
@@ -415,6 +443,82 @@ def _encajonar_slot(ctx: GeneratorContext, valor_c: str, tipo_syn: str) -> str:
     tipo_c = ctx.traducir_tipo_c(t) if t else 'void*'
     return (f"(int64_t)(void*)memcpy(malloc(sizeof({tipo_c})),"
             f"&( {valor_c} ), sizeof({tipo_c}))")
+
+
+def _metodo_a_c(ctx: GeneratorContext, nodo: Nodo) -> str:
+    """cumple Manual 3 §5.2 (r153 R3n, refactor 33.4b): emisión C de llamadas
+    a método postfijas de colección (`x.metodo(args)` → `metodo:<nombre>` con
+    el receptor como primer argumento). Separado de tipo_de_expr (que resuelve
+    el TIPO): antes el tipo devolvía el C completo y los `let x = metodo(...)`
+    tomaban el C como tipo Synapse (33.4b: m.claves() en let).
+    Paridad S1 emit_expressions.py / nativo expr_eval.syn metodo:."""
+    nombre = nodo.nombre
+    met = nombre.split(':', 1)[1]
+    recv = nodo.argumentos[0] if nodo.argumentos else None
+    recv_tipo = tipo_de_expr(ctx, recv) if recv is not None else ''
+    recv_c = expr_a_c(ctx, recv) if recv is not None else '0'
+    resto = [expr_a_c(ctx, a) for a in nodo.argumentos[1:]]
+    if recv_tipo.startswith('Lista<'):
+        elem_tipo = recv_tipo[6:-1].strip()
+        if met == 'agregar' and resto:
+            slot = _encajonar_slot(ctx, resto[0], elem_tipo)
+            return f"_syn_lista_agregar((void*)(intptr_t)({recv_c}), {slot})"
+        if met == 'longitud':
+            return f"_syn_lista_longitud((void*)(intptr_t)({recv_c}))"
+        if met == 'obtener' and resto:
+            # H-R153-4: los slots int64 del runtime viajan por VALOR para
+            # escalares y por DIRECCIÓN para structs/texto (_encajonar_slot).
+            elem_c = ctx.traducir_tipo_c(elem_tipo)
+            raw = f"_syn_lista_obtener((void*)(intptr_t)({recv_c}), (int)({resto[0]}))"
+            if elem_c not in ('int64_t', 'double'):
+                return f"(*({elem_c}*)(intptr_t)({raw}))"
+            return f"({elem_c})({raw})"
+        if met == 'establecer' and len(resto) >= 2:
+            slot = _encajonar_slot(ctx, resto[1], elem_tipo)
+            return f"_syn_lista_establecer((void*)(intptr_t)({recv_c}), (int)({resto[0]}), {slot})"
+        if met == 'eliminar' and resto:
+            return f"_syn_lista_eliminar((void*)(intptr_t)({recv_c}), (int)({resto[0]}))"
+        if met == 'liberar':
+            return f"_syn_lista_liberar((void*)(intptr_t)({recv_c}))"
+    if recv_tipo.startswith('Mapa<'):
+        # cumple Manual 2 §4.3 (33.4a): cast del handle en TODAS las llamadas
+        # de mapa (H-CFG-5 / M6 §3.1); cumple Manual 2 §12: la prueba
+        # obligatoria de la etapa (oráculo E2E) valida las llamadas del runtime.
+        if met == 'poner' and len(resto) >= 2:
+            val_tipo = recv_tipo[5:-1].split(',')[1].strip() \
+                if ',' in recv_tipo[5:-1] else 'puntero'
+            slot = _encajonar_slot(ctx, resto[1], val_tipo)
+            return f"_syn_mapa_poner((void*)(intptr_t)({recv_c}), ({resto[0]}).datos, {slot})"
+        if met == 'obtener' and resto:
+            # H-R153-4: desencajonado por dirección para structs/texto.
+            interior_m = recv_tipo[5:-1]
+            val_tipo_m = interior_m.split(',')[1].strip() \
+                if ',' in interior_m else 'puntero'
+            val_c_m = ctx.traducir_tipo_c(val_tipo_m)
+            raw_m = f"_syn_mapa_obtener((void*)(intptr_t)({recv_c}), ({resto[0]}).datos)"
+            if val_c_m not in ('int64_t', 'double'):
+                return f"(*({val_c_m}*)(intptr_t)({raw_m}))"
+            return f"({val_c_m})({raw_m})"
+        if met == 'contiene' and resto:
+            return f"_syn_mapa_contiene((void*)(intptr_t)({recv_c}), ({resto[0]}).datos)"
+        if met == 'longitud':
+            return f"_syn_mapa_longitud((void*)(intptr_t)({recv_c}))"
+        if met == 'liberar':
+            return f"_syn_mapa_liberar((void*)(intptr_t)({recv_c}))"
+        # cumple Manual 2 §4.3 (33.4b): claves()/valores() de Mapa (M3 §5.2
+        # keys()/values() en modo es) — listas del runtime con las claves
+        # ENCAJONADAS como CadenaSegura* (runtime/core/mapa.c 33.4b) y los
+        # valores int64. El iter es `para k en m` (emit_control).
+        if met in ('claves', 'keys'):
+            return f"(intptr_t)_syn_mapa_claves((void*)(intptr_t)({recv_c}))"
+        if met in ('valores', 'values'):
+            return f"(intptr_t)_syn_mapa_valores((void*)(intptr_t)({recv_c}))"
+    # Método desconocido sobre struct de usuario: SIN tabla de métodos
+    # (H-R153-3) — error claro en compilación, no en ejecución.
+    raise SystemExit(
+        f"[S1] metodo no soportado: '{met}' sobre tipo '{recv_tipo}' "
+        f"(solo colecciones stdlib: Lista<T>/Mapa<K,V>, Manual 3 §5.2)"
+    )
 
 
 def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
@@ -539,10 +643,11 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
             return "(intptr_t)_syn_lista_crear()"
         if nombre.startswith('Mapa<'):
             return "(intptr_t)_syn_mapa_crear()"
-        # cumple Manual 3 §5.2 (H-R153-3): llamada a método postfija — la rama
-        # de tipo_de_expr ya resolvió el C completo; replicarlo aquí.
+        # cumple Manual 3 §5.2 (H-R153-3): llamada a método postfija — el C
+        # lo emite _metodo_a_c (refactor 33.4b: el tipo ya NO devuelve el C
+        # completo, ver rama metodo: de tipo_de_expr).
         if nombre.startswith('metodo:'):
-            return tipo_de_expr(ctx, nodo)
+            return _metodo_a_c(ctx, nodo)
 
         # H-R90-15: flag para stub dividir (solo si se usa y es builtin)
         if nombre == 'dividir' and nombre not in ctx._funciones_usuario:
@@ -775,6 +880,16 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
             else:
                 return f"({ctx.traducir_tipo_c(nombre)}){{{args_str}}}"
 
+        # cumple Manual 2 §2/§8.2 (33.4b): constructor de estructura genérica
+        # de usuario `Caja(5)` — compound literal de la instancia monomorfizada
+        # (Caja_T con T unificado por el tipo del argumento, algoritmo W).
+        if nombre in ctx._genericas:
+            arg_tipo = tipo_de_expr(ctx, nodo.argumentos[0]) if nodo.argumentos else ''
+            nombre_inst = _registrar_instancia_generica(ctx, nombre, arg_tipo)
+            if not args:
+                return f"({nombre_inst}){{0}}"
+            return f"({nombre_inst}){{{args_str}}}"
+
         # Coercion for functions expecting CadenaSegura
         if nombre in ctx._FUNCIONES_ESPERAN_TEXTO:
             return f"{nombre}({args_str})"
@@ -806,8 +921,15 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
                     adjusted.append(a)
             # H-CFG-5: retorno void* → handle entero (lista_crear/mapa_crear
             # retornan el handle): cast (intptr_t) para evitar int-from-pointer
+            # 33.4b: también cuando el .syn declara la externa con retorno
+            # `entero` (p.ej. _syn_mapa_claves(m: entero) -> entero de
+            # puente_ffi_lista_mapa) — el C real devuelve void* (lista).
             ret = f"{nombre}({', '.join(adjusted)})"
-            if expected_types == [] or (len(expected_types) == 0):
+            if not expected_types:
+                ret = f"(intptr_t){ret}"
+            elif (nodo.nombre in getattr(ctx, '_externas_ret_entero', set())
+                  or (hasattr(ctx, '_externas')
+                      and getattr(ctx, '_func_return_types', {}).get(nombre) == 'entero')):
                 ret = f"(intptr_t){ret}"
             return ret
 
@@ -1004,9 +1126,12 @@ def visitar_log(ctx: GeneratorContext, nodo: LogLlamada):
         elif tipo_a == 'float':
             fmt_parts.append("%f")
             arg_parts.append(expr_a_c(ctx, a))
-        elif tipo_a == 'int':
-            fmt_parts.append("%d")
-            arg_parts.append(expr_a_c(ctx, a))
+        elif tipo_a in ('int', 'entero', 'booleano'):
+            # cumple Manual 2 §4.1 (33.4b): entero/int son alias del mismo
+            # primitivo int64_t — el log debe imprimirlos igual (antes un
+            # campo 'entero' de struct caía a %p e imprimía la dirección).
+            fmt_parts.append("%lld")
+            arg_parts.append(f"(long long)({expr_a_c(ctx, a)})")
         else:
             fmt_parts.append("%p")
             arg_parts.append(expr_a_c(ctx, a))

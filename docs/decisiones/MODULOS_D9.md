@@ -15,6 +15,7 @@
 - nucleo/lsp_v3.syn
 - syquex/parser.syn
 - compilador/generator/generator.py
+- compilador/generator/emit_expressions.py
 - synapse_rt.c
 - opensyn/principal.syn
 - runtime/core/cluster.c
