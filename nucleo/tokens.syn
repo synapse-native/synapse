@@ -80,5 +80,9 @@ constante T_PIPE = 73
 // AUDITORIA FASE A (A5/D-6): '?' (T_INTERROGACION) operador postfijo de
 // propagacion de Resultado (Manual 3 §7 L331-342).
 constante T_INTERROGACION = 74
+// cumple Manual 2 §3 (33.4a, H-R153-3): corchetes del indexado de
+// colecciones/texto (Manual 2 §4.3).
+constante T_CORCH_IZQ = 75
+constante T_CORCH_DER = 76
 // EOF removido (F15): colisiona con #define EOF (-1) de <stdio.h>
 // Usar T_FIN (57) definido en lexer.syn/parser.syn

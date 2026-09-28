@@ -550,7 +550,26 @@ funcion parsear_primario(est: ParserEst) -> entero:
                 // fin de la iteración postfija: consumido '.' + nombre [+ args]
                 siguiente
             sino:
-                r_post = 0
+                si token_mirar(est) == T_CORCH_IZQ:
+                    // cumple Manual 2 §2 (33.4a, H-R153-3): postfix de indexado
+                    // `expr[indice]` — encadena tras llamadas/campos/métodos
+                    // (paridad S1 parser_expressions.py _parsear_postfijo).
+                    // NODO_INDICE(29): hijo_izq = receptor, hijo_der = índice;
+                    // el puente produce ExprIndice y el emisor/orquestador lo
+                    // resuelven a colección (Manual 2 §4.3).
+                    linea_ix = token_linea(est, est.posicion)
+                    col_ix = token_columna(est, est.posicion)
+                    token_avanzar(est)
+                    expr_ix = parsear_expresion(est)
+                    token_esperar(est, T_CORCH_DER)
+                    nodo_ix = parser_nuevo_nodo(est, NODO_INDICE, linea_ix, col_ix)
+                    inseguro:
+                        asm("est->nodos[nodo_ix].hijo_izq = nodo")
+                        asm("est->nodos[nodo_ix].hijo_der = expr_ix")
+                    nodo = nodo_ix
+                    siguiente
+                sino:
+                    r_post = 0
         // AUDITORIA FASE A (A5/D-6): operador '?' postfijo (Manual 3 §7 L331-342).
         // `expr?` propaga el err del Resultado (retorna) y desempaqueta el valor ok.
         mientras token_mirar(est) == T_INTERROGACION:

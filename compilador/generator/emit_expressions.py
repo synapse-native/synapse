@@ -1,5 +1,5 @@
 # cumple Manual 2 §12: contratos requiere/garantiza emitidos para toda función pública (r153)
-# cumple Manual 1 §1: Synapse es el lenguaje de programación nativo, compilado y de grado de sistemas
+# cumple Manual 1 §1.1: Synapse es el lenguaje de programación nativo, compilado y de grado de sistemas
 """
 Generación de código C para expresiones y tipos.
 Contiene expr_a_c, tipo_de_expr, I/O builtins, log, formato.
@@ -187,11 +187,19 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
                 if met == 'liberar':
                     return f"_syn_lista_liberar((void*)(intptr_t)({recv_c}))"
             if recv_tipo.startswith('Mapa<'):
+                # cumple Manual 2 §4.3 (33.4a): cast del handle en TODAS las
+                # llamadas de mapa — el receptor viaja como entero intptr_t
+                # (H-CFG-5); sin el cast gcc: "makes pointer from integer
+                # without a cast" (la rama Lista ya lo hacía, esta no).
+                # cumple Manual 6 §3.1: el handle entero del lado Synapse es el
+                # void* del lado C — convención FFI de colecciones.
+                # cumple Manual 2 §12: la prueba obligatoria de la etapa
+                # (oráculo E2E 33.4a) valida las llamadas del runtime.
                 if met == 'poner' and len(resto) >= 2:
                     val_tipo = recv_tipo[5:-1].split(',')[1].strip() \
                         if ',' in recv_tipo[5:-1] else 'puntero'
                     slot = _encajonar_slot(ctx, resto[1], val_tipo)
-                    return f"_syn_mapa_poner({recv_c}, ({resto[0]}).datos, {slot})"
+                    return f"_syn_mapa_poner((void*)(intptr_t)({recv_c}), ({resto[0]}).datos, {slot})"
                 if met == 'obtener' and resto:
                     # H-R153-4: desencajonado por dirección para structs/texto
                     # (igual que Lista.obtener; el valor viaja en slot int64).
@@ -199,16 +207,16 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
                     val_tipo_m = interior_m.split(',')[1].strip() \
                         if ',' in interior_m else 'puntero'
                     val_c_m = ctx.traducir_tipo_c(val_tipo_m)
-                    raw_m = f"_syn_mapa_obtener({recv_c}, ({resto[0]}).datos)"
+                    raw_m = f"_syn_mapa_obtener((void*)(intptr_t)({recv_c}), ({resto[0]}).datos)"
                     if val_c_m not in ('int64_t', 'double'):
                         return f"(*({val_c_m}*)(intptr_t)({raw_m}))"
                     return f"({val_c_m})({raw_m})"
                 if met == 'contiene' and resto:
-                    return f"_syn_mapa_contiene({recv_c}, ({resto[0]}).datos)"
+                    return f"_syn_mapa_contiene((void*)(intptr_t)({recv_c}), ({resto[0]}).datos)"
                 if met == 'longitud':
-                    return f"_syn_mapa_longitud({recv_c})"
+                    return f"_syn_mapa_longitud((void*)(intptr_t)({recv_c}))"
                 if met == 'liberar':
-                    return f"_syn_mapa_liberar({recv_c})"
+                    return f"_syn_mapa_liberar((void*)(intptr_t)({recv_c}))"
             # Método desconocido sobre struct de usuario: SIN tabla de métodos
             # (H-R153-3) — error claro en compilación, no en ejecución.
             raise SystemExit(
@@ -860,6 +868,28 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         if obj_tipo in ('texto', 'cadena', 'CadenaSegura'):
             # String indexing returns single-char CadenaSegura (Manual 4 §4.5)
             return f"((CadenaSegura){{1, &({obj}.datos[{idx}])}})"
+        # cumple Manual 2 §4.3 (33.4a, H-R153-3): indexado de colecciones —
+        # xs[i] devuelve el ELEMENTO T y m[clave] el VALOR V (los handles son
+        # enteros, H-CFG-5: cast (void*)(intptr_t)). El slot int64 del runtime
+        # viaja por VALOR para escalares y por DIRECCIÓN para structs/texto
+        # (misma convención de _emitir_para_en, H-R153-2). Antes: emitía
+        # `xs[0LL]` en C crudo -> gcc "subscripted value is neither array nor
+        # pointer nor vector" (el handle no es subscriptable).
+        if obj_tipo.startswith('Lista<'):
+            tipo_elem = obj_tipo[6:-1].strip()
+            tipo_elem_c = ctx.traducir_tipo_c(tipo_elem)
+            slot = f"_syn_lista_obtener((void*)(intptr_t)({obj}), (int)({idx}))"
+            if tipo_elem_c in ('int64_t', 'double'):
+                return f"({tipo_elem_c})({slot})"
+            return f"*({tipo_elem_c}*)(intptr_t)({slot})"
+        if obj_tipo.startswith('Mapa<'):
+            interior = obj_tipo[5:-1]
+            val_t = interior.split(',')[1].strip() if ',' in interior else 'puntero'
+            val_c = ctx.traducir_tipo_c(val_t)
+            slot = f"_syn_mapa_obtener((void*)(intptr_t)({obj}), ({idx}).datos)"
+            if val_c in ('int64_t', 'double'):
+                return f"({val_c})({slot})"
+            return f"*({val_c}*)(intptr_t)({slot})"
         return f"{obj}[{idx}]"
 
     if isinstance(nodo, ExprPropagar):

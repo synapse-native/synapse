@@ -97,6 +97,8 @@
 #define T_DEBIL              (72LL)
 #define T_PIPE               (73LL)
 #define T_INTERROGACION      (74LL)
+#define T_CORCH_IZQ          (75LL)
+#define T_CORCH_DER          (76LL)
 
 /* === AST node type constants (Manual 2 §7.2/§7.3) === */
 #define NODO_PROGRAMA            (1LL)

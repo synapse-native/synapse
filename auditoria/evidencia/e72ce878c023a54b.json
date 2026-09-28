@@ -1,0 +1,22 @@
+{
+ "cambio_hash": "e72ce878c023a54b",
+ "expediente": "docs/alineacion/33.4a_paridad_indexado.md",
+ "fecha": "2026-09-27",
+ "archivos": [
+  "compilador/generator/emit_expressions.py",
+  "nucleo/generador/expr_eval.syn",
+  "nucleo/generador/orquestador.syn",
+  "nucleo/generator.syn",
+  "nucleo/lexer.syn",
+  "nucleo/parser_constantes.syn",
+  "nucleo/parser_expr.syn",
+  "nucleo/puente_ast.syn",
+  "nucleo/tokens.syn",
+  "runtime/core/ast_nodos.h"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_334a_paridad_indexado.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

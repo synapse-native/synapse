@@ -663,6 +663,19 @@ funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
                 lexer_push_token(T_INTERROGACION, lexer_linea_actual(), i + 1)
                 asm("i = i + 1")
                 siguiente
+            si c == 91:
+                // cumple Manual 2 §3 (33.4a, H-R153-3): '[' abre el indexado
+                // de colecciones/texto (Manual 2 §4.3); el lexer no lo rechaza
+                // más como "Caracter inesperado". Sin lexema real no sirve el
+                // span multi-token (mismo patrón que T_PAREN_IZQ, R11).
+                lexer_push_token_punt(T_CORCH_IZQ, lexer_linea_actual(), i + 1, i, i + 1, ptr_texto)
+                asm("i = i + 1")
+                siguiente
+            si c == 93:
+                // 33.4a (H-R153-3): ']' cierra el indexado (Manual 2 §4.3).
+                lexer_push_token_punt(T_CORCH_DER, lexer_linea_actual(), i + 1, i, i + 1, ptr_texto)
+                asm("i = i + 1")
+                siguiente
             lexer_error("Caracter inesperado", lexer_linea_actual(), i + 1)
             asm("i = i + 1")
         siguiente

@@ -286,6 +286,18 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->objeto = (struct Nodo*)puente_nodo(hi);")
             asm("  _p->nombre_campo = puente_cs_str(puente_str(idx));")
             asm("  r = (void*)_p; }")
+    // cumple Manual 2 §7.2 y cumple Manual 2 §4.3 (33.4a, H-R153-3):
+    // NODO_INDICE -> ExprIndice (hijo_izq = receptor, hijo_der = índice;
+    // paridad S1 puente_canonico.py dt==29). Sin esta rama el indexado de
+    // colecciones llega NULL al generador y la declaracion emite `{0}`
+    // perdiendo el inicializador.
+    si t == NODO_INDICE:
+        inseguro:
+            asm("{ struct ExprIndice* _p = (struct ExprIndice*)calloc(1, sizeof(struct ExprIndice));")
+            asm("  _p->tipo = puente_cs_str((void*)\"ExprIndice\");")
+            asm("  _p->expr = (struct Nodo*)puente_nodo(hi);")
+            asm("  _p->indice = (struct Nodo*)puente_nodo(hd);")
+            asm("  r = (void*)_p; }")
     // cumple Manual 3 §3 (r153 R3n, cumple Manual 2 §7.2): NODO_METODO -> LlamadaFuncion con nombre
     // "metodo:<n>" y el objeto como primer argumento (paridad S1
     // parser_expressions.py _parsear_postfijo; el emisor resuelve el backend

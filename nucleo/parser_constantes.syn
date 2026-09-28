@@ -80,6 +80,10 @@ constante T_DEBIL = 72
 constante T_PIPE = 73
 // AUDITORIA FASE A (A5/D-6): '?' (T_INTERROGACION) — propagacion de Resultado.
 constante T_INTERROGACION = 74
+// cumple Manual 2 §7.2 (33.4a, H-R153-3): corchetes del indexado de
+// colecciones/texto (Manual 2 §4.3) — sincronía con tokens.syn.
+constante T_CORCH_IZQ = 75
+constante T_CORCH_DER = 76
 
 // ---- AST node type constants ----
 constante NODO_PROGRAMA = 1
