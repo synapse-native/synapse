@@ -6,7 +6,7 @@
 define `Caja<T>` con corchetes angulares); (2) `para k en mapa` — k itera las
 CLAVES y el valor se accede con `m[k]` (33.4a); el "par ordenado" del ROADMAP
 se registra como DESVIACIÓN del ROADMAP respecto de la ley (M3 §3: UN
-identificador), decisión D-33.4b-1; (3) módulo de prueba TDD en la matriz.
+identificador), decisión D-R163-1; (3) módulo de prueba TDD en la matriz.
 **Hecho de la sesión 33.4a (probes E2E):** `para k en m` en S1 compila pero
 SEGFAULTA (cast del handle a ListaNodo*); genérico `Caja(T)` falla en el parser
 S1 ("Se esperaba COLON, se encontró LPAREN"); `Caja<T>` falla ("Token
@@ -88,7 +88,7 @@ unit sin regresión.
 oraculo: tests/auditoria/test_oraculos_334b_genericos.py
 
 ## Decisión registrada en este plan
-- **D-33.4b-1 (desviación del ROADMAP hacia la ley):** el ROADMAP §33.4 pide
+- **D-R163-1 (desviación del ROADMAP hacia la ley):** el ROADMAP §33.4 pide
   "`para k en mapa` con par ordenado"; la ley (M3 §3, bucle_para_rango con UN
   IDENTIFICADOR) no define pares. Se implementa k=claves + m[k] para valores
   (+ claves()/valores() de M3 §5.2). Pendiente de ratificación del Arquitecto.

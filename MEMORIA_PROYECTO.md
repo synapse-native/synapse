@@ -7,12 +7,15 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-09-27** (Fase 33.4a COMPLETADA — ME 33.4a_paridad_indexado 5ff9235: paridad del indexado de colecciones lista[i]/mapa[clave] en S1+nativo; H-R153-3 cierre parcial; H-CFG-2 sigue pendiente de ratificación)
+Última actualización: **2026-09-28** (Fase 33.4b COMPLETADA — ME 33.4b_genericos_para_mapa dfdb1bd: genéricos de usuario estructura Caja(T) con monomorfización + para k en mapa + claves()/valores() en S1+nativo; H-R153-3 CERRADA; D-R163-1 pendiente de ratificación)
 
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      FASE 33.4a COMPLETADA — ME 33.4a_paridad_indexado (5ff9235): paridad del
+Fase roadmap:      FASE 33.4b COMPLETADA — ME 33.4b_genericos_para_mapa (dfdb1bd): genéricos de
+                   usuario Caja(T) con monomorfización, para k en mapa (D-R163-1),
+                   claves()/valores(); H-R153-3 CERRADA
+                   FASE 33.4a COMPLETADA — ME 33.4a_paridad_indexado (5ff9235): paridad del
                    indexado de colecciones en S1+nativo; H-R153-3 cierre parcial
                    FASE 33.2 COMPLETADA — ME coverage_aristas (d0386f3): --coverage con
                    instrumentación de aristas en S1+nativo; H-R152-1 CERRADA
@@ -35,7 +38,15 @@ Fase roadmap:      FASE 33.4a COMPLETADA — ME 33.4a_paridad_indexado (5ff9235)
                    FASE 30-c ME_opensyn_best — ME-1..ME-6 TODOS COMPLETADOS
                    FASE 30-b HARDENING — OpenSyn TUI + IA local (R141/R142/R143) COMPLETADA
                    FASE 30 COMPLETADA — Instalación Unificada y Distribución Final
-Estado:            Fase 33.4a COMPLETA (5ff9235): indexado xs[i]/m[clave] emitido por S1 vía
+Estado:            Fase 33.4b COMPLETA (dfdb1bd): estructura Caja(T): parseada en ambas capas
+                   (paréntesis M2 §2, param_generico), Caja(5) unifica T=entero (M2 §8.2) —
+                   S1: _registrar_instancia_generica + typedefs monomorfizados + unificación T
+                   en semántica (paridad D-2); nativo: gen_escanear_genericas 3 fases + guard
+                   de typedefs planos; para k en mapa itera claves con m[k] (D-R163-1);
+                   claves() encajona CadenaSegura* (mapa.c, ABI alineada a synapse_rt_types.h);
+                   oráculo 6/6, unit 544/544, matriz 35/35, bootstrap S1→S2 verde; evidencia
+                   5d27e18bcd289f21.
+                   Fase 33.4a COMPLETA (5ff9235): indexado xs[i]/m[clave] emitido por S1 vía
                    runtime (_syn_lista_obtener/_syn_mapa_obtener, desencajonado escalares por
                    valor / structs-texto por dirección) y por el nativo (T_CORCH_IZQ/DER=75/76
                    sincronía D-9(e), lexer c==91/93, postfix NODO_INDICE(29) en r_post, puente
@@ -58,19 +69,18 @@ Estado:            Fase 33.4a COMPLETA (5ff9235): indexado xs[i]/m[clave] emitid
                    expediente r153 verificado (evidencia d5fb40c8d7530258; 40 CUMPLE +
                    3 DESVIACION ratificadas H-R153-NODE).
                    r151/r152: bootstrap restaurado (ver histórico de sesión 2026-09-20).
-Commit fase:       5ff9235 (feat(33.4a): paridad del indexado de colecciones en S1 y nativo — H-R153-3) sobre d0386f3 (feat(coverage): --coverage con instrumentación de aristas en S1 y generador nativo — H-R152-1 CERRADA) sobre 4697132 (fix(compilador): imports fallback a raíz + FFI lista/mapa — H-CFG-4/H-CFG-5 RESUELTAS, bootstrap S1 reparado) sobre e780627 (docs manual2 §7.2, ME 33.1) sobre 96e72f4 (fix(sandbox): H-EOF-3) y 8375ec6 (feat(runtime): API de EOF stdin)
-Próximo ME:        33.4b — genéricos de usuario + `para k en mapa` + módulo .syn de prueba
-                   en tests/nucleo/test_modulos_compilan.py + ampliar matriz. Ratificaciones
-                   pendientes del Arquitecto: H-CFG-2 (sandbox para lecturas builtin),
+Commit fase:       dfdb1bd (feat(33.4b): genéricos de usuario + para-en mapa en S1 y nativo — H-R153-3 CERRADA) sobre 5ff9235 (feat(33.4a): paridad del indexado de colecciones en S1 y nativo — H-R153-3) sobre d0386f3 (feat(coverage): --coverage con instrumentación de aristas en S1 y generador nativo — H-R152-1 CERRADA) sobre 4697132 (fix(compilador): imports fallback a raíz + FFI lista/mapa — H-CFG-4/H-CFG-5 RESUELTAS, bootstrap S1 reparado) sobre e780627 (docs manual2 §7.2, ME 33.1) sobre 96e72f4 (fix(sandbox): H-EOF-3) y 8375ec6 (feat(runtime): API de EOF stdin)
+Próximo ME:        33.5 — certificación. Ratificaciones pendientes del Arquitecto:
+                   D-R163-1 (para k en mapa: k=claves, el par ordenado del ROADMAP contradice
+                   M3 §3 L133), H-CFG-2 (sandbox para lecturas builtin),
                    H-R144-3 (cierre modelos.toml), 3 SIN_CITA heredados de Fase 32 en
                    tests/opensyn (ver lección R160); 33.3 pendiente de ratificación
-                   (desviaciones R149 §5). 33.5 certificación.
-                   33.1 COMPLETADO (e780627). 33.2 COMPLETADO (d0386f3). 33.4a COMPLETADO (5ff9235)
-Próximo paso:      ME 33.4b — genéricos de usuario + `para k en mapa` + módulo .syn de
-                   prueba + ampliar matriz (H-R153-3 restante); luego 33.5 certificación.
-                   Ratificar H-CFG-2/H-R144-3/SIN_CITA Fase 32; 33.3 pendiente de
-                   ratificación (desviaciones R149 §5)
-Últimos commits:    5ff9235 (feat(33.4a): paridad del indexado de colecciones en S1 y nativo — H-R153-3)
+                   (desviaciones R149 §5).
+                   33.1 COMPLETADO (e780627). 33.2 COMPLETADO (d0386f3). 33.4a COMPLETADO (5ff9235). 33.4b COMPLETADO (dfdb1bd)
+Próximo paso:      Fase 33.5 — certificación. Ratificar D-R163-1, H-CFG-2/H-R144-3/
+                   SIN_CITA Fase 32; 33.3 pendiente de ratificación (desviaciones R149 §5)
+Últimos commits:    dfdb1bd (feat(33.4b): genéricos de usuario + para-en mapa en S1 y nativo — H-R153-3 CERRADA)
+                    5ff9235 (feat(33.4a): paridad del indexado de colecciones en S1 y nativo — H-R153-3)
                     d0386f3 (feat(coverage): --coverage con instrumentación de aristas en S1 y generador nativo — H-R152-1 CERRADA)
                     4697132 (fix(compilador): imports con fallback a raíz + FFI lista/mapa con handle entero y firmas únicas — H-CFG-4/H-CFG-5 RESUELTAS; bootstrap S1 reparado H-CFG-5b)
                     e780627 (docs(manual2): tabla §7.2 corregida contra el nativo + filas NODO_PARA_EN=57/NODO_METODO=59 + oráculo de paridad 3-vías — ME 33.1)
@@ -93,6 +103,7 @@ Próximo paso:      ME 33.4b — genéricos de usuario + `para k en mapa` + mód
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
 |--------|-------------|---------|
+| `dfdb1bd` | R163/ME 33.4b_genericos_para_mapa (Fase 33.4, H-R153-3 CERRADA): genéricos de usuario `estructura Caja(T):` con monomorfización + `para k en mapa` + métodos claves()/valores() en AMBAS capas. R1 (M2 §2): parser S1+nativo aceptan `( IDENTIFICADOR )` tras el nombre (param_generico; paréntesis, NO `<T>`), puente en puente_ast.syn. R2 (M2 §8.2): `Caja(5)` unifica T=entero — S1: _registrar_instancia_generica (alias primitivos, mangle Caja_entero, ctor compound literal, typedefs alfabéticos pre-bloque/modular, unificación T en semántica paridad D-2); nativo: gen_escanear_genericas 3 fases + guard de typedefs planos (recorrido.syn/orquestador.syn). R3 (M2 §4.3+M3 §3): rama Mapa< en _emitir_para_en ANTES de Lista — k=claves, valor vía m[k] (D-R163-1 PENDIENTE RATIFICACIÓN: el par ordenado del ROADMAP contradice M3 §3 L133 de UN identificador); claves() encajona CadenaSegura* (mapa.c paridad _encajonar_slot, H-R153-2) + _syn_lista_liberar RAII tras el cierre del for. R4: compound literal (Caja_entero){7LL}, ABI mapa.c alineada a synapse_rt_types.h (longitud/contiene → int). R5: módulo TDD en test_modulos_compilan.py; matriz 35/35; unit 544/544; bootstrap S1→S2 verde; probes E2E idénticos en ambas capas (p_full/p_gen2/p_mapa — antes segfault rc=139). Oráculo NUEVO 6/6 GREEN con anti-fabricación; contrastar PASA (5 requisitos R1-R5); evidencia 5d27e18bcd289f21. Lecciones: símbolos _G_native_* exigen TRES piezas (emisores + externs en _synapse_shared.h + definiciones en preámbulo principal de generator.py); extern dentro de un cuerpo .syn es scope de bloque C; alias de tipos normalizados en scan/resolve/hoisting; quirk R16 (asm con `}` + `{` interno → else-if huérfano, extender condición en la misma línea); unificación T faltante en semántica destapada por entero_a_texto(T) (log() variádico la ocultaba); cambio_hash stale → re-sello + re-commit (d948cab); --archivos usa COMA; M5 NO documenta Mapa (ley en M2 §4.3 + M3 §5.2) |
 | `5ff9235` | R162/ME 33.4a_paridad_indexado (Fase 33.4, H-R153-3 cierre parcial): paridad del INDEXADO de colecciones en AMBAS capas + reparación del emisor S1 (el ROADMAP asumía 'S1 ya emite vía r153' y era FALSO — probe E2E: emitía `xs[0LL]` en C crudo → gcc 'subscripted value'). R1 S1: emit_expressions.py ExprIndice → _syn_lista_obtener/_syn_mapa_obtener con desencajonado (escalares por valor, structs/texto por dirección, patrón _emitir_para_en H-R153-2) + cast del handle en los 5 métodos de Mapa. R2-R3 nativo: T_CORCH_IZQ/DER=75/76 (sincronía D-9(e): tokens.syn, parser_constantes.syn, ast_nodos.h 134 constantes REGENERADO — es byte-exacto del script, no editar a mano; las citas viven en su cabecera fija), lexer c==91/93, postfix [idx] en r_post → NODO_INDICE(29). R4-R5: puente NODO_INDICE→ExprIndice (sin rama el nodo llegaba NULL y `let v = {0}` perdía el inicializador), emisor con desencajonado por tipo + trim de spans ('Mapa<texto, entero>' traía ' entero' sin mapear), tipo C del indexado en orquestador. R7: longitud(xs) ya existía en nativo (H-R153-14, r153) — NO se re-tocó. Oráculo NUEVO 4/4 GREEN (probes E2E ambas capas; anti-fabricación: sin indexado el cuerpo del C no llama al runtime); unit 514/514; matriz 35/35 + coverage 4/4; bootstrap stage1→stage2 verde; contrastar PASA (7 requisitos R1-R7); evidencia e72ce878c023a54b. Lecciones: toda NODO_* nueva exige 3 piezas (tokens/parser + puente + emisor); el hook regenera runtime_bindings.syq al tocar headers → la huella muta en el 1er intento (procedimiento d948cab); requisito §7.2+§7.3 exige AMBAS lecturas registradas + vinculación --archivos; bloques asm() en .syn una cadena por línea |
 | `d0386f3` | R161/ME coverage_aristas (Fase 33.2, H-R152-1 CERRADA): --coverage con instrumentación de aristas en AMBAS capas. R1 runtime/core/coverage.c/.h NUEVOS — buffer estático de aristas (M5 §2.6), catálogo de ramas del emisor, volcado JSON atexit, OFF salvo SYNAPSE_COVERAGE=1. R2 S1: sondas _syn_cov(l,d) en emit_control/generator/context + --coverage en pipeline.py/cli.py (sin la bandera el C emitido es byte-idéntico, M1 §6). R3 nativo: nucleo/coverage.syn ÚNICO (emisor cov_* + reporte covrep_parsear/coverage_generar_html) + sondas en generador/{orquestador,recorrido,nodos_flujo}.syn + unity generator.syn regenerada. R4: cli_test formato 3 — SYNAPSE_COVERAGE=1 → compilar → ejecutar → covrep_parsear(<base>.coverage.json) → HTML `Coverage: 66%` + aristas no ejecutadas. Oráculo NUEVO test_oraculos_coverage.py 4/4 (E2E real: 3 ramas, 2 cubiertas, sino listada; sin --coverage el C no lleva sondas; MTO --solo-mto); integration 6/6; unit 514/514; contrastar PASA; 0 brechas; expediente 34 anclas (evidencia b888fe497b9ae83c). Lecciones: retorno CadenaSegura con buffer estático (no de stack — concat pisa el stack antes del memcpy), el reset no borra la ruta externa fijada por generar_etapa, offsets del parser JSON (+20/+11), exes stage1/stage2 stale tras editar nucleo/*.syn, citas del expediente LITERALES (bullets sin guion no se indexan; M9 §6.1 lleva prefijo □), gate de lectura exige sección explícita por archivo |
 | `4697132` | R160/ME reparacion_imports_ffi (H-CFG-4/H-CFG-5 RESUELTAS): R1 imports — resolvedor_axon.py convención de paquete + fallback a la RAÍZ del repo (E-603 según carpeta del fuente) y pipeline.py resuelve imports encadenados contra el DIRECTORIO del módulo importado + precedencia del principal del USUARIO (M1 §3.1). R2 FFI — prototipos canónicos ÚNICOS (fin conflicting-types test_puente_ffi), casts (void*)(intptr_t)(h)/(intptr_t)crear() en 3 bordes del emisor y variables Lista<T>/Mapa<K,V> como intptr_t; H-CFG-5b: la regresión destapó que void* + asignación (intptr_t) ROMPÍA el bootstrap S1 (M1 §6) — reparado alineando el emisor al manual. R3 MTO — 10 citas muertas re-ancladas (M7 §4.2, M9 §5.x/§2.x/§4.1); deuda MTO 30→29 GREEN sin citar (oráculo nuevo cita OBL-M1-02). Oráculo NUEVO 6/6 sin skips; puente_ffi 12/12; unit 514/514; contrastar PASA; expediente 10 anclas CUMPLE (evidencia a14b5fb6f7623963). Lección: auditar_calidad_tests full-scan NUNCA como oráculo directo de plan — envoltorio --solo-mto en el oráculo del ME |

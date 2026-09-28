@@ -7,7 +7,7 @@ Oráculo: `tests/auditoria/test_oraculos_334b_genericos.py` — **GREEN 6/6**
 `claves()` + `m[k]`, y anti-fabricación: sin instanciación genérica el unity no
 emite typedef monomorfizado; `_exe_fresco()` con mtime de las fuentes).
 Cambio: genéricos de usuario `estructura Caja(T):` con monomorphización
-(`Caja(5)` → `Caja_entero`), `para k en mapa` (itera claves, D-33.4b-1:
+(`Caja(5)` → `Caja_entero`), `para k en mapa` (itera claves, D-R163-1:
 k=claves, valor vía `m[k]` de 33.4a) y métodos `claves()`/`valores()` del Mapa.
 Matriz 35/35 + unit 544/544 PASSED.
 
@@ -30,12 +30,12 @@ métodos (quirk r153 corregido: `tipo_de_expr` rama `metodo:` devuelve TIPO).
 función (modular), forward decls excluye genéricas. Oráculo
 `test_s1_generico_e2e` GREEN + `test_anti_fabricacion_sin_generico` GREEN.
 
-## R3 — Manual 2 §4.3 (Mapa: `para k en mapa` itera claves; D-33.4b-1) — CUMPLE
+## R3 — Manual 2 §4.3 (Mapa: `para k en mapa` itera claves; D-R163-1) — CUMPLE
 `compilador/generator/emit_control.py` `_emitir_para_en` (~L106): rama `Mapa<`
 ANTES de Lista — `_syn_mapa_claves(m)` → for sobre Lista<texto> con claves
 encajonadas `CadenaSegura*` (deref por dirección, H-R153-2) + `_syn_lista_liberar`
 al cerrar (RAII). El "par ordenado" del ROADMAP contradice M3 §3 L133 (UN
-identificador) → decisión D-33.4b-1 pendiente de ratificación del Arquitecto.
+identificador) → decisión D-R163-1 pendiente de ratificación del Arquitecto.
 Oráculo `test_s1_para_en_mapa_e2e` GREEN (`clave: a/b`).
 
 ## R4 — Manual 2 §2 + §4.3 (nativo: mismo contrato que S1) — CUMPLE
