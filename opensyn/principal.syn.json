@@ -5829,7 +5829,8 @@
           "tipo": "texto",
           "es_transferencia": false
         }
-      ]
+      ],
+      "param_generico": ""
     },
     {
       "tipo": "FuncionDef",

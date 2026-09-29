@@ -277,6 +277,46 @@ jobs:
           fi
           echo "✅ Bootstrap exitoso: synapse_stage1.exe"
 
+      # cumple Manual 9 §6.1: "el proceso de bootstrap de 3 etapas produce
+      # `diff 0 bytes` entre Stage 2 y Stage 3"; Manual 9 §2.3: "Verificar el
+      # bootstrap (diff 0 bytes entre Stage 2 y Stage 3)". Sello del ROADMAP
+      # §33.5: S2==S3 byte-idéntico en CI (job bootstrap).
+      - name: Bootstrap Etapa 2 (stage1 auto-compila nucleo/principal.syn)
+        run: |
+          ./synapse_stage1.exe nucleo/principal.syn -o synapse_stage2.exe 2>&1 | tee bootstrap_stage2.log
+          if grep -q "error:" bootstrap_stage2.log; then
+            echo "❌ Bootstrap Etapa 2 fallo"
+            grep "error:" bootstrap_stage2.log
+            exit 1
+          fi
+          if [ ! -f synapse_stage2.exe ]; then
+            echo "❌ Bootstrap Etapa 2 fallo: synapse_stage2.exe no generado"
+            exit 1
+          fi
+          echo "✅ Bootstrap Etapa 2: synapse_stage2.exe"
+
+      - name: Bootstrap Etapa 3 + sello S2==S3 (diff 0 bytes, sha256)
+        run: |
+          ./synapse_stage2.exe nucleo/principal.syn -o synapse_stage3.exe 2>&1 | tee bootstrap_stage3.log
+          if grep -q "error:" bootstrap_stage3.log; then
+            echo "❌ Bootstrap Etapa 3 fallo"
+            grep "error:" bootstrap_stage3.log
+            exit 1
+          fi
+          if [ ! -f synapse_stage3.exe ]; then
+            echo "❌ Bootstrap Etapa 3 fallo: synapse_stage3.exe no generado"
+            exit 1
+          fi
+          S2=$(sha256sum synapse_stage2.exe | cut -d' ' -f1)
+          S3=$(sha256sum synapse_stage3.exe | cut -d' ' -f1)
+          echo "S2 sha256: $S2"
+          echo "S3 sha256: $S3"
+          if [ "$S2" != "$S3" ]; then
+            echo "❌ Manual 9 §6.1 VIOLADO: S2 != S3 (bootstrap no determinista)"
+            exit 1
+          fi
+          echo "✅ Bootstrap sellado: S2==S3 byte-idénticos ($S2)"
+
       - name: Verificar micro-tests (bootstrap nativo)
         run: |
           python scripts/run_micro_tests.py 2>&1 | tee micro.log
