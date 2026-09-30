@@ -10,12 +10,12 @@
 // PARIDAD campo a campo con el frontend embebido _P_* (_parser.c).
 //
 // Manuales:
-//   - Manual 3 S3.3 / Manual 9 S9.7: el estado del pipeline (tokenizar ->
-//     parsear -> puente -> analizar -> generar). El puente es la pieza que
-//     convierte la salida del frontend nativo en lo que consumen los pasos
-//     siguientes (analizador_semantico.syn, generator.syn via struct Programa).
-//   - Criterio FASE A (docs/FASE_A_PLAN.md): brecha #2 de la matriz A1
-//     (NodoAST[] plano -> structs tipados) — la deuda que A3 debe cerrar.
+// - Manual 3 S3.3 / Manual 9 S9.7: el estado del pipeline (tokenizar ->
+// parsear -> puente -> analizar -> generar). El puente es la pieza que
+// convierte la salida del frontend nativo en lo que consumen los pasos
+// siguientes (analizador_semantico.syn, generator.syn via struct Programa).
+// - Criterio FASE A (docs/FASE_A_PLAN.md): brecha #2 de la matriz A1
+// (NodoAST[] plano -> structs tipados) — la deuda que A3 debe cerrar.
 //
 // Estrategia: funciones Synapse con cuerpos asm-C (patron lexer.syn/parser.syn).
 // Los structs tipados existen en el unity build via ast_nodes.syn/_synapse_shared.h;
@@ -30,14 +30,14 @@
 // malloc+memcpy (como _P_cs) para que el arbol tipado sea independiente.
 //
 // DEUDA documentada (no bloquea paridad del test set; ver reporte A3.1):
-//   - Parametro.es_transferencia: el parser plano no registra el prefijo '->'
-//     (paridad solo con parametros normales).
-//   - SentenciaPara.incremento: la sintaxis del Manual 2 (para i = 0 mientras
-//     condicion:) no tiene incremento explicito -> NULL.
-//   - ImportarC.es_sistema: el parser plano captura la ruta sin distinguir
-//     <...> de "..." -> 0.
-//   - Coincidir/caso, recuperar, indice, asignacion_campo: _P_* no los produce
-//     (o el parser plano no los enlaza) -> fuera del test set de paridad.
+// - Parametro.es_transferencia: el parser plano no registra el prefijo '->'
+// (paridad solo con parametros normales).
+// - SentenciaPara.incremento: la sintaxis del Manual 2 (para i = 0 mientras
+// condicion:) no tiene incremento explicito -> NULL.
+// - ImportarC.es_sistema: el parser plano captura la ruta sin distinguir
+// <...> de "..." -> 0.
+// - Coincidir/caso, recuperar, indice, asignacion_campo: _P_* no los produce
+// (o el parser plano no los enlaza) -> fuera del test set de paridad.
 // ============================================================================
 
 // Convierte un char* (o NULL) a CadenaSegura (sin copiar; el puntero debe

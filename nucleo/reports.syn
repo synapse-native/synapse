@@ -17,7 +17,7 @@
 estructura ResultadoTest:
     nombre: texto
     suite: texto
-    estado: texto    // "passed", "failed", "skipped"
+    estado: texto // "passed", "failed", "skipped"
     mensaje: texto
     tiempo: decimal
 

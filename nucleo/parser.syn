@@ -40,7 +40,7 @@ funcion nodo_guardar_span(est: ParserEst, nodo: entero, pos_ini: entero, pos_fin
         asm("    }")
         asm("}")
 
-// FASE A (A3.0): segundo slot de cadena por nodo (parser_str2_{ptr,hi,len}()).
+// FASE A (A3.0): segundo slot de cadena por nodo (parser_str2_{ptr, hi, len}()).
 // Uso: NODO_FUNCION tipo_retorno, NODO_PARAMETRO tipo_param, NODO_LET tipo_param.
 funcion nodo_guardar_token2(est: ParserEst, nodo: entero, pos: entero) -> nulo:
     inseguro:
@@ -91,7 +91,7 @@ funcion parsear_bloque_contrato(est: ParserEst) -> entero:
             r2 = 0
     retornar 1
 
-// FASE A (A2.3b): consumir un tipo compuesto (base + genericos <T,E> + puntero *),
+// FASE A (A2.3b): consumir un tipo compuesto (base + genericos <T, E> + puntero *),
 // paridad S1 _parsear_tipo_parametro (compilador/parser_base.py L141-167). Usado en
 // campos de estructura (x: Lista<texto>, siguiente: arc<NodoLista>) y parametros
 // (a: entero*, b: Canal<entero>).
@@ -102,7 +102,7 @@ funcion parsear_bloque_contrato(est: ParserEst) -> entero:
 // solo afecta input malformado (ej: 'a: 5'), no codigo valido. No reutilizar en
 // parsear_tipo_retorno: el fallback no excluye T_DOSPUNTOS y romperia '-> :'.
 funcion parsear_tipo_compuesto(est: ParserEst, nodo: entero) -> entero:
-    // FASE A (A3.1): el tipo completo (base + <T,E> + *) se captura como SPAN
+    // FASE A (A3.1): el tipo completo (base + <T, E> + *) se captura como SPAN
     // contiguo en el slot secundario del nodo (paridad _P_* que concatena).
     pos_ini = est.posicion
     si token_es_nombre(token_mirar(est)) == 1:
@@ -111,7 +111,7 @@ funcion parsear_tipo_compuesto(est: ParserEst, nodo: entero) -> entero:
         si token_mirar(est) != T_NUEVALINEA y token_mirar(est) != T_DESINDENTAR y token_mirar(est) != T_FIN y token_mirar(est) != T_COMA y token_mirar(est) != T_PAREN_DER:
             token_avanzar(est)
     si token_mirar(est) == T_MENOR:
-        // R13: tipos ADT anidados (`Resultado<Resultado<entero,texto>,texto>`,
+        // R13: tipos ADT anidados (`Resultado<Resultado<entero, texto>, texto>`,
         // Manual 2 §8.2 ALGEBRAICO con argumentos): consumir con profundidad;
         // solo el '>' de nivel 0 cierra la instanciacion.
         token_avanzar(est)
@@ -175,7 +175,7 @@ funcion parsear_parametros(est: ParserEst) -> entero:
             si token_es_nombre(token_mirar(est)) == 0:
                 r = 0
                 romper
-            // FASE A (A2.3b): consumir el tipo del parametro (base + <T,E> + *)
+            // FASE A (A2.3b): consumir el tipo del parametro (base + <T, E> + *)
             // via parsear_tipo_compuesto. Sustituye al fix A2.3 (token_avanzar del
             // tipo base, BUG 6) y al bucle generico de A2.2; paridad S1 completa.
             // FASE A (A3.0): se captura el primer token del tipo ANTES de consumirlo
@@ -205,10 +205,10 @@ funcion parsear_parametros(est: ParserEst) -> entero:
     retornar primero
 
 // Helper: Parse return type
-// AUDITORIA FASE A (A2.2): soportar tipos genericos en retorno -> arc<T>, -> Resultado<T,E>
+// AUDITORIA FASE A (A2.2): soportar tipos genericos en retorno -> arc<T>, -> Resultado<T, E>
 // (Manual 2 §2 L144-153, §4.2). Se consumen identificador + posible < T1, T2 >.
 funcion parsear_tipo_retorno(est: ParserEst, nodo_func: entero) -> entero:
-    // FASE A (A3.1): el tipo de retorno completo (base + <T,E>) se captura como
+    // FASE A (A3.1): el tipo de retorno completo (base + <T, E>) se captura como
     // span en el slot secundario del nodo funcion (DefinicionFuncion.tipo_retorno,
     // paridad _P_* _rt concatenado).
     pos_ini = est.posicion
@@ -219,7 +219,7 @@ funcion parsear_tipo_retorno(est: ParserEst, nodo_func: entero) -> entero:
         // (ej: '<' malformado), ninguna rama avanzaba -> bucle infinito (misma
         // clase de bug que A2.3 arregla en otros puntos del parser).
         si token_mirar(est) == T_MENOR:
-            // R13: tipos ADT anidados en el retorno (`-> Resultado<Resultado<entero,texto>,texto>`,
+            // R13: tipos ADT anidados en el retorno (`-> Resultado<Resultado<entero, texto>, texto>`,
             // Manual 2 §8.2): consumir con profundidad; solo el '>' de nivel 0 cierra.
             token_avanzar(est)
             prof13 = 0
@@ -335,7 +335,7 @@ funcion parsear_cuerpo_funcion(est: ParserEst, nodo_func: entero) -> entero:
         sino:
             // Anti-cuelgue (paridad parsear_nativo / A3.1): si el token no
             // produce sentencia, avanzar (repro: T_INDENTAR huerfano tras un
-            // tipo de retorno invalido A<B<C>,D> -> bucle infinito del cuerpo).
+            // tipo de retorno invalido A<B<C>, D> -> bucle infinito del cuerpo).
             token_avanzar(est)
         siguiente
     retornar primero
@@ -384,7 +384,7 @@ funcion parsear_funcion(est: ParserEst) -> entero:
         token_avanzar(est)
         // tipo retorno — FASE A (A3.1): span completo (DefinicionFuncion.tipo_retorno)
         // F2-2.4c (anti-cuelgue R2): si el tipo no termina en ':' (p.ej. tipos
-        // anidados A<B<C>,D> que el parser no soporta), el fallo se ignoraba y el
+        // anidados A<B<C>, D> que el parser no soporta), el fallo se ignoraba y el
         // INDENTAR quedaba sin consumir -> bucle infinito del cuerpo en T_INDENTAR.
         // Reportar error limpio (paridad S1, que da error de sintaxis).
         si parsear_tipo_retorno(est, nodo_func) == 0:
@@ -475,17 +475,16 @@ funcion parsear_nativo(est: ParserEst) -> entero:
 
     retornar prog
 
-
 // ---------------------------------------------------------------------
 // parsear() canonico (A3.2/A4): STUB reemplazado SIEMPRE por el hook ME-B7 del
 // generador (nucleo/generator.syn), que emite la firma canonica
 // 'struct Programa parsear(CadenaSegura fuente)' que consume principal.syn
 // (L53) y lsp.syn (L193):
-//   A4: el frontend nativo es el UNICO frontend — gen_emitir_frontend_nativo
-//     emite el wrapper nativo
-//     tokenizar (lexer.syn) -> parsear_nativo() -> puente_construir_programa()
-//     (puente_ast.syn, A3.1). El flag de rollback _G_usar_nativo_frontend y el
-//     espejo embebido frontend_p.syn (_P_*) se retiraron en A4.
+// A4: el frontend nativo es el UNICO frontend — gen_emitir_frontend_nativo
+// emite el wrapper nativo
+// tokenizar (lexer.syn) -> parsear_nativo() -> puente_construir_programa()
+// (puente_ast.syn, A3.1). El flag de rollback _G_usar_nativo_frontend y el
+// espejo embebido frontend_p.syn (_P_*) se retiraron en A4.
 // Este cuerpo nunca se emite en el C generado (el hook lo descarta); existe solo
 // para que el AST del unity build contenga una definicion 'parsear' que el hook
 // pueda interceptar.

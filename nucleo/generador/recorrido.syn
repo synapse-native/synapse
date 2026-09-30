@@ -191,10 +191,10 @@ funcion gen_recorrer_toplevel(est: GeneradorCEst, programa: Programa) -> nulo:
         asm("    strncpy(_G_emit_func_names[_G_emit_func_count], _pfn0, 63); _G_emit_func_names[_G_emit_func_count][63] = 0; _G_emit_func_count++;")
         asm("    char _psig0[4096];")
         asm("    // _SPECIAL_SIGS: firmas canonicas que reemplazan las definiciones legacy")
-        asm("    if (strcmp(_pfn0, \"tokenizar\") == 0) { strcpy(_psig0, \"int64_t tokenizar(CadenaSegura fuente);\"); }")  // A5.2 D-7: entero -> int64_t
+        asm("    if (strcmp(_pfn0, \"tokenizar\") == 0) { strcpy(_psig0, \"int64_t tokenizar(CadenaSegura fuente);\"); }") // A5.2 D-7: entero -> int64_t
         asm("    else if (strcmp(_pfn0, \"parsear\") == 0) { strcpy(_psig0, \"struct Programa parsear(CadenaSegura fuente);\"); }")
         asm("    else if (strcmp(_pfn0, \"volcar_ast\") == 0) { strcpy(_psig0, \"void volcar_ast(struct Nodo* nodo, int nivel);\"); }")
-        asm("    else if (strcmp(_pfn0, \"generar\") == 0) { strcpy(_psig0, \"int64_t generar(struct Programa programa, CadenaSegura ruta);\"); }")  // A5.2 D-7: entero -> int64_t
+        asm("    else if (strcmp(_pfn0, \"generar\") == 0) { strcpy(_psig0, \"int64_t generar(struct Programa programa, CadenaSegura ruta);\"); }") // A5.2 D-7: entero -> int64_t
         asm("    else {")
         asm("        char _pp0[4096] = \"void\"; int _ppo0 = 0, _ppf0 = 1;")
         asm("        struct ListaParametro* _ppc0 = _pf0->parametros;")

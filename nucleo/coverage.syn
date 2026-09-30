@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
 # cumple Manual 9 §6.1: synapse test --coverage genera informes de cobertura.
 # cumple Manual 9 §6.2: reportes de cobertura en la validación cruzada CI/CD.
 # cumple Manual 8 §4.2: --coverage genera informe de cobertura en HTML.
@@ -9,12 +10,12 @@
 // nucleo/coverage.syn — ME coverage_aristas (Fase 33.2, H-R152-1).
 // Módulo ÚNICO con las DOS mitades del ME (patrón generator_pgo.syn: módulo
 // fuera del unity del generador, referencias globales):
-//   PARTE 1 (EMISIÓN, nativo): cov_estado_administrar/cov_iniciar/
-//     cov_fijar_ruta_base/cov_activa/cov_nueva_rama/cov_emitir_sonda/
-//     cov_emitir_prologo_main — consumidas por nucleo/generador/*.syn y
-//     nucleo/generator.syn (UNITY regenerado).
-//   PARTE 2 (REPORTE): covrep_administrar/covrep_parsear/coverage_generar_html
-//     — consumidas por nucleo/principal.syn (cli_test --coverage, formato 3).
+// PARTE 1 (EMISIÓN, nativo): cov_estado_administrar/cov_iniciar/
+// cov_fijar_ruta_base/cov_activa/cov_nueva_rama/cov_emitir_sonda/
+// cov_emitir_prologo_main — consumidas por nucleo/generador/*.syn y
+// nucleo/generator.syn (UNITY regenerado).
+// PARTE 2 (REPORTE): covrep_administrar/covrep_parsear/coverage_generar_html
+// — consumidas por nucleo/principal.syn (cli_test --coverage, formato 3).
 //
 // Estado en statics C locales a las funciones administradoras (patrón PGO:
 // sin símbolos compartidos entre bloques asm de funciones distintas). Los
@@ -27,11 +28,11 @@
 
 // ----------------------------------------------------------
 // cov_estado_administrar — estado del emisor nativo
-//   modo 0 = reset                     modo 3 = nueva clave secuencial
-//   modo 1 = consultar bandera         modo 4 = registrar par l:d
-//   modo 2 = fijar bandera (arg)       modo 5 = longitud del catálogo
-//   modo 7 = fijar ruta base (ptr)     modo 6 = char i del catálogo (arg)
-//                                      modo 8 = char i de la ruta (arg)
+// modo 0 = reset modo 3 = nueva clave secuencial
+// modo 1 = consultar bandera modo 4 = registrar par l:d
+// modo 2 = fijar bandera (arg) modo 5 = longitud del catálogo
+// modo 7 = fijar ruta base (ptr) modo 6 = char i del catálogo (arg)
+// modo 8 = char i de la ruta (arg)
 // ----------------------------------------------------------
 funcion cov_estado_administrar(modo: entero, arg: entero, l: entero, d: entero) -> entero:
     requiere:
@@ -221,9 +222,9 @@ funcion _cov_char(codigo: entero) -> texto:
 
 // ----------------------------------------------------------
 // covrep_administrar — parseo del volcado de runtime/core/coverage.c
-//   modo 0 = parsear (arg = puntero a la ruta como entero)
-//   modo 1 = aristas cubiertas    modo 4 = char i no-cubiertas (arg)
-//   modo 2 = total estimado       modo 5 = longitud no-cubiertas
+// modo 0 = parsear (arg = puntero a la ruta como entero)
+// modo 1 = aristas cubiertas modo 4 = char i no-cubiertas (arg)
+// modo 2 = total estimado modo 5 = longitud no-cubiertas
 // ----------------------------------------------------------
 funcion covrep_administrar(modo: entero, arg: entero) -> entero:
     requiere:

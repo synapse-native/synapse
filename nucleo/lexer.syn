@@ -188,11 +188,11 @@ constante MAX_TOKENS = 16384
 constante MAX_INDENT = 64
 
 estructura LexerBuffers:
-    tokens: puntero      // struct TokenLex[65536]
-    sbuf: puntero        // char[1048576] (pool de cadenas; 1MB — ver SBUF_TAM en lexer_buffers)
+    tokens: puntero // struct TokenLex[65536]
+    sbuf: puntero // char[1048576] (pool de cadenas; 1MB — ver SBUF_TAM en lexer_buffers)
     indent_stack: puntero // int[64] — NOTA: el nombre evita el hack 'pila_indent'
-                          // de _ARRAY_OVERRIDE_FIELDS (context.py) que fuerza int[64]
-                          // (FASE A, A2.1)
+                        // de _ARRAY_OVERRIDE_FIELDS (context.py) que fuerza int[64]
+                        // (FASE A, A2.1)
     str_pos: entero
     ntks: entero
     total_tokens: entero
@@ -282,13 +282,13 @@ funcion lexer_decodificar_cadena(ptr: puntero, ini: entero, len: entero) -> cade
         asm("for (int _k = 0; _k < len && _n < 1048575 - _b->str_pos; _k++) {")
         asm("    if (_p[_k] == 92 && _k + 1 < len) {")
         asm("        switch (_p[_k + 1]) {")
-        asm("            case 34: _out[_n++] = 34; _k++; break;")   // \" -> comilla doble
-        asm("            case 39: _out[_n++] = 39; _k++; break;")   // \' -> comilla simple
-        asm("            case 92: _out[_n++] = 92; _k++; break;")   // \\ -> barra
-        asm("            case 110: _out[_n++] = 10; _k++; break;")  // \n
-        asm("            case 116: _out[_n++] = 9; _k++; break;")   // \t
-        asm("            case 114: _out[_n++] = 13; _k++; break;")  // \r
-        asm("            case 48: _out[_n++] = 0; _k++; break;")    // \0
+        asm("            case 34: _out[_n++] = 34; _k++; break;") // \" -> comilla doble
+        asm("            case 39: _out[_n++] = 39; _k++; break;") // \' -> comilla simple
+        asm("            case 92: _out[_n++] = 92; _k++; break;") // \\ -> barra
+        asm("            case 110: _out[_n++] = 10; _k++; break;") // \n
+        asm("            case 116: _out[_n++] = 9; _k++; break;") // \t
+        asm("            case 114: _out[_n++] = 13; _k++; break;") // \r
+        asm("            case 48: _out[_n++] = 0; _k++; break;") // \0
         asm("            default: _out[_n++] = _p[_k]; break;")
         asm("        }")
         asm("    } else { _out[_n++] = _p[_k]; }")
@@ -314,7 +314,7 @@ funcion lexer_push_token_valor(tipo: entero, linea: entero, columna: entero, val
 funcion lexer_push_token(tipo: entero, linea: entero, columna: entero) -> nulo:
     lexer_push_token_valor(tipo, linea, columna, "")
 
-// FASE A (A3.1): tokens de puntuacion de TIPOS (<, >, ,, &, *) con su lexema
+// FASE A (A3.1): tokens de puntuacion de TIPOS (<, >, , , &, *) con su lexema
 // real de la fuente (slice [ini, fin) de ptr_texto) — paridad _P_* (todo token
 // conserva el lexema; _parser.c corta la fuente para CADA token). Necesario
 // para los SPANS de tipos (nodo_guardar_span): con valor vacio, la aritmetica
@@ -391,12 +391,12 @@ funcion lexer_procesar_indentacion(ptr_linea: puntero, len_linea: entero) -> nul
 // --- Tokenize a single line of text ---
 // AUDITORIA FASE A (A2.1): port fiel de _P_tokenizar (gen_tok_c, emit_selfhost.py)
 // con TokenID canonicos:
-//   - literales: numero ::= DIGITO+ [ "." DIGITO+ ] (Manual 2 §2; exponente 'e' = P3),
-//     cadena con escapes (incl. comillas simples, paridad con _P_*);
-//   - UTF-8 en identificadores (H26);
-//   - '@export' -> T_EXPORT (handler '@' -> '@export' de gen_tok_c);
-//   - keywords contextuales con lexema preservado (let, delegar, rc, arc, débil,
-//     modulo, tipo, tensor, nulo, ok, err, algun, ninguno).
+// - literales: numero ::= DIGITO+ [ "." DIGITO+ ] (Manual 2 §2; exponente 'e' = P3),
+// cadena con escapes (incl. comillas simples, paridad con _P_*);
+// - UTF-8 en identificadores (H26);
+// - '@export' -> T_EXPORT (handler '@' -> '@export' de gen_tok_c);
+// - keywords contextuales con lexema preservado (let, delegar, rc, arc, débil,
+// modulo, tipo, tensor, nulo, ok, err, algun, ninguno).
 funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
     i = 0
     r = 1

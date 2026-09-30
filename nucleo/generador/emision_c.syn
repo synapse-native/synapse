@@ -1,6 +1,7 @@
 #lang: es
+// cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
 // ============================================================
-// emision_c.syn  —  API de emision de codigo C de bajo nivel
+// emision_c.syn — API de emision de codigo C de bajo nivel
 // ============================================================
 
 // ----------------------------------------------------------
@@ -17,7 +18,7 @@ funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
         // F1.4 anade 'rc<' (Manual 2 sec. 4 L151: "rc" tipo).
         asm("if (strncmp(_t, \"rc<\", 3)==0 || strncmp(_t, \"arc<\", 4)==0 || strncmp(_t, \"weak<\", 5)==0 || strncmp(_t, \"faible<\", 7)==0 || strncmp(_t, \"fraco<\", 6)==0 || strncmp(_t, \"d\u00e9bil<\", 6)==0) { strcpy(_gen_tmp_buf, \"void*\"); return; }")
         // D-2: instanciaciones de ADT genéricos registradas (monomorfización).
-        // `Resultado<entero,texto>` -> struct especializado `Resultado_entero_texto`
+        // `Resultado<entero, texto>` -> struct especializado `Resultado_entero_texto`
         // (Manual 2 §4.2 L279-280). Paridad context.py traducir_tipo_c.
         asm("extern char _G_native_adt_inst_type[64][64]; extern char _G_native_adt_inst_c[64][64]; extern int _G_native_adt_inst_count;")
         asm("if (strchr(_t, '<')) {")
@@ -27,13 +28,13 @@ funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
         asm("    }")
         asm("}")
         asm("if (_len > 10 && _t[0]=='R' && _t[1]=='e' && _t[2]=='s' && _t[3]=='u' && _t[4]=='l' && _t[5]=='t' && _t[6]=='a' && _t[7]=='d' && _t[8]=='o' && _t[9]=='<') { strcpy(_gen_tmp_buf, \"Resultado_T\"); return; }")
-        asm("if (strcmp(_t, \"entero\")==0 || strcmp(_t, \"int\")==0) { strcpy(_gen_tmp_buf, \"int64_t\"); return; }")  // A5.2 D-7: entero -> int64_t (Manual 2 S4.1 L267-268)
+        asm("if (strcmp(_t, \"entero\")==0 || strcmp(_t, \"int\")==0) { strcpy(_gen_tmp_buf, \"int64_t\"); return; }") // A5.2 D-7: entero -> int64_t (Manual 2 S4.1 L267-268)
         // cumple Manual 2 §4.3 (r153 R3n): colecciones stdlib — handle del runtime
         // (runtime/core/lista.c/mapa.c, slots int64, OBL-M6-5). Paridad S1 context.py.
         asm("if (_t[0]=='L' && strncmp(_t, \"Lista<\", 6)==0) { strcpy(_gen_tmp_buf, \"void*\"); return; }")
         asm("if (_t[0]=='M' && strncmp(_t, \"Mapa<\", 5)==0) { strcpy(_gen_tmp_buf, \"void*\"); return; }")
         asm("if (strcmp(_t, \"vacio\")==0 || strcmp(_t, \"nulo\")==0 || strcmp(_t, \"void\")==0) { strcpy(_gen_tmp_buf, \"void\"); return; }")
-        asm("if (strcmp(_t, \"decimal\")==0 || strcmp(_t, \"real\")==0 || strcmp(_t, \"flotante\")==0 || strcmp(_t, \"float\")==0) { strcpy(_gen_tmp_buf, \"double\"); return; }")  // A5.2 D-7: decimal -> double (Manual 2 S4.1 L267-268)
+        asm("if (strcmp(_t, \"decimal\")==0 || strcmp(_t, \"real\")==0 || strcmp(_t, \"flotante\")==0 || strcmp(_t, \"float\")==0) { strcpy(_gen_tmp_buf, \"double\"); return; }") // A5.2 D-7: decimal -> double (Manual 2 S4.1 L267-268)
         asm("if (strcmp(_t, \"Tensor\")==0 || strcmp(_t, \"tensor\")==0) { strcpy(_gen_tmp_buf, \"Tensor\"); return; }")
         asm("if (strcmp(_t, \"Canal\")==0 || strcmp(_t, \"canal\")==0) { strcpy(_gen_tmp_buf, \"Canal\"); return; }")
         asm("if (strcmp(_t, \"texto\")==0 || strcmp(_t, \"cadena\")==0) { strcpy(_gen_tmp_buf, \"CadenaSegura\"); return; }")
@@ -157,7 +158,7 @@ funcion gen_escribir_cadena_escapada(est: GeneradorCEst, str: puntero) -> nulo:
 
 // ----------------------------------------------------------
 // gen_emitir_traza
-// Emite:     /* [Traza: modulo.syn - NombreNodo] */
+// Emite: /* [Traza: modulo.syn - NombreNodo] */
 // ----------------------------------------------------------
 funcion gen_emitir_traza(est: GeneradorCEst, modulo: puntero, nombre_nodo: puntero) -> nulo:
     inseguro:
@@ -200,7 +201,7 @@ funcion gen_abrir_bloque_c(est: GeneradorCEst) -> nulo:
         asm("if (_G_emit_pos + 2 > 1048576) return;")
         asm("_G_emit_buf[_G_emit_pos] = '{';")
         asm("_G_emit_pos++;")
-        asm("_G_emit_buf[_G_emit_pos] = 10;")   // '\n'
+        asm("_G_emit_buf[_G_emit_pos] = 10;") // '\n'
         asm("_G_emit_pos++;")
         asm("_G_emit_buf[_G_emit_pos] = 0;")
         asm("_G_scope_depth++;")
@@ -284,10 +285,9 @@ funcion gen_cerrar_bloque_c(est: GeneradorCEst) -> nulo:
         asm("if (_G_emit_pos + 2 > 1048576) return;")
         asm("_G_emit_buf[_G_emit_pos] = '}';")
         asm("_G_emit_pos++;")
-        asm("_G_emit_buf[_G_emit_pos] = 10;")   // '\n'
+        asm("_G_emit_buf[_G_emit_pos] = 10;") // '\n'
         asm("_G_emit_pos++;")
         asm("_G_emit_buf[_G_emit_pos] = 0;")
-
 
 // ----------------------------------------------------------
 // _syn_es_tipo

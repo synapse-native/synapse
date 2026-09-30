@@ -131,7 +131,7 @@ funcion gen_escanear_genericas(est: GeneradorCEst, programa: Programa) -> nulo:
 // ----------------------------------------------------------
 funcion gen_escanear_adt_instancias(est: GeneradorCEst, programa: Programa) -> nulo:
     // ME-D2: registrar ADT genericos (DeclaracionTipo con parametros_tipo)
-    // y sus instanciaciones `Base<A,B>` (monomorfizacion, Opcion A). Paridad
+    // y sus instanciaciones `Base<A, B>` (monomorfizacion, Opcion A). Paridad
     // pre-pass generator.py _recolectar_instancias_adt.
     inseguro:
         asm("extern char _G_native_adt_gen[64][64]; extern int _G_native_adt_gen_nparams[64]; extern char _G_native_adt_gen_params[64][8][64]; extern int _G_native_adt_gen_count;")
@@ -406,7 +406,7 @@ funcion gen_escanear_adt_instancias(est: GeneradorCEst, programa: Programa) -> n
 // un ctor puro en una expresion quedaba sin registrar -> el let caia a
 // int64_t/base y el C quedaba invalido. Paridad S1 _recolectar_instancias_adt
 // (fixpoint R28). Convencion R20/R25: los parametros no acotados del ctor
-// (E en Resultado<T,E>) se rellenan con la PRIMERA instancia registrada del
+// (E en Resultado<T, E>) se rellenan con la PRIMERA instancia registrada del
 // base; el arg 0 es concreto (literal o ctor anidado recursivo).
 // ----------------------------------------------------------
 funcion _G_native_adt_registrar_syn(tipo_syn: puntero) -> entero:

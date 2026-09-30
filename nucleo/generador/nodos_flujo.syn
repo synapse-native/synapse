@@ -1,23 +1,23 @@
 #lang: es
 // ============================================================
-// nodos_flujo.syn  -  Visitantes de control de flujo (OO style)
+// nodos_flujo.syn - Visitantes de control de flujo (OO style)
 // ============================================================
 // Visitantes para nodos del AST usando formato OO (struct Nodo*).
 //
 // DISENO:
-//   - Cada visitante emite gen_emitir_traza() antes de emitir
-//     codigo, para trazabilidad en el archivo C generado.
-//   - Los bloques ( ) se emiten exclusivamente mediante
-//     gen_abrir_bloque_c() y gen_cerrar_bloque_c() de emision_c.
-//     Prohibida la emision manual de llaves con strings crudos.
-//   - El dispatcher (gen_visitar_stmt_generico) tiene una rama
-//     de fail-fast para tipos de nodo no reconocidos.
+// - Cada visitante emite gen_emitir_traza() antes de emitir
+// codigo, para trazabilidad en el archivo C generado.
+// - Los bloques ( ) se emiten exclusivamente mediante
+// gen_abrir_bloque_c() y gen_cerrar_bloque_c() de emision_c.
+// Prohibida la emision manual de llaves con strings crudos.
+// - El dispatcher (gen_visitar_stmt_generico) tiene una rama
+// de fail-fast para tipos de nodo no reconocidos.
 // ============================================================
 
 // NOTA: _oo_expr_a_c se encuentra en expr_eval.syn (submodulo separado)
 
 // ----------------------------------------------------------
-// gen_visitar_si  (INSTRUMENTADO con PGO via asm())
+// gen_visitar_si (INSTRUMENTADO con PGO via asm())
 // ----------------------------------------------------------
 funcion gen_visitar_si(est: GeneradorCEst, stmt: puntero) -> nulo:
     inseguro:
@@ -36,7 +36,7 @@ funcion gen_visitar_si(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("gen_abrir_bloque_c(est);")
         // F17: PGO — incremento de contador en frontera if-true
         pgo_emitir_incremento_bb(est)
-        cov_emitir_sonda(est)  // cumple Manual 8 §4.2 (ME coverage_aristas): sonda paridad S1; OFF no emite (cumple Manual 1 §6)
+        cov_emitir_sonda(est) // cumple Manual 8 §4.2 (ME coverage_aristas): sonda paridad S1; OFF no emite (cumple Manual 1 §6)
         asm("// Visit if-body via dispatcher")
         asm("{")
         asm("    struct ListaNodo* _ic = _s->cuerpo;")
@@ -52,7 +52,7 @@ funcion gen_visitar_si(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("    gen_abrir_bloque_c(est);")
         // F17: PGO — incremento de contador en frontera if-else
         pgo_emitir_incremento_bb(est)
-        cov_emitir_sonda(est)  // cumple Manual 8 §4.2 (ME coverage_aristas): sonda paridad S1; OFF no emite (cumple Manual 1 §6)
+        cov_emitir_sonda(est) // cumple Manual 8 §4.2 (ME coverage_aristas): sonda paridad S1; OFF no emite (cumple Manual 1 §6)
         asm("    struct ListaNodo* _ec = _s->cuerpo_sino;")
         asm("    while (_ec) {")
         asm("        struct Nodo* _es = _ec->cabeza;")
@@ -63,7 +63,7 @@ funcion gen_visitar_si(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("}")
 
 // ----------------------------------------------------------
-// gen_visitar_mientras  (INSTRUMENTADO con PGO via asm())
+// gen_visitar_mientras (INSTRUMENTADO con PGO via asm())
 // ----------------------------------------------------------
 funcion gen_visitar_mientras(est: GeneradorCEst, stmt: puntero) -> nulo:
     inseguro:
@@ -82,7 +82,7 @@ funcion gen_visitar_mientras(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("gen_abrir_bloque_c(est);")
         // F17: PGO — incremento de contador en frontera while-body
         pgo_emitir_incremento_bb(est)
-        cov_emitir_sonda(est)  // cumple Manual 8 §4.2 (ME coverage_aristas): sonda paridad S1; OFF no emite (cumple Manual 1 §6)
+        cov_emitir_sonda(est) // cumple Manual 8 §4.2 (ME coverage_aristas): sonda paridad S1; OFF no emite (cumple Manual 1 §6)
         asm("// While-body via dispatcher")
         asm("{")
         asm("    struct ListaNodo* _wc = _w->cuerpo;")
@@ -95,7 +95,7 @@ funcion gen_visitar_mientras(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("gen_cerrar_bloque_c(est);")
 
 // ----------------------------------------------------------
-// gen_visitar_para  (INSTRUMENTADO con PGO via asm())
+// gen_visitar_para (INSTRUMENTADO con PGO via asm())
 // ----------------------------------------------------------
 funcion gen_visitar_para(est: GeneradorCEst, stmt: puntero) -> nulo:
     inseguro:
@@ -322,7 +322,7 @@ funcion gen_visitar_para(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("gen_abrir_bloque_c(est);")
         // F17: PGO — incremento de contador en frontera for-body
         pgo_emitir_incremento_bb(est)
-        cov_emitir_sonda(est)  // cumple Manual 8 §4.2 (ME coverage_aristas): sonda paridad S1; OFF no emite (cumple Manual 1 §6)
+        cov_emitir_sonda(est) // cumple Manual 8 §4.2 (ME coverage_aristas): sonda paridad S1; OFF no emite (cumple Manual 1 §6)
         asm("// For-body via dispatcher (R30: ListaNodo, paridad si/mientras — antes")
         asm("// solo se visitaba la PRIMERA sentencia del cuerpo).")
         asm("{")
@@ -909,7 +909,7 @@ funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("}")
 
 // ----------------------------------------------------------
-// gen_visitar_asignacion_campo  (ME-B9.x, paridad visitar_asignacion_campo)
+// gen_visitar_asignacion_campo (ME-B9.x, paridad visitar_asignacion_campo)
 // ----------------------------------------------------------
 funcion gen_visitar_asignacion_campo(est: GeneradorCEst, stmt: puntero) -> nulo:
     inseguro:
@@ -936,7 +936,7 @@ funcion gen_visitar_asignacion_campo(est: GeneradorCEst, stmt: puntero) -> nulo:
 // gen_visitar_expr
 // ----------------------------------------------------------
 // ----------------------------------------------------------
-// gen_visitar_log  (R8: log(...) -> printf; paridad S1 visitar_log)
+// gen_visitar_log (R8: log(...) -> printf; paridad S1 visitar_log)
 // ----------------------------------------------------------
 funcion gen_visitar_log(est: GeneradorCEst, nodo_log: puntero) -> nulo:
     inseguro:
@@ -1105,7 +1105,7 @@ funcion gen_visitar_siguiente(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("gen_emitir_str(est, \"    continue;\");")
 
 // ----------------------------------------------------------
-// gen_visitar_escuchar  (F3-7 - Manual 2 L113 / Manual 5 S4.2)
+// gen_visitar_escuchar (F3-7 - Manual 2 L113 / Manual 5 S4.2)
 // ----------------------------------------------------------
 funcion gen_visitar_escuchar(est: GeneradorCEst, stmt: puntero) -> nulo:
     requiere:
@@ -1314,7 +1314,7 @@ funcion gen_visitar_stmt_generico(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("}")
 
 // ----------------------------------------------------------
-// gen_visitar_coincidir  (R11 - paridad S1 visitar_coincidir)
+// gen_visitar_coincidir (R11 - paridad S1 visitar_coincidir)
 // ----------------------------------------------------------
 funcion gen_visitar_coincidir(est: GeneradorCEst, stmt: puntero) -> nulo:
     inseguro:
@@ -1407,4 +1407,3 @@ funcion gen_visitar_coincidir(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("}")
         asm("gen_emitir_str(est, \"    }\");")
         asm("gen_emitir_str(est, \"    }\");")
-

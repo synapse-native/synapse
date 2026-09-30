@@ -2,15 +2,15 @@
 # cumple Manual 1 1: infraestructura del compilador Synapse
 # cumple Manual 8 4: toolchain de construcción
 // ============================================================
-// expr_eval.syn  —  Evaluador de expresiones OO para el generador C
+// expr_eval.syn — Evaluador de expresiones OO para el generador C
 // ============================================================
 // Visitante de expresiones del AST usando formato OO (struct Nodo*).
 //
 // DISENO:
-//   - _oo_expr_a_c es el evaluador de expresiones recursivo que traduce
-//     cualquier sub-arbol de expresion a una cadena C.
-//   - Soporta: literales, identificadores, operaciones binarias/unarias,
-//     llamadas a funcion, obtencion de direccion (&T) y desreferencia (*ptr).
+// - _oo_expr_a_c es el evaluador de expresiones recursivo que traduce
+// cualquier sub-arbol de expresion a una cadena C.
+// - Soporta: literales, identificadores, operaciones binarias/unarias,
+// llamadas a funcion, obtencion de direccion (&T) y desreferencia (*ptr).
 // ============================================================
 
 // ----------------------------------------------------------

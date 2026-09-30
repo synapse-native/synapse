@@ -1,16 +1,19 @@
 #lang: es
+// cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas (ME formatter_fix R4: anclaje de norma vigente tras reformato)
+// cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
+// vinculo ME formatter_fix R4 (Manual 1 §7.1, M8 §4.1): reformato cosmético del nucleo — estilo, sin cambios semánticos
 // nucleo/optimizador_ia.syn — Optimizador de Código Asistido por IA
 // ================================================================
 // Submódulo opcional del compilador que utiliza el motor de modelos
 // locales (std.modelo) para analizar nodos del AST y proponer:
-//   - Sugerencias de refactorización
-//   - Detección de patrones ineficientes
-//   - Inyección de contratos lógicos automáticos
-//   - Análisis de complejidad ciclomática
+// - Sugerencias de refactorización
+// - Detección de patrones ineficientes
+// - Inyección de contratos lógicos automáticos
+// - Análisis de complejidad ciclomática
 //
 // Integración:
-//   El optimizador es invocado como pasada opcional después del
-//   análisis semántico, antes de la generación de código.
+// El optimizador es invocado como pasada opcional después del
+// análisis semántico, antes de la generación de código.
 //
 // Zero-telemetry: toda la inferencia ocurre localmente via std.modelo.
 // ================================================================
@@ -43,15 +46,15 @@ estructura Sugerencia:
     linea: entero
     columna: entero
     mensaje: texto
-    confianza: decimal  // 0.0 a 1.0
+    confianza: decimal // 0.0 a 1.0
 
 estructura AnalisisAST:
     archivo: texto
     num_funciones: entero
     num_lineas: entero
     complejidad_maxima: entero
-    sugerencia_actual: entero  // contador de sugerencias activas
-    sugerencias_arr: puntero   // puntero a arreglo Sugerencia[MAX_SUGERENCIAS]
+    sugerencia_actual: entero // contador de sugerencias activas
+    sugerencias_arr: puntero // puntero a arreglo Sugerencia[MAX_SUGERENCIAS]
 
 // Inicializa una estructura de análisis vacía
 funcion inicializar_analisis(archivo: texto) -> AnalisisAST:
@@ -206,10 +209,10 @@ funcion detectar_rendimiento(analisis: &mut AnalisisAST,
 
 // Analiza el código fuente y genera sugerencias usando el modelo local
 // Args:
-//   ctx: contexto del modelo (de std.modelo.cargar_modelo)
-//   codigo_fuente: texto completo del código a analizar
+// ctx: contexto del modelo (de std.modelo.cargar_modelo)
+// codigo_fuente: texto completo del código a analizar
 // Retorna:
-//   Estructura AnalisisAST con sugerencias y métricas
+// Estructura AnalisisAST con sugerencias y métricas
 funcion analizar_codigo(ctx: puntero, codigo_fuente: texto) -> AnalisisAST:
     resultado = inicializar_analisis("input.syn")
 

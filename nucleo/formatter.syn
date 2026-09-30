@@ -3,7 +3,7 @@
 // cumple Manual 2 §12: nucleo/formatter.syn — formateador con reglas de estilo
 // cumple Manual 3 §12: colecciones de la biblioteca estándar en su API
 // cumple Manual 8 §4.1: `synapse fmt <archivo> [--check]` — backend real de
-//   los subcomandos fmt (H-R152-4/R4).
+// los subcomandos fmt (H-R152-4/R4).
 // Fase 31.4: formateador que reescribe codigo segun reglas de estilo
 // r153 (H-R153-1): reescrito contra el API que S1/S2 soportan de verdad
 // (probe r153): Listas, para..en, metodos de coleccion, longitud(),
@@ -17,10 +17,10 @@
 // --- Reglas de estilo (normativas) ---
 
 estructura ReglasEstilo:
-    espacios_indentacion: entero    // 4 (prohibido tabs)
-    espacios_operadores: booleano   // verdadero: a + b no a+b
-    espacio_despues_coma: booleano  // verdadero: funcion(a, b)
-    lineas_entre_funciones: entero  // 1
+    espacios_indentacion: entero // 4 (prohibido tabs)
+    espacios_operadores: booleano // verdadero: a + b no a+b
+    espacio_despues_coma: booleano // verdadero: funcion(a, b)
+    lineas_entre_funciones: entero // 1
 
 funcion reglas_defecto() -> ReglasEstilo:
     requiere:
@@ -88,13 +88,23 @@ funcion formatear_texto(texto: texto) -> texto:
     si largo > 0:
         si subcadena(texto, largo - 1, 1) == "\n":
             termina_nl = verdadero
+    // cumple Manual 1 §7.1 (ME formatter_fix, R2b): conserva UNA línea vacía
+    // como separador entre funciones/secciones (Manual 31 §5.3 "Líneas
+    // vacías: Entre funciones, entre secciones de módulo") — sin esto el
+    // formateador ELIMINABA todos los separadores y dejaba el fuente ilegible.
+    let prev_vacia = falso
     mientras i <= largo:
         si i == largo o subcadena(texto, i, 1) == "\n":
             let linea_formateada = formatear_linea(linea_actual)
             si longitud(linea_formateada) > 0:
                 si longitud(resultado) > 0:
                     resultado = resultado + "\n"
+                    si prev_vacia:
+                        resultado = resultado + "\n"
                 resultado = resultado + linea_formateada
+                prev_vacia = falso
+            sino:
+                prev_vacia = verdadero
             linea_actual = ""
             i = i + 1
         sino:
@@ -137,7 +147,14 @@ funcion formatear_linea(linea: texto) -> texto:
     retornar nueva_indent + formateado
 
 // --- Normaliza espacios alrededor de = y otros operadores ---
-
+// cumple Manual 1 §7.1 (ME formatter_fix, R2): estilo — indentación 4 espacios prohibido tabs; reglas normativas de estilo del Manual 31 §5.3 —
+// "Espacios alrededor de operadores | Sí", "Comas | Un espacio después de
+// coma". ME formatter_fix (R2, cierre H-33.5-3): añade la rama `si c == " "`
+// que colapsa espacios consecutivos a UNO (la rama que H-33.5-3 reportó
+// ausente: un duplicado de 2 ramas en lint.syn la ensombrecía por first-wins
+// del aplanador) y protege los LITERALES DE CADENA: el contenido entre
+// comillas dobles (con escapes, M2 §2 cadena_literal) se copia VERBATIM —
+// colapsar "hola  mundo" a "hola mundo" alteraría el significado del programa.
 funcion normalizar_espacios(linea: texto) -> texto:
     requiere:
         verdadero
@@ -146,21 +163,41 @@ funcion normalizar_espacios(linea: texto) -> texto:
     let resultado = ""
     let largo = longitud(linea)
     let i = 0
+    let en_literal = falso
     mientras i < largo:
         let c = subcadena(linea, i, 1)
-        si c == " ":
-            // Saltar espacios multiples
-            mientras i < largo y subcadena(linea, i, 1) == " ":
-                i = i + 1
-            resultado = resultado + " "
-        sino si c == ",":
-            resultado = resultado + ", "
-            i = i + 1
-            mientras i < largo y subcadena(linea, i, 1) == " ":
+        si en_literal:
+            resultado = resultado + c
+            si c == "\\":
+                si i + 1 < largo:
+                    resultado = resultado + subcadena(linea, i + 1, 1)
+                i = i + 2
+            sino:
+                si c == "\"":
+                    en_literal = falso
                 i = i + 1
         sino:
-            resultado = resultado + c
-            i = i + 1
+            si c == "\"":
+                en_literal = verdadero
+                resultado = resultado + c
+                i = i + 1
+            sino si c == " ":
+                mientras i < largo y subcadena(linea, i, 1) == " ":
+                    i = i + 1
+                resultado = resultado + " "
+            sino si c == ",":
+                // Un espacio tras coma SOLO si queda contenido después: una
+                // coma al final de línea no debe ganar un espacio final
+                // (M1 §7.1, WARN_LINT_TRAILING_WS).
+                resultado = resultado + ","
+                i = i + 1
+                mientras i < largo y subcadena(linea, i, 1) == " ":
+                    i = i + 1
+                si i < largo:
+                    resultado = resultado + " "
+            sino:
+                resultado = resultado + c
+                i = i + 1
     retornar resultado
 
 // --- Recorta espacios al inicio y final ---
@@ -210,10 +247,10 @@ funcion fmt_archivo(ruta: texto) -> booleano:
     let contenido = leer_archivo(ruta)
     let formateado = formatear_texto(contenido)
     si contenido == formateado:
-        retornar falso  // sin cambios
+        retornar falso // sin cambios
     inseguro:
         asm("FILE* _f = fopen(ruta.datos, \"wb\"); if(_f){ fwrite(formateado.datos, 1, formateado.longitud, _f); fclose(_f); }")
-    retornar verdadero  // reformateado
+    retornar verdadero // reformateado
 
 // --- Reformato de multiples archivos ---
 

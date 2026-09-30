@@ -1,4 +1,7 @@
 #lang: es
+// cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas (ME formatter_fix R4: anclaje de norma vigente tras reformato)
+// cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
+// vinculo ME formatter_fix R4 (Manual 1 §7.1, M8 §4.1): reformato cosmético del nucleo — estilo, sin cambios semánticos
 // ---- Struct for parser token (external representation) ----
 estructura TokenExt:
     tipo: entero
@@ -172,12 +175,12 @@ funcion parser_error(est: ParserEst, mensaje: cadena, linea: entero, columna: en
 // NOTA de paridad (revisor A3.1): el do-while consume SIEMPRE al menos un
 // token (anti-cuelgue) mientras _P_sinc_skip se detiene en el sync point sin
 // consumirlo — diferencia intencional: garantiza progreso incluso si el token
-// actual ya es de sincronizacion (ej: ',' suelto). Los loops de cuerpo chequean
+// actual ya es de sincronizacion (ej: ', ' suelto). Los loops de cuerpo chequean
 // T_NUEVALINEA/T_DESINDENTAR/T_FIN antes de llamar a parsear_sentencia, asi que
 // el fallthrough solo ve tokens invalidos reales.
 funcion parser_sinc_skip(est: ParserEst) -> nulo:
     // do-while: consume SIEMPRE al menos un token (garantiza progreso del loop
-    // de sentencias aunque el token actual ya sea de sincronizacion, ej: ','
+    // de sentencias aunque el token actual ya sea de sincronizacion, ej: ', '
     // suelto — sin esto el loop quedaria estancado igualmente).
     token_avanzar(est)
     r = 1
@@ -259,8 +262,8 @@ funcion token_esperar_texto(est: ParserEst, esperado: entero) -> entero:
 //
 // AUDITORIA FASE A (A2.2): keywords contextuales activadas en A2.1 que también
 // deben comportarse como identificadores en posicion de nombre/tipo:
-//   T_LET (let x = ...), T_DELEGAR (delegar expresion), T_RC/T_ARC/T_DEBIL (rc/arc/débil<T>),
-//   T_MODULO (modulo), T_EXPORT (@export ... funcion).
+// T_LET (let x = ...), T_DELEGAR (delegar expresion), T_RC/T_ARC/T_DEBIL (rc/arc/débil<T>),
+// T_MODULO (modulo), T_EXPORT (@export ... funcion).
 // Manual 2 §3: let, delegar, rc, arc, débil, modulo conservan el lexema.
 funcion token_es_nombre(t: entero) -> entero:
     si t == T_IDENTIFICADOR:

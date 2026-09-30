@@ -1,4 +1,7 @@
 #lang: es
+// cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas (ME formatter_fix R4: anclaje de norma vigente tras reformato)
+// cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
+// vinculo ME formatter_fix R4 (Manual 1 §7.1, M8 §4.1): reformato cosmético del nucleo — estilo, sin cambios semánticos
 # cumple Manual 1 1: infraestructura del compilador Synapse
 # cumple Manual 8 4: toolchain de construcción
 // nucleo/cache.syn — Sistema de Caché de Compilación Incremental
@@ -26,15 +29,15 @@ estructura CampoToml:
 // --- Estructuras de Caché ---
 
 estructura CacheEntry:
-    clave: texto                    // SHA-256 hex string (64 chars)
-    archivo_fuente: texto           // Ruta del archivo fuente original
-    archivo_objeto: texto           // Ruta al .o almacenado
-    hash_fuente: texto              // SHA-256 del contenido del fuente
-    hashes_deps: texto              // JSON array de hashes de dependencias
-    flags_compilacion: texto        // Flags del compilador (ej: -O2)
-    version_compilador: texto       // __VERSION__ del compilador
-    timestamp: entero               // Unix epoch
-    tamano_bytes: entero            // Tamaño del .o en bytes
+    clave: texto // SHA-256 hex string (64 chars)
+    archivo_fuente: texto // Ruta del archivo fuente original
+    archivo_objeto: texto // Ruta al .o almacenado
+    hash_fuente: texto // SHA-256 del contenido del fuente
+    hashes_deps: texto // JSON array de hashes de dependencias
+    flags_compilacion: texto // Flags del compilador (ej: -O2)
+    version_compilador: texto // __VERSION__ del compilador
+    timestamp: entero // Unix epoch
+    tamano_bytes: entero // Tamaño del .o en bytes
 
 estructura CacheStats:
     total_entradas: entero
@@ -239,4 +242,3 @@ funcion _resolver_ruta_import(mod_nombre: texto) -> texto:
         retornar concat(concat("librerias/compiler/", sub), ".syn")
     // relative path
     retornar concat(mod_nombre, ".syn")
-

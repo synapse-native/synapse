@@ -1,16 +1,18 @@
 #lang: es
+// cumple Manual 8 §1.1: arquitectura del LSP nativo — Visión General (cubre §1 del mapa; ME formatter_fix R4: anclaje tras reformato)
+// cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
 
 // nucleo/lsp.syn -- Servidor LSP Nativo (JSON-RPC 2.0 sobre stdin/stdout)
 //
 // v0.2.5 -- F14.4: `constante EOF = 57` en tokens.syn colisionaba con
-//   `#define EOF (-1)` de <stdio.h>. Cualquier byte 57 (ASCII '9')
-//   activaba el chequeo `if (_c == EOF)`. SOLUCION: usar (-1).
-//   F15: EOF removido de tokens.syn -- usar T_FIN para end-of-file.
+// `#define EOF (-1)` de <stdio.h>. Cualquier byte 57 (ASCII '9')
+// activaba el chequeo `if (_c == EOF)`. SOLUCION: usar (-1).
+// F15: EOF removido de tokens.syn -- usar T_FIN para end-of-file.
 //
 // v0.2.4 -- F14.3 FIX: _setmode directo (sin #ifdef).
-//   RAZON: asm() anade ; tras cada linea, convirtiendo
-//   #ifdef _WIN32 en #ifdef _WIN32; -- macro indefinida, bloque saltado.
-//   SOLUCION: _setmode directo (LSP solo compila en Windows/MinGW).
+// RAZON: asm() anade ; tras cada linea, convirtiendo
+// #ifdef _WIN32 en #ifdef _WIN32; -- macro indefinida, bloque saltado.
+// SOLUCION: _setmode directo (LSP solo compila en Windows/MinGW).
 
 importar tokens
 importar lexer

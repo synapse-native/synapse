@@ -1,4 +1,6 @@
 #lang: es
+// cumple Manual 2 §3: tabla de palabras reservadas (ME formatter_fix R4: reformato de formato)
+// vinculo ME formatter_fix R4 (Manual 1 §7.1, M8 §4.1): reformato cosmético del nucleo — estilo, sin cambios semánticos
 // cumple Manual 1 2: lexer
 # cumple Manual 8 4.1: compilador nativo S2
 // ============================================================
@@ -10,7 +12,6 @@
 // keyword_token() queda en lexer.syn y delega aqui por idioma. El emisor
 // C ordena funciones alfabeticamente (Manual 8 S8.2) -> el C generado no
 // cambia salvo el array _files[] de principal.syn (prueba de transparencia).
-
 
 // --- Keyword dictionary lookup (multi-idioma, Manual 2 S2.3) ---
 // AUDITORIA FASE A (A2.1): activados let/delegar/rc/arc/débil/modulo

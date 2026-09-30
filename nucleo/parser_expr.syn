@@ -362,7 +362,7 @@ funcion parsear_primario(est: ParserEst) -> entero:
         // el puente lo convierte a Identificador.nombre / LlamadaFuncion.nombre.
         nodo_guardar_token(est, nodo, pos_id)
         // cumple Manual 2 §4.3 (H-R153-2/R3n, cumple Manual 3 §3): constructores de colección
-        // `Lista<T>()` / `Mapa<K,V>()` en EXPRESION — el puente produce un
+        // `Lista<T>()` / `Mapa<K, V>()` en EXPRESION — el puente produce un
         // LlamadaFuncion cuyo nombre es el span completo ("Lista<entero>").
         // Paridad S1 parser_expressions.py (rama Lista< tras identificador).
         // r153 (H-R153-19): paridad estricta con parser_expressions.py L261 —

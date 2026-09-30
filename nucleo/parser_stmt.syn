@@ -1,4 +1,7 @@
 #lang: es
+// cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas (ME formatter_fix R4: anclaje de norma vigente tras reformato)
+// cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
+// vinculo ME formatter_fix R4 (Manual 1 §7.1, M8 §4.1): reformato cosmético del nucleo — estilo, sin cambios semánticos
 # cumple Manual 1 1: infraestructura del compilador Synapse
 # cumple Manual 8 4: toolchain de construcción
 funcion parsear_sentencia_simple(est: ParserEst, t: entero) -> entero:
@@ -22,7 +25,7 @@ funcion parsear_sentencia_simple(est: ParserEst, t: entero) -> entero:
         retornar 0
     si t == T_FIN:
         retornar 0
-    retornar -1  // Not a simple statement
+    retornar -1 // Not a simple statement
 
 // Helper: Parse declaration-like statements (struct, import, const, etc.)
 funcion parsear_sentencia_decl(est: ParserEst, t: entero) -> entero:
@@ -82,7 +85,7 @@ funcion parsear_sentencia_decl(est: ParserEst, t: entero) -> entero:
         retornar parsear_externo(est)
     si t == T_COINCIDIR:
         retornar parsear_coincidir(est)
-    retornar -1  // Not a declaration statement
+    retornar -1 // Not a declaration statement
 
 // Helper: Parse control flow statements (if, while, for, etc.)
 funcion parsear_sentencia_control(est: ParserEst, t: entero) -> entero:
@@ -100,7 +103,7 @@ funcion parsear_sentencia_control(est: ParserEst, t: entero) -> entero:
         retornar parsear_escuchar(est)
     si t == T_COINCIDIR:
         retornar parsear_coincidir(est)
-    retornar -1  // Not a control flow statement
+    retornar -1 // Not a control flow statement
 
 // Helper: Parse channel-related statements
 funcion parsear_sentencia_canal(est: ParserEst, t: entero) -> entero:
@@ -134,12 +137,12 @@ funcion parsear_sentencia_canal(est: ParserEst, t: entero) -> entero:
         si t2 == T_DOSPUNTOS:
             linea = token_linea(est, est.posicion)
             col = token_columna(est, est.posicion)
-            token_avanzar(est)  // IDENT
-            token_avanzar(est)  // ':'
+            token_avanzar(est) // IDENT
+            token_avanzar(est) // ':'
             mientras token_es_nombre(token_mirar(est)) == 1:
-                token_avanzar(est)  // tipo base
+                token_avanzar(est) // tipo base
             si token_mirar(est) == T_MENOR:
-                // tipo generico <T,E> con profundidad (patron let R20)
+                // tipo generico <T, E> con profundidad (patron let R20)
                 token_avanzar(est)
                 prof_t = 0
                 tt = token_mirar(est)
@@ -154,10 +157,10 @@ funcion parsear_sentencia_canal(est: ParserEst, t: entero) -> entero:
                     tt = token_mirar(est)
                 token_esperar(est, T_MAYOR)
             mientras token_mirar(est) == T_POR:
-                token_avanzar(est)  // punteros * (T_POR = '*')
+                token_avanzar(est) // punteros * (T_POR = '*')
             si token_mirar(est) == T_ASIGNAR:
                 token_avanzar(est)
-                parsear_expresion(est)  // valor (puede ser `ch ->`)
+                parsear_expresion(est) // valor (puede ser `ch ->`)
             parser_error(est, "La declaracion de variable exige 'let' (Manual 2 L134)", linea, col)
             retornar 0
         // detectar declaracion tipada: ident : ident =
@@ -217,7 +220,7 @@ funcion parsear_sentencia_canal(est: ParserEst, t: entero) -> entero:
         inseguro:
             asm("est->nodos[nodo].hijo_izq = expr")
         retornar nodo
-    retornar -1  // Not a channel statement
+    retornar -1 // Not a channel statement
 
 // Main statement parser - refactored
 funcion parsear_sentencia(est: ParserEst) -> entero:
@@ -285,7 +288,7 @@ funcion parsear_sentencia(est: ParserEst) -> entero:
             mientras token_es_nombre(token_mirar(est)) == 1:
                 token_avanzar(est)
             si token_mirar(est) == T_MENOR:
-                // R20: tipos ADT anidados en el tipo del let (`let r: Resultado<Resultado<entero,texto>,texto>`)
+                // R20: tipos ADT anidados en el tipo del let (`let r: Resultado<Resultado<entero, texto>, texto>`)
                 // - consumir con profundidad; solo el '>' de nivel 0 cierra la
                 // instanciacion (paridad parsear_tipo_compuesto R13 + anti-cuelgue).
                 token_avanzar(est)

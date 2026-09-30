@@ -1,16 +1,19 @@
 #lang: es
+// cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas (ME formatter_fix R4: anclaje de norma vigente tras reformato)
+// cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
+// vinculo ME formatter_fix R4 (Manual 1 §7.1, M8 §4.1): reformato cosmético del nucleo — estilo, sin cambios semánticos
 // nucleo/verificador_formal.syn — Módulo de Verificación Formal (M10.1)
 //
 // Subconjunto de verificación para modo --safe. Se ejecuta después del
 // análisis semántico y antes de la generación de código.
 //
 // Responsabilidades (paridad compilador/verificador_formal.py):
-//   1. Prohibir bucles 'mientras' sin cota estática comprobable (E-700)
-//   2. Prohibir efectos secundarios mutables globales (E-701)
-//   3. Verificar terminación por inducción estructural en funciones
-//      recursivas (E-702)
-//   4. Validación estática de contratos requiere/garantiza como
-//      pre/postcondiciones (E-703)
+// 1. Prohibir bucles 'mientras' sin cota estática comprobable (E-700)
+// 2. Prohibir efectos secundarios mutables globales (E-701)
+// 3. Verificar terminación por inducción estructural en funciones
+// recursivas (E-702)
+// 4. Validación estática de contratos requiere/garantiza como
+// pre/postcondiciones (E-703)
 //
 // REESCRITURA 2026-08 (M10.1 nativo): la versión anterior usaba
 // construcciones del dialecto que no compilaban ('es nulo', cast sintáctico,

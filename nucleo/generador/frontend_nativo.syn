@@ -1,3 +1,8 @@
+#lang: es
+// cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas (ME formatter_fix R4: anclaje de norma vigente tras reformato)
+// vinculo ME formatter_fix R4 (Manual 1 §7.1, M8 §4.1): reformato cosmético del nucleo — estilo, sin cambios semánticos
+# cumple Manual 1 §6: nucleo del compilador Synapse (regla de hierro del bootstrap)
+# cumple Manual 2 §1.1: directiva de idioma en línea 1 (ME formatter_fix R4)
 // cumple Manual 1 5: generador de código
 # cumple Manual 8 4.1: compilador nativo S2
 // ==========================================================
@@ -5,14 +10,14 @@
 // desde A4). El espejo embebido frontend_p.syn (_P_*) fue
 // retirado en A4 (AUDITORIA_ALINEACION_MANUALES.md).
 // Pipeline: tokenizar (lexer.syn) -> parsear_nativo (parser.syn)
-//   -> puente_construir_programa (puente_ast.syn, A3.1).
+// -> puente_construir_programa (puente_ast.syn, A3.1).
 // ==========================================================
 
 // ----------------------------------------------------------
 // gen_emitir_frontend_nativo — wrapper 'struct Programa parsear(CadenaSegura
 // fuente)' para el frontend NATIVO (A3.2/A4): ejecuta la pipeline
-//   tokenizar (cuerpo nativo de lexer.syn) -> parsear_nativo (parser.syn) ->
-//   puente_construir_programa (puente_ast.syn, A3.1).
+// tokenizar (cuerpo nativo de lexer.syn) -> parsear_nativo (parser.syn) ->
+// puente_construir_programa (puente_ast.syn, A3.1).
 // Paridad: firma canonica 'struct Programa parsear(CadenaSegura fuente)'
 // (L3818 / S1 _SPECIAL_SIGS generator.py) que consume principal.syn y lsp.syn.
 // Guard _G_fnn_emitido: evita doble emision si el hook ME-B7 se invoca 2 veces.
@@ -71,4 +76,3 @@ funcion gen_emitir_frontend_nativo(est: GeneradorCEst) -> nulo:
         asm("gen_emitir_str(est, _G_fnn6);")
         asm("static char _G_fnn7[] = \"}\";")
         asm("gen_emitir_str(est, _G_fnn7);")
-

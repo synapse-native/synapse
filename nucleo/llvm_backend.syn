@@ -1,5 +1,6 @@
 #lang: es
-# cumple Manual 1 5: nucleo del compilador Synapse
+// cumple Manual 1 §5.2: rendimiento de metal desnudo — motor de C/C++ (cubre §5 del mapa legacy; ME formatter_fix R4: anclaje tras reformato)
+// cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
 # =============================================================================
 # nucleo/llvm_backend.syn — LLVM IR Code Generator (M12.1.1)
 #
@@ -8,15 +9,15 @@
 # a instrucciones LLVM estándar.
 #
 # Arquitectura:
-#   - Sigue el mismo patrón que nucleo/wasm_backend.syn
-#   - Usa inline asm() para operaciones de bajo nivel (buffer de salida)
-#   - Genera texto LLVM IR plano (.ll) sin dependencias externas
+# - Sigue el mismo patrón que nucleo/wasm_backend.syn
+# - Usa inline asm() para operaciones de bajo nivel (buffer de salida)
+# - Genera texto LLVM IR plano (.ll) sin dependencias externas
 #
 # Formato LLVM IR emitido:
-#   define i32 @main() {
-#   entry:
-#     ret i32 <valor>
-#   }
+# define i32 @main() {
+# entry:
+# ret i32 <valor>
+# }
 #
 # Tipos LLVM soportados: i32 (entero de 32 bits)
 # =============================================================================
@@ -70,10 +71,10 @@ constante ICMP_UGE = 39
 # Estado del generador LLVM
 # -------------------------------------------------------------------
 estructura EstadoLLVM:
-    nivel_indentacion: entero    # nivel de indentación actual
-    etiqueta_contador: entero    # contador para generar etiquetas únicas
-    buffer_salida: texto          # texto LLVM IR acumulado
-    nombre_funcion_actual: texto  # nombre de la función actual
+    nivel_indentacion: entero # nivel de indentación actual
+    etiqueta_contador: entero # contador para generar etiquetas únicas
+    buffer_salida: texto # texto LLVM IR acumulado
+    nombre_funcion_actual: texto # nombre de la función actual
 
 # -------------------------------------------------------------------
 # Inicializar estado del generador LLVM
@@ -184,8 +185,8 @@ funcion llvm_iniciar_modulo(est: EstadoLLVM, nombre_modulo: texto) -> nulo:
 
 # -------------------------------------------------------------------
 # Emitir declaración de función
-#   define i32 @nombre() {
-#   entry:
+# define i32 @nombre() {
+# entry:
 # -------------------------------------------------------------------
 funcion llvm_declarar_funcion(est: EstadoLLVM, nombre: texto) -> nulo:
     requiere:
@@ -243,7 +244,7 @@ funcion llvm_etiqueta(est: EstadoLLVM, nombre: texto) -> nulo:
 
 # -------------------------------------------------------------------
 # Emitir instrucción de salto incondicional
-#   br label %etiqueta
+# br label %etiqueta
 # -------------------------------------------------------------------
 funcion llvm_br(est: EstadoLLVM, etiqueta: texto) -> nulo:
     requiere:
@@ -254,7 +255,7 @@ funcion llvm_br(est: EstadoLLVM, etiqueta: texto) -> nulo:
 
 # -------------------------------------------------------------------
 # Emitir instrucción de salto condicional
-#   br i1 %cond, label %etiqueta_true, label %etiqueta_false
+# br i1 %cond, label %etiqueta_true, label %etiqueta_false
 # -------------------------------------------------------------------
 funcion llvm_cond_br(est: EstadoLLVM, cond: texto, etiqueta_true: texto, etiqueta_false: texto) -> nulo:
     requiere:
@@ -317,7 +318,7 @@ funcion llvm_urem(est: EstadoLLVM, result: texto, lhs: texto, rhs: texto) -> nul
 
 # -------------------------------------------------------------------
 # Emitir comparación ICMP
-#   %result = icmp opcode i32 lhs, rhs
+# %result = icmp opcode i32 lhs, rhs
 # -------------------------------------------------------------------
 funcion llvm_icmp(est: EstadoLLVM, opcode: entero, result: texto, lhs: texto, rhs: texto) -> nulo:
     requiere:
@@ -351,7 +352,7 @@ funcion llvm_icmp(est: EstadoLLVM, opcode: entero, result: texto, lhs: texto, rh
 
 # -------------------------------------------------------------------
 # Emitir alloca (variable local)
-#   %result = alloca i32
+# %result = alloca i32
 # -------------------------------------------------------------------
 funcion llvm_alloca(est: EstadoLLVM, result: texto, tam: entero) -> nulo:
     requiere:
@@ -362,7 +363,7 @@ funcion llvm_alloca(est: EstadoLLVM, result: texto, tam: entero) -> nulo:
 
 # -------------------------------------------------------------------
 # Emitir store
-#   store i32 valor, ptr destino
+# store i32 valor, ptr destino
 # -------------------------------------------------------------------
 funcion llvm_store(est: EstadoLLVM, val: texto, destino: texto) -> nulo:
     requiere:
@@ -373,7 +374,7 @@ funcion llvm_store(est: EstadoLLVM, val: texto, destino: texto) -> nulo:
 
 # -------------------------------------------------------------------
 # Emitir load
-#   %result = load i32, ptr fuente
+# %result = load i32, ptr fuente
 # -------------------------------------------------------------------
 funcion llvm_load(est: EstadoLLVM, result: texto, fuente: texto) -> nulo:
     requiere:
@@ -384,7 +385,7 @@ funcion llvm_load(est: EstadoLLVM, result: texto, fuente: texto) -> nulo:
 
 # -------------------------------------------------------------------
 # Emitir llamada a función
-#   %result = call i32 @nombre(param1, param2)
+# %result = call i32 @nombre(param1, param2)
 # -------------------------------------------------------------------
 funcion llvm_call(est: EstadoLLVM, result: texto, nombre: texto, params: lista_texto) -> nulo:
     requiere:
@@ -418,10 +419,10 @@ funcion llvm_nueva_etiqueta(est: EstadoLLVM) -> texto:
 # -------------------------------------------------------------------
 
 # Programa mínimo: define main que retorna una constante
-#   define i32 @main() {
-#   entry:
-#     ret i32 <valor>
-#   }
+# define i32 @main() {
+# entry:
+# ret i32 <valor>
+# }
 funcion llvm_programa_minimo(est: EstadoLLVM, valor_retorno: entero) -> nulo:
     requiere:
         verdadero
@@ -433,7 +434,7 @@ funcion llvm_programa_minimo(est: EstadoLLVM, valor_retorno: entero) -> nulo:
     llvm_finalizar_funcion_con_ret(est)
 
 # Programa aritmético: main() { return lhs <op> rhs; }
-#   op: 0=suma, 1=resta, 2=multiplicacion, 3=division_signed, 4=division_unsigned, 5=modulo_signed
+# op: 0=suma, 1=resta, 2=multiplicacion, 3=division_signed, 4=division_unsigned, 5=modulo_signed
 funcion llvm_programa_aritmetico(est: EstadoLLVM, op: entero,
     requiere:
         verdadero
@@ -480,13 +481,13 @@ funcion llvm_programa_if_else(est: EstadoLLVM, a: entero, b: entero) -> nulo:
     llvm_finalizar_funcion_con_ret(est)
 
 # Programa bucle: suma de 0 a n
-#   define i32 @main() {
-#   entry:
-#     br label %loop
-#   loop:
-#     %i = phi i32 [0, %entry], [%next_i, %loop]
-#     ...
-#   }
+# define i32 @main() {
+# entry:
+# br label %loop
+# loop:
+# %i = phi i32 [0, %entry], [%next_i, %loop]
+# ...
+# }
 funcion llvm_programa_bucle(est: EstadoLLVM, n: entero) -> nulo:
     requiere:
         verdadero
@@ -522,8 +523,8 @@ funcion llvm_programa_bucle(est: EstadoLLVM, n: entero) -> nulo:
     llvm_emitir_buffer(est, "}")
 
 # Programa con llamada a función
-#   define i32 @suma(i32 %a, i32 %b) { entry: %r = add i32 %a, %b; ret i32 %r }
-#   define i32 @main() { entry: %call = call i32 @suma(i32 10, i32 20); ret i32 %call }
+# define i32 @suma(i32 %a, i32 %b) { entry: %r = add i32 %a, %b; ret i32 %r }
+# define i32 @main() { entry: %call = call i32 @suma(i32 10, i32 20); ret i32 %call }
 funcion llvm_programa_con_llamada(est: EstadoLLVM, val_a: entero, val_b: entero) -> nulo:
     requiere:
         verdadero

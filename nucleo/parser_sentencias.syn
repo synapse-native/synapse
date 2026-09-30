@@ -3,7 +3,7 @@
 // cumple Manual 3 §3: bucle_para_rango `para x en expr:` (r153 R2n)
 # cumple Manual 8 §4.1: compilador nativo S2
 // R29 (regla 13, modularizacion): sentencias de control de flujo extraidas de
-// nucleo/parser.syn (1,511 lineas -> parser.syn 486 + sentencias 553 +
+// nucleo/parser.syn (1, 511 lineas -> parser.syn 486 + sentencias 553 +
 // declaraciones 420 + canales 52). Diagnostico FASE A (2026-08-07): parser.syn
 // era el cajon de sastre del frontend nativo (30 funciones top-level) pese a
 // existir parser_base/expr/stmt/constantes. Mecanico: texto identico, sin
@@ -222,8 +222,8 @@ funcion parsear_para(est: ParserEst) -> entero:
             asm("      es_en = (_v_en.longitud == 2 && _v_en.datos && _v_en.datos[0] == 'e' && _v_en.datos[1] == 'n') ? 1 : 0; }")
             asm("}")
         si es_en == 1:
-            token_avanzar(est)  // consume la variable
-            token_avanzar(est)  // consume 'en'
+            token_avanzar(est) // consume la variable
+            token_avanzar(est) // consume 'en'
             nodo_en = parser_nuevo_nodo(est, NODO_PARA_EN, linea, col)
             nodo_guardar_token(est, nodo_en, est.posicion - 2)
             iterable = parsear_expresion(est)
@@ -685,4 +685,3 @@ funcion parsear_coincidir(est: ParserEst) -> entero:
         inseguro:
             asm("est->nodos[nodo].hijo_der = primer_caso")
     retornar nodo
-

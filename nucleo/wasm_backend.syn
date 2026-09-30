@@ -1,4 +1,7 @@
 #lang: es
+// cumple Manual 1 §6: regla de hierro del bootstrap (ME formatter_fix R4: reformato de formato)
+// cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
+// vinculo ME formatter_fix R4 (Manual 1 §7.1, M8 §4.1): reformato cosmético del nucleo — estilo, sin cambios semánticos
 # =============================================================================
 # nucleo/wasm_backend.syn — WebAssembly WAT Code Generator (M12.2)
 #
@@ -7,17 +10,17 @@
 # funciones y llamadas a instrucciones WASM estandarizadas.
 #
 # Arquitectura:
-#   - Sigue el mismo patrón que generador/emision_c.syn
-#   - Usa gen_emitir_linea() para emitir código WAT línea por línea
-#   - No requiere dependencias externas (emite texto plano .wat)
+# - Sigue el mismo patrón que generador/emision_c.syn
+# - Usa gen_emitir_linea() para emitir código WAT línea por línea
+# - No requiere dependencias externas (emite texto plano .wat)
 #
 # Formato WAT emitido:
-#   (module
-#     (func $nombre (param i32) (result i32)
-#       i32.const <val>
-#       return
-#     )
-#   )
+# (module
+# (func $nombre (param i32) (result i32)
+# i32.const <val>
+# return
+# )
+# )
 #
 # Tipos WASM soportados: i32, i64, f64, memoria, imports/exports, globals
 # =============================================================================
@@ -72,9 +75,9 @@ constante WASM_GLOBAL_SET = 41
 # Estado del generador WASM
 # -------------------------------------------------------------------
 estructura EstadoWasm:
-    nivel_indentacion: entero  # nivel de indentación actual (0, 1, 2, ...)
-    etiqueta_contador: entero  # contador para generar etiquetas únicas
-    buffer_salida: texto       # texto WAT acumulado
+    nivel_indentacion: entero # nivel de indentación actual (0, 1, 2, ...)
+    etiqueta_contador: entero # contador para generar etiquetas únicas
+    buffer_salida: texto # texto WAT acumulado
 
 # -------------------------------------------------------------------
 # Inicializar estado del generador WASM
@@ -196,9 +199,9 @@ funcion wasm_finalizar_modulo(est: EstadoWasm) -> nulo:
 # -------------------------------------------------------------------
 # Emitir declaración de función
 #
-#   (func $nombre (param i32) (param i32) (result i32)
-#     ... cuerpo ...
-#   )
+# (func $nombre (param i32) (param i32) (result i32)
+# ... cuerpo ...
+# )
 # -------------------------------------------------------------------
 funcion wasm_declarar_funcion(est: EstadoWasm, nombre: texto,
     requiere:
@@ -419,12 +422,12 @@ funcion wasm_i32_gt_s(est: EstadoWasm) -> nulo:
 # -------------------------------------------------------------------
 
 # Generar un programa WASM mínimo: retorna una constante entera
-#   (module
-#     (func $main (result i32)
-#       i32.const <valor>
-#       return
-#     )
-#   )
+# (module
+# (func $main (result i32)
+# i32.const <valor>
+# return
+# )
+# )
 funcion wasm_programa_minimo(est: EstadoWasm, valor_retorno: entero) -> nulo:
     requiere:
         est != nulo
@@ -438,7 +441,7 @@ funcion wasm_programa_minimo(est: EstadoWasm, valor_retorno: entero) -> nulo:
     wasm_finalizar_modulo(est)
 
 # Generar un programa WASM aritmético: retorna lhs <op> rhs
-#   op: 0=suma, 1=resta, 2=multiplicacion, 3=division
+# op: 0=suma, 1=resta, 2=multiplicacion, 3=division
 funcion wasm_programa_aritmetico(est: EstadoWasm, op: entero,
     requiere:
         est != nulo
@@ -463,20 +466,20 @@ funcion wasm_programa_aritmetico(est: EstadoWasm, op: entero,
     wasm_finalizar_modulo(est)
 
 # Generar un programa WASM con llamada a función
-#   (module
-#     (func $suma (param i32 i32) (result i32)
-#       local.get $p0
-#       local.get $p1
-#       i32.add
-#       return
-#     )
-#     (func $main (result i32)
-#       i32.const 10
-#       i32.const 20
-#       call $suma
-#       return
-#     )
-#   )
+# (module
+# (func $suma (param i32 i32) (result i32)
+# local.get $p0
+# local.get $p1
+# i32.add
+# return
+# )
+# (func $main (result i32)
+# i32.const 10
+# i32.const 20
+# call $suma
+# return
+# )
+# )
 funcion wasm_programa_con_llamada(est: EstadoWasm, a: entero, b: entero) -> nulo:
     requiere:
         est != nulo

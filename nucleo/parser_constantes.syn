@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
 # cumple Manual 1 1: infraestructura del compilador Synapse
 # cumple Manual 8 4: toolchain de construcción
 // ---- Token constants (mirror nucleo/tokens.syn) ----
@@ -162,4 +163,3 @@ constante NODO_BLOQUE_SQ = 58
 // "metodo:<nombre>". Numeración NUEVA al final (política ABI M6 §1.2: nada
 // existente se renumera).
 constante NODO_METODO = 59
-

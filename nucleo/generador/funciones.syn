@@ -1,3 +1,6 @@
+#lang: es
+# cumple Manual 1 §6: nucleo del compilador Synapse (regla de hierro del bootstrap)
+# cumple Manual 2 §1.1: directiva de idioma en línea 1 (ME formatter_fix R4)
 // cumple Manual 1 5: generador de código
 # cumple Manual 8 4.1: compilador nativo S2
 // ============================================================

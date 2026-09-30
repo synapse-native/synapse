@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
 // --- Node type constants (mirror parser.syn) ---
 constante NODO_PROGRAMA = 1
 constante NODO_FUNCION = 2
@@ -66,7 +67,7 @@ constante ERR_SEM_CONSTANTE_INMUTABLE = 32
 constante ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED = 33
 constante ERR_MEM_LIFETIME_MISMATCH = 34
 constante ERR_MEM_LIFETIME_CYCLE = 35
-constante ERR_SEM_TYPE_AMBIGUOUS = 40  // 2.4 nativa (paridad diagnostics.py)
+constante ERR_SEM_TYPE_AMBIGUOUS = 40 // 2.4 nativa (paridad diagnostics.py)
 
 // --- Property constants ---
 constante PROPIEDAD_VIVO = 1
@@ -139,7 +140,7 @@ estructura AnalizadorSemanticoEst:
     hay_error_2_4: booleano
     info_estructuras: SemEstructuraInfo
     total_estructuras: entero
-    // 2.4 nativa (Fase 2): registro de ADTs (tipo X<T,E>) y cadenas de
+    // 2.4 nativa (Fase 2): registro de ADTs (tipo X<T, E>) y cadenas de
     // retorno/parametros guardadas por el flatten F8 (paridad S1 tipos.py)
     info_adts: SemAdtInfo
     total_adts: entero
@@ -675,7 +676,7 @@ funcion analizar_expr(est: AnalizadorSemanticoEst, idx: entero) -> nulo:
         inseguro:
             asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; nombre=_cs; } }")
         si nombre != "":
-            si tabla_esta_movido(est, nombre):  // cumple Manual 2 9: uso tras move -> ERR_MEM_USE_AFTER_MOVE
+            si tabla_esta_movido(est, nombre): // cumple Manual 2 9: uso tras move -> ERR_MEM_USE_AFTER_MOVE
                 inseguro:
                     asm("{ char _mm[256]; snprintf(_mm,256,\"Uso ilegal de variable ya movida '%s' (E-504)\", nombre.datos); CadenaSegura _msg={.longitud=(int)strlen(_mm),.datos=_mm}; sem_error(est,ERR_MEM_USE_AFTER_MOVE,idx,_msg); }")
         retornar
@@ -720,7 +721,7 @@ funcion analizar_expr(est: AnalizadorSemanticoEst, idx: entero) -> nulo:
         // R27: llamada a nombre de estructura — el ctor de struct es `Punto()`
         // sin argumentos (Manual 2 L67 declaracion_estructura; paridad S1
         // semantic_types.py L355-360: esperados=0). Antes el nativo aceptaba
-        // `Punto(1,2)` y emitia C invalido `int64_t p = (struct Punto){...}`.
+        // `Punto(1, 2)` y emitia C invalido `int64_t p = (struct Punto){...}`.
         // Precedencia de funciones (paridad S1: tabla.buscar -> DefinicionFuncion
         // se valida ANTES del check de _estructuras): si el callee es una funcion
         // de usuario, se salta el check de aridad del struct.
@@ -793,7 +794,7 @@ funcion registrar_estructura(est: AnalizadorSemanticoEst, nombre: cadena, idx_no
         asm("est->info_estructuras[est->total_estructuras].total_campos = 0")
         asm("est->total_estructuras = est->total_estructuras + 1")
 
-// --- 2.4 nativa: registro de ADTs (tipo X<T,E>) y validacion de
+// --- 2.4 nativa: registro de ADTs (tipo X<T, E>) y validacion de
 // instanciaciones (aridad + base + argumentos conocidos). Port de
 // compilador/tipos.py (es_tipo_conocido) + semantic_types.py
 // (_validar_aridad_instanciaciones). Manual 2 §8.2. ---
@@ -814,8 +815,8 @@ funcion registrar_adt(est: AnalizadorSemanticoEst, nombre: cadena, num_parametro
         asm("est->total_adts = est->total_adts + 1;")
 
 funcion validar_tipo_instanciacion(est: AnalizadorSemanticoEst, tipo: cadena, idx_nodo: entero) -> nulo:
-    // Valida instanciaciones de ADT en firmas: `Base<A,B>` con Base registrada
-    // (aridad contra tipo X<T,E>), base conocida (no typo) y argumentos
+    // Valida instanciaciones de ADT en firmas: `Base<A, B>` con Base registrada
+    // (aridad contra tipo X<T, E>), base conocida (no typo) y argumentos
     // conocidos (recursivo para anidados). Tipos simples: lenient (Etapa 1).
     inseguro:
         asm("")
@@ -1244,7 +1245,7 @@ funcion analizar_paso_estructuras(est: AnalizadorSemanticoEst, idx_programa: ent
             inseguro:
                 asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[stmt].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[stmt])<<32; } const char* _v=(const char*)_bp; if(_v){ char* _dup=strdup(_v); CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_dup}; nombre=_cs; } }")
             registrar_estructura(est, nombre, stmt)
-        // 2.4 nativa: registrar los ADTs (tipo X<T,E>) con su aridad
+        // 2.4 nativa: registrar los ADTs (tipo X<T, E>) con su aridad
         si tipo == NODO_DECLARACION_TIPO:
             nombre = ""
             inseguro:

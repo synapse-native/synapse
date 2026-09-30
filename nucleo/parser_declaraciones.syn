@@ -74,7 +74,7 @@ funcion parsear_estructura_def(est: ParserEst) -> entero:
                 token_avanzar(est)
                 si token_esperar(est, T_DOSPUNTOS) == 0:
                     retornar 0
-                // FASE A (A2.3b): tipo compuesto (base + <T,E> + *) en campos
+                // FASE A (A2.3b): tipo compuesto (base + <T, E> + *) en campos
                 // (siguiente: arc<NodoLista>, items: Lista<texto>) — antes solo
                 // se consumia 1 token y el '<' caia en la rama sino: -> PARSE_ERROR.
                 // FASE A (A3.0): los campos crean NODO_PARAMETRO enlazados por
@@ -352,7 +352,7 @@ funcion parsear_declaracion_tipo(est: ParserEst) -> entero:
                 asm("est->nodos[nodo].hijo_der = primer_ctor")
     sino:
         // alias simple: tipo base como SPAN completo en slot secundario
-        // (DeclaracionTipo.tipo_base, paridad _P_* _tbase con &mut / * / <T,E>).
+        // (DeclaracionTipo.tipo_base, paridad _P_* _tbase con &mut / * / <T, E>).
         pos_ini = est.posicion
         si token_mirar(est) == T_AMPERSAND:
             token_avanzar(est)
@@ -365,10 +365,10 @@ funcion parsear_declaracion_tipo(est: ParserEst) -> entero:
                     asm("}")
         si token_es_nombre(token_mirar(est)) == 1:
             token_avanzar(est)
-        sino:        si token_mirar(est) != T_NUEVALINEA y token_mirar(est) != T_DESINDENTAR y token_mirar(est) != T_FIN:
+        sino: si token_mirar(est) != T_NUEVALINEA y token_mirar(est) != T_DESINDENTAR y token_mirar(est) != T_FIN:
             token_avanzar(est)
         si token_mirar(est) == T_MENOR:
-            // R13: tipos ADT anidados en alias simple (`tipo X = Resultado<Resultado<entero,texto>,texto>`,
+            // R13: tipos ADT anidados en alias simple (`tipo X = Resultado<Resultado<entero, texto>, texto>`,
             // Manual 2 §8.2): consumir con profundidad; solo el '>' de nivel 0 cierra.
             token_avanzar(est)
             prof13b = 0
@@ -415,24 +415,24 @@ funcion parsear_export(est: ParserEst) -> entero:
 
 // ---- Main parse function ----
 // FASE A (A2.3): fixes de los 3 bugs de cableado (auditoria A2.3):
-//   BUG 1: est.tokens ya NO recibe un TokenExt por valor (mismatch con el campo
-//          puntero struct TokenExt*); se cablea el buffer compartido del lexer
-//          via lexer_obtener_tokens() (A2.1, 64-bit-safe).
-//   BUG 2: est.nodos ya NO queda nulo; se enlaza al buffer estatico compartido
-//          parser_nodos() (parser_base.syn) — parser_nuevo_nodo deja de hacer
-//          null-deref.
-//   BUG 3: nadie pasaba los tokens al nativo; parsear_nativo() recupera
-//          total_tokens via lexer_obtener_total() y est llega como PARAMETRO
-//          desde el wrapper nativo (A3.2, ver abajo).
-//   A3.2: esta funcion se RENOMBRO a parsear_nativo() — el nombre canonico
-//          'parsear' queda reservado al wrapper 'struct Programa parsear(
-//          CadenaSegura)' que emite el hook ME-B7 del generador
-//          (gen_emitir_frontend_nativo, A3.2/A4); ver el stub al final de
-//          este archivo. A4: el frontend nativo es el UNICO (sin flag de
-//          rollback).
-//   BUG 4: ParserEst se pasa por puntero a los helpers (context.py
-//          _POINTER_TYPES + orquestador.syn S2/S3) — est.posicion/est.total_nodos
-//          ya no se pierden en copias por valor.
+// BUG 1: est.tokens ya NO recibe un TokenExt por valor (mismatch con el campo
+// puntero struct TokenExt*); se cablea el buffer compartido del lexer
+// via lexer_obtener_tokens() (A2.1, 64-bit-safe).
+// BUG 2: est.nodos ya NO queda nulo; se enlaza al buffer estatico compartido
+// parser_nodos() (parser_base.syn) — parser_nuevo_nodo deja de hacer
+// null-deref.
+// BUG 3: nadie pasaba los tokens al nativo; parsear_nativo() recupera
+// total_tokens via lexer_obtener_total() y est llega como PARAMETRO
+// desde el wrapper nativo (A3.2, ver abajo).
+// A3.2: esta funcion se RENOMBRO a parsear_nativo() — el nombre canonico
+// 'parsear' queda reservado al wrapper 'struct Programa parsear(
+// CadenaSegura)' que emite el hook ME-B7 del generador
+// (gen_emitir_frontend_nativo, A3.2/A4); ver el stub al final de
+// este archivo. A4: el frontend nativo es el UNICO (sin flag de
+// rollback).
+// BUG 4: ParserEst se pasa por puntero a los helpers (context.py
+// _POINTER_TYPES + orquestador.syn S2/S3) — est.posicion/est.total_nodos
+// ya no se pierden en copias por valor.
 // Patron (A3.2): est llega como PARAMETRO (struct ParserEst* en C via la
 // convencion _POINTER_TYPES, igual que todos los helpers). Asi las llamadas a
 // helpers pasan el puntero directo, SIN inyeccion de & en ningun emisor

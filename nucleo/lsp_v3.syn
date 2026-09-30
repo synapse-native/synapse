@@ -1,4 +1,6 @@
 #lang: es
+// cumple Manual 8 §1.1: arquitectura del LSP nativo — Visión General (cubre §1 del mapa; ME formatter_fix R4: anclaje tras reformato)
+// cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
 // nucleo/lsp_v3.syn — Servidor LSP Nativo en Synapse Puro
 // Manual 8 §1.2-1.4: JSON-RPC 2.0 sobre stdin/stdout
 // ME-F27-L2: Real hover/completion/definition
@@ -380,8 +382,8 @@ funcion extraer_uri(params: texto) -> texto:
 
 // ============================================================
 // §1.4 — Extraer texto del documento desde params
-// _json_a_texto returns: {"textDocument":{"uri":"...","text":"actual code"}}
-// Search for ,"text":" pattern (9 chars) backwards to skip "textDocument"
+// _json_a_texto returns: {"textDocument":{"uri":"...", "text":"actual code"}}
+// Search for , "text":" pattern (9 chars) backwards to skip "textDocument"
 // ============================================================
 
 funcion extraer_texto_doc(params: texto) -> texto:
@@ -390,7 +392,7 @@ funcion extraer_texto_doc(params: texto) -> texto:
     garantiza:
         verdadero
     let len_params = strlen_s(params)
-    // Pattern: ,"text":" (9 characters)
+    // Pattern: , "text":" (9 characters)
     let patron = ",\"text\":\""
     let patron_len = 9
     si len_params < patron_len:

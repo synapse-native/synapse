@@ -1,6 +1,6 @@
 #lang: es
 // ============================================================
-// orquestador.syn  -  Orquestador del generador nativo
+// orquestador.syn - Orquestador del generador nativo
 // ============================================================
 
 // ----------------------------------------------------------
@@ -114,7 +114,7 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "struct LiteralNulo;")
     gen_emitir_linea(est, "struct ConstructorTipo;")
     gen_emitir_linea(est, "struct DeclaracionTipo;")
-    gen_emitir_linea(est, "struct ExprPropagar;")  // D-6: operador ? (Manual 3 §7)
+    gen_emitir_linea(est, "struct ExprPropagar;") // D-6: operador ? (Manual 3 §7)
     gen_emitir_linea(est, "")
     gen_emitir_linea(est, "typedef struct Token { int tipo; CadenaSegura lexema; int linea; int columna; } Token;")
     gen_emitir_linea(est, "typedef struct Nodo { CadenaSegura tipo; } Nodo;")
@@ -192,7 +192,7 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "    return 0;")
     gen_emitir_linea(est, "}")
     // r153 (H-R153-26): variante SIN el mapeo H-R153-17c — devuelve el SPAN
-    // Synapse crudo (`Lista<T>`/`Mapa<K,V>`). Necesaria para el let con retorno
+    // Synapse crudo (`Lista<T>`/`Mapa<K, V>`). Necesaria para el let con retorno
     // de funcion (H-R153-22b): el chequeo Lista</Mapa< sobre _rtb jamas activaba
     // porque 17c ya devolvia 'void*'. Consumidores de 17c (OpBinaria texto en
     // generator.syn; ExprPropagar L13204) NO dependen del span: quedan intactos.
@@ -256,7 +256,7 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "")
     // ME-D2: instanciaciones de ADT genericos (monomorfizacion, Opcion A).
     // Paridad pre-pass generator.py _recolectar_instancias_adt: cada uso
-    // `Base<A,B>` registra un struct C especializado con campos tipados.
+    // `Base<A, B>` registra un struct C especializado con campos tipados.
     gen_emitir_linea(est, "char _G_native_adt_gen[64][64];")
     gen_emitir_linea(est, "int _G_native_adt_gen_nparams[64];")
     gen_emitir_linea(est, "char _G_native_adt_gen_params[64][8][64];")
@@ -457,7 +457,7 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     // runtime real (igual que generator.py L723); lo usan lint.syn/reports.syn.
     gen_emitir_linea(est, "extern CadenaSegura _syn_leer_archivo(CadenaSegura ruta);")
     // cumple Manual 2 §4.3 (r153 R3n): runtime de colecciones — mismos externs
-    // que el preludio de compilador/generator.py (S1) para Lista<T>/Mapa<K,V>.
+    // que el preludio de compilador/generator.py (S1) para Lista<T>/Mapa<K, V>.
     gen_emitir_linea(est, "extern void* _syn_lista_crear(void);")
     gen_emitir_linea(est, "extern int64_t _syn_lista_longitud(void* l);")
     gen_emitir_linea(est, "extern void _syn_lista_agregar(void* l, int64_t elemento);")
@@ -716,7 +716,6 @@ funcion gen_visitar_top_level(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("    fprintf(stderr, \"Error Fatal Generador: Nodo tipo [%s] no reconocido\\n\", _t);")
         asm("    exit(1);")
         asm("}")
-
 
 // R20: tipo C de un nodo expresion (recursivo) - paridad S1 tipo_de_expr.
 // Resuelve ctors ADT anidados (ok(ok(42))): un ctor como argumento aporta el

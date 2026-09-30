@@ -1,4 +1,6 @@
 #lang: es
+// cumple Manual 2 §5.1: semántica formal de los contratos (ME formatter_fix R4: anclaje de norma vigente tras reformato)
+// vinculo ME formatter_fix R4 (Manual 1 §7.1, M8 §4.1): reformato cosmético del nucleo — estilo, sin cambios semánticos
 // cumple Manual 2 §12: contratos requiere/garantiza en funciones públicas
 // cumple Manual 3 §12: biblioteca estándar de Syquex
 // cumple Manual 6 §1.1: SemNodo[] AST canónico unificado
@@ -12,28 +14,28 @@ importar parser_constantes
 // ============================================================
 
 estructura ContratoInfo:
-    tipo: texto                    // "requiere" o "garantiza"
-    expresion: texto               // La expresión booleana
+    tipo: texto // "requiere" o "garantiza"
+    expresion: texto // La expresión booleana
     linea: entero
 
 estructura NodoGrafo:
-    id: texto                      // "archivo.funcion"
-    tipo: texto                    // "funcion", "estructura", "constante"
+    id: texto // "archivo.funcion"
+    tipo: texto // "funcion", "estructura", "constante"
     archivo: texto
     linea: entero
     columna: entero
-    firma: texto                   // Firma completa de la función
-    num_dependientes: entero       // Cuántos nodos dependen de este
-    num_dependencias: entero       // Cuántos nodos usa este
+    firma: texto // Firma completa de la función
+    num_dependientes: entero // Cuántos nodos dependen de este
+    num_dependencias: entero // Cuántos nodos usa este
     contratos: Lista<ContratoInfo> // requiere/garantiza
-    es_publico: booleano           // Tiene @export
-    nivel_riesgo: texto            // "bajo", "medio", "alto", "crítico"
+    es_publico: booleano // Tiene @export
+    nivel_riesgo: texto // "bajo", "medio", "alto", "crítico"
 
 estructura AristaGrafo:
     origen_id: texto
     destino_id: texto
-    tipo: texto                    // "llamada", "importacion", "uso_tipo"
-    es_contrato_critico: booleano  // Si la API destino tiene > 5 dependientes
+    tipo: texto // "llamada", "importacion", "uso_tipo"
+    es_contrato_critico: booleano // Si la API destino tiene > 5 dependientes
     linea: entero
 
 estructura MetricasGrafo:
@@ -45,11 +47,11 @@ estructura MetricasGrafo:
 
 estructura GrafoProyecto:
     proyecto: texto
-    hash_ast: texto                // SHA-256 del SemNodo[]
+    hash_ast: texto // SHA-256 del SemNodo[]
     timestamp: entero
     nodos: Lista<NodoGrafo>
     aristas: Lista<AristaGrafo>
-    indice_por_id: Mapa<texto, entero>  // id -> índice en nodos
+    indice_por_id: Mapa<texto, entero> // id -> índice en nodos
     metricas: MetricasGrafo
 
 // ============================================================
@@ -278,10 +280,10 @@ funcion calcular_nivel_riesgo(nodo: NodoGrafo) -> texto:
 // ============================================================
 
 estructura TarjanEstado:
-    indices: Lista<entero>         // Índice de descubrimiento
-    lowlinks: Lista<entero>       // Lowlink值
-    en_pila: Lista<booleano>      // ¿Está en la pila?
-    pila: Lista<entero>           // Pila de nodos
+    indices: Lista<entero> // Índice de descubrimiento
+    lowlinks: Lista<entero> // Lowlink值
+    en_pila: Lista<booleano> // ¿Está en la pila?
+    pila: Lista<entero> // Pila de nodos
     index_counter: entero
     num_ciclos: entero
 

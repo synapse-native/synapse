@@ -1,16 +1,21 @@
-# cumple Manual 1 5: nucleo del compilador Synapse
+#lang: es
+// cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
+# cumple Manual 1 §6: nucleo del compilador Synapse (regla de hierro del bootstrap)
+# cumple Manual 2 §1.1: directiva de idioma en línea 1 (ME formatter_fix R4)
+# cumple Manual 2 §7.3: AST aplanado SemNodo[] (ABI del ecosistema)
+# cumple Manual 6 §1: AST canónico unificado, ABI sincronizada con runtime/core/ast_nodos.h (ME formatter_fix R4: reformato de formato)
 // ============================================================
 // ast_abi.syn — Definición formal del SemNodo ABI v1
 // (FASE 22.B del ROADMAP; Manual 6 §1.1-§1.2 "El AST Canónico Unificado";
-//  Manual 2 §7.3 AST aplanado)
+// Manual 2 §7.3 AST aplanado)
 //
 // POLITICA DE ABI (Manual 6 §1.2 / ROADMAP Fase 22.B):
-//   - La ABI v1 está CONGELADA. Cualquier cambio en los campos de SemNodo
-//     o en la numeración de NODO_* exige una nueva versión de ABI y un
-//     traductor adaptador.
-//   - Fuente única de verdad de la numeración vigente: nucleo/parser_constantes.syn
-//     (importada abajo; los valores del Manual 2 §7.2 son ILUSTRATIVOS).
-//   - El binding nativo se ejercita en tests/unit/test_ast_abi.py (e2e S1).
+// - La ABI v1 está CONGELADA. Cualquier cambio en los campos de SemNodo
+// o en la numeración de NODO_* exige una nueva versión de ABI y un
+// traductor adaptador.
+// - Fuente única de verdad de la numeración vigente: nucleo/parser_constantes.syn
+// (importada abajo; los valores del Manual 2 §7.2 son ILUSTRATIVOS).
+// - El binding nativo se ejercita en tests/unit/test_ast_abi.py (e2e S1).
 // ============================================================
 
 importar parser_constantes

@@ -1,4 +1,7 @@
 #lang: es
+// cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas (ME formatter_fix R4: anclaje de norma vigente tras reformato)
+// cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
+// vinculo ME formatter_fix R4 (Manual 1 §7.1, M8 §4.1): reformato cosmético del nucleo — estilo, sin cambios semánticos
 # cumple Manual 1 1: infraestructura del compilador Synapse
 # cumple Manual 8 4: toolchain de construcción
 // nucleo/generator_pgo.syn — Emisor de Instrumentación PGO (Nivel 1)
@@ -7,27 +10,27 @@
 // las fronteras de bloques básicos durante la traducción a C.
 //
 // DISEÑO:
-//   - El estado PGO (contador ID, total) se gestiona a través
-//     de una única función pgo_estado_administrar() que usa un
-//     asm() block compartido. Esto evita el problema de que
-//     múltiples funciones Synapse generen múltiples variables
-//     static independientes en C.
+// - El estado PGO (contador ID, total) se gestiona a través
+// de una única función pgo_estado_administrar() que usa un
+// asm() block compartido. Esto evita el problema de que
+// múltiples funciones Synapse generen múltiples variables
+// static independientes en C.
 //
-//   Por función: declara contadores estáticos
-//     static uint64_t __pgo_counter_N = 0;
+// Por función: declara contadores estáticos
+// static uint64_t __pgo_counter_N = 0;
 //
-//   Por bloque básico (if-true, if-else, while-body, for-body):
-//     __pgo_counter_N++;  /* [PGO] */
+// Por bloque básico (if-true, if-else, while-body, for-body):
+// __pgo_counter_N++; /* [PGO] */
 //
-//   Al final se emite:
-//     void __pgo_dump(void) { ... }
-//     atexit(__pgo_dump);
+// Al final se emite:
+// void __pgo_dump(void) { ... }
+// atexit(__pgo_dump);
 //
 // INTEGRACIÓN:
-//   Llamar pgo_inicializar() al inicio de generar().
-//   Llamar pgo_emitir_contadores_funcion() al emitir cada función.
-//   Llamar pgo_emitir_incremento_bb() en cada frontera de bloque.
-//   Llamar pgo_finalizar() al final de generar().
+// Llamar pgo_inicializar() al inicio de generar().
+// Llamar pgo_emitir_contadores_funcion() al emitir cada función.
+// Llamar pgo_emitir_incremento_bb() en cada frontera de bloque.
+// Llamar pgo_finalizar() al final de generar().
 // ============================================================
 
 // ----------------------------------------------------------
@@ -37,13 +40,13 @@
 // compartan las mismas variables static de C.
 //
 // PARAMS:
-//   modo: 0 = inicializar (reset), 1 = siguiente (asignar ID),
-//         2 = total (retorna contador actual)
+// modo: 0 = inicializar (reset), 1 = siguiente (asignar ID),
+// 2 = total (retorna contador actual)
 //
 // RETORNA:
-//   Para modo 0: -1 (indicador de reset)
-//   Para modo 1: el siguiente ID de contador disponible
-//   Para modo 2: el número total de contadores asignados
+// Para modo 0: -1 (indicador de reset)
+// Para modo 1: el siguiente ID de contador disponible
+// Para modo 2: el número total de contadores asignados
 // ----------------------------------------------------------
 funcion pgo_estado_administrar(modo: entero) -> entero:
     r = 0
@@ -97,14 +100,14 @@ funcion pgo_total_contadores() -> entero:
 //
 // EFECTO: Asigna N contadores mediante pgo_nuevo_contador()
 // y emite al buffer _G_emit_buf:
-//   /* [PGO] contadores de funcion */
-//   static uint64_t __pgo_counter_<id0> = 0;
-//   static uint64_t __pgo_counter_<id1> = 0;
-//   ...
+// /* [PGO] contadores de funcion */
+// static uint64_t __pgo_counter_<id0> = 0;
+// static uint64_t __pgo_counter_<id1> = 0;
+// ...
 //
 // PARAMS:
-//   est      - Estado del generador (GeneradorCEst)
-//   num_ctrs - Cantidad de contadores a asignar y emitir (entero)
+// est - Estado del generador (GeneradorCEst)
+// num_ctrs - Cantidad de contadores a asignar y emitir (entero)
 //
 // RETORNA: El ID del primer contador asignado (base).
 // ----------------------------------------------------------
@@ -128,7 +131,7 @@ funcion pgo_emitir_contadores_funcion(est: GeneradorCEst, num_ctrs: entero) -> e
 // un bloque básico. Asigna automáticamente un nuevo ID.
 //
 // EFECTO: Asigna ID via pgo_nuevo_contador() y emite:
-//   __pgo_counter_<ID>++;  /* [PGO] */
+// __pgo_counter_<ID>++; /* [PGO] */
 // La DECLARACION global se emite una sola vez en pgo_finalizar().
 // ----------------------------------------------------------
 funcion pgo_emitir_incremento_bb(est: GeneradorCEst) -> nulo:
@@ -167,8 +170,8 @@ funcion pgo_emitir_incremento_id(est: GeneradorCEst, id: entero) -> nulo:
 // formato CSV simple (una línea por contador).
 //
 // PARAMS:
-//   est       - Estado del generador (GeneradorCEst)
-//   num_ctrs  - Número TOTAL de contadores a volcar
+// est - Estado del generador (GeneradorCEst)
+// num_ctrs - Número TOTAL de contadores a volcar
 // ----------------------------------------------------------
 funcion pgo_emitir_volcado(est: GeneradorCEst, num_ctrs: entero) -> nulo:
     inseguro:
@@ -234,8 +237,8 @@ funcion pgo_finalizar(est: GeneradorCEst) -> nulo:
 // bloque. Llamar desde los visitantes en nodos_flujo.syn.
 //
 // USO (en gen_visitar_si, tras abrir bloque):
-//   pgo_instrumentar_if_true(est);
-//   ...cuerpo del if...
+// pgo_instrumentar_if_true(est);
+// ...cuerpo del if...
 //
 // ============================================================
 
