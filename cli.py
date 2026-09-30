@@ -23,6 +23,115 @@ from compilador.diagnostics import DiagnosticManager, ErrorCodes
 from compilador.ast_nodes import Token, TokenID
 from pipeline import ejecutar_compilador, _cache_clean, _cache_stats, _cache_dir
 
+# ============================================================
+# HERRAMIENTAS NATIVAS lint/fmt (Manual 8 §4.1) — ME cli_lint_fmt
+# ============================================================
+
+# cumple Manual 1 §6: el backing del backend lint/fmt es el stage2 del bootstrap;
+# se reconstruye ON-DEMAND con el comando EXACTO del job bootstrap del CI (la misma
+# convención de tests/unit/test_r3_param_adt.py y tests/nucleo/test_modulos_compilan.py)
+# SOLO si falta o quedó stale: ninguna característica nueva rompe el bootstrap.
+_ST1 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "synapse_stage1.exe")
+_ST2 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "synapse_stage2.exe")
+
+
+def _mtimes_fuentes_nucleo():
+    """cumple Manual 1 §6: mtime máximo de las fuentes .syn del nucleo."""
+    raiz = os.path.dirname(os.path.abspath(__file__))
+    limite = 0.0
+    import glob as _glob
+    for patron in (os.path.join(raiz, "nucleo", "*.syn"),
+                   os.path.join(raiz, "nucleo", "generador", "*.syn")):
+        for f in _glob.glob(patron):
+            try:
+                m = os.path.getmtime(f)
+            except OSError:
+                continue
+            limite = max(limite, m)
+    return limite
+
+
+def _bootstrap_stage2_fresco():
+    """cumple Manual 1 §6 (regla de hierro): garantiza un stage2 FRESCO para
+    servir `synapse lint/fmt` sin romper el bootstrap.
+
+    - stage2 ausente o stale (fuentes .syn del nucleo más nuevas) → rebuild
+      on-demand: S1 con el comando del job CI del bootstrap
+      (python main.py nucleo/principal.syn -o synapse_stage1.exe) y S2 desde S1.
+    - stage1 AUSENTE pero stage2 presente-fresco NO sirve: el hook pre-commit
+      limpia stage1 (artefacto no rastreado) y conserva stage2 — se regenera S1.
+    - fresco → NO recompila (el backing es barato, no toca el bootstrap).
+    Devuelve la ruta del stage2 o None si no pudo garantizarse.
+    """
+    raiz = os.path.dirname(os.path.abspath(__file__))
+    principal = os.path.join(raiz, "nucleo", "principal.syn")
+    py = sys.executable
+    falta_s1 = not os.path.exists(_ST1)
+    falta_s2 = not os.path.exists(_ST2)
+    stale = os.path.getmtime(_ST2) < _mtimes_fuentes_nucleo() \
+        if os.path.exists(_ST2) else True
+    if falta_s1 or falta_s2 or stale:
+        if falta_s1 or not os.path.exists(_ST1):
+            r1 = subprocess.run([py, "main.py", principal, "-o", _ST1],
+                                cwd=raiz, capture_output=True, text=True,
+                                encoding="utf-8", errors="replace", timeout=900)
+            if r1.returncode != 0:
+                print(r1.stdout[-800:] + r1.stderr[-800:], file=sys.stderr)
+                return None
+        r2 = subprocess.run([_ST1, principal, "-o", _ST2], cwd=raiz,
+                            capture_output=True, text=True, encoding="utf-8",
+                            errors="replace", timeout=900)
+        if r2.returncode != 0:
+            print(r2.stdout[-800:] + r2.stderr[-800:], file=sys.stderr)
+            return None
+    if not os.path.exists(_ST2):
+        return None
+    return _ST2
+
+
+def _cmd_herramienta_nativa(herramienta, argv):
+    """cumple Manual 8 §4.1: `synapse lint` / `synapse fmt` — ejecuta la
+    herramienta NATIVA sobre el código fuente (backend stage2, módulos .syn
+    lint/formatter desde r153/Opción A).
+
+    Acepta el orden canónico (flags ANTES del archivo, H-33.5-2) y el antiguo:
+    toma como archivo el primer argumento que no empiece por '-'.
+    rc del backend propagado tal cual (0 limpio/formateado, 1 advertencias o
+    no formateado, 2 error). Devuelve el rc del proceso.
+    """
+    archivo = None
+    skip = False
+    for a in argv:
+        if skip:
+            skip = False
+            continue
+        if a in ("-o", "--output"):
+            skip = True  # valor del flag, no es el archivo
+            continue
+        if not a.startswith('-'):
+            archivo = a
+            break
+    if not archivo:
+        print(f"ERROR: Se requiere archivo .syn/.syq para {herramienta} "
+              f"(ej. synapse {herramienta} --check main.syn)", file=sys.stderr)
+        return 1
+    if not os.path.exists(archivo):
+        print(f"ERROR: Archivo '{archivo}' no encontrado", file=sys.stderr)
+        return 1
+    exe = _bootstrap_stage2_fresco()
+    if not exe:
+        print("ERROR: no se pudo garantizar el backend nativo (stage2 del "
+              "bootstrap stale o no construible)", file=sys.stderr)
+        return 1
+    # El dispatcher nativo espera [herramienta, flags..., archivo] en argv[2:]
+    flags = [a for a in argv if a.startswith('-')]
+    r = subprocess.run([exe, herramienta] + flags + [archivo],
+                       capture_output=True, text=True, encoding="utf-8",
+                       errors="replace", timeout=300)
+    sys.stdout.write(r.stdout or "")
+    sys.stderr.write(r.stderr or "")
+    return r.returncode
+
 
 # ============================================================
 # AUDIT SANITIZERS (Manual 9 §9.5) — M0.3.8-FIX
@@ -866,8 +975,20 @@ def main():
 
     # Detectar subcomando
     subcommand = None
-    if first_non_option in ('cache', 'build', 'test', 'fetch', 'init', 'axon', 'run', 'debug', 'opensyn'):
+    if first_non_option in ('cache', 'build', 'test', 'fetch', 'init', 'axon', 'run', 'debug', 'opensyn', 'lint', 'fmt'):
         subcommand = first_non_option
+
+    # Manejar subcomando 'lint' (Manual 8 §4.1: ejecuta el linter nativo sobre
+    # el código fuente; backend stage2 del bootstrap — ME cli_lint_fmt)
+    if subcommand == 'lint':
+        # cumple Manual 8 §4.1
+        return _cmd_herramienta_nativa('lint', sys.argv[2:])
+
+    # Manejar subcomando 'fmt' (Manual 8 §4.1: ejecuta el formateador nativo
+    # sobre el código fuente; backend stage2 del bootstrap — ME cli_lint_fmt)
+    if subcommand == 'fmt':
+        # cumple Manual 8 §4.1
+        return _cmd_herramienta_nativa('fmt', sys.argv[2:])
 
     # Manejar subcomando 'cache'
     if subcommand == 'cache':
@@ -1448,4 +1569,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # El rc del subcomando (lint/fmt/cache/test/build) ES el resultado del CLI:
+    # main() retorna el código y sys.exit lo propaga (ME cli_lint_fmt: `synapse
+    # lint` con advertencias debe rc=1; antes el retorno se descartaba → rc=0
+    # falso, brecha documentada en FASE_33_CERTIFICACION §5).
+    sys.exit(main())
