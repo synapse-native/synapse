@@ -214,7 +214,10 @@ class TestBucleValidacion:
         # Verify required structures and functions exist
         assert "estructura ErrorCompilacion" in content
         assert "estructura ResultadoValidacion" in content
-        assert "funcion validar_codigo_con_check" in content
+        # autorización Arquitecto regla 5 (ME validation_loop_fix, Opción A): 7824e5d/ME-4 renombró
+        # la función a validar_con_check sin actualizar este test; ningún manual fija el nombre y
+        # todo el ecosistema vivo (3 llamadas internas + suite ME-4 51/51) usa el nombre vigente
+        assert "funcion validar_con_check" in content
         assert "funcion reconstruir_prompt_con_error" in content
         assert "funcion guardar_feedback" in content
         assert "funcion bucle_validacion" in content
