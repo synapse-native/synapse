@@ -635,4 +635,30 @@ El LSP es el responsable de orquestar el bucle de validación (descrito en la se
 5. El prompt se envía al servidor de inferencia (`llama-server`) mediante el cliente HTTP (`llama_client.c`).
 6. El servidor genera una respuesta.
 7. La respuesta se procesa (router) para extraer el código (si lo hay).
-8. **Validación (paso crítico):** El LSP toma el código generado y ejecuta el compilador de Synapse/Syquex en modo `--check` (solo validación, sin generar binario
+8. **Validación (paso crítico):** El LSP toma el código generado y ejecuta el compilador de Synapse/Syquex en modo `--check` (solo validación, sin generar binario). Esto se hace mediante el CLI `synapse check --no-emit <archivo>`.
+9. **Si compila:** El LSP devuelve el código al editor como sugerencia.
+10. **Si falla:** El LSP captura el error (stderr del compilador) y repite el proceso (hasta 3 intentos), añadiendo el error al prompt para que OpenSyn lo corrija.
+11. **Fallo definitivo:** Si después de 3 intentos el código no compila, el LSP devuelve el último código generado y los errores al editor, mostrando un mensaje de "No se pudo generar código válido automáticamente. Intenta ajustar la instrucción."
+
+### 6.3. Bucle de Corrección Automática (3 Intentos)
+
+**Nota de restauración (2026-09-30):** Sección restaurada textualmente por decisión del Arquitecto (Opción A, ME validation_loop_fix) tras su eliminación involuntaria en la revisión de manuales v8.2.0 (commit 154a544); con ella, las referencias internas (secciones 1 y 4.2 de este manual) y la del Manual 8 (§5.1) vuelven a resolver.
+
+Dado que OpenSyn no es perfecto y puede generar código con errores sintácticos o semánticos, se implementa un **bucle de validación y corrección automática** orquestado por el LSP (ver sección 4.2). Este bucle asegura que el código generado cumpla con las reglas del compilador.
+
+**Flujo detallado:**
+
+1. **Generación inicial (intento 1):** OpenSyn genera código basado en la instrucción y el contexto.
+2. **Validación:** El LSP pasa el código al compilador de Synapse/Syquex en modo `--check` (solo validación, sin generar binario). Este modo es activado con el flag `--no-emit` (o similar) que debe estar implementado en el CLI de Synapse.
+3. **Si compila:** Se muestra al usuario. Fin del proceso.
+4. **Si falla:** El compilador devuelve el error exacto (línea, columna, mensaje) a través de su salida de error estándar. El LSP:
+   - Construye un nuevo prompt añadiendo: *"El código anterior tiene el siguiente error: {mensaje_error}. Por favor, corrígelo."*
+   - Reenvía el prompt a OpenSyn (intento 2).
+5. **Repetición:** Se repiten los pasos 2 y 3 para el intento 2. Si vuelve a fallar, se hace un intento 3.
+6. **Fallo definitivo:** Si el tercer intento falla, el LSP muestra el último código generado y los errores al usuario, con un mensaje: *"No se pudo generar código válido automáticamente. Intenta ajustar la instrucción o corrige manualmente."*
+
+**Mecanismo de Feedback Humano:**
+- Cuando el usuario corrige el código manualmente (después de un fallo), OpenSyn guarda el par `(instrucción, código_corregido)` en `~/.opensyn/feedback.jsonl`.
+- Este archivo se utiliza para mejorar los ejemplos en el contexto estático (sección 2.3) en futuras versiones del instalador o mediante re‑entrenamiento opcional.
+
+**Nota de implementación:** El flag `--check` debe ser añadido al CLI de Synapse (Fase 27 del roadmap) para permitir esta validación sin generar archivos `.o` o `.exe`, agilizando el proceso.

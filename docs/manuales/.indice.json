@@ -5515,7 +5515,7 @@
   },
   "7": {
    "archivo": "docs/manuales/MANUAL 7.md",
-   "sha256": "c73026f82de853a3",
+   "sha256": "8506c265a596dc8e",
    "secciones": [
     {
      "num": "1",
@@ -6382,9 +6382,106 @@
        "texto": "La respuesta se procesa (router) para extraer el código (si lo hay)."
       },
       {
-       "id": "60c7b14e6d",
+       "id": "286584b9d1",
        "linea": 638,
-       "texto": "**Validación (paso crítico):** El LSP toma el código generado y ejecuta el compilador de Synapse/Syquex en modo `--check` (solo validación, sin generar binario"
+       "texto": "**Validación (paso crítico):** El LSP toma el código generado y ejecuta el compilador de Synapse/Syquex en modo `--check` (solo validación, sin generar binario). Esto se hace mediante el CLI `synapse check --no-emit <archivo>`."
+      },
+      {
+       "id": "fe3341e87d",
+       "linea": 639,
+       "texto": "**Si compila:** El LSP devuelve el código al editor como sugerencia."
+      },
+      {
+       "id": "fc1867d89a",
+       "linea": 640,
+       "texto": "**Si falla:** El LSP captura el error (stderr del compilador) y repite el proceso (hasta 3 intentos), añadiendo el error al prompt para que OpenSyn lo corrija."
+      },
+      {
+       "id": "c7fd846edf",
+       "linea": 641,
+       "texto": "**Fallo definitivo:** Si después de 3 intentos el código no compila, el LSP devuelve el último código generado y los errores al editor, mostrando un mensaje de \"No se pudo generar código válido automáticamente. Intenta ajustar la instrucción.\""
+      }
+     ]
+    },
+    {
+     "num": "6.3",
+     "titulo": "Bucle de Corrección Automática (3 Intentos)",
+     "linea": 643,
+     "oraciones": [
+      {
+       "id": "69623e17a1",
+       "linea": 645,
+       "texto": "**Nota de restauración (2026-09-30):** Sección restaurada textualmente por decisión del Arquitecto (Opción A, ME validation_loop_fix) tras su eliminación involuntaria en la revisión de manuales v8.2.0 (commit 154a544); con ella, las referencias internas (secciones 1 y 4.2 de este manual) y la del Manual 8 (§5.1) vuelven a resolver."
+      },
+      {
+       "id": "a6b7b676da",
+       "linea": 647,
+       "texto": "Dado que OpenSyn no es perfecto y puede generar código con errores sintácticos o semánticos, se implementa un **bucle de validación y corrección automática** orquestado por el LSP (ver sección 4.2)."
+      },
+      {
+       "id": "cdaa12c836",
+       "linea": 647,
+       "texto": "Este bucle asegura que el código generado cumpla con las reglas del compilador."
+      },
+      {
+       "id": "d2e3577f50",
+       "linea": 651,
+       "texto": "**Generación inicial (intento 1):** OpenSyn genera código basado en la instrucción y el contexto."
+      },
+      {
+       "id": "8f9ba18390",
+       "linea": 652,
+       "texto": "**Validación:** El LSP pasa el código al compilador de Synapse/Syquex en modo `--check` (solo validación, sin generar binario). Este modo es activado con el flag `--no-emit` (o similar) que debe estar implementado en el CLI de Synapse."
+      },
+      {
+       "id": "7a7f311e59",
+       "linea": 653,
+       "texto": "**Si compila:** Se muestra al usuario. Fin del proceso."
+      },
+      {
+       "id": "c9328495b5",
+       "linea": 654,
+       "texto": "**Si falla:** El compilador devuelve el error exacto (línea, columna, mensaje) a través de su salida de error estándar. El LSP:"
+      },
+      {
+       "id": "4546397d7a",
+       "linea": 655,
+       "texto": "Construye un nuevo prompt añadiendo: *\"El código anterior tiene el siguiente error: {mensaje_error}. Por favor, corrígelo.\"*"
+      },
+      {
+       "id": "de406f0b2d",
+       "linea": 656,
+       "texto": "Reenvía el prompt a OpenSyn (intento 2)."
+      },
+      {
+       "id": "f10cd9c426",
+       "linea": 657,
+       "texto": "**Repetición:** Se repiten los pasos 2 y 3 para el intento 2. Si vuelve a fallar, se hace un intento 3."
+      },
+      {
+       "id": "e3c67952ce",
+       "linea": 658,
+       "texto": "**Fallo definitivo:** Si el tercer intento falla, el LSP muestra el último código generado y los errores al usuario, con un mensaje: *\"No se pudo generar código válido automáticamente. Intenta ajustar la instrucción o corrige manualmente.\"*"
+      },
+      {
+       "id": "023cbc9331",
+       "linea": 660,
+       "texto": "**Mecanismo de Feedback Humano:**"
+      },
+      {
+       "id": "e1250001b0",
+       "linea": 661,
+       "texto": "Cuando el usuario corrige el código manualmente (después de un fallo), OpenSyn guarda el par `(instrucción, código_corregido)` en `~/.opensyn/feedback.jsonl`."
+      },
+      {
+       "id": "5e8a2bde5e",
+       "linea": 662,
+       "texto": "Este archivo se utiliza para mejorar los ejemplos en el contexto estático (sección 2.3) en futuras versiones del instalador o mediante re‑entrenamiento opcional."
+      },
+      {
+       "id": "06c0b97212",
+       "linea": 664,
+       "texto": "**Nota de implementación:** El flag `--check` debe ser añadido al CLI de Synapse (Fase 27 del roadmap) para permitir esta validación sin generar archivos `.o` o `.exe`, agilizando el proceso."
       }
      ]
     }
