@@ -7,16 +7,24 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-09-29** (ME fixture_syquex_timeout ff6c54a COMPLETADO con autorización Arquitecto — las 3 deudas de FASE_33_CERTIFICACION §5 CERRADAS: formatter_fix 58ff1d1, cli_lint_fmt 12b342d, fixture_syquex_timeout ff6c54a; ME cli_lint_fmt 12b342d: `synapse lint/fmt` en el dispatcher Python; ME formatter_fix 58ff1d1: H-33.5-3 CERRADA; D-R163-1 sigue pendiente de ratificación)
+Última actualización: **2026-09-30** (ME transpiler_elif e0cbb35 COMPLETADO — deuda test_control_flow_pipeline CERRADA: el transpilador Python→Syquex emitía sino_si (token inexistente en la gramática M2 §7.2; origen R119 L60 con cita fantasma Manual 7 §5.1) y ahora emite "sino si" (M6 §6.2, OBL-M7-03); aserción L120 corregida con autorización Arquitecto regla 5; deuda NUEVA documentada: test_validation_loop_syn_exists; D-R163-1 sigue pendiente de ratificación)
 
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      POST-FASE 33 — DEUDAS DE LA CERTIFICACIÓN CERRADAS (las 3 de
-                   FASE_33_CERTIFICACION §5): ME fixture_syquex_timeout (ff6c54a,
-                   autorización Arquitecto regla 5) — techo por-marker timeout(660)
-                   para el fixture cuyo subprocess interno necesita ~500 s (el global
-                   300 s mataba la sesión pytest completa); 5/5 GREEN en 398.75 s
+Fase roadmap:      POST-FASE 33 — ME transpiler_elif COMPLETADO (e0cbb35): deuda
+                   test_control_flow_pipeline CERRADA — el transpilador Python→Syquex
+                   emitía sino_si (token inexistente en la gramática M2 §7.2; origen
+                   R119 L60, justificada con cita fantasma Manual 7 §5.1) y ahora
+                   emite "sino si" (M6 §6.2, forma canónica, paridad transpiler.syq);
+                   aserción test_opensyn_integration.py:120 corregida con autorización
+                   Arquitecto regla 5; DEUDA NUEVA: test_validation_loop_syn_exists
+                   (nombre de función test vs código, preexistente, decisión
+                   Arquitecto). Antes: las 3 deudas de FASE_33_CERTIFICACION §5
+                   CERRADAS: ME fixture_syquex_timeout (ff6c54a, autorización
+                   Arquitecto regla 5) — techo por-marker timeout(660) para el
+                   fixture cuyo subprocess interno necesita ~500 s (el global 300 s
+                   mataba la sesión pytest completa); 5/5 GREEN en 398.75 s
                    ME cli_lint_fmt COMPLETADO (12b342d): `synapse lint/fmt`
                    en el dispatcher Python (cli.py) → backend NATIVO (stage2,
                    módulos .syn lint/formatter); backing on-demand del bootstrap
@@ -59,7 +67,18 @@ Fase roadmap:      POST-FASE 33 — DEUDAS DE LA CERTIFICACIÓN CERRADAS (las 3 
                    FASE 30-c ME_opensyn_best — ME-1..ME-6 TODOS COMPLETADOS
                    FASE 30-b HARDENING — OpenSyn TUI + IA local (R141/R142/R143) COMPLETADA
                    FASE 30 COMPLETADA — Instalación Unificada y Distribución Final
-Estado:            ME fixture_syquex_timeout COMPLETO (ff6c54a): pytestmark timeout(660)
+Estado:            ME transpiler_elif COMPLETO (e0cbb35): transpiler.py L51/L197
+                   emite "sino si" (antes sino_si — token inexistente en la gramática,
+                   4 errores al compilar el .syn generado; OBL-M7-03 violado);
+                   test_control_flow_pipeline PASSED por primera vez (deuda R166
+                   CERRADA); aserción L120 corregida con autorización regla 5 (era
+                   la única que codificaba la desviación y contradecía a
+                   test_full_pipeline.py:230); contrastar PASA (test_full_pipeline
+                   14/14 + test_transpile 3/3 en release); expediente huella
+                   152a82c2ad565065; deuda NUEVA documentada:
+                   test_validation_loop_syn_exists (espera validar_codigo_con_check,
+                   el código define validar_con_check — preexistente, decisión
+                   Arquitecto). ME fixture_syquex_timeout COMPLETO (ff6c54a): pytestmark timeout(660)
                    en test_syquex_coverage (aserciones byte-idénticas, tripwire global
                    300 s intacto); cuello de botella medido: subprocess interno ~500 s
                    (476 s suite con cov + 25 s benchmarks), coverage cuesta ~25%;
@@ -115,11 +134,15 @@ Estado:            ME fixture_syquex_timeout COMPLETO (ff6c54a): pytestmark time
                    expediente r153 verificado (evidencia d5fb40c8d7530258; 40 CUMPLE +
                    3 DESVIACION ratificadas H-R153-NODE).
                    r151/r152: bootstrap restaurado (ver histórico de sesión 2026-09-20).
-Commit fase:       ff6c54a (test(integration): techo de tiempo 660 s para test_syquex_coverage — autorización Arquitecto regla 5) sobre 12b342d (feat(cli): `synapse lint/fmt` en el dispatcher Python — backend nativo + backing on-demand M1 §6) sobre 58ff1d1 (fix(formatter): cierre H-33.5-3 — dedupe lint→formatter + colapso fuera de literales + normalización fmt del nucleo) sobre 55a9950 (feat(33.5): certificación Fase 33 — bootstrap S2==S3 sellado en CI + dispatch canónico lint/fmt/test) sobre dfdb1bd (feat(33.4b): genéricos de usuario + para-en mapa en S1 y nativo — H-R153-3 CERRADA) sobre 5ff9235 (feat(33.4a): paridad del indexado de colecciones en S1 y nativo — H-R153-3) sobre d0386f3 (feat(coverage): --coverage con instrumentación de aristas en S1 y generador nativo — H-R152-1 CERRADA) sobre 4697132 (fix(compilador): imports fallback a raíz + FFI lista/mapa — H-CFG-4/H-CFG-5 RESUELTAS, bootstrap S1 reparado) sobre e780627 (docs manual2 §7.2, ME 33.1) sobre 96e72f4 (fix(sandbox): H-EOF-3) y 8375ec6 (feat(runtime): API de EOF stdin)
+Commit fase:       e0cbb35 (fix(transpiler): forma canónica "sino si" para elif — deuda test_control_flow_pipeline CERRADA; aserción L120 autorizada regla 5) sobre ff6c54a (test(integration): techo de tiempo 660 s para test_syquex_coverage — autorización Arquitecto regla 5) sobre 12b342d (feat(cli): `synapse lint/fmt` en el dispatcher Python — backend nativo + backing on-demand M1 §6) sobre 58ff1d1 (fix(formatter): cierre H-33.5-3 — dedupe lint→formatter + colapso fuera de literales + normalización fmt del nucleo) sobre 55a9950 (feat(33.5): certificación Fase 33 — bootstrap S2==S3 sellado en CI + dispatch canónico lint/fmt/test) sobre dfdb1bd (feat(33.4b): genéricos de usuario + para-en mapa en S1 y nativo — H-R153-3 CERRADA) sobre 5ff9235 (feat(33.4a): paridad del indexado de colecciones en S1 y nativo — H-R153-3) sobre d0386f3 (feat(coverage): --coverage con instrumentación de aristas en S1 y generador nativo — H-R152-1 CERRADA) sobre 4697132 (fix(compilador): imports fallback a raíz + FFI lista/mapa — H-CFG-4/H-CFG-5 RESUELTAS, bootstrap S1 reparado) sobre e780627 (docs manual2 §7.2, ME 33.1) sobre 96e72f4 (fix(sandbox): H-EOF-3) y 8375ec6 (feat(runtime): API de EOF stdin)
 Próximo ME:        POST-FASE 33 — SIN deudas ejecutables de la certificación (las 3 de
                    FASE_33_CERTIFICACION §5 cerradas: formatter_fix 58ff1d1,
-                   cli_lint_fmt 12b342d, fixture_syquex_timeout ff6c54a). Leer ROADMAP
-                   con el Arquitecto para la siguiente fase (termina en §33.5).
+                   cli_lint_fmt 12b342d, fixture_syquex_timeout ff6c54a) y la deuda
+                   test_control_flow_pipeline también CERRADA (transpiler_elif e0cbb35).
+                   Deuda NUEVA documentada en R168: test_validation_loop_syn_exists
+                   (nombre de función test vs código — requiere decisión del
+                   Arquitecto). Leer ROADMAP con el Arquitecto para la siguiente
+                   fase (termina en §33.5).
                    FASE 33 COMPLETA (33.1 e780627, 33.2 d0386f3, 33.4a 5ff9235, 33.4b dfdb1bd,
                    33.5 55a9950) — leer ROADMAP para la siguiente fase. Ratificaciones
                    pendientes del Arquitecto: D-R163-1 (para k en mapa: k=claves, el par
@@ -129,10 +152,14 @@ Próximo ME:        POST-FASE 33 — SIN deudas ejecutables de la certificación
                    ratificación (desviaciones R149 §5); MEs futuros
                    del reporte FASE_33_CERTIFICACION.
 Próximo paso:      Nueva fase del ROADMAP (requiere Arquitecto: el ROADMAP termina en
-                   §33.5) o hardening. Deuda nueva documentada: test_control_flow_pipeline
-                   (test_full_pipeline, preexistente). Ratificar D-R163-1,
+                   §33.5) o hardening. Deuda test_control_flow_pipeline CERRADA
+                   (transpiler_elif e0cbb35). Deuda NUEVA documentada:
+                   test_validation_loop_syn_exists (test espera validar_codigo_con_check,
+                   el código define validar_con_check — preexistente, decisión Arquitecto).
+                   Ratificar D-R163-1,
                    H-CFG-2/H-R144-3/SIN_CITA Fase 32; 33.3 pendiente (desviaciones R149 §5)
-Últimos commits:    ff6c54a (test(integration): techo de tiempo 660 s para test_syquex_coverage — el global de 300 s mataba el subprocess interno de ~500 s y abortaba la sesión pytest (autorización Arquitecto regla 5))
+Últimos commits:    e0cbb35 (fix(transpiler): forma canónica "sino si" para elif — deuda test_control_flow_pipeline CERRADA; aserción L120 autorizada regla 5)
+                    ff6c54a (test(integration): techo de tiempo 660 s para test_syquex_coverage — el global de 300 s mataba el subprocess interno de ~500 s y abortaba la sesión pytest (autorización Arquitecto regla 5))
                     12b342d (feat(cli): `synapse lint/fmt` en el dispatcher Python — despacha al backend nativo (stage2) con backing on-demand del bootstrap (M1 §6))
                     58ff1d1 (fix(formatter): cierre H-33.5-3 — dedupe lint→formatter, colapso fuera de literales y normalización fmt del nucleo)
                     55a9950 (feat(33.5): certificación Fase 33 — bootstrap S2==S3 sellado en CI + dispatch canónico lint/fmt/test (M8 §4.1))
@@ -160,6 +187,7 @@ Próximo paso:      Nueva fase del ROADMAP (requiere Arquitecto: el ROADMAP term
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
 |--------|-------------|---------|
+| `e0cbb35` | R168/ME transpiler_elif (cierre de la deuda test_control_flow_pipeline de R166/R167): transpiler.py L51/L197 emitía el token `sino_si` — INEXISTENTE en la gramática (M2 §7.2: condicional_si solo define si/sino; alias T_SINO = sino/else/sinon/senao) — y el .syn generado no compilaba (4 errores; OBL-M7-03 "el .syq generado COMPILA" violado). Fix: emitir "sino si" (forma canónica, paridad con transpiler.syq L92 — el transpilador original). Origen arqueológico: R119 L60 "corrigió" la forma correcta a sino_si citando Manual 7 §5.1 — sección INEXISTENTE (M7 termina en §4; cita fantasma detectada hoy por el gate de secciones). Aserción test_opensyn_integration.py:120 corregida sino_si → "sino si" con AUTORIZACIÓN EXPLÍCITA del Arquitecto (regla 5): era la única que codificaba la desviación y contradecía a test_full_pipeline.py:230 (inmutable) — tests mutuamente incompatibles. Oráculos: test_control_flow_pipeline PASSED por PRIMERA VEZ + test_transpilar_condicional PASSED; regresión 87/1 con el fallo PREEXISTENTE y ajeno test_validation_loop_syn_exists (deuda NUEVA documentada). Gates: contrastar PASA (release), alineación 0 brechas (huella 152a82c2ad565065), MTO sin brechas, pre-commit verde. Lecciones: la cita debe ser oración INDEXADA (el prefijo "2. " de listas lo quita el indexador); el oraculo: del expediente es RUTA de archivo (no node ID); un comentario colecta UN `cumple Manual X §Y`; contrastar exige oráculo-archivo GREEN completo — el archivo de un test modificado no puede ser oráculo entero |
 | `ff6c54a` | R167/ME fixture_syquex_timeout (última deuda de FASE_33_CERTIFICACION §5, AUTORIZACIÓN EXPLÍCITA del Arquitecto regla 5): cuello de botella MEDIDO — el fixture lanza UN subprocess interno (pytest de syquex+certs+fuzz+benchmarks con --cov=compilador, cacheado para 5 tests) que necesita ~500 s reales (476.54 s sin benchmarks + 25 s benchmarks; sin cov 394 s → coverage ~25%); el timeout GLOBAL pytest.ini 300 s lo mataba y ABORTABA la sesión pytest completa. Fix MÍNIMO: pytestmark = [integration, pytest.mark.timeout(660)] — techo 660 > 600 del subprocess (invariante exterior>interior); aserciones y umbrales M3 §3 BYTE-IDÉNTICOS; tripwire global intacto. 5/5 GREEN en 398.75 s; contrastar PASA (oráculo = el propio fixture en release); MTO sin brechas. Lecciones: el fixture NO era ineficiente — conflicto de techos de tiempo (exterior 300 < interior 600); el marker por-test es la vía canónica sin relajar el global; el flaky test_fibonacci_30 pasó aislado (reconfirmación R164); los 4 fallos syquex internos son preexistentes (el fixture mide cobertura, no éxito) |
 | `12b342d` | R166/ME cli_lint_fmt (deuda #2 de FASE_33_CERTIFICACION §5): cli.py despacha `synapse lint/fmt` al backend NATIVO (stage2 del bootstrap, módulos .syn desde r153/Opción A) — sin reimplementar herramientas; orden canónico H-33.5-2 y antiguo aceptados; rc propagado (lint advertencias rc=1, fmt --check rc=1, errores rc=1). _bootstrap_stage2_fresco() (M1 §6): backing on-demand con el comando EXACTO del job CI, rebuild solo si stale o stage1 ausente (hook borra stage1, conserva stage2). RAÍZ HISTÓRICA: el punto de entrada descartaba el retorno de main() → rc=0 falso de CUALQUIER subcomando; ahora sys.exit(main()). Oráculo NUEVO 6/6 (E2E de python cli.py, anti-fabricación). Gates: evidencia 07ba3f460c6d0bee, contrastar PASA, unit 514/514, nucleo 30/30, matriz 35/35. test_control_flow_pipeline PREEXISTENTE (falla igual en base limpia con stash). Lecciones: la brecha era doble (no despachaba Y no propagaba rc); pop de stash en Windows puede fallar parcialmente por fixtures con Permission denied (verificar identidad con git rev-parse stash:N:ruta vs git hash-object antes de descartar); el validador de citas acepta filas de tabla como oraciones citables |
 | `58ff1d1` | R165/ME formatter_fix (cierre de H-33.5-3, deuda prioridad 1 de FASE_33_CERTIFICACION §5): R1 (M3 §12.2) lint.syn importa formatter y fix_linea delega en formatear_linea — borrados normalizar_espacios (2 ramas) y recortar duplicados que el first-wins del aplanador (pipeline.py L523-539) ponía primero: CAUSA RAÍZ verificada con probes (H-FMT-1 del emisor RETIRADO). R2 (M1 §7.1) normalizar_espacios: colapso de espacios fuera de literales (estado en_literal respeta escapes y comillas), coma solo si queda contenido, UNA línea vacía preservada como separador. R3: oráculo NUEVO 6/6 GREEN (dedupe sin símbolos duplicados, repro --check rc=1→0, literales intactos byte a byte, lint --fix == fmt, bootstrap verde con rebuild on-demand si el hook borra stage1, nucleo 100% formateado). R4: normalización fmt de 47 módulos idempotente + reparación M2 §1.1 (ast_abi, frontend_nativo, funciones sin `#lang: es`) + anclas de norma y vínculo plan↔código colectable (M1 §7.1) en cabeceras. Bootstrap S2==S3 nuevo sello 6d579f9e…b1c. Gates: contrastar PASA, verificar_alineacion SIN BRECHAS, alineación 0 brechas (evidencia c365b2ea07a7bc8c), pre-commit verde con lecturas del día vinculadas 47/47. Lecciones: el pre-commit borra synapse_stage1.exe (patrón explícito) pero conserva stage2 → falso negativo de frescura "stage1 no existe" dentro del hook (guard añadido a _exe_fresco del oráculo); el gate de lectura previa exige registros DEL DÍA + vínculo explícito por archivo (--archivos lista CADA archivo, el sello --leer no lo sustituye); secciones padre sin oraciones indexadas (D-ALINEACION-F31) → anclar a la subsección (§1.1 cubre §1); la línea de vínculo plan↔código debe decir `cumple Manual X §Y` para ser colectada por contrastar.py; los oráculos con lista FIJA de fuentes vigiladas quedan stale ante ediciones fuera de la lista. Pendiente: lint/fmt en cli.py, timeout test_syquex_coverage; la norma de estilo real vive en MANUAL  FASE 31 (nombre propio, no citable como "Manual 31") |
