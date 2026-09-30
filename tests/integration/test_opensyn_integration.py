@@ -117,7 +117,7 @@ def clasificar(x: int) -> str:
         syq_code = transpilar_codigo_python(python_code)
 
         assert "si" in syq_code
-        assert "sino_si" in syq_code
+        assert "sino si" in syq_code  # autorización Arquitecto regla 5 (ME transpiler_elif): la gramática M2 §7.2 no define sino_si; OBL-M7-03 exige que el .syq generado compile
         assert "sino" in syq_code
         assert "retornar" in syq_code
 

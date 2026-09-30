@@ -48,7 +48,8 @@ MAPEO_KEYWORDS: Dict[str, str] = {
     "def": "funcion",
     "class": "estructura",
     "if": "si",
-    "elif": "sino_si",
+    "elif": "sino si",  # cumple Manual 6 §6.2: forma canónica sino si (paridad transpiler.syq)
+    # cumple Manual 7 §1.1: transpilación Python → Syquex con la forma canónica del lenguaje
     "else": "sino",
     "while": "mientras",
     "for": "para",
@@ -194,7 +195,7 @@ def transpilar_linea(linea: str) -> str:
     # Reemplazar keywords simples
     resultado = re.sub(r'\bclass\b', 'estructura', resultado)
     resultado = re.sub(r'\bif\b', 'si', resultado)
-    resultado = re.sub(r'\belif\b', 'sino_si', resultado)
+    resultado = re.sub(r'\belif\b', 'sino si', resultado)  # cumple Manual 6 §6.2
     resultado = re.sub(r'\belse:', 'sino:', resultado)
     resultado = re.sub(r'\bwhile\b', 'mientras', resultado)
     resultado = re.sub(r'\breturn\b', 'retornar', resultado)
