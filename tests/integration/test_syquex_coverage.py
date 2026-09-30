@@ -13,7 +13,14 @@ import json
 
 import pytest
 
-pytestmark = pytest.mark.integration
+# cumple Manual 9 §6.2 (ME fixture_syquex_timeout, autorización Arquitecto regla 5):
+# el subprocess interno de _ejecutar_coverage corre TODA la suite syquex con
+# --cov=compilador y necesita ~500 s medidos (476 s sin benchmarks + 25 s de
+# benchmarks). El timeout GLOBAL de pytest.ini (300 s) mataba el test a mitad
+# del subprocess y ABORTABA la sesión pytest completa (lección R164). El marker
+# por-módulo eleva el techo de estos 5 tests a 660 s > 600 s del subprocess
+# (invariante: exterior > interior) sin relajar el tripwire global de 300 s.
+pytestmark = [pytest.mark.integration, pytest.mark.timeout(660)]
 
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 
