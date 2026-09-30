@@ -7,12 +7,17 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-09-29** (ME cli_lint_fmt 12b342d COMPLETADO — deuda #2 de la certificación: `synapse lint/fmt` despachan al backend nativo stage2 con backing on-demand del bootstrap M1 §6; raíz histórica del rc=0 falso corregida con sys.exit(main()); ME formatter_fix 58ff1d1 COMPLETADO — H-33.5-3 CERRADA; D-R163-1 sigue pendiente de ratificación)
+Última actualización: **2026-09-29** (ME fixture_syquex_timeout ff6c54a COMPLETADO con autorización Arquitecto — las 3 deudas de FASE_33_CERTIFICACION §5 CERRADAS: formatter_fix 58ff1d1, cli_lint_fmt 12b342d, fixture_syquex_timeout ff6c54a; ME cli_lint_fmt 12b342d: `synapse lint/fmt` en el dispatcher Python; ME formatter_fix 58ff1d1: H-33.5-3 CERRADA; D-R163-1 sigue pendiente de ratificación)
 
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      POST-FASE 33 — ME cli_lint_fmt COMPLETADO (12b342d): `synapse lint/fmt`
+Fase roadmap:      POST-FASE 33 — DEUDAS DE LA CERTIFICACIÓN CERRADAS (las 3 de
+                   FASE_33_CERTIFICACION §5): ME fixture_syquex_timeout (ff6c54a,
+                   autorización Arquitecto regla 5) — techo por-marker timeout(660)
+                   para el fixture cuyo subprocess interno necesita ~500 s (el global
+                   300 s mataba la sesión pytest completa); 5/5 GREEN en 398.75 s
+                   ME cli_lint_fmt COMPLETADO (12b342d): `synapse lint/fmt`
                    en el dispatcher Python (cli.py) → backend NATIVO (stage2,
                    módulos .syn lint/formatter); backing on-demand del bootstrap
                    (M1 §6, comando del job CI); raíz histórica del rc=0 falso
@@ -54,7 +59,12 @@ Fase roadmap:      POST-FASE 33 — ME cli_lint_fmt COMPLETADO (12b342d): `synap
                    FASE 30-c ME_opensyn_best — ME-1..ME-6 TODOS COMPLETADOS
                    FASE 30-b HARDENING — OpenSyn TUI + IA local (R141/R142/R143) COMPLETADA
                    FASE 30 COMPLETADA — Instalación Unificada y Distribución Final
-Estado:            ME cli_lint_fmt COMPLETO (12b342d): cli.py despacha lint/fmt al backend
+Estado:            ME fixture_syquex_timeout COMPLETO (ff6c54a): pytestmark timeout(660)
+                   en test_syquex_coverage (aserciones byte-idénticas, tripwire global
+                   300 s intacto); cuello de botella medido: subprocess interno ~500 s
+                   (476 s suite con cov + 25 s benchmarks), coverage cuesta ~25%;
+                   contrastar PASA con el propio fixture como oráculo (release).
+                   ME cli_lint_fmt COMPLETO (12b342d): cli.py despacha lint/fmt al backend
                    nativo (sin reimplementar); _bootstrap_stage2_fresco() con el comando
                    del CI (rebuild solo si stale/stage1 ausente); rc propagado (sys.exit
                    (main()) — antes se descartaba: rc=0 falso universal); oráculo 6/6,
@@ -105,11 +115,12 @@ Estado:            ME cli_lint_fmt COMPLETO (12b342d): cli.py despacha lint/fmt 
                    expediente r153 verificado (evidencia d5fb40c8d7530258; 40 CUMPLE +
                    3 DESVIACION ratificadas H-R153-NODE).
                    r151/r152: bootstrap restaurado (ver histórico de sesión 2026-09-20).
-Commit fase:       12b342d (feat(cli): `synapse lint/fmt` en el dispatcher Python — backend nativo + backing on-demand M1 §6) sobre 58ff1d1 (fix(formatter): cierre H-33.5-3 — dedupe lint→formatter + colapso fuera de literales + normalización fmt del nucleo) sobre 55a9950 (feat(33.5): certificación Fase 33 — bootstrap S2==S3 sellado en CI + dispatch canónico lint/fmt/test) sobre dfdb1bd (feat(33.4b): genéricos de usuario + para-en mapa en S1 y nativo — H-R153-3 CERRADA) sobre 5ff9235 (feat(33.4a): paridad del indexado de colecciones en S1 y nativo — H-R153-3) sobre d0386f3 (feat(coverage): --coverage con instrumentación de aristas en S1 y generador nativo — H-R152-1 CERRADA) sobre 4697132 (fix(compilador): imports fallback a raíz + FFI lista/mapa — H-CFG-4/H-CFG-5 RESUELTAS, bootstrap S1 reparado) sobre e780627 (docs manual2 §7.2, ME 33.1) sobre 96e72f4 (fix(sandbox): H-EOF-3) y 8375ec6 (feat(runtime): API de EOF stdin)
-Próximo ME:        POST-FASE 33 — MEs completados: formatter_fix (58ff1d1, H-33.5-3
-                   CERRADA), cli_lint_fmt (12b342d). Restante del reporte
-                   FASE_33_CERTIFICACION §5: timeout del fixture test_syquex_coverage
-                   (600 s internos vs 300 s pytest.ini). FASE 33 COMPLETA (33.1 e780627, 33.2 d0386f3, 33.4a 5ff9235, 33.4b dfdb1bd,
+Commit fase:       ff6c54a (test(integration): techo de tiempo 660 s para test_syquex_coverage — autorización Arquitecto regla 5) sobre 12b342d (feat(cli): `synapse lint/fmt` en el dispatcher Python — backend nativo + backing on-demand M1 §6) sobre 58ff1d1 (fix(formatter): cierre H-33.5-3 — dedupe lint→formatter + colapso fuera de literales + normalización fmt del nucleo) sobre 55a9950 (feat(33.5): certificación Fase 33 — bootstrap S2==S3 sellado en CI + dispatch canónico lint/fmt/test) sobre dfdb1bd (feat(33.4b): genéricos de usuario + para-en mapa en S1 y nativo — H-R153-3 CERRADA) sobre 5ff9235 (feat(33.4a): paridad del indexado de colecciones en S1 y nativo — H-R153-3) sobre d0386f3 (feat(coverage): --coverage con instrumentación de aristas en S1 y generador nativo — H-R152-1 CERRADA) sobre 4697132 (fix(compilador): imports fallback a raíz + FFI lista/mapa — H-CFG-4/H-CFG-5 RESUELTAS, bootstrap S1 reparado) sobre e780627 (docs manual2 §7.2, ME 33.1) sobre 96e72f4 (fix(sandbox): H-EOF-3) y 8375ec6 (feat(runtime): API de EOF stdin)
+Próximo ME:        POST-FASE 33 — SIN deudas ejecutables de la certificación (las 3 de
+                   FASE_33_CERTIFICACION §5 cerradas: formatter_fix 58ff1d1,
+                   cli_lint_fmt 12b342d, fixture_syquex_timeout ff6c54a). Leer ROADMAP
+                   con el Arquitecto para la siguiente fase (termina en §33.5).
+                   FASE 33 COMPLETA (33.1 e780627, 33.2 d0386f3, 33.4a 5ff9235, 33.4b dfdb1bd,
                    33.5 55a9950) — leer ROADMAP para la siguiente fase. Ratificaciones
                    pendientes del Arquitecto: D-R163-1 (para k en mapa: k=claves, el par
                    ordenado del ROADMAP contradice M3 §3 L133), H-CFG-2 (sandbox para
@@ -117,11 +128,12 @@ Próximo ME:        POST-FASE 33 — MEs completados: formatter_fix (58ff1d1, H-
                    de Fase 32 en tests/opensyn (ver lección R160); 33.3 pendiente de
                    ratificación (desviaciones R149 §5); MEs futuros
                    del reporte FASE_33_CERTIFICACION.
-Próximo paso:      Última deuda de la certificación: timeout del fixture test_syquex_coverage
-                   (requiere decisión sobre el fixture). Nueva deuda documentada:
-                   test_control_flow_pipeline (test_full_pipeline, preexistente). Ratificar D-R163-1,
+Próximo paso:      Nueva fase del ROADMAP (requiere Arquitecto: el ROADMAP termina en
+                   §33.5) o hardening. Deuda nueva documentada: test_control_flow_pipeline
+                   (test_full_pipeline, preexistente). Ratificar D-R163-1,
                    H-CFG-2/H-R144-3/SIN_CITA Fase 32; 33.3 pendiente (desviaciones R149 §5)
-Últimos commits:    12b342d (feat(cli): `synapse lint/fmt` en el dispatcher Python — despacha al backend nativo (stage2) con backing on-demand del bootstrap (M1 §6))
+Últimos commits:    ff6c54a (test(integration): techo de tiempo 660 s para test_syquex_coverage — el global de 300 s mataba el subprocess interno de ~500 s y abortaba la sesión pytest (autorización Arquitecto regla 5))
+                    12b342d (feat(cli): `synapse lint/fmt` en el dispatcher Python — despacha al backend nativo (stage2) con backing on-demand del bootstrap (M1 §6))
                     58ff1d1 (fix(formatter): cierre H-33.5-3 — dedupe lint→formatter, colapso fuera de literales y normalización fmt del nucleo)
                     55a9950 (feat(33.5): certificación Fase 33 — bootstrap S2==S3 sellado en CI + dispatch canónico lint/fmt/test (M8 §4.1))
                     dfdb1bd (feat(33.4b): genéricos de usuario + para-en mapa en S1 y nativo — H-R153-3 CERRADA)
@@ -148,6 +160,7 @@ Próximo paso:      Última deuda de la certificación: timeout del fixture test
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
 |--------|-------------|---------|
+| `ff6c54a` | R167/ME fixture_syquex_timeout (última deuda de FASE_33_CERTIFICACION §5, AUTORIZACIÓN EXPLÍCITA del Arquitecto regla 5): cuello de botella MEDIDO — el fixture lanza UN subprocess interno (pytest de syquex+certs+fuzz+benchmarks con --cov=compilador, cacheado para 5 tests) que necesita ~500 s reales (476.54 s sin benchmarks + 25 s benchmarks; sin cov 394 s → coverage ~25%); el timeout GLOBAL pytest.ini 300 s lo mataba y ABORTABA la sesión pytest completa. Fix MÍNIMO: pytestmark = [integration, pytest.mark.timeout(660)] — techo 660 > 600 del subprocess (invariante exterior>interior); aserciones y umbrales M3 §3 BYTE-IDÉNTICOS; tripwire global intacto. 5/5 GREEN en 398.75 s; contrastar PASA (oráculo = el propio fixture en release); MTO sin brechas. Lecciones: el fixture NO era ineficiente — conflicto de techos de tiempo (exterior 300 < interior 600); el marker por-test es la vía canónica sin relajar el global; el flaky test_fibonacci_30 pasó aislado (reconfirmación R164); los 4 fallos syquex internos son preexistentes (el fixture mide cobertura, no éxito) |
 | `12b342d` | R166/ME cli_lint_fmt (deuda #2 de FASE_33_CERTIFICACION §5): cli.py despacha `synapse lint/fmt` al backend NATIVO (stage2 del bootstrap, módulos .syn desde r153/Opción A) — sin reimplementar herramientas; orden canónico H-33.5-2 y antiguo aceptados; rc propagado (lint advertencias rc=1, fmt --check rc=1, errores rc=1). _bootstrap_stage2_fresco() (M1 §6): backing on-demand con el comando EXACTO del job CI, rebuild solo si stale o stage1 ausente (hook borra stage1, conserva stage2). RAÍZ HISTÓRICA: el punto de entrada descartaba el retorno de main() → rc=0 falso de CUALQUIER subcomando; ahora sys.exit(main()). Oráculo NUEVO 6/6 (E2E de python cli.py, anti-fabricación). Gates: evidencia 07ba3f460c6d0bee, contrastar PASA, unit 514/514, nucleo 30/30, matriz 35/35. test_control_flow_pipeline PREEXISTENTE (falla igual en base limpia con stash). Lecciones: la brecha era doble (no despachaba Y no propagaba rc); pop de stash en Windows puede fallar parcialmente por fixtures con Permission denied (verificar identidad con git rev-parse stash:N:ruta vs git hash-object antes de descartar); el validador de citas acepta filas de tabla como oraciones citables |
 | `58ff1d1` | R165/ME formatter_fix (cierre de H-33.5-3, deuda prioridad 1 de FASE_33_CERTIFICACION §5): R1 (M3 §12.2) lint.syn importa formatter y fix_linea delega en formatear_linea — borrados normalizar_espacios (2 ramas) y recortar duplicados que el first-wins del aplanador (pipeline.py L523-539) ponía primero: CAUSA RAÍZ verificada con probes (H-FMT-1 del emisor RETIRADO). R2 (M1 §7.1) normalizar_espacios: colapso de espacios fuera de literales (estado en_literal respeta escapes y comillas), coma solo si queda contenido, UNA línea vacía preservada como separador. R3: oráculo NUEVO 6/6 GREEN (dedupe sin símbolos duplicados, repro --check rc=1→0, literales intactos byte a byte, lint --fix == fmt, bootstrap verde con rebuild on-demand si el hook borra stage1, nucleo 100% formateado). R4: normalización fmt de 47 módulos idempotente + reparación M2 §1.1 (ast_abi, frontend_nativo, funciones sin `#lang: es`) + anclas de norma y vínculo plan↔código colectable (M1 §7.1) en cabeceras. Bootstrap S2==S3 nuevo sello 6d579f9e…b1c. Gates: contrastar PASA, verificar_alineacion SIN BRECHAS, alineación 0 brechas (evidencia c365b2ea07a7bc8c), pre-commit verde con lecturas del día vinculadas 47/47. Lecciones: el pre-commit borra synapse_stage1.exe (patrón explícito) pero conserva stage2 → falso negativo de frescura "stage1 no existe" dentro del hook (guard añadido a _exe_fresco del oráculo); el gate de lectura previa exige registros DEL DÍA + vínculo explícito por archivo (--archivos lista CADA archivo, el sello --leer no lo sustituye); secciones padre sin oraciones indexadas (D-ALINEACION-F31) → anclar a la subsección (§1.1 cubre §1); la línea de vínculo plan↔código debe decir `cumple Manual X §Y` para ser colectada por contrastar.py; los oráculos con lista FIJA de fuentes vigiladas quedan stale ante ediciones fuera de la lista. Pendiente: lint/fmt en cli.py, timeout test_syquex_coverage; la norma de estilo real vive en MANUAL  FASE 31 (nombre propio, no citable como "Manual 31") |
 | `55a9950` | R164/ME 33.5_certificacion (Fase 33.5 — certificación de la Fase 33): R1 job CI bootstrap con Etapa 2+3 y sha256 S2==S3 con fallo explícito (H-33.5-1 CERRADA, M9 §6.1); R2 dispatcher lint/fmt/test (principal.syn ~L1034-1060) clasifica flags --fix/--check/--junit/--json/--coverage y toma la ruta como primer arg no-flag — acepta el orden canónico de M8 §4.1 (flags ANTES de la ruta) y el antiguo (H-33.5-2 CERRADA); R3 oráculo NUEVO test_oraculos_33_5_certificacion.py 5/5 GREEN (bootstrap 3 etapas real, matriz extendida std/debug.syn para-en + std/modelo.syn indexado, dispatch canónico, anti-fabricación sha256); R4 suite completa medida con regresión diferencial vs base cdbfd86 (stash + rebuild stage1 desde fuente base) — 0 regresiones: unit 514/514, nucleo 30/30, matriz 35/35, syquex+opensyn 397✓/4✗ (idénticos en base), integration 1435✓/120✗ (114 idénticos en base + 1 flaky de timing GREEN aislado). Bootstrap determinista: mismo sha256 36b82c4d…addf9c en 3 regeneraciones. H-33.5-3 (formatter) y MEs futuros con resolución en docs/reportes/FASE_33_CERTIFICACION.md. Lecciones: test_syquex_coverage timeout 600>300 de pytest.ini aborta la sesión completa (--ignore + ME futuro para el fixture); regresión diferencial con stash+rebuild como metodología para certificar 0 regresiones sobre deuda roja; flaky de benchmark con umbral de tiempo falla bajo carga y pasa aislado; baile del cambio_hash (re-add tras --verificar muta el blob → blanquear + re-sellar + re-commitear, procedimiento d948cab); gate de lectura legacy exige M2 §1.1+§12 para nucleo/* además del §6.2 del mapa puntual |
