@@ -1,6 +1,6 @@
 # Verificación ME — paridad_principal_syq (gate MTS fase 4b, auditoria/contrastar.py)
 
-# Commit: (se sella con el hash real tras el commit)
+# Commit: 90eb18c
 # Scope: retirada de 2 stubs de `principal` obsoletos (pipeline.py H-R90-8b + puente ME-R90-8)
 # que contaminaban el AST canónico del camino .syq → 4 warps de paridad estructural.
 # Base: 121153d. Huella del cambio: 907275bc6b04e287.
