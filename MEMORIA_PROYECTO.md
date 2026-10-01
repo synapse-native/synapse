@@ -7,7 +7,7 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-10-01** (ME m7_s73_restauracion 72d77f3 COMPLETADO — H-R171-1 CERRADA: M7 §7.3 "Pruebas de Privacidad y Seguridad" restaurada textualmente pre-154a544 + cabecera de permisos.syn re-anclada a §7.3 con texto exacto de fef314b; test_permisos 43/43; suites-guarda 67/0; gates verdes, huella 2fee9f2fa1cabff7; antes: R171 verificación suite integración 1447✓/110✗/39skip, 0 regresiones; antes: ME restauro_bucle_validacion b1ac1c2 — TestRequisitosManuales CERRADA; ME validation_loop_fix 63c1731; ME transpiler_elif e0cbb35; D-R163-1 sigue pendiente de ratificación)
+Última actualización: **2026-10-01** (ME barrido_citas_v820 4a63327 COMPLETADO — DEUDA de alineación heredada en CERO: las 39 citas sin sección de la v8.2.0 barridas restaurando textualmente M7 §4.3/§6.1/§6.2/§6.4/§7.2/§8 + 3 re-anclajes §6→§6.2/§2.1; DEUDA.md = 0/0; suites 85/85; antes: ME m7_s73_restauracion 72d77f3 — H-R171-1 CERRADA con M7 §7.3 restaurada + permisos.syn re-anclada; R171 verificación suite integración 1447✓/110✗/39skip, 0 regresiones; antes: restauro_bucle_validacion b1ac1c2, validation_loop_fix 63c1731, transpiler_elif e0cbb35; D-R163-1 sigue pendiente de ratificación)
 
 ---
 
@@ -82,8 +82,13 @@ Estado:            ME m7_s73_restauracion COMPLETO (72d77f3): H-R171-1 CERRADA �
                    §1.1 preservadas, mapa actualizado); test_permisos 43/43 (el
                    oráculo R6 vuelve a resolver); suites-guarda 67/0; contrastar
                    PASA; alineación 0 brechas (huella 2fee9f2fa1cabff7). 3ª víctima
-                   de la v8.2.0 reparada (tras §5.1/R119 y §6.3/b1ac1c2). Quedan 39
-                   citas sin sección heredadas (DEUDA.md, archivos no tocados).
+                   de la v8.2.0 reparada (tras §5.1/R119 y §6.3/b1ac1c2). ME
+                   barrido_citas_v820 COMPLETO (4a63327): las 39 citas sin sección
+                   BARRIDAS — M7 §4.3/§6.1/§6.2/§6.4/§7.2/§8 restauradas textuales
+                   (36 citas auto-resolvieron) + 3 re-anclajes §6→§6.2 (chat.syn
+                   L3/L54) y §6→§2.1 (ai_orchestrator.h L146); DEUDA.md = 0/0;
+                   índice 304 secciones/1364 oraciones; suites 85/85; mapa saneado
+                   (entrada stale §6.4 de chat.syn corregida).
                    R171: suite de integración completa 1447✓/110✗/39skip (2:16:06,
                    test_syquex_coverage incluido y 5/5 GREEN; 0 regresiones de la
                    sesión; 110 fallos = deuda heredada/entorno, clasificados en
@@ -185,14 +190,15 @@ Próximo ME:        POST-FASE 33 — SIN deudas ejecutables de la certificación
                    ratificación (desviaciones R149 §5); MEs futuros
                    del reporte FASE_33_CERTIFICACION.
 Próximo paso:      Nueva fase del ROADMAP (requiere Arquitecto: el ROADMAP termina en
-                   §33.5) o hardening. H-R171-1 CERRADA (72d77f3). Barrido opcional
-                   de las 39 citas sin sección heredadas (DEUDA.md, archivos no
-                   tocados). Deudas CERRADAS esta sesión:
+                   §33.5) o hardening. H-R171-1 CERRADA (72d77f3). Barrido de las 39
+                   citas sin sección REALIZADO (4a63327: DEUDA.md = 0/0). Deudas
+                   CERRADAS esta sesión:
                    test_control_flow_pipeline (e0cbb35),
                    test_validation_loop_syn_exists (63c1731), TestRequisitosManuales
                    (b1ac1c2), test_permisos_cita_r6 (72d77f3). Ratificar D-R163-1,
                    H-CFG-2/H-R144-3/SIN_CITA Fase 32; 33.3 pendiente (desviaciones R149 §5)
-Últimos commits:    72d77f3 (fix(manual): restaurar M7 §7.3 + re-anclar permisos.syn — H-R171-1 CERRADA; autorización Opción A)
+Últimos commits:    4a63327 (fix(manual): barrido de las 39 citas sin sección — M7 §4.3/§6.1/§6.2/§6.4/§7.2/§8 restauradas + 3 re-anclajes; DEUDA.md = 0)
+                    72d77f3 (fix(manual): restaurar M7 §7.3 + re-anclar permisos.syn — H-R171-1 CERRADA; autorización Opción A)
                     bf90262 (docs: post-commit R171 — verificación suite integración completa, 0 regresiones)
                     b1ac1c2 (docs(manual): restaurar M7 §6.3 textual + cola §4.2 — deuda TestRequisitosManuales CERRADA; autorización Opción A)
                     63c1731 (test(opensyn): aserción L217 al nombre vigente validar_con_check — deuda test_validation_loop_syn_exists CERRADA; autorización regla 5 Opción A)
@@ -225,6 +231,7 @@ Próximo paso:      Nueva fase del ROADMAP (requiere Arquitecto: el ROADMAP term
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
 |--------|-------------|---------|
+| `4a63327` | R173/ME barrido_citas_v820 (cierre de la deuda de alineación heredada, AUTORIZACIÓN del Arquitecto Opción A): las 39 citas `cumple Manual` sin sección (heredadas de la v8.2.0/154a544, listadas en DEUDA.md del 2026-09-14) BARRIDAS — (1) M7 restaura textualmente las 6 secciones citadas (§4.3 en posición canónica, §6.1/§6.2/§6.4/§7.2/§8 como apéndices) → 36 citas AUTO-RESOLVIERON; (2) 3 citas al capítulo §6 re-ancladas a subsecciones (chat.syn L3/L54 → §6.2; ai_orchestrator.h L146 → §2.1, solo comentarios); (3) mapa saneado (chat.syn [§6.4] stale → [§6.2, §8]; nueva entrada ai_orchestrator.h); (4) DEUDA.md regenerado con --baseline: 0 citas muertas, 0 archivos sin mapa. citas_muertas_repo 39→0 por programa; índice 304/1364; suites 85/85; contrastar PASA (7 requisitos, 2 oráculos release); huella fe5ae9a7aa1147d7. Sin cambios de tests, sin cambios ejecutables. Lecciones: restaurar el manual es la vía de mayor radio de reparación (36/39 de golpe); el indexador registra `## N` como sección padre (citas de capítulo resuelven); el gate de lectura NO acepta MANUAL ENTERO sin sección (exige § explícita — "Manual 2" a secas es el no-op que cubre() cerró); el hook mensajea la ruta vieja docs/mapa_manuales.md (vigente: docs/gobernancia/mapa_manuales.md); los mapas del 2026-09-14 tenían entradas stale. Reporte: docs/reportes/R173.md |
 | `72d77f3` | R172/ME m7_s73_restauracion (cierre de H-R171-1, AUTORIZACIÓN del Arquitecto Opción A): M7 §7.3 "Pruebas de Privacidad y Seguridad" restaurada TEXTUALMENTE del estado pre-154a544 (3 bullets: Cero telemetría, Modelos firmados SHA‑256, Sandboxing) como apéndice al final del manual + nota de restauración 2026-10-01; opensyn/permisos.syn L3 re-anclada al ancla ORIGINAL `cumple Manual 7 §7.3` (texto exacto de fef314b) preservando las anclas §1.1 del mapa (mapa_alineacion.md actualizado). Cadena de causa: fef314b citaba §7.3 existente → 154a544 eliminó el capítulo 7 → d040500/R149 re-ancló a §1.1 (correcto por gates; el test quedó atrás). test_permisos_opensyn 43/43 (antes 1✗ desde la v8.2.0); suites-guarda 67/0; índice 298 secciones/1315 oraciones; contrastar PASA (2 requisitos, oráculo release); huella 2fee9f2fa1cabff7. Sin cambios de tests (el test tenía razón — requisito literal de su docstring). Lecciones: los tests OBL-M7 de citas `cumple Manual X §Y` sobre producción (TestCitasCumpleManual) son OTRA familia de suites-guarda — barrer con grep tras cada revisión de manuales; el sello --leer mira el índice STAGED (stagear producción antes de --leer); la nota de restauración lleva la fecha real del ME (metadato de procedencia, no norma). Reporte: docs/reportes/R172.md |
 | R171 | Verificación suite integración COMPLETA (petición "verifica suit integracion"): 1596 tests → 1447✓/110✗/39skip (2:16:06) — 0 fallos en la zona OpenSyn de los 3 MEs; normalizado vs baseline R164 (+7✓/−10✗, mejora); 110 fallos clasificados (21 RED TDD declarado ME_27/29/30, ~8 YAML CI release, ~7 GCC entorno, 4 warps paridad_syn_syq — frontend .syq añade principal() al AST, sin relación con elif; 1 flaky loop_1M reconfirmado PASA aislado; 1 CWD pollution; 1 exe instalado stale). H-R171-1 NUEVO: test_permisos_cita_r6 exige `cumple Manual 7 §7.3` — §7.3 existía pre-154a544 (L870) y fue eliminada: 3ª víctima de la truncación v8.2.0; candidatas: restauración textual (patrón restauro_bucle_validacion) o re-anclaje del test — decisión del Arquitecto. Sin cambios de producción/tests (verificación pura); reporte docs/reportes/R171.md |
 | `b1ac1c2` | R170/ME restauro_bucle_validacion (cierre de la deuda TestRequisitosManuales, AUTORIZACIÓN del Arquitecto Opción A): la revisión de manuales v8.2.0 (154a544, 2026-09-13) había eliminado el capítulo 6 completo de MANUAL 7 y truncado §4.2 a media frase — el bucle de validación quedó a medias mudado (3 frases en M8 §5.1-§5.2, 2 sin hogar) con 3 referencias colgantes a la sección fantasma. Restauración TEXTUAL del estado pre-154a544: §6.3 completa (flujo 6 pasos + feedback humano + nota --check, con nota de procedencia) + pasos 9-11 de §4.2. TestRequisitosManuales 7/7 (antes 2/7); suites-guarda 67 passed 0 failed; índice regenerado (1311 oraciones, M7 §6.3 con 15 citables). Repara de golpe: 5 aserciones + 3 referencias + 5 comentarios de producción. Lecciones: el guarda anti-regresión de la spec FUNCIONÓ (detectó la degradación) pero nadie lo ejecutó desde el 13-09 — tras revisar manuales hay que correr los suites-guarda; dirección de la reparación según dónde viva la verdad: test→código (transpiler_elif, validation_loop_fix) vs manual→test (este ME) |
