@@ -264,7 +264,7 @@ echo "── Gate de lectura previa (regla 1) ──"
 if ! (cd "$RAIZ" && $PYTHON auditoria/registrar_lectura.py --verificar); then
     echo "❌ LECTURA PREVIA PENDIENTE — commit bloqueado" >&2
     echo "" >&2
-    echo "Lee la sección exigida en docs/mapa_manuales.md y registra:" >&2
+    echo "Lee la sección exigida en docs/gobernancia/mapa_manuales.md y registra:" >&2
     echo '  python auditoria/registrar_lectura.py --registrar --archivos "<archivos>" --cita "<Manual N §S>" --puntos "<requisitos leidos>"' >&2
     exit 1
 fi

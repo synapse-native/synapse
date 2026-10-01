@@ -1,6 +1,6 @@
 # Verificación ME — puente_for_en_syq (gate MTS fase 4b, auditoria/contrastar.py)
 
-# Commit: (se sella con el hash real tras el commit)
+# Commit: 1e1584b
 # Scope: 3 bugs del camino Syquex (.syq) — puente for-en, semántico range-for, cast del builtin len.
 # Base: ab0ff69. Huella del cambio: ac3a132858571ecf.
 
