@@ -7,7 +7,7 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-09-30** (ME restauro_bucle_validacion b1ac1c2 COMPLETADO con autorización Arquitecto/Opción A — deuda TestRequisitosManuales CERRADA: M7 §6.3 restaurada textualmente pre-154a544 + cola de §4.2 completada; guarda 7/7; suites-guarda 67/0; antes: ME validation_loop_fix 63c1731 — test_validation_loop_syn_exists CERRADA; ME transpiler_elif e0cbb35 — test_control_flow_pipeline CERRADA; D-R163-1 sigue pendiente de ratificación)
+Última actualización: **2026-09-30** (R171: verificación de la suite de integración COMPLETA — 1447✓/110✗/39skip en 2h16m; zona OpenSyn de los 3 MEs GREEN; MEJORA +7✓/−10✗ vs baseline R164; 0 regresiones; hallazgo NUEVO H-R171-1: M7 §7.3 eliminada por la v8.2.0 — 3ª víctima de la truncación 154a544, test_permisos_cita_r6 la exige; antes: ME restauro_bucle_validacion b1ac1c2 COMPLETADO con autorización Arquitecto/Opción A — deuda TestRequisitosManuales CERRADA: M7 §6.3 restaurada textualmente pre-154a544 + cola de §4.2 completada; guarda 7/7; suites-guarda 67/0; antes: ME validation_loop_fix 63c1731 — test_validation_loop_syn_exists CERRADA; ME transpiler_elif e0cbb35 — test_control_flow_pipeline CERRADA; D-R163-1 sigue pendiente de ratificación)
 
 ---
 
@@ -76,7 +76,19 @@ Fase roadmap:      POST-FASE 33 — ME restauro_bucle_validacion COMPLETADO (b1a
                    FASE 30-c ME_opensyn_best — ME-1..ME-6 TODOS COMPLETADOS
                    FASE 30-b HARDENING — OpenSyn TUI + IA local (R141/R142/R143) COMPLETADA
                    FASE 30 COMPLETADA — Instalación Unificada y Distribución Final
-Estado:            ME restauro_bucle_validacion COMPLETO (b1ac1c2): M7 §6.3
+Estado:            R171 VERIFICACIÓN suite integración COMPLETA: 1596 tests →
+                   1447✓/110✗/39skip (2:16:06; test_syquex_coverage incluido y 5/5
+                   GREEN) — 0 fallos en la zona OpenSyn de los 3 MEs de la sesión
+                   (test_opensyn_integration, test_ai_correction_opensyn); vs baseline
+                   R164 normalizado: +7✓/−10✗ (MEJORA, sin stash: hipótesis); los
+                   110 clasificados (21 RED TDD ME_27/29/30, YAML CI, GCC entorno,
+                   4 warps paridad_syn_syq, 1 flaky loop_1M PASA aislado, 1 CWD
+                   pollution PASA aislado, 1 exe instalado stale). H-R171-1 NUEVO:
+                   M7 §7.3 "Pruebas de Privacidad y Seguridad" EXISTÍA pre-154a544
+                   (L870) y la v8.2.0 la eliminó — test_permisos_cita_r6 (L324) la
+                   exige → 3ª víctima de la truncación v8.2.0; decisión Arquitecto:
+                   restauración textual (patrón b1ac1c2) o re-anclaje.
+                   ME restauro_bucle_validacion COMPLETO (b1ac1c2): M7 §6.3
                    restaurada textualmente (los 5 requisitos del guarda vuelven a
                    existir en el manual: hasta 3 intentos vía §4.2 completada,
                    línea/columna/mensaje, prompt con error, feedback.jsonl, mensaje
@@ -174,10 +186,13 @@ Próximo ME:        POST-FASE 33 — SIN deudas ejecutables de la certificación
                    ratificación (desviaciones R149 §5); MEs futuros
                    del reporte FASE_33_CERTIFICACION.
 Próximo paso:      Nueva fase del ROADMAP (requiere Arquitecto: el ROADMAP termina en
-                   §33.5) o hardening. Deudas CERRADAS esta sesión:
+                   §33.5) o hardening. Verificación suite integración completa
+                   REALIZADA (R171: 1447✓/110✗, 0 regresiones de la sesión). Deudas
+                   CERRADAS esta sesión:
                    test_control_flow_pipeline (e0cbb35),
                    test_validation_loop_syn_exists (63c1731), TestRequisitosManuales
-                   (b1ac1c2). Ratificar D-R163-1,
+                   (b1ac1c2). H-R171-1 (M7 §7.3, 3ª víctima de 154a544) PENDIENTE de
+                   decisión. Ratificar D-R163-1,
                    H-CFG-2/H-R144-3/SIN_CITA Fase 32; 33.3 pendiente (desviaciones R149 §5)
 Últimos commits:    b1ac1c2 (docs(manual): restaurar M7 §6.3 textual + cola §4.2 — deuda TestRequisitosManuales CERRADA; autorización Opción A)
                     63c1731 (test(opensyn): aserción L217 al nombre vigente validar_con_check — deuda test_validation_loop_syn_exists CERRADA; autorización regla 5 Opción A)
@@ -210,6 +225,7 @@ Próximo paso:      Nueva fase del ROADMAP (requiere Arquitecto: el ROADMAP term
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
 |--------|-------------|---------|
+| R171 | Verificación suite integración COMPLETA (petición "verifica suit integracion"): 1596 tests → 1447✓/110✗/39skip (2:16:06) — 0 fallos en la zona OpenSyn de los 3 MEs; normalizado vs baseline R164 (+7✓/−10✗, mejora); 110 fallos clasificados (21 RED TDD declarado ME_27/29/30, ~8 YAML CI release, ~7 GCC entorno, 4 warps paridad_syn_syq — frontend .syq añade principal() al AST, sin relación con elif; 1 flaky loop_1M reconfirmado PASA aislado; 1 CWD pollution; 1 exe instalado stale). H-R171-1 NUEVO: test_permisos_cita_r6 exige `cumple Manual 7 §7.3` — §7.3 existía pre-154a544 (L870) y fue eliminada: 3ª víctima de la truncación v8.2.0; candidatas: restauración textual (patrón restauro_bucle_validacion) o re-anclaje del test — decisión del Arquitecto. Sin cambios de producción/tests (verificación pura); reporte docs/reportes/R171.md |
 | `b1ac1c2` | R170/ME restauro_bucle_validacion (cierre de la deuda TestRequisitosManuales, AUTORIZACIÓN del Arquitecto Opción A): la revisión de manuales v8.2.0 (154a544, 2026-09-13) había eliminado el capítulo 6 completo de MANUAL 7 y truncado §4.2 a media frase — el bucle de validación quedó a medias mudado (3 frases en M8 §5.1-§5.2, 2 sin hogar) con 3 referencias colgantes a la sección fantasma. Restauración TEXTUAL del estado pre-154a544: §6.3 completa (flujo 6 pasos + feedback humano + nota --check, con nota de procedencia) + pasos 9-11 de §4.2. TestRequisitosManuales 7/7 (antes 2/7); suites-guarda 67 passed 0 failed; índice regenerado (1311 oraciones, M7 §6.3 con 15 citables). Repara de golpe: 5 aserciones + 3 referencias + 5 comentarios de producción. Lecciones: el guarda anti-regresión de la spec FUNCIONÓ (detectó la degradación) pero nadie lo ejecutó desde el 13-09 — tras revisar manuales hay que correr los suites-guarda; dirección de la reparación según dónde viva la verdad: test→código (transpiler_elif, validation_loop_fix) vs manual→test (este ME) |
 | `63c1731` | R169/ME validation_loop_fix (cierre de la deuda test_validation_loop_syn_exists documentada en R168, AUTORIZACIÓN EXPLÍCITA del Arquitecto regla 5/Opción A): la aserción L217 de test_opensyn_integration.py esperaba `funcion validar_codigo_con_check` — nombre abandonado cuando 7824e5d/ME-4 (2026-09-12) renombró la función a `validar_con_check` sin actualizar el test (creado coherente en 65b505e sobre e8d148a). Fix mínimo: 1 aserción + comentario justificativo. Evidencia: ningún manual nombra ninguna de las dos funciones; el nombre viejo solo vive en esa aserción; todo el ecosistema vivo usa el nuevo (3 llamadas internas + suite ME-4 51/51). Oráculos release: test_opensyn_integration 18/18 + test_ai_correction 51/51. HALLAZGO NUEVO: TestRequisitosManuales de test_bucle_validacion.py (5 FAILED preexistentes, ajenos) — el test (2026-08-28) exige 5 cadenas del contenido de "M7 §6.3" que la revisión de manuales v8.2.0 (154a544, 2026-09-13) retiró del MANUAL 7 (arqueología git log -S "hasta 3 intentos"): deuda manual↔test BIDIRECCIONAL (los tests de manuales también verifican que el manual contenga lo exigido). M7 §6.3 reconfirmada inexistente. Lecciones: el patrón "test viejo vs código nuevo" se resuelve alineando el test cuando la verdad vive en el código y ningún manual defiende el estado viejo; tras una revisión de manuales hay que barrer los tests que afirman contenido textual del manual |
 | `e0cbb35` | R168/ME transpiler_elif (cierre de la deuda test_control_flow_pipeline de R166/R167): transpiler.py L51/L197 emitía el token `sino_si` — INEXISTENTE en la gramática (M2 §7.2: condicional_si solo define si/sino; alias T_SINO = sino/else/sinon/senao) — y el .syn generado no compilaba (4 errores; OBL-M7-03 "el .syq generado COMPILA" violado). Fix: emitir "sino si" (forma canónica, paridad con transpiler.syq L92 — el transpilador original). Origen arqueológico: R119 L60 "corrigió" la forma correcta a sino_si citando Manual 7 §5.1 — sección INEXISTENTE (M7 termina en §4; cita fantasma detectada hoy por el gate de secciones). Aserción test_opensyn_integration.py:120 corregida sino_si → "sino si" con AUTORIZACIÓN EXPLÍCITA del Arquitecto (regla 5): era la única que codificaba la desviación y contradecía a test_full_pipeline.py:230 (inmutable) — tests mutuamente incompatibles. Oráculos: test_control_flow_pipeline PASSED por PRIMERA VEZ + test_transpilar_condicional PASSED; regresión 87/1 con el fallo PREEXISTENTE y ajeno test_validation_loop_syn_exists (deuda NUEVA documentada). Gates: contrastar PASA (release), alineación 0 brechas (huella 152a82c2ad565065), MTO sin brechas, pre-commit verde. Lecciones: la cita debe ser oración INDEXADA (el prefijo "2. " de listas lo quita el indexador); el oraculo: del expediente es RUTA de archivo (no node ID); un comentario colecta UN `cumple Manual X §Y`; contrastar exige oráculo-archivo GREEN completo — el archivo de un test modificado no puede ser oráculo entero |
