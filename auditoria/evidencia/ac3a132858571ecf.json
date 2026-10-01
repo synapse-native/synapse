@@ -1,0 +1,16 @@
+{
+ "cambio_hash": "ac3a132858571ecf",
+ "expediente": "docs/alineacion/puente_for_en_syq.md",
+ "fecha": "2026-10-01",
+ "archivos": [
+  "compilador/generator/emit_expressions.py",
+  "compilador/puente_canonico.py",
+  "compilador/semantic_checker.py"
+ ],
+ "oraculos": {
+  "tests/syquex/test_result.py": true,
+  "tests/unit/test_puente_canonico.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

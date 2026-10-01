@@ -792,10 +792,14 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         if nombre == 'len':
             if args:
                 arg_tipo = tipo_de_expr(ctx, nodo.argumentos[0]) if nodo.argumentos else None
+                # cumple Manual 2 §4.3 (H-R153-2): cast al handle del runtime —
+                # paridad con la rama `longitud` (el prototipo es void* y la
+                # variable viaja como intptr_t; sin cast gcc falla con
+                # -Wint-conversion en el camino .syq).
                 if arg_tipo and arg_tipo.startswith('Lista'):
-                    return f"_syn_lista_longitud({args[0]})"
+                    return f"_syn_lista_longitud((void*)(intptr_t)({args[0]}))"
                 if arg_tipo and arg_tipo.startswith('Mapa'):
-                    return f"_syn_mapa_longitud({args[0]})"
+                    return f"_syn_mapa_longitud((void*)(intptr_t)({args[0]}))"
                 return f"({args[0]}).longitud"
             return "0"
 

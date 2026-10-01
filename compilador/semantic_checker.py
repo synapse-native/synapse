@@ -625,7 +625,12 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
             # — ligar la variable al TIPO ELEMENTO del iterable (H-R90-15c ya
             # reconoce Lista<T>/Mapa/texto como iterables válidos).
             if getattr(nodo, 'variable', None):
-                tipo_iterable = self._inferir_tipo(nodo.condicion) or ''
+                # cumple Manual 3 §3 (H-R153-1): el iterable viaja en `iterable`
+                # (campo canonico) o en `condicion` (convencion del parser S1);
+                # el puente canonico produce `iterable` — mirar AMBOS para
+                # paridad de caminos .syn/.syq.
+                expr_iter = getattr(nodo, 'iterable', None) or nodo.condicion
+                tipo_iterable = self._inferir_tipo(expr_iter) or ''
                 tipo_elem = _tipo_elemento_iterable(tipo_iterable)
                 self.tabla.declarar(nodo.variable, tipo_elem, nodo, linea=nodo.linea, columna=nodo.columna)
                 for s in nodo.cuerpo:

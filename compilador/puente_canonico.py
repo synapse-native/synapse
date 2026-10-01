@@ -18,7 +18,7 @@
 # PuenteError con el id y el nombre canónico (fail-fast, sin
 # pérdida silenciosa):  LISTA_LIT(55),  MAPA_LIT(56) — backend
 # Fase 24. INTENTO(54) → SentenciaRecuperar (Manual 6 §1.3 L111);
-# PARA_EN(57) → SentenciaMientras (Manual 3 §3 L133).
+# PARA_EN(57) → SentenciaPara (Manual 3 §3 L133).
 # ============================================================
 
 
@@ -69,7 +69,8 @@ NOMBRE_NODO = {
 # - PENDIENTE_BACKEND: feature futura del roadmap
 # cumple Manual 3 §11.1: todos los NODO_* estan categorizados (sin nodo sin categoria)
 # cumple Manual 6 §5.1: NODO_INTENTO(54) se traduce al AST tipado S1 (SentenciaRecuperar).
-# cumple Manual 2 §12: NODO_PARA_EN(57) se desugarea a SentenciaMientras.
+# cumple Manual 3 §3 (H-R153-1): NODO_PARA_EN(57) se traduce al AST tipado
+# S1 (SentenciaPara, nodo canonico del bucle_para_rango).
 NO_SOPORTADOS = {
     55: "LISTA_LIT (backend Fase 24 lib/lista)",
     56: "MAPA_LIT (backend Fase 24 lib/mapa)",
@@ -600,37 +601,24 @@ class _Puente:
         var_loop = self.txt(izq)
         iterable = self._nodo(der)
         cuerpo = self.cadena(self._desbloque(extra)) if extra > 0 else []
-        idx_var = "_paraind"
-        if isinstance(iterable, Identificador):
-            iterable_name = iterable.nombre
-            condicion = OpBinaria(
-                izquierdo=Identificador(idx_var),
-                operador="<",
-                derecho=LlamadaFuncion(
-                    nombre="len", argumentos=[Identificador(iterable_name)]))
-            elem = ExprIndice(
-                expr=Identificador(iterable_name),
-                indice=Identificador(idx_var))
-        else:
+        if not isinstance(iterable, Identificador):
             raise PuenteError(
                 f"para..en: iterable '{var_loop}' debe ser un identificador")
-        cuerpo_loop = ([DeclaracionVariable(
-                           nombre=var_loop, tipo="", expresion=elem)]
-                       + cuerpo
-                       + [AsignacionVariable(
-                           nombre=idx_var,
-                           expresion=OpBinaria(
-                               izquierdo=Identificador(idx_var),
-                               operador="+",
-                               derecho=LiteralNumero(1)))])
-        result = SentenciaMientras(
-            condicion=condicion,
-            cuerpo=[DeclaracionVariable(
-                        nombre=idx_var, tipo="", expresion=LiteralNumero(0))]
-                     + cuerpo_loop)
-        result.linea = lin
-        result.columna = col
-        return result
+        # cumple Manual 3 §3 (H-R153-1): bucle_para_rango — el puente produce
+        # el nodo canonico SentenciaPara(variable, iterable) que el emisor S1
+        # ya procesa (paridad de caminos .syn/.syq); ANTES se desugareaba a
+        # SentenciaMientras con _paraind declarado en el cuerpo pero usado en
+        # la condicion (evaluada antes de declarar la variable) → errores
+        # espurios de semantica S1 (Variable '' no declarada) y falsos RED en
+        # tests de Result (test_operador_propagacion).
+        nodo_para = SentenciaPara(
+            variable=var_loop,
+            iterable=iterable,
+            cuerpo=cuerpo,
+        )
+        nodo_para.linea = lin
+        nodo_para.columna = col
+        return nodo_para
 
     def cadena_ids(self, idx: int):
         out = []
