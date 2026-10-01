@@ -5515,7 +5515,7 @@
   },
   "7": {
    "archivo": "docs/manuales/MANUAL 7.md",
-   "sha256": "8506c265a596dc8e",
+   "sha256": "dc644c8f237539a7",
    "secciones": [
     {
      "num": "1",
@@ -6482,6 +6482,33 @@
        "id": "06c0b97212",
        "linea": 664,
        "texto": "**Nota de implementación:** El flag `--check` debe ser añadido al CLI de Synapse (Fase 27 del roadmap) para permitir esta validación sin generar archivos `.o` o `.exe`, agilizando el proceso."
+      }
+     ]
+    },
+    {
+     "num": "7.3",
+     "titulo": "Pruebas de Privacidad y Seguridad",
+     "linea": 666,
+     "oraciones": [
+      {
+       "id": "bd4056f240",
+       "linea": 668,
+       "texto": "**Nota de restauración (2026-10-01):** Sección restaurada textualmente por decisión del Arquitecto (Opción A, cierre de H-R171-1) tras su eliminación involuntaria en la revisión de manuales v8.2.0 (commit 154a544); con ella, la cita `cumple Manual 7 §7.3` del oráculo R6 (tests/integration/test_permisos_opensyn.py, TestCitasCumpleManual::test_permisos_cita_r6) vuelve a resolver contra una sección real — tercera víctima de la truncación v8.2.0 en repararse (tras §5.1/R119 y §6.3/restauro_bucle_validacion)."
+      },
+      {
+       "id": "a453aeea19",
+       "linea": 670,
+       "texto": "**Cero telemetría:** Verificado con monitoreo de red (sin conexiones salientes)."
+      },
+      {
+       "id": "d4ff176f3d",
+       "linea": 671,
+       "texto": "**Modelos firmados:** Todos los modelos descargados se verifican con SHA‑256."
+      },
+      {
+       "id": "162065a51f",
+       "linea": 672,
+       "texto": "**Sandboxing:** El servidor de inferencia se ejecuta con permisos mínimos."
       }
      ]
     }

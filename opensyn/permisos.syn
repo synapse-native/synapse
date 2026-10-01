@@ -1,5 +1,6 @@
 #lang: es
 // opensyn/permisos.syn — Matriz de permisos + sandbox (M7 §7.3)
+// cumple Manual 7 §7.3: "Sandboxing: El servidor de inferencia se ejecuta con permisos mínimos"
 // cumple Manual 7 §1.1: sandboxing local — los TOOLS del agente solo acceden al workspace, sin red externa
 // cumple Manual 7 §1.1: "Cero telemetría: No envía datos a ningún servidor externo."
 

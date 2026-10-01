@@ -662,3 +662,11 @@ Dado que OpenSyn no es perfecto y puede generar código con errores sintácticos
 - Este archivo se utiliza para mejorar los ejemplos en el contexto estático (sección 2.3) en futuras versiones del instalador o mediante re‑entrenamiento opcional.
 
 **Nota de implementación:** El flag `--check` debe ser añadido al CLI de Synapse (Fase 27 del roadmap) para permitir esta validación sin generar archivos `.o` o `.exe`, agilizando el proceso.
+
+### 7.3. Pruebas de Privacidad y Seguridad
+
+**Nota de restauración (2026-10-01):** Sección restaurada textualmente por decisión del Arquitecto (Opción A, cierre de H-R171-1) tras su eliminación involuntaria en la revisión de manuales v8.2.0 (commit 154a544); con ella, la cita `cumple Manual 7 §7.3` del oráculo R6 (tests/integration/test_permisos_opensyn.py, TestCitasCumpleManual::test_permisos_cita_r6) vuelve a resolver contra una sección real — tercera víctima de la truncación v8.2.0 en repararse (tras §5.1/R119 y §6.3/restauro_bucle_validacion).
+
+- **Cero telemetría:** Verificado con monitoreo de red (sin conexiones salientes).
+- **Modelos firmados:** Todos los modelos descargados se verifican con SHA‑256.
+- **Sandboxing:** El servidor de inferencia se ejecuta con permisos mínimos.

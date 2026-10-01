@@ -22,7 +22,7 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "opensyn/installer.syn": ["Manual 7 §2.5", "Manual 9 §5.2", "Manual 9 §5.3", "Manual 9 §5.4"],
   "opensyn/chat.syn": ["Manual 7 §6.4"],
   "opensyn/validation_loop.syn": ["Manual 7 §6.3"],
-  "opensyn/permisos.syn": ["Manual 7 §1.1"],
+  "opensyn/permisos.syn": ["Manual 7 §1.1", "Manual 7 §7.3"],
   "opensyn/generate_runtime_bindings.py": ["Manual 6 §3.1"],
   "opensyn/run_manager.syn": ["Manual 7 §4.3"],
   "opensyn/planificador.syn": ["Manual 7 §2.1"],
