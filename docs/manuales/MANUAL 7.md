@@ -640,6 +640,14 @@ El LSP es el responsable de orquestar el bucle de validación (descrito en la se
 10. **Si falla:** El LSP captura el error (stderr del compilador) y repite el proceso (hasta 3 intentos), añadiendo el error al prompt para que OpenSyn lo corrija.
 11. **Fallo definitivo:** Si después de 3 intentos el código no compila, el LSP devuelve el último código generado y los errores al editor, mostrando un mensaje de "No se pudo generar código válido automáticamente. Intenta ajustar la instrucción."
 
+### 4.3. Manejo de Errores y Timeouts
+
+**Nota de restauración (2026-10-01):** Sección restaurada textualmente por decisión del Arquitecto (Opción A, ME barrido_citas_v820) tras su eliminación involuntaria en la revisión de manuales v8.2.0 (commit 154a544); con ella, las citas `cumple Manual 7 §4.3` de run_manager.syn y router.syn vuelven a resolver contra una sección real.
+
+- Si el servidor de inferencia no responde en 30 segundos, el LSP devuelve un error al usuario.
+- Si el modelo no está cargado, el LSP devuelve un mensaje indicando que debe descargarse.
+- Si el código generado es inválido y se agotan los intentos, el LSP muestra un mensaje y ofrece regenerar (o pedir ayuda al usuario).
+
 ### 6.3. Bucle de Corrección Automática (3 Intentos)
 
 **Nota de restauración (2026-09-30):** Sección restaurada textualmente por decisión del Arquitecto (Opción A, ME validation_loop_fix) tras su eliminación involuntaria en la revisión de manuales v8.2.0 (commit 154a544); con ella, las referencias internas (secciones 1 y 4.2 de este manual) y la del Manual 8 (§5.1) vuelven a resolver.
@@ -670,3 +678,118 @@ Dado que OpenSyn no es perfecto y puede generar código con errores sintácticos
 - **Cero telemetría:** Verificado con monitoreo de red (sin conexiones salientes).
 - **Modelos firmados:** Todos los modelos descargados se verifican con SHA‑256.
 - **Sandboxing:** El servidor de inferencia se ejecuta con permisos mínimos.
+
+### 6.1. Instalación de un solo clic
+
+**Nota de restauración (2026-10-01):** Sección restaurada textualmente por decisión del Arquitecto (Opción A, ME barrido_citas_v820) tras su eliminación involuntaria en la revisión de manuales v8.2.0 (commit 154a544); con ella, las citas al capítulo 6 (`cumple Manual 7 §6`) de chat.syn y ai_orchestrator.h se re-anclan a esta subsección real.
+
+El instalador de OpenSyn es parte del instalador unificado del ecosistema (Manual 9). Pasos:
+
+1. El usuario descarga el instalador desde GitHub Releases.
+2. Ejecuta el instalador (en Windows, Linux o macOS).
+3. El instalador pregunta: "¿Instalar solo Synapse o Synapse + OpenSyn?".
+4. Si elige OpenSyn, se ejecuta `opensyn/installer.syn` que:
+   - Detecta hardware.
+   - Selecciona y descarga el modelo apropiado.
+   - Configura el servidor de inferencia.
+   - Instala la extensión VS Code (opcional).
+5. Al finalizar, se ejecuta una prueba de humo.
+
+### 6.2. Archivo de Configuración (`~/.opensyn/config.toml`)
+
+**Nota de restauración (2026-10-01):** Sección restaurada textualmente por decisión del Arquitecto (Opción A, ME barrido_citas_v820) tras su eliminación involuntaria en la revisión de manuales v8.2.0 (commit 154a544); con ella, la selección de modelo (`[modelo]` nombre/ruta) vuelve a tener hogar normativo.
+
+```toml
+[general]
+idioma = "es"
+editor = "vscode"
+
+[modelo]
+nombre = "codellama-7b-Q4_K_M"
+ruta = "~/.opensyn/models/codellama-7b-Q4_K_M.gguf"
+n_ctx = 4096
+n_threads = 8
+n_gpu_layers = 30
+
+[server]
+puerto = 8088
+host = "127.0.0.1"
+timeout = 30
+
+[rag]
+contexto_lineas = 5
+max_prompt_tokens = 1200
+
+[generacion]
+temperature = 0.3
+max_tokens = 2048
+```
+
+### 6.4. Comandos CLI de OpenSyn
+
+**Nota de restauración (2026-10-01):** Sección restaurada textualmente por decisión del Arquitecto (Opción A, ME barrido_citas_v820) tras su eliminación involuntaria en la revisión de manuales v8.2.0 (commit 154a544); con ella, la cita `cumple Manual 7 §6.4` de router.syn vuelve a resolver contra una sección real.
+
+| Comando | Descripción |
+|---------|-------------|
+| `opensyn status` | Muestra el estado de OpenSyn (modelo cargado, uso de VRAM). |
+| `opensyn download <modelo>` | Descarga un modelo específico. |
+| `opensyn finetune --dataset dataset.jsonl` | Fine‑tuna el modelo actual con un dataset. |
+| `opensyn bindings --header header.h` | Genera bindings Syquex desde una cabecera C. |
+| `opensyn transpile --from python script.py` | Transpila Python a Syquex. |
+
+### 7.2. Pruebas de Rendimiento
+
+**Nota de restauración (2026-10-01):** Sección restaurada textualmente por decisión del Arquitecto (Opción A, ME barrido_citas_v820) tras su eliminación involuntaria en la revisión de manuales v8.2.0 (commit 154a544); con ella, las citas `cumple Manual 7 §7.2` de planificador.syn y router.syn vuelven a resolver contra una sección real.
+
+- **Latencia de inferencia:** < 1s para prompts cortos (modelo 7B en GPU).
+- **Throughput:** > 100 tokens/s en GPU.
+- **Uso de VRAM:** < 6 GB para modelo 7B Q4_K_M.
+- **Tiempo de instalación:** < 10 minutos (incluyendo descarga).
+
+### 8. EJEMPLO COMPLETO DE FLUJO DE IA (CON VALIDACIÓN)
+
+**Nota de restauración (2026-10-01):** Sección restaurada textualmente por decisión del Arquitecto (Opción A, ME barrido_citas_v820) tras su eliminación involuntaria en la revisión de manuales v8.2.0 (commit 154a544); con ella, las citas `cumple Manual 7 §8` de validation_loop.syn, chat.syn y el runtime (modelo.c, ollama.c, tui.c) vuelven a resolver contra una sección real.
+
+**Escenario:** El usuario está escribiendo una función en Syquex y pide que se complete una función de suma.
+
+**Código actual (`main.syq`):**
+```syquex
+funcion sumar
+```
+
+**Acción:** El usuario ejecuta "Synapse: Generar código con IA" (solicita `aiComplete`).
+
+**Flujo:**
+
+1. El LSP envía una petición `synapse/aiComplete` con el contexto (el fragmento `funcion sumar`).
+2. El pipeline RAG construye el prompt con:
+   - System Prompt: las reglas de Synapse/Syquex (sección 2.3).
+   - Contexto: el fragmento de código.
+   - Instrucción: "Completa la función sumar en Syquex."
+3. OpenSyn genera el código (intento 1):
+   ```syquex
+   funcion sumar(a: int, b: int) -> int:
+       retornar a + b
+   ```
+4. El LSP valida con `synapse check --no-emit` (compila correctamente).
+5. El LSP muestra el código al usuario.
+
+**Segundo escenario:** El usuario pide una función más compleja y la IA genera código con un error.
+
+**Código generado (intento 1):**
+```syquex
+funcion dividir(a: int, b: int) -> int:
+    retornar a / b
+```
+**Validación:** El compilador falla porque no hay verificación de división por cero (error de tipo o contrato). El error: `ERR_SEM_TIPO_INCOMPATIBLE` o similar.
+
+**Acción del LSP:** Captura el error, construye un nuevo prompt: *"El código anterior tiene el siguiente error: 'División por cero no manejada'. Por favor, corrígelo."* y envía a OpenSyn (intento 2).
+
+**Código generado (intento 2):**
+```syquex
+funcion dividir(a: int, b: int) -> Resultado<int, texto>:
+    si b == 0:
+        retornar err("División por cero")
+    retornar ok(a / b)
+```
+**Validación:** Compila correctamente. El LSP muestra el código.

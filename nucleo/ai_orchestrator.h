@@ -143,7 +143,7 @@ int ai_orch_enviar_skill_prompt(AIOrchestrator* orch, const char* prompt_base, c
 // output_buf: buffer para el resultado
 // output_buf_size: tamaño del buffer
 // Retorna 0 en éxito, -1 en error
-// cumple Manual 7 §6: integracion de agent-skills con runtime nativo
+// cumple Manual 7 §2.1: integracion de agent-skills con el orquestador del modelo local
 int ai_orch_skill_modelo_local(const char* skill_prompt, const char* query,
                                 const char* model_path,
                                 char* output_buf, size_t output_buf_size);

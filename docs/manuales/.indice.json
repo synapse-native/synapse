@@ -5515,7 +5515,7 @@
   },
   "7": {
    "archivo": "docs/manuales/MANUAL 7.md",
-   "sha256": "dc644c8f237539a7",
+   "sha256": "18e98487f5c3481c",
    "secciones": [
     {
      "num": "1",
@@ -6404,83 +6404,110 @@
      ]
     },
     {
-     "num": "6.3",
-     "titulo": "Bucle de Corrección Automática (3 Intentos)",
+     "num": "4.3",
+     "titulo": "Manejo de Errores y Timeouts",
      "linea": 643,
      "oraciones": [
       {
-       "id": "69623e17a1",
+       "id": "d9d1a603be",
        "linea": 645,
+       "texto": "**Nota de restauración (2026-10-01):** Sección restaurada textualmente por decisión del Arquitecto (Opción A, ME barrido_citas_v820) tras su eliminación involuntaria en la revisión de manuales v8.2.0 (commit 154a544); con ella, las citas `cumple Manual 7 §4.3` de run_manager.syn y router.syn vuelven a resolver contra una sección real."
+      },
+      {
+       "id": "9148aa89f1",
+       "linea": 647,
+       "texto": "Si el servidor de inferencia no responde en 30 segundos, el LSP devuelve un error al usuario."
+      },
+      {
+       "id": "47222ce8eb",
+       "linea": 648,
+       "texto": "Si el modelo no está cargado, el LSP devuelve un mensaje indicando que debe descargarse."
+      },
+      {
+       "id": "7af50a7a02",
+       "linea": 649,
+       "texto": "Si el código generado es inválido y se agotan los intentos, el LSP muestra un mensaje y ofrece regenerar (o pedir ayuda al usuario)."
+      }
+     ]
+    },
+    {
+     "num": "6.3",
+     "titulo": "Bucle de Corrección Automática (3 Intentos)",
+     "linea": 651,
+     "oraciones": [
+      {
+       "id": "69623e17a1",
+       "linea": 653,
        "texto": "**Nota de restauración (2026-09-30):** Sección restaurada textualmente por decisión del Arquitecto (Opción A, ME validation_loop_fix) tras su eliminación involuntaria en la revisión de manuales v8.2.0 (commit 154a544); con ella, las referencias internas (secciones 1 y 4.2 de este manual) y la del Manual 8 (§5.1) vuelven a resolver."
       },
       {
        "id": "a6b7b676da",
-       "linea": 647,
+       "linea": 655,
        "texto": "Dado que OpenSyn no es perfecto y puede generar código con errores sintácticos o semánticos, se implementa un **bucle de validación y corrección automática** orquestado por el LSP (ver sección 4.2)."
       },
       {
        "id": "cdaa12c836",
-       "linea": 647,
+       "linea": 655,
        "texto": "Este bucle asegura que el código generado cumpla con las reglas del compilador."
       },
       {
        "id": "d2e3577f50",
-       "linea": 651,
+       "linea": 659,
        "texto": "**Generación inicial (intento 1):** OpenSyn genera código basado en la instrucción y el contexto."
       },
       {
        "id": "8f9ba18390",
-       "linea": 652,
+       "linea": 660,
        "texto": "**Validación:** El LSP pasa el código al compilador de Synapse/Syquex en modo `--check` (solo validación, sin generar binario). Este modo es activado con el flag `--no-emit` (o similar) que debe estar implementado en el CLI de Synapse."
       },
       {
        "id": "7a7f311e59",
-       "linea": 653,
+       "linea": 661,
        "texto": "**Si compila:** Se muestra al usuario. Fin del proceso."
       },
       {
        "id": "c9328495b5",
-       "linea": 654,
+       "linea": 662,
        "texto": "**Si falla:** El compilador devuelve el error exacto (línea, columna, mensaje) a través de su salida de error estándar. El LSP:"
       },
       {
        "id": "4546397d7a",
-       "linea": 655,
+       "linea": 663,
        "texto": "Construye un nuevo prompt añadiendo: *\"El código anterior tiene el siguiente error: {mensaje_error}. Por favor, corrígelo.\"*"
       },
       {
        "id": "de406f0b2d",
-       "linea": 656,
+       "linea": 664,
        "texto": "Reenvía el prompt a OpenSyn (intento 2)."
       },
       {
        "id": "f10cd9c426",
-       "linea": 657,
+       "linea": 665,
        "texto": "**Repetición:** Se repiten los pasos 2 y 3 para el intento 2. Si vuelve a fallar, se hace un intento 3."
       },
       {
        "id": "e3c67952ce",
-       "linea": 658,
+       "linea": 666,
        "texto": "**Fallo definitivo:** Si el tercer intento falla, el LSP muestra el último código generado y los errores al usuario, con un mensaje: *\"No se pudo generar código válido automáticamente. Intenta ajustar la instrucción o corrige manualmente.\"*"
       },
       {
        "id": "023cbc9331",
-       "linea": 660,
+       "linea": 668,
        "texto": "**Mecanismo de Feedback Humano:**"
       },
       {
        "id": "e1250001b0",
-       "linea": 661,
+       "linea": 669,
        "texto": "Cuando el usuario corrige el código manualmente (después de un fallo), OpenSyn guarda el par `(instrucción, código_corregido)` en `~/.opensyn/feedback.jsonl`."
       },
       {
        "id": "5e8a2bde5e",
-       "linea": 662,
+       "linea": 670,
        "texto": "Este archivo se utiliza para mejorar los ejemplos en el contexto estático (sección 2.3) en futuras versiones del instalador o mediante re‑entrenamiento opcional."
       },
       {
        "id": "06c0b97212",
-       "linea": 664,
+       "linea": 672,
        "texto": "**Nota de implementación:** El flag `--check` debe ser añadido al CLI de Synapse (Fase 27 del roadmap) para permitir esta validación sin generar archivos `.o` o `.exe`, agilizando el proceso."
       }
      ]
@@ -6488,27 +6515,287 @@
     {
      "num": "7.3",
      "titulo": "Pruebas de Privacidad y Seguridad",
-     "linea": 666,
+     "linea": 674,
      "oraciones": [
       {
        "id": "bd4056f240",
-       "linea": 668,
+       "linea": 676,
        "texto": "**Nota de restauración (2026-10-01):** Sección restaurada textualmente por decisión del Arquitecto (Opción A, cierre de H-R171-1) tras su eliminación involuntaria en la revisión de manuales v8.2.0 (commit 154a544); con ella, la cita `cumple Manual 7 §7.3` del oráculo R6 (tests/integration/test_permisos_opensyn.py, TestCitasCumpleManual::test_permisos_cita_r6) vuelve a resolver contra una sección real — tercera víctima de la truncación v8.2.0 en repararse (tras §5.1/R119 y §6.3/restauro_bucle_validacion)."
       },
       {
        "id": "a453aeea19",
-       "linea": 670,
+       "linea": 678,
        "texto": "**Cero telemetría:** Verificado con monitoreo de red (sin conexiones salientes)."
       },
       {
        "id": "d4ff176f3d",
-       "linea": 671,
+       "linea": 679,
        "texto": "**Modelos firmados:** Todos los modelos descargados se verifican con SHA‑256."
       },
       {
        "id": "162065a51f",
-       "linea": 672,
+       "linea": 680,
        "texto": "**Sandboxing:** El servidor de inferencia se ejecuta con permisos mínimos."
+      }
+     ]
+    },
+    {
+     "num": "6.1",
+     "titulo": "Instalación de un solo clic",
+     "linea": 682,
+     "oraciones": [
+      {
+       "id": "ae07efd73a",
+       "linea": 684,
+       "texto": "**Nota de restauración (2026-10-01):** Sección restaurada textualmente por decisión del Arquitecto (Opción A, ME barrido_citas_v820) tras su eliminación involuntaria en la revisión de manuales v8.2.0 (commit 154a544); con ella, las citas al capítulo 6 (`cumple Manual 7 §6`) de chat.syn y ai_orchestrator.h se re-anclan a esta subsección real."
+      },
+      {
+       "id": "3f9faa9257",
+       "linea": 686,
+       "texto": "El instalador de OpenSyn es parte del instalador unificado del ecosistema (Manual 9)."
+      },
+      {
+       "id": "32631edea6",
+       "linea": 688,
+       "texto": "El usuario descarga el instalador desde GitHub Releases."
+      },
+      {
+       "id": "6c3435af0e",
+       "linea": 689,
+       "texto": "Ejecuta el instalador (en Windows, Linux o macOS)."
+      },
+      {
+       "id": "686927fdab",
+       "linea": 690,
+       "texto": "El instalador pregunta: \"¿Instalar solo Synapse o Synapse + OpenSyn?\"."
+      },
+      {
+       "id": "602b05980d",
+       "linea": 691,
+       "texto": "Si elige OpenSyn, se ejecuta `opensyn/installer.syn` que:"
+      },
+      {
+       "id": "7784620116",
+       "linea": 693,
+       "texto": "Selecciona y descarga el modelo apropiado."
+      },
+      {
+       "id": "ddcd814eb6",
+       "linea": 694,
+       "texto": "Configura el servidor de inferencia."
+      },
+      {
+       "id": "bf0e4509f7",
+       "linea": 695,
+       "texto": "Instala la extensión VS Code (opcional)."
+      },
+      {
+       "id": "a5e8104ccb",
+       "linea": 696,
+       "texto": "Al finalizar, se ejecuta una prueba de humo."
+      }
+     ]
+    },
+    {
+     "num": "6.2",
+     "titulo": "Archivo de Configuración (`~/.opensyn/config.toml`)",
+     "linea": 698,
+     "oraciones": [
+      {
+       "id": "f8c7151b30",
+       "linea": 700,
+       "texto": "**Nota de restauración (2026-10-01):** Sección restaurada textualmente por decisión del Arquitecto (Opción A, ME barrido_citas_v820) tras su eliminación involuntaria en la revisión de manuales v8.2.0 (commit 154a544); con ella, la selección de modelo (`[modelo]` nombre/ruta) vuelve a tener hogar normativo."
+      }
+     ]
+    },
+    {
+     "num": "6.4",
+     "titulo": "Comandos CLI de OpenSyn",
+     "linea": 728,
+     "oraciones": [
+      {
+       "id": "57030ff1fc",
+       "linea": 730,
+       "texto": "**Nota de restauración (2026-10-01):** Sección restaurada textualmente por decisión del Arquitecto (Opción A, ME barrido_citas_v820) tras su eliminación involuntaria en la revisión de manuales v8.2.0 (commit 154a544); con ella, la cita `cumple Manual 7 §6.4` de router.syn vuelve a resolver contra una sección real."
+      },
+      {
+       "id": "d2e72d6f7f",
+       "linea": 732,
+       "texto": "| Comando | Descripción |"
+      },
+      {
+       "id": "bee1d731a1",
+       "linea": 733,
+       "texto": "|---------|-------------|"
+      },
+      {
+       "id": "4e35c58a34",
+       "linea": 734,
+       "texto": "| `opensyn status` | Muestra el estado de OpenSyn (modelo cargado, uso de VRAM). |"
+      },
+      {
+       "id": "8c1a6bbc0b",
+       "linea": 735,
+       "texto": "| `opensyn download <modelo>` | Descarga un modelo específico. |"
+      },
+      {
+       "id": "a21b332b5c",
+       "linea": 736,
+       "texto": "| `opensyn finetune --dataset dataset.jsonl` | Fine‑tuna el modelo actual con un dataset. |"
+      },
+      {
+       "id": "f59e796904",
+       "linea": 737,
+       "texto": "| `opensyn bindings --header header.h` | Genera bindings Syquex desde una cabecera C. |"
+      },
+      {
+       "id": "72ee22d611",
+       "linea": 738,
+       "texto": "| `opensyn transpile --from python script.py` | Transpila Python a Syquex. |"
+      }
+     ]
+    },
+    {
+     "num": "7.2",
+     "titulo": "Pruebas de Rendimiento",
+     "linea": 740,
+     "oraciones": [
+      {
+       "id": "5fbf214324",
+       "linea": 742,
+       "texto": "**Nota de restauración (2026-10-01):** Sección restaurada textualmente por decisión del Arquitecto (Opción A, ME barrido_citas_v820) tras su eliminación involuntaria en la revisión de manuales v8.2.0 (commit 154a544); con ella, las citas `cumple Manual 7 §7.2` de planificador.syn y router.syn vuelven a resolver contra una sección real."
+      },
+      {
+       "id": "7cc8e3bbda",
+       "linea": 744,
+       "texto": "**Latencia de inferencia:** < 1s para prompts cortos (modelo 7B en GPU)."
+      },
+      {
+       "id": "910413e8fd",
+       "linea": 745,
+       "texto": "**Throughput:** > 100 tokens/s en GPU."
+      },
+      {
+       "id": "34210ef209",
+       "linea": 746,
+       "texto": "**Uso de VRAM:** < 6 GB para modelo 7B Q4_K_M."
+      },
+      {
+       "id": "44680e9088",
+       "linea": 747,
+       "texto": "**Tiempo de instalación:** < 10 minutos (incluyendo descarga)."
+      }
+     ]
+    },
+    {
+     "num": "8",
+     "titulo": "EJEMPLO COMPLETO DE FLUJO DE IA (CON VALIDACIÓN)",
+     "linea": 749,
+     "oraciones": [
+      {
+       "id": "9b126a2a20",
+       "linea": 751,
+       "texto": "**Nota de restauración (2026-10-01):** Sección restaurada textualmente por decisión del Arquitecto (Opción A, ME barrido_citas_v820) tras su eliminación involuntaria en la revisión de manuales v8.2.0 (commit 154a544); con ella, las citas `cumple Manual 7 §8` de validation_loop.syn, chat.syn y el runtime (modelo.c, ollama.c, tui.c) vuelven a resolver contra una sección real."
+      },
+      {
+       "id": "ca16aece62",
+       "linea": 753,
+       "texto": "**Escenario:** El usuario está escribiendo una función en Syquex y pide que se complete una función de suma."
+      },
+      {
+       "id": "f21e7d144c",
+       "linea": 755,
+       "texto": "**Código actual (`main.syq`):**"
+      },
+      {
+       "id": "6270596310",
+       "linea": 760,
+       "texto": "**Acción:** El usuario ejecuta \"Synapse: Generar código con IA\" (solicita `aiComplete`)."
+      },
+      {
+       "id": "60e8c544e9",
+       "linea": 764,
+       "texto": "El LSP envía una petición `synapse/aiComplete` con el contexto (el fragmento `funcion sumar`)."
+      },
+      {
+       "id": "d351377efe",
+       "linea": 765,
+       "texto": "El pipeline RAG construye el prompt con:"
+      },
+      {
+       "id": "6c709751c1",
+       "linea": 766,
+       "texto": "System Prompt: las reglas de Synapse/Syquex (sección 2.3)."
+      },
+      {
+       "id": "d689e49869",
+       "linea": 767,
+       "texto": "Contexto: el fragmento de código."
+      },
+      {
+       "id": "0d0c379cb7",
+       "linea": 768,
+       "texto": "Instrucción: \"Completa la función sumar en Syquex.\""
+      },
+      {
+       "id": "d5909422e7",
+       "linea": 769,
+       "texto": "OpenSyn genera el código (intento 1):"
+      },
+      {
+       "id": "1a97ee962b",
+       "linea": 774,
+       "texto": "El LSP valida con `synapse check --no-emit` (compila correctamente)."
+      },
+      {
+       "id": "7b705af467",
+       "linea": 775,
+       "texto": "El LSP muestra el código al usuario."
+      },
+      {
+       "id": "1678a1caa1",
+       "linea": 777,
+       "texto": "**Segundo escenario:** El usuario pide una función más compleja y la IA genera código con un error."
+      },
+      {
+       "id": "4469a7b30a",
+       "linea": 779,
+       "texto": "**Código generado (intento 1):**"
+      },
+      {
+       "id": "d7a5470225",
+       "linea": 784,
+       "texto": "**Validación:** El compilador falla porque no hay verificación de división por cero (error de tipo o contrato)."
+      },
+      {
+       "id": "378b8309ec",
+       "linea": 784,
+       "texto": "El error: `ERR_SEM_TIPO_INCOMPATIBLE` o similar."
+      },
+      {
+       "id": "4f82022115",
+       "linea": 786,
+       "texto": "**Acción del LSP:** Captura el error, construye un nuevo prompt: *\"El código anterior tiene el siguiente error: 'División por cero no manejada'."
+      },
+      {
+       "id": "64446ed660",
+       "linea": 786,
+       "texto": "Por favor, corrígelo.\"* y envía a OpenSyn (intento 2)."
+      },
+      {
+       "id": "eab64fa980",
+       "linea": 788,
+       "texto": "**Código generado (intento 2):**"
+      },
+      {
+       "id": "4f31beedb3",
+       "linea": 795,
+       "texto": "**Validación:** Compila correctamente."
+      },
+      {
+       "id": "3c2155f50c",
+       "linea": 795,
+       "texto": "El LSP muestra el código."
       }
      ]
     }

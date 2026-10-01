@@ -1,6 +1,6 @@
 #lang: es
 // opensyn/chat.syn — Agente IA conversacional (Manual 7 §6)
-// cumple Manual 7 §6: Instalacion y configuracion de OpenSyn
+// cumple Manual 7 §6.2: Instalacion y configuracion de OpenSyn (config.toml)
 // cumple Manual 7 §8: Ejemplo completo de flujo de IA
 // Funciona como agente local equivalente a OpenCode/Kilo
 
@@ -51,7 +51,7 @@ funcion loop_chat(modelo: texto, args: lista_texto):
         respuesta = oraculo_consultar(prompt, contexto, modelo)
         escribir_linea(respuesta)
 
-// cumple Manual 7 §6: punto de entrada con deteccion de modelo
+// cumple Manual 7 §6.2: punto de entrada con deteccion de modelo (config.toml [modelo])
 funcion main_chat(args: lista_texto):
     modelo = "llama-3.2-1b-instruct.Q4_K_M.gguf"
     si args.tamano > 0:
