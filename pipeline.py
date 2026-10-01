@@ -602,21 +602,15 @@ def compilar_desde_syq(ruta_syq: str) -> Programa:
     """
     from compilador.puente_canonico import plano_a_programa
     exe = _asegurar_frontend_syquex()
-    # H-R90-8b: el runtime S1 filtra funciones locales definidas cuando el .syq
-    # no contiene `principal` (nucleo/principal.syn:709). Inyectar un `principal`
-    # en el source ANTES del runtime S1 preserva todas las definiciones locales
-    # (Manual 1 §3.1: entry point void).
-    with open(ruta_syq, "r", encoding="utf-8", errors="replace") as f:
-        fuente = f.read()
-    ruta_real = ruta_syq
-    tiene_principal = "funcion principal" in fuente
-    if not tiene_principal:
-        import tempfile
-        tmpdir = tempfile.mkdtemp(prefix="synapse_s1_")
-        ruta_real = os.path.join(tmpdir, "_s1_main_stub.syq")
-        with open(ruta_real, "w", encoding="utf-8") as f:
-            f.write(fuente.rstrip() + "\n\nfuncion principal() -> nulo:\n    retornar\n")
-    res = subprocess.run([exe, ruta_real], capture_output=True, text=True,
+    # H-R90-8b RETIRADO (ME paridad_principal_syq) — cumple Manual 1 §3.1:
+    # la inyección de un stub `funcion principal()` en el source contaminaba
+    # el AST canónico con una DefinicionFuncion que el .syn equivalente NO
+    # tiene → paridad estructural ROADMAP F22 imposible (mismo AST canónico
+    # para fuentes equivalentes). El frontend Syquex actual SÍ preserva las
+    # funciones locales sin principal (verificado por probe) y el generador
+    # emite un main de biblioteca cuando no hay entry point
+    # (H-R90-8/D-R150-4).
+    res = subprocess.run([exe, ruta_syq], capture_output=True, text=True,
                          timeout=120, encoding="utf-8", errors="replace")
     if res.returncode != 0:
         raise RuntimeError(
@@ -624,8 +618,6 @@ def compilar_desde_syq(ruta_syq: str) -> Programa:
             f"{(res.stdout or res.stderr)[-500:]}")
     flat = json.loads(res.stdout)
     prog = plano_a_programa(flat)
-    # ME-R90-8: ME-R90-8b injecta principal en source; el puente aún aplica
-    # ME-R90-8 (stub con SentenciaRetornar) si el plano no incluye principal.
     return prog
 
 

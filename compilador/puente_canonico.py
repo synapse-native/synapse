@@ -646,22 +646,12 @@ def plano_a_programa(flat: dict) -> Programa:
     prog = p._nodo(flat["raiz"])
     if not isinstance(prog, Programa):
         raise PuenteError("la raiz del flat no es PROGRAMA")
-    # ME-R90-8: si no hay funcion principal(), inyectar un main stub
-    # (Manual 1 §3.1: todo programa ejecutable requiere punto de entrada).
-    # NOTA: H-R90-8b inyecta principal en el .syq source ANTES del runtime S1;
-    # por lo que el plano normalmente ya incluye principal. Este stub es fallback.
-    tiene_principal = any(
-        isinstance(s, DefinicionFuncion) and s.nombre == 'principal'
-        for s in prog.sentencias)
-    if not tiene_principal:
-        # ME-R90-8: main stub con tipo_retorno 'nulo' y cuerpo mínimo (Manual 1 §3.1).
-        # El runtime S1 requiere cuerpo no vacío (R10: SYQ_JSON_ERROR=-3 si empty).
-        prog.sentencias.append(
-            DefinicionFuncion(
-                nombre='principal',
-                parametros=[],
-                tipo_retorno='nulo',
-                cuerpo=[SentenciaRetornar(expr=None)]))
+    # ME-R90-8 RETIRADO (ME paridad_principal_syq) — cumple Manual 1 §3.1:
+    # el stub de principal contaminaba el AST canónico — el .syn equivalente
+    # no lo tiene y la paridad estructural (ROADMAP F22) era imposible. El
+    # entry point es OPCIONAL en .syq (Manual 3 §3 L78) y el generador emite
+    # un main de biblioteca cuando no hay principal (H-R90-8/D-R150-4 en
+    # generator.py::_emit_main), así que el ejecutable enlaza igual.
     return prog
 
 
