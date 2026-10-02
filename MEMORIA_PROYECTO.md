@@ -7,7 +7,7 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-10-01** (ME paridad_principal_syq 90eb18c COMPLETADO — 4 warps de paridad_syn_syq CERRADOS retirando los stubs de principal obsoletos de pipeline.py+puente; antes: ME puente_for_en_syq 1e1584b COMPLETADO — 3 bugs del camino Syquex reparados: for-en→SentenciaPara canónico, iterable en semántico range-for, cast len; test_result 5/5 GREEN por primera vez; antes: ME barrido_citas_v820 4a63327 COMPLETADO — DEUDA de alineación heredada en CERO: las 39 citas sin sección de la v8.2.0 barridas restaurando textualmente M7 §4.3/§6.1/§6.2/§6.4/§7.2/§8 + 3 re-anclajes §6→§6.2/§2.1; DEUDA.md = 0/0; suites 85/85; antes: ME m7_s73_restauracion 72d77f3 — H-R171-1 CERRADA con M7 §7.3 restaurada + permisos.syn re-anclada; R171 verificación suite integración 1447✓/110✗/39skip, 0 regresiones; antes: restauro_bucle_validacion b1ac1c2, validation_loop_fix 63c1731, transpiler_elif e0cbb35; D-R163-1 sigue pendiente de ratificación)
+Última actualización: **2026-10-01** (R176 re-baseline integración COMPLETADO — 1453✓/104✗/39skip, +6✓/−6✗ vs R171 = mejora; 0 regresiones de los 2 MEs de la sesión; 104 clasificados con parseo: 21 RED TDD EXACTOS, 27 GCC entorno = H-R176-1, 3 test_cli_check = H-R176-2 feature gap declarado; gates "alinea todo" SIN BRECHAS/DEUDA 0/0; antes: ME paridad_principal_syq 90eb18c COMPLETADO — 4 warps de paridad_syn_syq CERRADOS retirando los stubs de principal obsoletos de pipeline.py+puente; antes: ME puente_for_en_syq 1e1584b COMPLETADO — 3 bugs del camino Syquex reparados: for-en→SentenciaPara canónico, iterable en semántico range-for, cast len; test_result 5/5 GREEN por primera vez; antes: ME barrido_citas_v820 4a63327 COMPLETADO — DEUDA de alineación heredada en CERO: las 39 citas sin sección de la v8.2.0 barridas restaurando textualmente M7 §4.3/§6.1/§6.2/§6.4/§7.2/§8 + 3 re-anclajes §6→§6.2/§2.1; DEUDA.md = 0/0; suites 85/85; antes: ME m7_s73_restauracion 72d77f3 — H-R171-1 CERRADA con M7 §7.3 restaurada + permisos.syn re-anclada; R171 verificación suite integración 1447✓/110✗/39skip, 0 regresiones; antes: restauro_bucle_validacion b1ac1c2, validation_loop_fix 63c1731, transpiler_elif e0cbb35; D-R163-1 sigue pendiente de ratificación)
 
 ---
 
@@ -76,7 +76,21 @@ Fase roadmap:      POST-FASE 33 — ME restauro_bucle_validacion COMPLETADO (b1a
                    FASE 30-c ME_opensyn_best — ME-1..ME-6 TODOS COMPLETADOS
                    FASE 30-b HARDENING — OpenSyn TUI + IA local (R141/R142/R143) COMPLETADA
                    FASE 30 COMPLETADA — Instalación Unificada y Distribución Final
-Estado:            ME paridad_principal_syq COMPLETO (90eb18c): los 4 warps de
+Estado:            R176 re-baseline integración COMPLETADO (verificación, sin commits de
+                   producción): 1453✓/104✗/39skip sobre 1596 (2:12:18) vs R171
+                   1447✓/110✗ → +6✓/−6✗ = MEJORA. Los 4 warps paridad NO
+                   reaparecieron (90eb18c verificado en suite completa); loop_1M
+                   no falló (4ª reconfirmación flaky). 0 regresiones: 21 RED TDD
+                   IDÉNTICOS uno a uno, ninguna familia creció, 3 ambiguos FALLAN
+                   aislados (link runtime completo, no tocan rutas .syq).
+                   Clasificación: 21 RED TDD declarado EXACTOS + 10 YAML + 27 GCC
+                   entorno (H-R176-1, ALTO: harness/link — ME candidato radio ~27)
+                   + 8 compila .syn + 46 asserts + 4 flaky entorno + 3 lifetimes
+                   + 3 cli_check feature gap DECLARADO (H-R176-2) + 1 wrapper.
+                   Gates "alinea todo" (2ª mitad del mandato): verificar_alineacion
+                   SIN BRECHAS, DEUDA.md 0/0, citas_muertas=0 — los 104 NO contienen
+                   ninguna brecha de alineación (solo feature gaps declarados y
+                   deudas de entorno). Antes: ME paridad_principal_syq COMPLETO (90eb18c): los 4 warps de
                    test_paridad_syn_syq CERRADOS — dos workarounds heredados de
                    ME-R90-8/8b inyectaban un stub `funcion principal()` cuando el
                    .syq no lo declara (pipeline.py tempfile en source H-R90-8b +
@@ -214,11 +228,14 @@ Próximo ME:        POST-FASE 33 — SIN deudas ejecutables de la certificación
                    de Fase 32 en tests/opensyn (ver lección R160); 33.3 pendiente de
                    ratificación (desviaciones R149 §5); MEs futuros
                    del reporte FASE_33_CERTIFICACION.
-Próximo paso:      Nueva fase del ROADMAP (requiere Arquitecto: el ROADMAP termina en
-                   §33.5) o hardening. Deuda DOCUMENTADA pendiente de decisión/prioridad:
-                   3 RED wasm extendido (Fase 25: i64/f64/imports/exports,
-                   test_wasm_extended.py), ~21 RED TDD integration (ME_27/29/30, D-5),
-                   H-R90-5 (métodos sobre locales en .syq). Los 4 warps
+Próximo paso:      Decisión del Arquitecto sobre prioridad: (1) ME H-R176-1 —
+                   diagnóstico/reparación del harness GCC de integración (radio
+                   ~27 fallos); (2) ME H-R176-2 — `synapse check` en cli.py (M8 §4,
+                   cierra 3 fallos, ME barato); (3) feature gaps declarados: 3 RED
+                   wasm extendido (Fase 25: i64/f64/imports/exports,
+                   test_wasm_extended.py), ~21 RED TDD integration (ME_27/29/30,
+                   D-5), H-R90-5 (métodos sobre locales en .syq); (4) nueva fase
+                   del ROADMAP (termina en §33.5). Los 4 warps
                    paridad_syn_syq CERRADOS (90eb18c). H-R171-1 CERRADA (72d77f3). Barrido de las 39
                    citas sin sección REALIZADO (4a63327: DEUDA.md = 0/0). Deudas
                    CERRADAS esta sesión:
@@ -226,7 +243,8 @@ Próximo paso:      Nueva fase del ROADMAP (requiere Arquitecto: el ROADMAP term
                    test_validation_loop_syn_exists (63c1731), TestRequisitosManuales
                    (b1ac1c2), test_permisos_cita_r6 (72d77f3). Ratificar D-R163-1,
                    H-CFG-2/H-R144-3/SIN_CITA Fase 32; 33.3 pendiente (desviaciones R149 §5)
-Últimos commits:    90eb18c (fix(syquex): retirar stubs de principal obsoletos — paridad .syn/.syq restaurada, 4 warps CERRADOS)
+Últimos commits:    3a0a0f7 (docs: post-commit R175 — reporte, bitácora y memoria; verificacion_ME sellada)
+                    90eb18c (fix(syquex): retirar stubs de principal obsoletos — paridad .syn/.syq restaurada, 4 warps CERRADOS)
                     1e1584b (fix(syquex): 3 bugs del camino .syq — for-en SentenciaPara canónico, iterable en semántico, cast len)
                     4a63327 (fix(manual): barrido de las 39 citas sin sección — M7 §4.3/§6.1/§6.2/§6.4/§7.2/§8 restauradas + 3 re-anclajes; DEUDA.md = 0)
                     72d77f3 (fix(manual): restaurar M7 §7.3 + re-anclar permisos.syn — H-R171-1 CERRADA; autorización Opción A)
@@ -262,6 +280,7 @@ Próximo paso:      Nueva fase del ROADMAP (requiere Arquitecto: el ROADMAP term
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
 |--------|-------------|---------|
+| R176 | Re-baseline suite integración COMPLETA tras los 2 MEs de la sesión (mandato "primera sugerencia + alinea todo"): 1596 tests → 1453✓/104✗/39skip (2:12:18) vs R171 1447✓/110✗ → **+6✓/−6✗ = MEJORA, no regresión**. Composición EXACTA de las 6 bajas: 4 warps paridad (cerrados por 90eb18c, 6/6 en suite) + 2 bajas netas familia GCC test_e2e_adv_10 (7→5, composición irrecuperable: R171 no individualizó y lastfailed sobrescrito). 0 regresiones certificadas: 21 RED TDD IDÉNTICOS uno a uno, ninguna familia creció, 3 ambiguos FALLAN aislados (link runtime completo, no tocan .syq). 104 clasificados con parseo de los 99 bloques de traceback: 21 RED TDD declarado EXACTOS, 10 YAML CI, 27 GCC entorno = **H-R176-1** (ALTO, ME candidato radio ~27), 8 compila .syn, 46 asserts, 4 flaky entorno, 3 lifetimes, 3 cli_check = **H-R176-2** feature gap declarado, 1 wrapper. Gates "alinea todo": SIN BRECHAS + DEUDA 0/0 — 0 brechas de alineación en los 104. Artefactos regenerados restaurados (suite regenera también test_cluster_handshake.c, fuera del patrón _*.c). Verificación pura: 0 producción/0 tests; reporte docs/reportes/R176.md |
 | `90eb18c` | R175/ME paridad_principal_syq (4 warps de paridad CERRADOS): retirados los 2 stubs de principal obsoletos — pipeline.py inyectaba `funcion principal()` en el source vía tempfile (H-R90-8b) y el puente lo añadía al AST como fallback (ME-R90-8); el pretexto "el runtime S1 filtra funciones sin principal" es FALSO con el frontend actual (probe). M1 §3.1 mismo AST canónico + M3 §3 L78 principal opcional + main de biblioteca D-R150-4. test_paridad_syn_syq 6/6 (antes 4✗); E2E dual rc=7/rc=0; 405✓/3✗ (solo wasm RED TDD); unit 514/514; matriz 35/35; huella 907275bc6b04e287. Tests sin modificar. Lecciones: un workaround sin test que demuestre su necesidad es deuda que degrada; probe del pretexto ANTES de tocar. Reporte: docs/reportes/R175.md |
 | `1e1584b` | R174/ME puente_for_en_syq (primera reparación FUNCIONAL del camino .syq): 3 bugs reales — (1) puente_canonico._nodo_para_en producía SentenciaMientras con _paraind usada antes de declararse (errores espurios "Variable '' no declarada") → ahora nodo canónico SentenciaPara(variable, iterable, cuerpo) que visitar_para ya procesa (paridad .syn/.syq, M3 §3); (2) semantic_checker range-for miraba solo condicion (convención parser S1) y el puente pone iterable → variable tipada 'puntero'; ahora mira ambos; (3) builtin len sin cast (void*)(intptr_t) (gemelo longitud sí) → gcc -Wint-conversion. test_result 5/5 GREEN (operador ? por PRIMERA VEZ), unit 514/514, syquex+opensyn 398✓/3✗ (solo wasm RED TDD Fase 25, preexistente), matriz 35/35, bootstrap fresco, huella ac3a132858571ecf. Tests sin modificar. Lecciones: el camino .syq es ciudadano de segunda (el desugaring inventó una convención que nadie más esperaba); un test-spec RED es detector de bugs del compilador. Reporte: docs/reportes/R174.md |
 | `4a63327` | R173/ME barrido_citas_v820 (cierre de la deuda de alineación heredada, AUTORIZACIÓN del Arquitecto Opción A): las 39 citas `cumple Manual` sin sección (heredadas de la v8.2.0/154a544, listadas en DEUDA.md del 2026-09-14) BARRIDAS — (1) M7 restaura textualmente las 6 secciones citadas (§4.3 en posición canónica, §6.1/§6.2/§6.4/§7.2/§8 como apéndices) → 36 citas AUTO-RESOLVIERON; (2) 3 citas al capítulo §6 re-ancladas a subsecciones (chat.syn L3/L54 → §6.2; ai_orchestrator.h L146 → §2.1, solo comentarios); (3) mapa saneado (chat.syn [§6.4] stale → [§6.2, §8]; nueva entrada ai_orchestrator.h); (4) DEUDA.md regenerado con --baseline: 0 citas muertas, 0 archivos sin mapa. citas_muertas_repo 39→0 por programa; índice 304/1364; suites 85/85; contrastar PASA (7 requisitos, 2 oráculos release); huella fe5ae9a7aa1147d7. Sin cambios de tests, sin cambios ejecutables. Lecciones: restaurar el manual es la vía de mayor radio de reparación (36/39 de golpe); el indexador registra `## N` como sección padre (citas de capítulo resuelven); el gate de lectura NO acepta MANUAL ENTERO sin sección (exige § explícita — "Manual 2" a secas es el no-op que cubre() cerró); el hook mensajea la ruta vieja docs/mapa_manuales.md (vigente: docs/gobernancia/mapa_manuales.md); los mapas del 2026-09-14 tenían entradas stale. Reporte: docs/reportes/R173.md |
