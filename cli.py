@@ -90,14 +90,16 @@ def _bootstrap_stage2_fresco():
 
 
 def _cmd_herramienta_nativa(herramienta, argv):
-    """cumple Manual 8 §4.1: `synapse lint` / `synapse fmt` — ejecuta la
-    herramienta NATIVA sobre el código fuente (backend stage2, módulos .syn
-    lint/formatter desde r153/Opción A).
+    """cumple Manual 8 §4.1: `synapse lint` / `synapse fmt` / `synapse check`
+    — ejecuta la herramienta NATIVA sobre el código fuente (backend stage2,
+    módulos .syn lint/formatter desde r153/Opción A; check = ME check_cli R1,
+    M8 §4.2 modo de validación sin generar código de salida).
 
     Acepta el orden canónico (flags ANTES del archivo, H-33.5-2) y el antiguo:
     toma como archivo el primer argumento que no empiece por '-'.
-    rc del backend propagado tal cual (0 limpio/formateado, 1 advertencias o
-    no formateado, 2 error). Devuelve el rc del proceso.
+    rc del backend propagado tal cual (0 limpio/formateado/validación exitosa,
+    1 advertencias o no formateado o error de validación, 2 error). Devuelve
+    el rc del proceso.
     """
     archivo = None
     skip = False
@@ -975,8 +977,15 @@ def main():
 
     # Detectar subcomando
     subcommand = None
-    if first_non_option in ('cache', 'build', 'test', 'fetch', 'init', 'axon', 'run', 'debug', 'opensyn', 'lint', 'fmt'):
+    if first_non_option in ('cache', 'build', 'test', 'fetch', 'init', 'axon', 'run', 'debug', 'opensyn', 'lint', 'fmt', 'check'):
         subcommand = first_non_option
+
+    # Manejar subcomando 'check' (Manual 8 §4.2/§5.2: modo de validación —
+    # solo sintaxis y semántica, sin generar código de salida; backend nativo
+    # stage2 del bootstrap — ME check_cli R2, paridad con el dispatcher nativo)
+    if subcommand == 'check':
+        # cumple Manual 8 §4.1 y §4.2 (ME check_cli R2)
+        return _cmd_herramienta_nativa('check', sys.argv[2:])
 
     # Manejar subcomando 'lint' (Manual 8 §4.1: ejecuta el linter nativo sobre
     # el código fuente; backend stage2 del bootstrap — ME cli_lint_fmt)

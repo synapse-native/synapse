@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "4fbd413e1b931cb4",
+ "expediente": "docs/alineacion/check_cli.md",
+ "fecha": "2026-10-03",
+ "archivos": [
+  "cli.py",
+  "nucleo/principal.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_check_cli.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}
