@@ -521,6 +521,32 @@ def _metodo_a_c(ctx: GeneratorContext, nodo: Nodo) -> str:
     )
 
 
+def cadena_c_literal(val: str) -> str:
+    """Devuelve el CONTENIDO C entre-comillas-able de una cadena Synapse.
+
+    cumple Manual 2 §2 (ME nativa_rc5_familia R5): helper compartido por
+    expr_a_c (literales en expresión) y visitar_constante (constantes de
+    módulo como objetos CadenaSegura constantes).
+    """
+    # 1. Backslash primero (evita doble-escape)
+    # 2. Comillas dobles
+    # 3. \n, \r, \t (escapes cortos)
+    # 4. Todo char < 0x20 restante como \xHH (incluye NUL)
+    val = val.replace('\\', '\\\\')  # backslash first!
+    val = val.replace('\"', '\\"')
+    val = val.replace('\n', '\\n')
+    val = val.replace('\r', '\\r')
+    val = val.replace('\t', '\\t')
+    # Escape remaining control characters < 0x20 (NUL, BEL, ESC, etc.)
+    result_chars = []
+    for ch in val:
+        if ord(ch) < 0x20:
+            result_chars.append(f'\\x{ord(ch):02x}')
+        else:
+            result_chars.append(ch)
+    return ''.join(result_chars)
+
+
 def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
     """Traduce un nodo expresión a código C."""
     if nodo is None:
@@ -549,24 +575,7 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
 
     if isinstance(nodo, LiteralCadena):
         # cumple Manual 2 2: escape completo de cadena_literal
-        # 1. Backslash primero (evita doble-escape)
-        # 2. Comillas dobles
-        # 3. \n, \r, \t (escapes cortos)
-        # 4. Todo char < 0x20 restante como \xHH (incluye NUL)
-        val = nodo.valor
-        val = val.replace('\\', '\\\\')  # backslash first!
-        val = val.replace('\"', '\\"')
-        val = val.replace('\n', '\\n')
-        val = val.replace('\r', '\\r')
-        val = val.replace('\t', '\\t')
-        # Escape remaining control characters < 0x20 (NUL, BEL, ESC, etc.)
-        result_chars = []
-        for ch in val:
-            if ord(ch) < 0x20:
-                result_chars.append(f'\\x{ord(ch):02x}')
-            else:
-                result_chars.append(ch)
-        val = ''.join(result_chars)
+        val = cadena_c_literal(nodo.valor)
         return (
             f"(CadenaSegura){{ .longitud = (int)strlen(\"{val}\"),"
             f" .datos = \"{val}\" }}"

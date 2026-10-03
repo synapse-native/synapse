@@ -357,6 +357,26 @@ funcion parsear_primario(est: ParserEst) -> entero:
         col = token_columna(est, est.posicion)
         pos_id = est.posicion
         token_avanzar(est)
+        // cumple Manual 5 §3.2 (ME canal_expr_nativo R1): `canal(` en EXPRESION
+        // crea canal — paridad parser_expressions.py L225-236: T_CANAL + LPAREN
+        // -> ExprCrearCanal; sin LPAREN es identificador. Antes esta rama
+        // generica (T_CANAL es nombre para posiciones de TIPO) devoraba el
+        // keyword y la llamada quedaba cruda en C ('entero' undeclared); la
+        // rama propia de T_CANAL al final de parsear_primario era codigo muerto.
+        si t == T_CANAL y token_mirar(est) == T_PAREN_IZQ:
+            nodo = parser_nuevo_nodo(est, NODO_CANAL_CREAR, linea, col)
+            token_esperar(est, T_PAREN_IZQ)
+            si token_es_nombre(token_mirar(est)) == 1:
+                pos_canal = est.posicion
+                token_avanzar(est)
+                nodo_guardar_token(est, nodo, pos_canal)
+            si token_mirar(est) == T_COMA:
+                token_avanzar(est)
+                expr_cc = parsear_expresion(est)
+                inseguro:
+                    asm("est->nodos[nodo].hijo_izq = expr_cc")
+            token_esperar(est, T_PAREN_DER)
+            retornar nodo
         nodo = parser_nuevo_nodo(est, NODO_IDENTIFICADOR, linea, col)
         // FASE A (A3.0): payload del nombre (identificador o llamada) —
         // el puente lo convierte a Identificador.nombre / LlamadaFuncion.nombre.
@@ -581,27 +601,10 @@ funcion parsear_primario(est: ParserEst) -> entero:
                 asm("est->nodos[nodo_q].hijo_izq = nodo")
             nodo = nodo_q
         retornar nodo
-    si t == T_CANAL:
-        linea = token_linea(est, est.posicion)
-        col = token_columna(est, est.posicion)
-        token_avanzar(est)
-        si token_mirar(est) == T_PAREN_IZQ:
-            nodo = parser_nuevo_nodo(est, NODO_CANAL_CREAR, linea, col)
-            token_esperar(est, T_PAREN_IZQ)
-            si token_es_nombre(token_mirar(est)) == 1:
-                // FASE A (A3.0): payload del tipo de contenido (ExprCrearCanal.tipo_contenido)
-                pos_canal = est.posicion
-                token_avanzar(est)
-                nodo_guardar_token(est, nodo, pos_canal)
-            si token_mirar(est) == T_COMA:
-                token_avanzar(est)
-                expr = parsear_expresion(est)
-                inseguro:
-                    asm("est->nodos[nodo].hijo_izq = expr")
-            token_esperar(est, T_PAREN_DER)
-            retornar nodo
-        parser_error(est, "Se esperaba ( despues de canal", linea, col)
-        retornar 0
+    // ME canal_expr_nativo R2 (regla 10: codigo muerto se elimina): la rama
+    // `si t == T_CANAL:` de este primario era INALCANZABLE — la rama generica
+    // token_es_nombre (que incluye T_CANAL) la precedia y devoraba el keyword;
+    // el manejo de canal( vive ahora DENTRO de esa rama (paridad Python).
     si t == T_PAREN_IZQ:
         token_avanzar(est)
         expr = parsear_expresion(est)

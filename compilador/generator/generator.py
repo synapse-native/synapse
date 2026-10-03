@@ -700,11 +700,18 @@ def _emitir_error_defines(ctx: GeneratorContext):
 
 
 def _emitir_constantes_programa(ctx: GeneratorContext):
-    """Emite #define para constantes del programa (StmtConstante) que no sean
-    T_*/NODO_*/ERR_* (ya emitidas por sus emisores dedicados), p.ej.
-    IDIOMA_ES/EN/FR/PT del lexer nativo. Con guards #ifndef para que los
-    modulos modulares compartan las constantes sin redefinicion.
+    """Emite constantes del programa (StmtConstante) que no sean T_*/NODO_*/ERR_*
+    (ya emitidas por sus emisores dedicados), p.ej. IDIOMA_ES/EN/FR/PT del lexer
+    nativo. Se emiten como constantes C REALES y no como #define: el macro se
+    expande dentro de firmas/locales que sombrean el nombre (ME
+    nativa_rc5_familia R5 — paridad con el generador nativo, que tampoco usa
+    macros de usuario). Guards #ifndef para que los modulos modulares
+    compartan las constantes sin redefinicion.
     """
+    # cumple Manual 2 §2 (ME nativa_rc5_familia R5): enum para enteros
+    # literales (constante verdadera: case/asm/inicializadores + sombra
+    # legal por parámetro/local); objeto const si el valor excede el rango
+    # de int. La guarda evita la doble emisión con visitar_constante.
     ctx.write_line("// --- Constantes del programa (fuente de verdad = codigo) ---")
     for _s in ctx.programa.sentencias:
         if not isinstance(_s, StmtConstante):
@@ -715,9 +722,16 @@ def _emitir_constantes_programa(ctx: GeneratorContext):
         _v = getattr(_s.valor, 'valor', None)
         if not isinstance(_v, int):
             continue
-        ctx.write_line(f"#ifndef {_nombre}")
-        ctx.write_line(f"#define {_nombre} ({_v}LL)")
-        ctx.write_line(f"#endif")
+        _guard = f"_SYN_CSTDECL_{_nombre}"
+        ctx.write_line(f"#ifndef {_guard}")
+        if isinstance(_v, bool):
+            ctx.write_line(f"enum {{ {_nombre} = {1 if _v else 0} }};")
+        elif -2147483648 <= _v <= 2147483647:
+            ctx.write_line(f"enum {{ {_nombre} = {_v} }};")
+        else:
+            ctx.write_line(f"static const int64_t {_nombre} = ({_v}LL);")
+        ctx.write_line(f"#define {_guard}")
+        ctx.write_line("#endif")
     ctx.write_line("")
 
 
@@ -1137,6 +1151,8 @@ class GeneradorC:
             # r153 (H-R153-21): definicion del registro de constantes de texto
             # de modulo (paridad orquestador.syn, H-R153-21).
             ctx.write_line("char _G_native_consts[512][64];")
+            # cumple Manual 2 §2 (ME constantes_tipadas_nativo R2): bandera de texto por constante
+            ctx.write_line("char _G_native_consts_txt[512];")
             ctx.write_line("int _G_native_consts_count;")
             ctx.write_line("int _G_native_es_estructura(const char* n) {")
             ctx.inc_indent()
@@ -1502,9 +1518,14 @@ class GeneradorC:
             # D-R150-4: el stub de biblioteca sin entry point NO llama a
             # _principal_impl (no existe cuando no hay 'funcion principal'):
             # el link fallaba con undefined reference. Solo init/destroy pool.
-            ctx.write_line("pool_destroy(); // TMS: liberar pool antes de report (Manual 6 §4.4)")
             ctx.write_line("synapse_esperar_hilos();")
             ctx.write_line("synapse_esperar_fibras();")
+            # cumple Manual 6 §2.2 (ME fibra_args_pool_order): el pool se libera
+            # DESPUES de esperar hilos y fibras — las fibras reciben argumentos
+            # via pool_alloc y leerlos tras pool_destroy es use-after-free
+            # (paridad con el generador nativo recorrido.syn; antes invadia el
+            # orden y citaba la seccion inexistente "Manual 6 §4.4").
+            ctx.write_line("pool_destroy(); // TMS: liberar pool tras esperar fibras (Manual 6 §2.2)")
             ctx.write_line("return 0;")
             ctx.dec_indent()
             ctx.write_line("}")
@@ -1524,9 +1545,14 @@ class GeneradorC:
                     ctx.write_line(f'_syn_cov_ramas_estaticas("{_pares_ns}");')
             ctx.write_line("pool_init(POOL_BLOQUES, TAMANO_BLOQUE);")
             ctx.write_line(f"int64_t _ret = {principal}();")
-            ctx.write_line("pool_destroy(); // TMS: liberar pool antes de report (Manual 6 §4.4)")
             ctx.write_line("synapse_esperar_hilos();")
             ctx.write_line("synapse_esperar_fibras();")
+            # cumple Manual 6 §2.2 (ME fibra_args_pool_order): el pool se libera
+            # DESPUES de esperar hilos y fibras — las fibras reciben argumentos
+            # via pool_alloc y leerlos tras pool_destroy es use-after-free
+            # (paridad con el generador nativo recorrido.syn; antes invadia el
+            # orden y citaba la seccion inexistente "Manual 6 §4.4").
+            ctx.write_line("pool_destroy(); // TMS: liberar pool tras esperar fibras (Manual 6 §2.2)")
             ctx.write_line("return (int)_ret;")
             ctx.dec_indent()
             ctx.write_line("}")
@@ -1552,9 +1578,10 @@ class GeneradorC:
             c_principal = '_principal_impl' if principal == 'principal' else principal
             if ret_tipo in ('nulo', 'void'):
                 ctx.write_line(f"{c_principal}();")
-                ctx.write_line("pool_destroy(); // TMS: liberar pool antes de report (Manual 6 §4.4)")
                 ctx.write_line("synapse_esperar_hilos();")
                 ctx.write_line("synapse_esperar_fibras();")
+                # cumple Manual 6 §2.2 (ME fibra_args_pool_order): pool al final
+                ctx.write_line("pool_destroy(); // TMS: liberar pool tras esperar fibras (Manual 6 §2.2)")
                 ctx.write_line("return 0;")
             else:
                 # F3-7: el main DEBE esperar a los hilos/fibras (listeners y
@@ -1564,9 +1591,10 @@ class GeneradorC:
                 # (synapse_esperar_fibras). Paridad con el nativo.
                 # Manual 2 §5 e2e: el exit code del proceso = retorno de principal().
                 ctx.write_line(f"int64_t _ret = {c_principal}();")
-                ctx.write_line("pool_destroy(); // TMS: liberar pool antes de report (Manual 6 §4.4)")
                 ctx.write_line("synapse_esperar_hilos();")
                 ctx.write_line("synapse_esperar_fibras();")
+                # cumple Manual 6 §2.2 (ME fibra_args_pool_order): pool al final
+                ctx.write_line("pool_destroy(); // TMS: liberar pool tras esperar fibras (Manual 6 §2.2)")
                 ctx.write_line("return (int)_ret;")
             ctx.dec_indent()
             ctx.write_line("}")
@@ -1878,6 +1906,8 @@ class GeneradorC:
                 # r153 (H-R153-21): definicion del registro de constantes de
                 # texto de modulo (paridad orquestador.syn).
                 ctx.write_line("char _G_native_consts[512][64];")
+                # cumple Manual 2 §2 (ME constantes_tipadas_nativo R2): bandera de texto por constante
+                ctx.write_line("char _G_native_consts_txt[512];")
                 ctx.write_line("int _G_native_consts_count;")
                 ctx.write_line("int _G_native_es_estructura(const char* n) {")
                 ctx.inc_indent()

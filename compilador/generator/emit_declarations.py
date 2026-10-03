@@ -15,11 +15,11 @@ from compilador.ast_nodes import (
     SentenciaRetornar, SentenciaEscuchar, SentenciaDelegar,
     BloqueInseguro, SentenciaExpr,
     ExprAsm, Identificador, LlamadaFuncion, ArgumentoTransferido,
-    DeclaracionTipo,
+    DeclaracionTipo, LiteralCadena,
 )
 from .context import GeneratorContext, MAPA_TIPOS_C
 from .emit_expressions import (
-    expr_a_c, tipo_de_expr,
+    expr_a_c, tipo_de_expr, cadena_c_literal,
 )
 from .emit_selfhost import (
     emitir_volcar_ast,
@@ -418,13 +418,73 @@ def visitar_externa(ctx: GeneratorContext, nodo: DeclaracionExterna):
         ctx.write_line(f"extern {tipo_ret_c} {nodo.nombre}({params_c});")
 
 
+def _es_inicializador_constante(n: Optional[Nodo]) -> bool:
+    """R5 (ME nativa_rc5_familia): True si el árbol es expresión constante
+    pura (literales y aritmética entre literales) — apta como inicializador
+    estático C. Identificador/llamadas/indexado → False (quedan como macro
+    heredada: una llamada NO es inicializador estático válido)."""
+    if n is None:
+        return False
+    tn = type(n).__name__
+    if tn in ('LiteralNumero', 'LiteralBooleano', 'LiteralDecimal'):
+        return True
+    if tn == 'UnaryMinus':
+        return _es_inicializador_constante(getattr(n, 'operando', None))
+    if tn == 'OpBinaria':
+        return (_es_inicializador_constante(getattr(n, 'izquierdo', None))
+                and _es_inicializador_constante(getattr(n, 'derecho', None)))
+    return False
+
+
 def visitar_constante(ctx: GeneratorContext, nodo: StmtConstante):
-    """Genera código C para constante (#define o const)."""
+    """Genera código C para constante (enum/objeto const; const local en función)."""
     valor_c = expr_a_c(ctx, nodo.valor)
     tipo_inferido = nodo.tipo if nodo.tipo else tipo_de_expr(ctx, nodo.valor)
     tipo_c = ctx.traducir_tipo_c(tipo_inferido or 'int')
     if not ctx._in_function_scope:
-        ctx.write_line(f"#define {nodo.nombre} ({valor_c})")
+        # cumple Manual 2 §2 (ME nativa_rc5_familia R5): la constante de módulo
+        # NO se emite como #define — el macro se expande DENTRO de firmas y
+        # locales que la sombrean (R9: el parámetro X sombrea la constante X y
+        # gcc rechazaba `int64_t calcular(int64_t (5LL))`, rc=5). Se emite como
+        # constante C real: enum para enteros/booleanos literales (constante
+        # verdadera: vale en case/asm/inicializadores y la sombra es legal) u
+        # objeto const para el resto. Guarda contra la doble emisión del header
+        # compartido (_emitir_constantes_programa).
+        # ABI v1 (F22/R85): los nombres T_*/NODO_*/ERR_*/_-prefijados son el
+        # espejo de ast_nodos.h/encabezado (parser_constantes.syn) — se emiten
+        # como ANTES (#define) porque un enum colisionaría con el #define del
+        # header (expected identifier before '(').
+        if nodo.nombre.startswith(('T_', 'NODO_', 'ERR_', '_')):
+            ctx.write_line(f"#define {nodo.nombre} ({valor_c})")
+            ctx._const_types[nodo.nombre] = tipo_inferido or 'int'
+            return
+        _guard = f"_SYN_CSTDECL_{nodo.nombre}"
+        ctx.write_line(f"#ifndef {_guard}")
+        _v = getattr(nodo.valor, 'valor', None)
+        if isinstance(_v, bool):
+            ctx.write_line(f"enum {{ {nodo.nombre} = {1 if _v else 0} }};")
+        elif isinstance(_v, int) and -2147483648 <= _v <= 2147483647:
+            ctx.write_line(f"enum {{ {nodo.nombre} = {_v} }};")
+        elif isinstance(nodo.valor, LiteralCadena):
+            # Texto: literal compuesto con longitud CONSTANTE (sizeof-1, no
+            # strlen) para que sea inicializador estático válido (C99).
+            _lit = cadena_c_literal(nodo.valor.valor)
+            ctx.write_line(
+                f"static const CadenaSegura {nodo.nombre} = "
+                f"(CadenaSegura){{ .longitud = (int)(sizeof(\"{_lit}\") - 1),"
+                f" .datos = \"{_lit}\" }};"
+            )
+        else:
+            # Otros inicializadores: objeto const SOLO si el árbol es una
+            # expresión constante pura (literales/aritmética entre literales);
+            # lo demás (llamadas, identificadores, nulo) queda como macro
+            # heredada — una llamada NO es inicializador estático válido.
+            if _es_inicializador_constante(nodo.valor):
+                ctx.write_line(f"static const {tipo_c} {nodo.nombre} = {valor_c};")
+            else:
+                ctx.write_line(f"#define {nodo.nombre} ({valor_c})")
+        ctx.write_line(f"#define {_guard}")
+        ctx.write_line("#endif")
     else:
         ctx.write_line(f"const {tipo_c} {nodo.nombre} = {valor_c};")
     # Store Synapse type for consistency with tipo_de_expr

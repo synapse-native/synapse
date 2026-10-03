@@ -143,6 +143,8 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     // es el de su LiteralCadena). Antes solo _G_fn_var_tipos (por funcion) era
     // consultado y el reset por funcion de ME-B7 lo vaciaba en el call-site.
     gen_emitir_linea(est, "char _G_native_consts[512][64];")
+    // cumple Manual 2 §2 (ME constantes_tipadas_nativo R2): bandera de texto por constante
+    gen_emitir_linea(est, "char _G_native_consts_txt[512];")
     gen_emitir_linea(est, "int _G_native_consts_count;")
     // F3-13: campos de struct con tipo Synapse (paridad context.py _estructuras).
     // El generador nativo necesita el tipo del campo para detectar texto (ej.
