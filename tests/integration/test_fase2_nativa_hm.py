@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+# cumple Manual 7 §2.3: oraculos conductuales E2E (se compila y ejecuta el
+# binario; sin sniff). Mapeo MTO: OBL-M2-05 (Manual 2 §12, tipos de datos
+# nativos 100% pass) y OBL-M2-03 (Manual 2 §8.2, instanciaciones/ADT).
 """Fase 2 nativa: validacion de instanciaciones de ADT (2.4 Hindley-Milner)
 en el analizador nativo (synapse_stage*.exe).
 
@@ -2175,21 +2178,51 @@ estructura Punto:
 funcion principal() -> nulo:
     let p = Punto(1, 2)
     escribir(entero_a_texto(p.x))
+    escribir(entero_a_texto(p.z))
     retornar
 '''
 
 
-def test_r27_struct_ctor_con_argumentos_rechazado(stage, tmp_path):
-    """R27: `Punto(1,2)` (constructor de struct con argumentos, forma NO
-    documentada en el Manual 2 L67) -> rc=7 con ERR_SEM_ARGUMENTOS_INVALIDOS
-    esperados=0. Paridad S1 semantic_types.py L355-360. Antes el nativo lo
-    aceptaba y emitia C invalido silenciosamente."""
-    proc = _compilar_con_stage(stage, _PROG_R27_STRUCT_CTOR_CON_ARGS,
-                               str(tmp_path))
+def test_r27_struct_ctor_posicional_valido(stage, tmp_path):
+    """R27/R179: `Punto(1,2)` (ctor de struct POSICIONAL, un argumento por
+    campo declarado en orden) es LEGAL: H-R153-4b (r153) ratifico la forma
+    posicional (`Punto(c1..cn)`, n = campos declarados, M2 L67
+    declaracion_estructura) y H-R153-4 (S1) la valida con la tabla real. El
+    test pre-r153 (rc=7, "se esperaban 0") codificaba la forma deprecada;
+    alineado por R179 via TDD (probe nativo imprime `12` contiguo) + MTO (regla 5:
+    el test se alinea al manual, no al reves)."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R27_STRUCT_CTOR_CON_ARGS,
+                                     str(tmp_path))
+    assert proc.returncode == 0, (
+        f"Punto(1,2) posicional debe compilar rc=0:\n{proc.stderr[-1500:]}")
+    assert run is not None and run.returncode == 0
+    assert run.stdout.strip() == "12", (
+        f"p.x y p.z deben recibir 1 y 2 posicionalmente: {run.stdout!r}")
+
+
+_PROG_R27_STRUCT_CTOR_ARIDAD_BAD = '''#lang: es
+estructura Punto:
+    x: entero
+    z: entero
+funcion principal() -> nulo:
+    let p = Punto(1)
+    escribir(entero_a_texto(p.x))
+    retornar
+'''
+
+
+def test_r27_struct_ctor_aridad_invalida_rechazada(stage, tmp_path):
+    """R27/R179: aridad invalida del ctor de struct (`Punto(1)` sobre 2
+    campos) se RECHAZA con ERR_SEM_ARGUMENTOS_INVALIDOS rc=7 y mensaje
+    paridad S1 (H-R153-4: se acepta `Punto()` o exactamente un argumento por
+    campo; semantic_types.py L522-538). Antes de R179 el nativo no poblaba
+    total_campos y aceptaba la aridad invalida silenciosamente (zero-init)."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R27_STRUCT_CTOR_ARIDAD_BAD,
+                                     str(tmp_path))
     assert proc.returncode == 7, (
-        f"Punto(1,2) deberia rc=7, obtuvo rc={proc.returncode}:\n"
+        f"Punto(1) deberia rechazarse rc=7, obtuvo rc={proc.returncode}:\n"
         f"{proc.stderr[-1500:]}")
-    assert "Cantidad de argumentos invalida para 'Punto': se esperaban 0" in proc.stderr, (
+    assert "Cantidad de argumentos invalida para 'Punto'" in proc.stderr, (
         "falta el mensaje de aridad en stderr:\n" + proc.stderr[-1500:])
 
 

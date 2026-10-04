@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "1ff87d0097335768",
+ "expediente": "docs/alineacion/r27_ctor_aridad.md",
+ "fecha": "2026-10-04",
+ "archivos": [
+  "nucleo/analizador_semantico.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r27_ctor_aridad.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

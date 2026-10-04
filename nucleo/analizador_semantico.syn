@@ -718,24 +718,36 @@ funcion analizar_expr(est: AnalizadorSemanticoEst, idx: entero) -> nulo:
         // R1: validar llamada a funcion generica (TVars, Manual 2 §8.2;
         // paridad S1 _inferir_llamada_hm). No aborta: diagnostico observable.
         validar_llamada_generica(est, idx)
-        // R27: llamada a nombre de estructura — el ctor de struct es `Punto()`
-        // sin argumentos (Manual 2 L67 declaracion_estructura; paridad S1
-        // semantic_types.py L355-360: esperados=0). Antes el nativo aceptaba
-        // `Punto(1, 2)` y emitia C invalido `int64_t p = (struct Punto){...}`.
+        // R27/R179: llamada a nombre de estructura — el ctor de struct acepta
+        // `Punto()` (zero-init) o la forma POSICIONAL `Punto(c1, ..., cn)` con
+        // n = campos declarados (Manual 2 L67 declaracion_estructura;
+        // H-R153-4 S1 semantic_types.py L522-538 la valida con la tabla real).
         // Precedencia de funciones (paridad S1: tabla.buscar -> DefinicionFuncion
         // se valida ANTES del check de _estructuras): si el callee es una funcion
         // de usuario, se salta el check de aridad del struct.
         inseguro:
             asm("    int* _phi27=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp27=(uintptr_t)(unsigned)est->nodos[idx].ptr_str; if(_phi27){ _bp27|=((uintptr_t)(unsigned)_phi27[idx])<<32; } const char* _cal27=(const char*)_bp27;")
             asm("    if(_cal27 && _cal27[0]){")
-            asm("        int _se27=0; for(int _i27=0;_i27<est->total_estructuras;_i27++){ if(est->info_estructuras[_i27].nombre.datos&&strcmp(est->info_estructuras[_i27].nombre.datos,_cal27)==0){ _se27=1; break; } }")
+            asm("        int _se27=0; int _ie27=-1; for(int _i27=0;_i27<est->total_estructuras;_i27++){ if(est->info_estructuras[_i27].nombre.datos&&strcmp(est->info_estructuras[_i27].nombre.datos,_cal27)==0){ _se27=1; _ie27=_i27; break; } }")
             asm("        int _fn27=-1; for(int _j27=0;_j27<est->total_funciones;_j27++){ if(est->info_funciones[_j27].nombre.datos&&strcmp(est->info_funciones[_j27].nombre.datos,_cal27)==0){ _fn27=_j27; break; } }")
-            asm("        // r153 (H-R153-4b): se RELAJA el check de aridad del ctor de struct —")
-            asm("        // el nativo no registra los campos (info_estructuras.total_campos sin")
-            asm("        // uso) y no puede validar la forma posicional `Struct(c1, c2, ...)`;")
-            asm("        // S1 semantic_types.py (H-R153-4) la valida con la tabla real. Un")
-            asm("        // ctor realmente invalido falla en la emision C (compound literal).")
-            asm("        (void)_fn27;")
+            // cumple Manual 2 §8.2 (ME r27_ctor_aridad R2): H-R153-4b queda
+            // SUPERADA — total_campos ahora SI se puebla (R1 de este ME), así
+            // que se restaura el check de aridad con paridad exacta S1
+            // (H-R153-4): `Struct()` o `Struct(c1..cn)`; otros aridades ->
+            // ERR_SEM_ARGUMENTOS_INVALIDOS (rc=7). Un callee que además es
+            // estructura pero NO función se valida SIEMPRE (cuenta args reales
+            // recorriendo la cadena de hermanos desde nodo_expr(idx)).
+            asm("        if(_se27 && _fn27 < 0){")
+            asm("            int _nc27=0;")
+            asm("            for(int _a27=((int*)&est->nodos[idx])[6]; _a27>0; _a27=est->nodos[_a27].hermano) _nc27++;")
+            asm("            int _ne27=est->info_estructuras[_ie27].total_campos;")
+            asm("            if(_nc27 != 0 && _nc27 != _ne27){")
+            asm("                char _mm27[256];")
+            asm("                snprintf(_mm27,256,\"Cantidad de argumentos invalida para '%s': se esperaban %d\",_cal27,_ne27);")
+            asm("                CadenaSegura _msg27={.longitud=(int)strlen(_mm27),.datos=_mm27};")
+            asm("                sem_error(est,ERR_SEM_ARGUMENTOS_INVALIDOS,idx,_msg27);")
+            asm("            }")
+            asm("        }")
             asm("    }")
         arg = nodo_expr(est, idx)
         r2 = 1
@@ -791,7 +803,16 @@ funcion registrar_estructura(est: AnalizadorSemanticoEst, nombre: cadena, idx_no
     inseguro:
         asm("char* _nmost = nombre.datos ? strdup(nombre.datos) : (char*)\"\";")
         asm("est->info_estructuras[est->total_estructuras].nombre = (CadenaSegura){.longitud = (int)strlen(_nmost), .datos = _nmost}")
-        asm("est->info_estructuras[est->total_estructuras].total_campos = 0")
+        // cumple Manual 2 §2 (ME r27_ctor_aridad R1): se puebla total_campos
+        // contando la cadena de NODO_PARAMETRO de la estructura (patrón de
+        // registro ADT de analizar_paso_estructuras: los hijos viajan en el
+        // slot [6] del nodo plano, accesible con nodo_expr(); cada campo es un
+        // NODO_PARAMETRO enlazado por hermano — parser_declaraciones.syn). Antes
+        // quedaba en 0 y el check de aridad del ctor (R2) era imposible
+        // (H-R153-4b lo relajó por falta de metadata).
+        asm("int _tc = 0;")
+        asm("for (int _cp = ((int*)&est->nodos[idx_nodo])[6]; _cp > 0; _cp = est->nodos[_cp].hermano) _tc++;")
+        asm("est->info_estructuras[est->total_estructuras].total_campos = _tc")
         asm("est->total_estructuras = est->total_estructuras + 1")
 
 // --- 2.4 nativa: registro de ADTs (tipo X<T, E>) y validacion de

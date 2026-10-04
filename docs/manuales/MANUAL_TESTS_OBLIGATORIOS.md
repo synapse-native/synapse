@@ -22,6 +22,7 @@ debe dejar en verde. Toda prueba (`test_*.py`) debe mapear a una entrada `OBL-*`
 - OBL-M2-01 | Manual 2 §4.2 | Inferencia HM identidad `identidad(x: T) -> T` | unit | GREEN
 - OBL-M2-02 | Manual 2 §5 | Contratos `requiere`/`garantiza` observables en runtime | unit | GREEN
 - OBL-M2-03 | Manual 2 §8.2 | Tipos ADT anidados en firmas | unit | GREEN
+- OBL-M2-05 | Manual 2 §12 | Tipos de datos: ctor de struct con aridad validada paridad S1↔nativo (H-R153-4/4b; R179 alinea test r27 y restaura check nativo) | integración | GREEN
 
 ## M3 — Syquex (frontend / F28 certificación)
 - OBL-M3-01 | Manual 3 §3 | Frontend Syquex parsea y traduce conforme al manual | unit | GREEN
