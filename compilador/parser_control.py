@@ -252,13 +252,24 @@ class ParserControlMixin(ParserBase):
                 self._avanzar()
                 continue
 
-            tok_patron = self._esperar_identificador()
-            if tok_patron is None:
-                self._sincronizar(_SYNC_BLOCK)
-                break
+            # cumple Manual 3 §3 (ME r180_coincidir_nativo R3): patron ::=
+            # IDENTIFICADOR "(" IDENTIFICADOR ")" | IDENTIFICADOR | "_" | numero
+            # — el patrón puede iniciar con un literal NUMBER (ej. `1 =>`,
+            # H-R90-6); el wildcard `_` ya lexea como IDENTIFIER. Paridad con el
+            # parser nativo (parser_sentencias.syn token_es_inicio_patron).
+            _tok_mirar = self._mirar()
+            if _tok_mirar.tipo == TokenID.NUMBER:
+                self._avanzar()
+                nombre_patron = str(_tok_mirar.valor)
+                tok_patron = _tok_mirar  # R22 usa tok_patron.columna (borde del caso)
+            else:
+                tok_patron = self._esperar_identificador()
+                if tok_patron is None:
+                    self._sincronizar(_SYNC_BLOCK)
+                    break
 
-            # F1.2: el patrón puede ser un keyword contextual (ok/err/algun/ninguno)
-            nombre_patron = nombre_de_token(tok_patron)
+                # F1.2: el patrón puede ser un keyword contextual (ok/err/algun/ninguno)
+                nombre_patron = nombre_de_token(tok_patron)
 
             # Patron con payload: ok(valor) — Manual 2 §2.2
             # Patron nulo (variante sin argumentos): ninguno — Manual 2 §2.4

@@ -299,4 +299,22 @@ funcion token_es_nombre(t: entero) -> entero:
         retornar 1
     retornar 0
 
+// cumple Manual 3 §3 (ME r180_coincidir_nativo R1): patron ::= IDENTIFICADOR
+// "(" IDENTIFICADOR ")" | IDENTIFICADOR | "_" | numero | cadena — el inicio de
+// patron del `coincidir` acepta numero (T_NUMERO) ademas de nombres/keywords
+// contextuales (token_es_nombre). El wildcard `_` ya lexea como T_IDENTIFICADOR
+// (es_letra(95)==1 en lexer.syn). Paridad S1: parser_control.py R3.
+// cumple Manual 2 §12 (ME r180_coincidir_nativo R1): contratos requiere/garantiza
+// en toda función pública nueva (tabla de pruebas obligatorias).
+funcion token_es_inicio_patron(t: entero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ es verdadero o _resultado_ es falso
+    si token_es_nombre(t) == 1:
+        retornar 1
+    si t == T_NUMERO:
+        retornar 1
+    retornar 0
+
 // ---- Expression parsing ----

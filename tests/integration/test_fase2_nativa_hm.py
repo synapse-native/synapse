@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 # cumple Manual 7 §2.3: oraculos conductuales E2E (se compila y ejecuta el
 # binario; sin sniff). Mapeo MTO: OBL-M2-05 (Manual 2 §12, tipos de datos
-# nativos 100% pass) y OBL-M2-03 (Manual 2 §8.2, instanciaciones/ADT).
+# nativos 100% pass), OBL-M2-03 (Manual 2 §8.2, instanciaciones/ADT) y
+# OBL-M3-06 (Manual 3 §3, patron ::= ... | numero: literal/wildcard en
+# coincidir — R180, paridad S1/nativo).
 """Fase 2 nativa: validacion de instanciaciones de ADT (2.4 Hindley-Milner)
 en el analizador nativo (synapse_stage*.exe).
 
@@ -564,12 +566,17 @@ funcion principal() -> nulo:
     escribir_linea(entero_a_texto(doble(b)))
 '''
 
+# cumple Manual 3 §3 (ME r180_coincidir_nativo R4): patron literal numero +
+# wildcard, comportamiento observable (f(1)=10 por el case literal, f(2)=0 por
+# el wildcard; paridad S1 emit_control.py H-R90-6).
 _PROG_R11_PATRON_LITERAL = '''#lang: es
 funcion f(x: entero) -> entero:
     coincidir x:
         1 => retornar 10
+        _ => retornar 0
 funcion principal() -> nulo:
-    retornar
+    escribir_linea(entero_a_texto(f(1)))
+    escribir_linea(entero_a_texto(f(2)))
 '''
 
 
@@ -613,16 +620,22 @@ def test_r11_ejecucion_switch_adt(stage, tmp_path):
     assert "0" in salida, f"switch err() no ejecuto: {run.stdout!r}"
 
 
-def test_r11_patron_literal_no_cuelga(stage, tmp_path):
-    """Anti-cuelgue R11 (revision code-reviewer): un patron literal (`1 =>`)
-    NO puede colgar el compilador — antes, el bucle de casos no avanzaba si el
-    token no era nombre y giraba en infinito (RC=124). Un cuelgue re-lanzado
-    haria TimeoutExpired y este test fallaria. rc=5 esperado hoy: GCC sin
-    codegen para patrones literales (pendiente residual, reporte §13.5)."""
-    proc = _compilar_con_stage(stage, _PROG_R11_PATRON_LITERAL, str(tmp_path))
-    assert proc.returncode == 5, (
-        f"rc={proc.returncode} (esperado 5 = termina, sin cuelgue;"
-        f" TimeoutExpired del helper = cuelgue):\n{proc.stderr[-800:]}")
+def test_r11_patron_literal_compila_y_ejecuta(stage, tmp_path):
+    """R180 (OBL-M3-06, Manual 3 §3 "patron ::= ... | numero | cadena
+    (Literales)"): el patron literal numero (`1 =>`) compila y ejecuta en el
+    pipeline nativo — el case C emite el lexema directo sobre el valor y el
+    wildcard cubre el resto, paridad total con S1 (emit_control.py H-R90-6).
+    Historial: antes del parser `token_es_inicio_patron` el bucle de casos
+    giraba en infinito con tokens no-nombre (RC=124, anti-cuelgue R11) y tras
+    ese fix quedaba rc=5 (GCC sin codegen); ambos estados quedan cubiertos por
+    este oraculo conductual (un cuelgue re-lanzado haria TimeoutExpired)."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R11_PATRON_LITERAL, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"rc={proc.returncode}:\n{proc.stderr[-1200:]}")
+    assert run is not None and run.returncode == 0
+    salida = run.stdout.split()
+    assert "10" in salida, f"case literal no ejecuto: {run.stdout!r}"
+    assert "0" in salida, f"wildcard no ejecuto: {run.stdout!r}"
 
 
 # --- R1: unificacion HM de TVars en llamadas genericas (Manual 2 §8.2) -------

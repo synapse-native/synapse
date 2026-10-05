@@ -564,7 +564,14 @@ funcion parsear_coincidir(est: ParserEst) -> entero:
                 si t == T_FIN:
                     r = 0
                     romper
-                si token_es_nombre(t) == 1:
+                // cumple Manual 3 §3 (ME r180_coincidir_nativo R1): patron ::=
+                // IDENTIFICADOR "(" IDENTIFICADOR ")" | IDENTIFICADOR | "_" |
+                // numero — la entrada del caso usa token_es_inicio_patron:
+                // `1 =>` ya no se descarta por el anti-cuelgue (antes
+                // token_es_nombre(T_NUMERO)==0 soltaba el caso y corrompia el
+                // bucle; probe TDD rc=8 en stage2). El wildcard `_` ya entraba
+                // (lexea como T_IDENTIFICADOR).
+                si token_es_inicio_patron(t) == 1:
                     linea_c = token_linea(est, est.posicion)
                     col_c = token_columna(est, est.posicion)
                     // R11: capturar el SPAN del patron antes de consumirlo

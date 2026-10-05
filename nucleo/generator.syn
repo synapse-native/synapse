@@ -2631,7 +2631,36 @@ funcion gen_visitar_coincidir(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("// efectos se evaluaria multiples veces; el uso canonico (identificador")
         asm("// de variable/parametro) es puro y funciona correctamente).")
         asm("gen_emitir_str(est, \"    {\");")
-        asm("char _sw[4096]; snprintf(_sw, 4096, \"    switch ((%s).tag) {\", _eb); gen_emitir_str(est, _sw);")
+        // cumple Manual 3 §3 (ME r180_coincidir_nativo R2): el switch se emite
+        // sobre el VALOR si (a) algun patron no-wildcard es un literal numero
+        // (comienza con digito) o (b) el TIPO C del sujeto es entero/bool —
+        // paridad S1 emit_control.py visitar_coincidir H-R90-6 ("tipos
+        // primitivos no tienen .tag — switch sobre el valor directo", decision
+        // por PRIMITIVOS); si no, ADT: switch sobre .tag (ruta existente, byte
+        // identica para los coincidir de tags del nucleo; las instancias ADT
+        // monomorfizadas NO llevan prefijo 'struct ' — oraculo r4).
+        asm("int _mc_lit = 0;")
+        asm("struct ListaNodo* _sc = _mc->casos;")
+        asm("while (_sc) { struct NodoCaso* _scs = (struct NodoCaso*)_sc->cabeza; if (_scs && _scs->patron.datos && _scs->patron.datos[0] >= '0' && _scs->patron.datos[0] <= '9') { _mc_lit = 1; break; } _sc = _sc->cola; }")
+        asm("if (!_mc_lit && _mc->expresion && _mc->expresion->tipo.datos && strcmp(_mc->expresion->tipo.datos, \"Identificador\") == 0) {")
+        asm("    struct Identificador* _mie2 = (struct Identificador*)_mc->expresion;")
+        asm("    if (_mie2->nombre.datos) {")
+        asm("        extern char _G_fn_vars[2048][64]; extern char _G_fn_var_tipos[2048][64]; extern int _G_fn_vars_count;")
+        asm("        for (int _mv = 0; _mv < _G_fn_vars_count; _mv++) {")
+        asm("            if (strcmp(_G_fn_vars[_mv], _mie2->nombre.datos) == 0 && _G_fn_var_tipos[_mv][0]) {")
+        asm("                // paridad S1 emit_control.py (PRIMITIVOS): el switch sobre")
+        asm("                // VALOR solo es valido en C para el sujeto entero/bool;")
+        asm("                // las instancias ADT monomorfizadas NO llevan prefijo")
+        asm("                // 'struct ' y quedan en la ruta .tag (oraculo r4).")
+        asm("                if (strncmp(_G_fn_var_tipos[_mv], \"int64_t\", 7) == 0 || strcmp(_G_fn_var_tipos[_mv], \"int\") == 0 || strcmp(_G_fn_var_tipos[_mv], \"bool\") == 0) { _mc_lit = 1; }")
+        asm("                break;")
+        asm("            }")
+        asm("        }")
+        asm("    }")
+        asm("}")
+        asm("char _sw[4096];")
+        asm("if (_mc_lit) { snprintf(_sw, 4096, \"    switch ((%s)) {\", _eb); } else { snprintf(_sw, 4096, \"    switch ((%s).tag) {\", _eb); }")
+        asm("gen_emitir_str(est, _sw);")
         asm("struct ListaNodo* _cc = _mc->casos;")
         asm("while (_cc) {")
         asm("    struct NodoCaso* _cs = (struct NodoCaso*)_cc->cabeza;")
@@ -2639,6 +2668,11 @@ funcion gen_visitar_coincidir(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("        const char* _p = _cs->patron.datos;")
         asm("        if (strcmp(_p, \"_\") == 0) {")
         asm("            gen_emitir_str(est, \"    default:{\");")
+        asm("        } else if (_p[0] >= '0' && _p[0] <= '9') {")
+        asm("            // ME r180_coincidir_nativo R2 (cumple Manual 3 §3): patron")
+        asm("            // literal numero -> case C directo con el lexema (sin binding")
+        asm("            // de variable: no hay parens que extraer).")
+        asm("            char _cl_lit[64]; snprintf(_cl_lit, 64, \"    case %s:{\", _p); gen_emitir_str(est, _cl_lit);")
         asm("        } else {")
         asm("            // extraer tag antes de '('")
         asm("            char _tg[64]; int _ti=0;")
