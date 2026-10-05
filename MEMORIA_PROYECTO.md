@@ -7,7 +7,7 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-10-04** (R179 ME r27_ctor_aridad 0faea8e COMPLETADO — H-R177-1 CERRADA: aridad del ctor de struct en el analizador nativo con paridad S1 — R1 total_campos poblado contando cadena NODO_PARAMETRO via slot [6] (M2 §2), R2 check de aridad restaurado en NODO_LLAMADA: struct no-función con 0<args≠campos → ERR_SEM_ARGUMENTOS_INVALIDOS rc=7 (M2 §8.2); oráculo 4/4 (auto-compilación 37747 nodos con check activo, probes `Punto(1,2)`→12, `Punto(1)`→rc7 paridad, `Punto()`→0); test r27 alineado via TDD/MTO con OBL-M2-05 + caso válido NUEVO; H-R179-1 lección: hijos del nodo plano viajan en slot [6] (accessor nodo_expr), NO en .hijo_izq — usar .hijo_izq contó 0 campos y el check rechazó la auto-compilación; antes: R178 ME check_cli 95b2374 COMPLETADO — `synapse check --no-emit` en dispatcher nativo + cli.py + binario synapse.exe: 3 fallos test_cli_check CERRADOS, oráculo 4/4, MTO OBL-M8-16; plan maestro de deudas docs/plan_maestro_deudas.md con cola R179-R182; antes: R177 ME nativa_rc5_familia 4ebd025 COMPLETADO — familia nativa rc=5/rc=0 de test_fase2_nativa_hm: 8 fallos → 1 (r27=H-R177-1); R1 canal en expresión, R2 constantes tipadas, R3 orden pool/fibras, R4 tipos por RHS Identificador, R5 constantes sin #define; oráculo 5/5, gates MTS 0 brechas; H-R177-2 NUEVO paridad de parser; antes: **2026-10-01** R176 re-baseline integración COMPLETADO — 1453✓/104✗/39skip, +6✓/−6✗ vs R171 = mejora; 0 regresiones de los 2 MEs de la sesión; 104 clasificados con parseo: 21 RED TDD EXACTOS, 27 GCC entorno = H-R176-1, 3 test_cli_check = H-R176-2 feature gap declarado; gates "alinea todo" SIN BRECHAS/DEUDA 0/0; antes: ME paridad_principal_syq 90eb18c COMPLETADO — 4 warps de paridad_syn_syq CERRADOS retirando los stubs de principal obsoletos de pipeline.py+puente; antes: ME puente_for_en_syq 1e1584b COMPLETADO — 3 bugs del camino Syquex reparados: for-en→SentenciaPara canónico, iterable en semántico range-for, cast len; test_result 5/5 GREEN por primera vez; antes: ME barrido_citas_v820 4a63327 COMPLETADO — DEUDA de alineación heredada en CERO: las 39 citas sin sección de la v8.2.0 barridas restaurando textualmente M7 §4.3/§6.1/§6.2/§6.4/§7.2/§8 + 3 re-anclajes §6→§6.2/§2.1; DEUDA.md = 0/0; suites 85/85; antes: ME m7_s73_restauracion 72d77f3 — H-R171-1 CERRADA con M7 §7.3 restaurada + permisos.syn re-anclada; R171 verificación suite integración 1447✓/110✗/39skip, 0 regresiones; antes: restauro_bucle_validacion b1ac1c2, validation_loop_fix 63c1731, transpiler_elif e0cbb35; D-R163-1 sigue pendiente de ratificación)
+Última actualización: **2026-10-05** (R180 ME r180_coincidir_nativo be5d447 COMPLETADO — H-R177-2 CERRADA: patrón literal numero + wildcard sobre primitivos con paridad S1↔nativo (M3 §3/M1 §3.1/M2 §2) — parser token_es_inicio_patron + emisor switch-sobre-valor por tipo C exacto int64_t/int/bool; test r11 alineado via TDD/MTO con OBL-M3-06; oráculo 4/4 273.75 s que detectó y cerró la heurística invertida del emisor (H-R180-3); lección H-R180-2: generator.syn es concatenado de generador/ — rebuild SIEMPRE antes de bootstrapear; H-R180-1 NUEVA (cuerpos-bloque del caso fallan en nativo también para ADT) → ME R183; antes: **2026-10-04** R179 ME r27_ctor_aridad 0faea8e COMPLETADO — H-R177-1 CERRADA: aridad del ctor de struct en el analizador nativo con paridad S1 — R1 total_campos poblado contando cadena NODO_PARAMETRO via slot [6] (M2 §2), R2 check de aridad restaurado en NODO_LLAMADA: struct no-función con 0<args≠campos → ERR_SEM_ARGUMENTOS_INVALIDOS rc=7 (M2 §8.2); oráculo 4/4 (auto-compilación 37747 nodos con check activo, probes `Punto(1,2)`→12, `Punto(1)`→rc7 paridad, `Punto()`→0); test r27 alineado via TDD/MTO con OBL-M2-05 + caso válido NUEVO; H-R179-1 lección: hijos del nodo plano viajan en slot [6] (accessor nodo_expr), NO en .hijo_izq — usar .hijo_izq contó 0 campos y el check rechazó la auto-compilación; antes: R178 ME check_cli 95b2374 COMPLETADO — `synapse check --no-emit` en dispatcher nativo + cli.py + binario synapse.exe: 3 fallos test_cli_check CERRADOS, oráculo 4/4, MTO OBL-M8-16; plan maestro de deudas docs/plan_maestro_deudas.md con cola R179-R182; antes: R177 ME nativa_rc5_familia 4ebd025 COMPLETADO — familia nativa rc=5/rc=0 de test_fase2_nativa_hm: 8 fallos → 1 (r27=H-R177-1); R1 canal en expresión, R2 constantes tipadas, R3 orden pool/fibras, R4 tipos por RHS Identificador, R5 constantes sin #define; oráculo 5/5, gates MTS 0 brechas; H-R177-2 NUEVO paridad de parser; antes: **2026-10-01** R176 re-baseline integración COMPLETADO — 1453✓/104✗/39skip, +6✓/−6✗ vs R171 = mejora; 0 regresiones de los 2 MEs de la sesión; 104 clasificados con parseo: 21 RED TDD EXACTOS, 27 GCC entorno = H-R176-1, 3 test_cli_check = H-R176-2 feature gap declarado; gates "alinea todo" SIN BRECHAS/DEUDA 0/0; antes: ME paridad_principal_syq 90eb18c COMPLETADO — 4 warps de paridad_syn_syq CERRADOS retirando los stubs de principal obsoletos de pipeline.py+puente; antes: ME puente_for_en_syq 1e1584b COMPLETADO — 3 bugs del camino Syquex reparados: for-en→SentenciaPara canónico, iterable en semántico range-for, cast len; test_result 5/5 GREEN por primera vez; antes: ME barrido_citas_v820 4a63327 COMPLETADO — DEUDA de alineación heredada en CERO: las 39 citas sin sección de la v8.2.0 barridas restaurando textualmente M7 §4.3/§6.1/§6.2/§6.4/§7.2/§8 + 3 re-anclajes §6→§6.2/§2.1; DEUDA.md = 0/0; suites 85/85; antes: ME m7_s73_restauracion 72d77f3 — H-R171-1 CERRADA con M7 §7.3 restaurada + permisos.syn re-anclada; R171 verificación suite integración 1447✓/110✗/39skip, 0 regresiones; antes: restauro_bucle_validacion b1ac1c2, validation_loop_fix 63c1731, transpiler_elif e0cbb35; D-R163-1 sigue pendiente de ratificación)
 
 ---
 
@@ -247,16 +247,25 @@ Próximo ME:        POST-FASE 33 — SIN deudas ejecutables de la certificación
                    de Fase 32 en tests/opensyn (ver lección R160); 33.3 pendiente de
                    ratificación (desviaciones R149 §5); MEs futuros
                    del reporte FASE_33_CERTIFICACION.
-Próximo paso:      ME R180 — H-R177-2 paridad del PARSER nativo de coincidir
-                   (literales/wildcard `caso 3 =>`/`caso _ =>`: S1 los acepta vía
-                   H-R90-6, el nativo solo token_es_nombre; M2 L123-127 define
-                   patron ::= IDENTIFICADOR "(" IDENTIFICADOR ")" | IDENTIFICADOR |
-                   "_"; base parser_sentencias.syn ~L570). Luego R181 harness GCC
-                   (H-R176-1, radio ~27 fallos) y R182+ feature gaps declarados
-                   (wasm F25, RED TDD ME_27/29/30 D-5, H-R90-5). H-R177-1 CERRADA
-                   (R179 0faea8e: código vigente alineado a M2 §8.2 tras
-                   r153/H-R153-4b — test r27 alineado via TDD/MTO, OBL-M2-05).
-                   H-R176-2 CERRADA (R178 95b2374, synapse check --no-emit).
+Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc del
+                   entorno de integración (rutas -I, embedded_libs.h, orden de
+                   objetos, targets on-demand para los 21 RED TDD; ~27 fallos
+                   de una vez). Luego R182+ feature gaps declarados (wasm F25,
+                   RED TDD ME_27/29/30 D-5, H-R90-5) y NUEVO ME R183
+                   coincidir_bloque_nativo (H-R180-1: cuerpos-bloque del caso
+                   fallan en nativo TAMBIÉN para ADT — hallazgo de R180).
+                   H-R177-2 CERRADA (R180 be5d447: patrón literal numero +
+                   wildcard sobre primitivos con paridad S1↔nativo — parser
+                   token_es_inicio_patron M3 §3, emisor switch-sobre-valor por
+                   tipo C exacto espejo PRIMITIVOS de emit_control.py, S1
+                   TokenID.NUMERO M1 §3.1, test r11 alineado via TDD/MTO con
+                   OBL-M3-06; oráculo 4/4 detectó y cerró la heurística
+                   invertida H-R180-3; lección H-R180-2: generator.syn es
+                   concatenado de generador/ — rebuild SIEMPRE antes de
+                   bootstrapear). H-R177-1 CERRADA (R179 0faea8e: código vigente
+                   alineado a M2 §8.2 tras r153/H-R153-4b — test r27 alineado
+                   via TDD/MTO, OBL-M2-05). H-R176-2 CERRADA (R178 95b2374,
+                   synapse check --no-emit).
                    Continúa el mandato "repara todo" con el plan maestro
                    docs/plan_maestro_deudas.md; feature gaps: 3 RED
                    wasm extendido (Fase 25: i64/f64/imports/exports,

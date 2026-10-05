@@ -21,7 +21,7 @@ implementacion: cli.py despacha `check` al backend (validación sin emitir
 binario, paridad con `--check`/`--no-emit` existente en pipeline.py/ principal.syn
 según lo que el test exija); oráculo E2E tests/auditoria/test_oraculos_check_cli.py.
 impacto: cierra 3 fallos de integración.
-estado: EN CURSO
+estado: COMPLETADO (R178 95b2374 — H-R176-2 cerrada, oráculo 4/4, OBL-M8-16)
 
 ### ME R179 — h_r177_1 test_r27: alinear test↔manual↔código (aridad de ctor)
 requisito: Manual 2 (declaracion_estructura / instanciación: constructor con
@@ -38,7 +38,7 @@ reemplazarla por el caso que sí se rechaza según M2) — RED primero: el test
 nuevo falla contra el código actual solo si el código desviara al manual;
 GREEN con el código alineado vigente. Verificación MTO del requisito.
 impacto: cierra r27 (último fallo de la familia nativa rc=5/rc=0 → familia en CERO).
-estado: PENDIENTE
+estado: COMPLETADO (R179 0faea8e — H-R177-1 cerrada, oráculo 4/4, OBL-M2-05)
 
 ### ME R180 — coincidir_nativo (H-R177-2): paridad de parser nativo
 requisito: Manual 2 §2 — el patrón de `coincidir` según M2 L123-127 es
@@ -47,12 +47,21 @@ Decisión autorizada: implementar en el parser NATIVO el wildcard `_` y los
 literales de primitivos que S1 ya acepta (paridad M1 §3.1: mismo AST canónico;
 el manual define patron ::= ... | "_" para wildcard, los literales extienden
 H-R90-6 vigente en S1).
-implementacion: nucleo/parser_sentencias.syn (patrón: token_es_nombre OR "_" OR
-literales de tokenizador), emisor NodoCoincidir nativo con case C para
-literales/wildcard → default, unity si corresponde; puente de patrones.
+implementacion: nucleo/parser_sentencias.syn (patrón: token_es_inicio_patron =
+token_es_nombre OR T_NUMERO — el wildcard `_` ya lexea como T_IDENTIFICADOR),
+emisor NodoCoincidir nativo con case C para literales/wildcard → default
+(gen_visitar_coincidir: switch sobre VALOR si dígito en patrones o tipo C
+exacto int64_t/int/bool — espejo PRIMITIVOS de emit_control.py; ruta ADT
+.tag byte-idéntica), S1 _parsear_coincidir acepta TokenID.NUMERO; puente de
+patrones intacto (el patrón sigue siendo un span de texto).
 oráculo E2E: coincidir con literal y wildcard compila y corre en nativo.
-impacto: paridad total de coincidir S1↔nativo.
-estado: PENDIENTE
+impacto: paridad total de coincidir S1↔nativo (para patrones numero/wildcard;
+residuales: patrón cadena — C no soporta case string, falla igual en ambas
+tuberías — y forma de BLOQUE en nativo → ME R183).
+estado: COMPLETADO (R180 be5d447 — H-R177-2 cerrada, oráculo 4/4 273.75 s,
+OBL-M3-06; H-R180-3 lección TDD: heurística invertida detectada por el
+oráculo r4 y corregida a tipo C exacto; H-R180-2 lección de cadena:
+rebuild generator.syn SIEMPRE tras editar generador/ y antes de bootstrapear)
 
 ### ME R181 — harness_gcc (H-R176-1): entorno de integración
 requisito: Manual 9 §6.2 (entorno de CI reproducible: los tests del repo no
@@ -89,3 +98,22 @@ estado: PENDIENTE
    oportunidad de reparación (mandato "no importa de quién es").
 4. Antes de commitear: artefactos regenerados por suites → `git checkout --`.
 5. Prohibido --no-verify; los 7 gates del pre-commit mandan.
+
+### ME R183 — coincidir_bloque_nativo (H-R180-1, hallazgo de R180)
+requisito: Manual 3 §3 L140 — `caso ::= patron "=>" ( sentencia | NEWLINE
+INDENT bloque DEDENT )`: la segunda alternativa (cuerpo en bloque) ES ley
+(y S1 la implementa: r5_ref compila y corre `tres/hola/4`).
+hallazgo: el pipeline NATIVO falla con `Error Fatal Generador: Nodo tipo
+[DefinicionFuncion] no reconocido` para CUALQUIER coincidir con cuerpos-bloque,
+INCLUSO patrones ADT pre-existentes (bisección R180: sin coincidir pasa;
+una-línea pasa; bloque-literal y bloque-ADT fallan igual) — el problema está
+en la construcción del AST del caso con cuerpo-bloque o en el walk del
+generador nativo, no en los literales.
+implementacion: rastrear parsear_coincidir nativo (parser_sentencias.syn: rama
+NEWLINE-INDENT del cuerpo del caso) y el walk del generador (recorrido.syn /
+nodos_flujo.syn) hasta la divergencia; TDD con probe bloque-ADT (bisect_d de
+/tmp/probe_lf) como RED.
+oráculo: bloque-ADT y bloque-literal compilan rc=0 y ejecutan en nativo con
+paridad S1.
+impacto: cierra la segunda forma del caso en nativo (paridad total M3 §3).
+estado: PENDIENTE (registrado 2026-10-05 en R180 be5d447)

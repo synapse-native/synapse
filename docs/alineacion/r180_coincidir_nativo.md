@@ -1,7 +1,7 @@
 # Expediente de alineación r180_coincidir_nativo
 
 base: HEAD  # commit sobre el que se leyó el manual
-cambio_hash:
+cambio_hash: bdf56b5aea7c6db9
 
 > Una ancla por requisito. `estado:` CUMPLE | DESVIACION.
 > CUMPLE exige `evidencia: archivo:linea` con el comentario
