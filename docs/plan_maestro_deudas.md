@@ -73,13 +73,58 @@ implementacion: reparar el comando gcc del harness (rutas -I, orden de objetos,
 targets on-demand para los artefactos que los RED exigen — construcción real,
 no stubs). Los tests NO se tocan (no es su deuda).
 impacto: ~27 fallos de una vez + habilita medir los RED TDD de verdad.
-estado: PENDIENTE
+estado: COMPLETADO (R181 9657482 — H-R176-1 cerrada: CPATH raíz + quantum .o on-demand + shim weak GNUC S1/nativo; oráculo 5/5; quantum 8/8; TestEjecucionReal migrado a exit code via MTO; bootstrap 3 etapas stage2==stage3 c2889554…c91d43; deudas NO-harness halladas en el camino a filas R184/R185/R186)
+
+### ME R184 — lexer_y_keyword (H-R181-3, hallado en R181)
+requisito: Manual 2 §2/§3 — la gramática de parámetros acepta IDENTIFICADOR; el
+lexer debe clasificar `y` como AND SOLO en posición de operador (o el parser
+debe reconocer `y` como nombre de parámetro). Ley: identifiers suelen ir en L21
+del lexer (y=keyword AND).
+hallazgo: `crear_punto(x: entero, y: entero)` no se parsea porque `y` es
+keyword AND del lexer S1 (lexer.py L21, ruta keywords L630-650) — el test
+test_programa_estructura_ejecuta (TestEjecucionReal, aserción MTO rc==55) queda
+RED por esta deuda, no por su aserción.
+implementacion: análisis de contexto del lexer (operador binario vs posición de
+nombre: tras `:` o `,` es identificador) o reorden de tabla de keywords; TDD
+con el checksum de estructura como GREEN.
+impacto: cierra el RED de estructura; desbloquea programas con `y` como
+nombre.
+estado: PENDIENTE (registrado 2026-10-06 en R181 9657482)
+
+### ME R185 — stdlib_colision_generador (H-R181-4, hallado en R181)
+requisito: Manual 2 §9.1/§12 — el C generado debe ser válido; los nombres de
+funciones de usuario no pueden colisionar con la stdlib cuyo header se incluye
+incondicionalmente.
+hallazgo: una función usuario `abs(x: entero)` genera `int64_t abs(int64_t);`
+en conflicto con `int abs(int)` de stdlib.h (incluida incondicionalmente) →
+gcc error "conflicting types for 'abs'"; afecta a min/max/exit/cualquier
+nombre stdlib.
+implementacion: prefijado de símbolos usuario (paridad con el mangle de
+monomorfos) o no-emisión de prototipos innecesarios cuando la función es local
+al modulo; TDD con test_programa_si_sino_ejecuta (aserción MTO rc==5) como
+GREEN.
+impacto: cierra el RED de si_sino; elimina una clase entera de colisiones.
+estado: PENDIENTE (registrado 2026-10-06 en R181 9657482)
+
+### ME R186 — toml_raii_runtime (H-R181-1, hallado en R181)
+requisito: Manual 5 §5 (toml del runtime) + Manual 2 §9.1 — el test
+test_toml_compile_and_run exige compilar, Y ejecutar la escritura/lectura toml
+RAII.
+hallazgo: tras R181 el test COMPILA Y ENLAZA (CPATH + shim weak) pero el exe
+falla en runtime (salida vacía / segfault 0xC0000005 con toolchain canónico):
+deuda funcional RAII/toml del path standalone (probe de R181).
+implementacion: diagnóstico del segfault (determinar si es del código toml
+embebido o del runtime RAII en el path standalone de la suite), reparación y
+paridad S1↔nativo.
+impacto: cierra el último RED de la familia que era de enlace-ahora-runtime
+toml.
+estado: PENDIENTE (registrado 2026-10-06 en R181 9657482)
 
 ### ME R182+ — feature gaps (cola, una por ME con TDD)
 - wasm extendido (Fase 25: i64/f64/imports/exports — 3 RED ya escritos).
 - H-R90-5 (métodos sobre locales en .syq).
 - ME_27/29/30 (~21 RED TDD: aiComplete/aiExplain/aiFix, federated, quantum
-  build, build/release) — dependen de R181 (harness) para medirse.
+  build, build/release) — R181 (harness) COMPLETADO: ya medibles.
 - YAML de CI release (10): signing/SLSA — infraestructura, requiere secretos →
   documentar como deuda de infra con resolución asignada si no es local.
 - ~46 asserts residuales por familia (axon, borrowing, debug CLI, escuchar,
