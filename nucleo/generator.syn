@@ -5054,6 +5054,24 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "extern void cerrar(CanalConcurrencia* canal);")
     gen_emitir_linea(est, "extern void _simd_detectar(void);")
     gen_emitir_linea(est, "")
+    // cumple Manual 2 §5.1 (ME r181_harness_gcc, H-R176-1): shim WEAK del
+    // runtime — paridad S1/nativo con generator.py (mismas lineas emitidas).
+    // Si el binario enlaza el runtime, las definiciones fuertes prevalecen
+    // (semantica weak de GCC); si no (gcc sin objetos runtime), estas
+    // fallbacks evitan el error de enlace sin tocar comandos de test.
+    // cumple Manual 9 §6.2 (ME r181_harness_gcc, H-R176-1): habilita "suite
+    // completa en cada target" — el binario enlaza standalone sin runtime.
+    gen_emitir_linea(est, "#if defined(__GNUC__)")
+    gen_emitir_linea(est, "/* --- Fallbacks weak del runtime (compilacion standalone) --- */")
+    gen_emitir_linea(est, "__attribute__((weak)) void pool_init(uint32_t total_blocks, uint32_t block_size) { (void)total_blocks; (void)block_size; }")
+    gen_emitir_linea(est, "__attribute__((weak)) void* pool_alloc(size_t size) { return malloc(size); }")
+    gen_emitir_linea(est, "__attribute__((weak)) void pool_free(void* ptr) { free(ptr); }")
+    gen_emitir_linea(est, "__attribute__((weak)) void pool_destroy(void) { }")
+    gen_emitir_linea(est, "__attribute__((weak)) void synapse_esperar_hilos(void) { }")
+    gen_emitir_linea(est, "__attribute__((weak)) void synapse_esperar_fibras(void) { }")
+    gen_emitir_linea(est, "__attribute__((weak)) void _simd_detectar(void) { }")
+    gen_emitir_linea(est, "#endif")
+    gen_emitir_linea(est, "")
 
     // ME-B4: recolectar nombres de estructuras definidas en array nativo
     gen_escanear_estructuras(est, programa)

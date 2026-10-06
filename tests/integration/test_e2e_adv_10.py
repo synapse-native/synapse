@@ -171,9 +171,10 @@ funcion principal() -> entero:
     retornar 42
 '''
         stdout, rc, errores = _compilar_y_ejecutar(fuente)
-        assert rc == 0, f"Programa simple debe ejecutarse (rc=0), got rc={rc}: {errores}"
-        assert stdout is not None
-        assert "42" in stdout, f"Salida debe contener '42', got: {stdout}"
+        # H-R181-2 (MTO): el canal del resultado es el exit code — decisión
+        # ratificada en 1c1044c ("exit code = retorno de principal()"), posterior
+        # a la aserción original (rc=0 + stdout: convención nunca implementada).
+        assert rc == 42, f"Programa simple debe ejecutarse y retornar 42, got rc={rc}: {errores}"
 
     def test_programa_suma_ejecuta(self):
         """Programa con suma compila y ejecuta con resultado correcto."""
@@ -184,9 +185,8 @@ funcion principal() -> entero:
     retornar suma(17, 25)
 '''
         stdout, rc, errores = _compilar_y_ejecutar(fuente)
-        assert rc == 0, f"Suma debe ejecutarse: {errores}"
-        assert stdout is not None
-        assert "42" in stdout, f"Salida debe contener '42', got: {stdout}"
+        # H-R181-2: resultado por exit code (1c1044c); suma(17, 25) = 42.
+        assert rc == 42, f"Suma debe ejecutarse y retornar 42, got rc={rc}: {errores}"
 
     def test_programa_si_sino_ejecuta(self):
         """Programa con si/sino compila y ejecuta."""
@@ -199,9 +199,10 @@ funcion principal() -> entero:
     retornar abs(-5)
 '''
         stdout, rc, errores = _compilar_y_ejecutar(fuente)
-        assert rc == 0, f"Programa con si debe ejecutarse: {errores}"
-        assert stdout is not None
-        assert "5" in stdout, f"Salida debe contener '5', got: {stdout}"
+        # H-R181-2: resultado por exit code (1c1044c); abs(-5) = 5.
+        # H-R181-4: RED pendiente — el C generado declara `int64_t abs(int64_t)`
+        # en conflicto con stdlib.h (colisión función de usuario vs stdlib).
+        assert rc == 5, f"Programa con si debe ejecutarse y retornar 5, got rc={rc}: {errores}"
 
     def test_programa_mientras_ejecuta(self):
         """Programa con mientras compila y ejecuta."""
@@ -217,9 +218,8 @@ funcion principal() -> entero:
     retornar suma_hasta(10)
 '''
         stdout, rc, errores = _compilar_y_ejecutar(fuente)
-        assert rc == 0, f"Programa con mientras debe ejecutarse: {errores}"
-        assert stdout is not None
-        assert "55" in stdout, f"Salida debe contener '55' (suma 1..10), got: {stdout}"
+        # H-R181-2: resultado por exit code (1c1044c); suma 1..10 = 55.
+        assert rc == 55, f"Programa con mientras debe ejecutarse y retornar 55, got rc={rc}: {errores}"
 
     def test_programa_funcion_lenta_ejecuta(self):
         """Programa con función recursiva compila y ejecuta."""
@@ -232,9 +232,8 @@ funcion principal() -> entero:
     retornar factorial(6)
 '''
         stdout, rc, errores = _compilar_y_ejecutar(fuente)
-        assert rc == 0, f"Factorial debe ejecutarse: {errores}"
-        assert stdout is not None
-        assert "720" in stdout, f"Salida debe contener '720', got: {stdout}"
+        # H-R181-2: resultado por exit code (1c1044c); 6! = 720.
+        assert rc == 720, f"Factorial debe ejecutarse y retornar 720, got rc={rc}: {errores}"
 
     def test_programa_estructura_ejecuta(self):
         """Programa con estructura compila y ejecuta."""
@@ -254,9 +253,10 @@ funcion principal() -> entero:
     retornar distancia_cuadrada(p)
 '''
         stdout, rc, errores = _compilar_y_ejecutar(fuente)
-        assert rc == 0, f"Programa con estructura debe ejecutarse: {errores}"
-        assert stdout is not None
-        assert "25" in stdout, f"Salida debe contener '25' (3^2+4^2), got: {stdout}"
+        # H-R181-2: resultado por exit code (1c1044c); 3^2+4^2 = 25.
+        # H-R181-3: RED pendiente — 'y' es keyword AND del lexer S1 y el
+        # parámetro `y: entero` no se parsea (deuda lexer/parser, no harness).
+        assert rc == 25, f"Programa con estructura debe ejecutarse y retornar 25, got rc={rc}: {errores}"
 
     def test_programa_coincidir_ejecuta(self):
         """Programa con coincidir compila y ejecuta."""
@@ -270,6 +270,5 @@ funcion principal() -> entero:
     retornar extraer(r)
 '''
         stdout, rc, errores = _compilar_y_ejecutar(fuente)
-        assert rc == 0, f"Programa con coincidir debe ejecutarse: {errores}"
-        assert stdout is not None
-        assert "42" in stdout, f"Salida debe contener '42', got: {stdout}"
+        # H-R181-2: resultado por exit code (1c1044c); extraer(ok(42)) = 42.
+        assert rc == 42, f"Programa con coincidir debe ejecutarse y retornar 42, got rc={rc}: {errores}"

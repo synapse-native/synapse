@@ -6,6 +6,19 @@ from typing import Tuple
 _project_root = os.path.join(os.path.dirname(__file__), '..')
 sys.path.insert(0, _project_root)
 
+# cumple Manual 9 §6.2 (ME r181_harness_gcc, H-R176-1): el C generado por el
+# compilador incluye headers con ruta relativa a la RAIZ del repo
+# ("librerias/embedded_libs.h", "runtime/core/ast_nodos.h") y fuentes de
+# tests/ incluyen headers de runtime ("ffi_marshaling.h"); el comando gcc de
+# cada test es INMUTABLE (no pasa -I<raiz>). CPATH es el mecanismo CANONICO de
+# gcc para anadir directorios de include desde el ENTORNO (documentado en el
+# manual de gcc) sin tocar ningun comando de test. Raiz al FRENTE: resuelve
+# primero los includes del repo.
+_SEP_R181 = ";" if sys.platform == "win32" else ":"
+_R181_RAIZ = os.path.abspath(_project_root)
+_R181_CPATH_PREVIO = os.environ.get("CPATH", "")
+os.environ["CPATH"] = _R181_RAIZ + (_SEP_R181 + _R181_CPATH_PREVIO if _R181_CPATH_PREVIO else "")
+
 from compilador.ast_nodes import TokenID, Token, Programa
 from compilador.lexer import Lexer
 from compilador.parser import Parser
@@ -123,6 +136,18 @@ _RT_OBJ_DEFS = [
     ("proof_bridge.o", "nucleo/proof_bridge.c", []),
 ] + _rt_objs_core() + [
     ("axon_rt.o", "axon/axon_rt.c", []),
+]
+
+# cumple Manual 9 §6.2 (ME r181_harness_gcc, H-R176-1): objetos del runtime
+# cuántico que test_quantum_exec_10.py espera en nucleo/*.o. Lista SEPARADA de
+# _RT_OBJ_DEFS a propósito: los .o cuánticos requieren libm (sincos/sqrt/exp/
+# fmax según nm -u) y NO deben entrar al conjunto de enlace de rt_objs(), que
+# otros tests usan sin -lm (p.ej. test_toml_raii.py). Los tests cuánticos solo
+# exigen que los .o EXISTAN (os.path.exists), no se enlazan aqui.
+_QUANTUM_OBJS_R181 = [
+    ("nucleo/quantum_runtime.o", "nucleo/quantum_runtime.c"),
+    ("nucleo/quantum_memory.o", "nucleo/quantum_memory.c"),
+    ("nucleo/quantum_err_corr.o", "nucleo/quantum_err_corr.c"),
 ]
 
 
@@ -295,6 +320,23 @@ def _auto_compilar_objetos_runtime():
             # el -I. relativo al cwd de pytest (tests/) no resolvia — bug
             # latente que solo aparecia al cambiar headers (recompilacion).
             cmd = [gcc, "-O2", "-I.", "-I" + root, "-c", src_path, "-o", obj_path] + extra
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            if res.returncode != 0:
+                try:
+                    os.remove(obj_path)
+                except OSError:
+                    pass
+                raise RuntimeError(f"no se pudo compilar {obj} desde {src}: {res.stderr[:400]}")
+
+        # 1b) Objetos cuánticos (ME r181_harness_gcc, Manual 9 §6.2): mismos
+        # flags que el runtime; deps = fuente + headers nucleo/quantum_*.h.
+        for obj, src in _QUANTUM_OBJS_R181:
+            obj_path = os.path.join(root, obj)
+            src_path = os.path.join(root, src.replace("/", os.sep))
+            deps = [src_path] + sorted(glob.glob(os.path.join(root, "nucleo", "quantum_*.h")))
+            if os.path.exists(obj_path) and os.path.getmtime(obj_path) >= _rt_mtime_max(deps):
+                continue
+            cmd = [gcc, "-O2", "-I.", "-I" + root, "-c", src_path, "-o", obj_path]
             res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
             if res.returncode != 0:
                 try:

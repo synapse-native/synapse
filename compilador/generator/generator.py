@@ -1105,6 +1105,29 @@ def _emitir_encabezado(ctx: GeneratorContext):
         ctx.write_line("extern void _simd_detectar(void);")
         ctx.write_line("")
 
+    # cumple Manual 2 §5.1 (ME r181_harness_gcc, H-R176-1): shim WEAK de los
+    # simbolos del runtime para compilacion en UN SOLO archivo (p.ej. harness
+    # e2e que invoca gcc sin objetos runtime). Semantica weak de GCC: si el
+    # binario SI enlaza el runtime (synapse_rt_memory.o etc.), las definiciones
+    # fuertes prevalecen; si no, estas fallbacks evitan el error de enlace
+    # "undefined reference to pool_init" sin tocar ningun comando de test
+    # (tests inmutables). Pools -> malloc/free estandar; sincronizacion y SIMD
+    # -> no-op (un programa secuencial de un solo hilo no las necesita).
+    # cumple Manual 9 §6.2 (ME r181_harness_gcc, H-R176-1): habilita "suite
+    # completa en cada target" — el binario enlaza standalone sin runtime.
+    if not ctx.is_no_std():
+        ctx.write_line("#if defined(__GNUC__)")
+        ctx.write_line("/* --- Fallbacks weak del runtime (compilacion standalone) --- */")
+        ctx.write_line("__attribute__((weak)) void pool_init(uint32_t total_blocks, uint32_t block_size) { (void)total_blocks; (void)block_size; }")
+        ctx.write_line("__attribute__((weak)) void* pool_alloc(size_t size) { return malloc(size); }")
+        ctx.write_line("__attribute__((weak)) void pool_free(void* ptr) { free(ptr); }")
+        ctx.write_line("__attribute__((weak)) void pool_destroy(void) { }")
+        ctx.write_line("__attribute__((weak)) void synapse_esperar_hilos(void) { }")
+        ctx.write_line("__attribute__((weak)) void synapse_esperar_fibras(void) { }")
+        ctx.write_line("__attribute__((weak)) void _simd_detectar(void) { }")
+        ctx.write_line("#endif")
+        ctx.write_line("")
+
     emit_contract_header(ctx)
 
 
@@ -1589,7 +1612,8 @@ class GeneradorC:
                 # mataba el proceso sin esperar. F4.4: además de los pthreads
                 # residuales (synapse_esperar_hilos) espera a las FIBRAS M:N
                 # (synapse_esperar_fibras). Paridad con el nativo.
-                # Manual 2 §5 e2e: el exit code del proceso = retorno de principal().
+                # Decisión ratificada 1c1044c (H-R181-5): el exit code del
+                # proceso = retorno de principal().
                 ctx.write_line(f"int64_t _ret = {c_principal}();")
                 ctx.write_line("synapse_esperar_hilos();")
                 ctx.write_line("synapse_esperar_fibras();")

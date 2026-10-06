@@ -1,0 +1,15 @@
+{
+ "cambio_hash": "940ab0dead0a47ff",
+ "expediente": "docs/alineacion/r181_harness_gcc.md",
+ "fecha": "2026-10-05",
+ "archivos": [
+  "compilador/generator/generator.py",
+  "nucleo/generador/orquestador.syn",
+  "nucleo/generator.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_harness_gcc.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}
