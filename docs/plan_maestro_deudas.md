@@ -89,7 +89,7 @@ nombre: tras `:` o `,` es identificador) o reorden de tabla de keywords; TDD
 con el checksum de estructura como GREEN.
 impacto: cierra el RED de estructura; desbloquea programas con `y` como
 nombre.
-estado: PENDIENTE (registrado 2026-10-06 en R181 9657482)
+estado: COMPLETADO (R184 e4e4022 — regla keyword+':' degrada a identificador con exclusiones sino/requiere/garantiza/inseguro/recuperar y literales verdadero/falso/nulo nunca son nombres (H-R184-1a); fallback primario AND/OR/NOT→Identificador; paridad S1 lexer.py L652 ↔ nativo lexer.syn L529 + parser_expressions.py L184 ↔ parser_expr.syn L624; oráculo r2/r3)
 
 ### ME R185 — stdlib_colision_generador (H-R181-4, hallado en R181)
 requisito: Manual 2 §9.1/§12 — el C generado debe ser válido; los nombres de
@@ -104,7 +104,7 @@ monomorfos) o no-emisión de prototipos innecesarios cuando la función es local
 al modulo; TDD con test_programa_si_sino_ejecuta (aserción MTO rc==5) como
 GREEN.
 impacto: cierra el RED de si_sino; elimina una clase entera de colisiones.
-estado: PENDIENTE (registrado 2026-10-06 en R181 9657482)
+estado: COMPLETADO (R185 e4e4022 — _COLISIONES_STDLIB 50 nombres en context.py + tabla _resv en orquestador.syn en paridad exacta (oráculo r4); firma/prototipo/llamada emiten _syn_usuario_<n>; externas FFI sin mangle (M6 §3.1); definición _G_native_funcdefs añadida a ambos preámbulos del generador Python — sin ella el unity del compilador no enlazaba)
 
 ### ME R186 — toml_raii_runtime (H-R181-1, hallado en R181)
 requisito: Manual 5 §5 (toml del runtime) + Manual 2 §9.1 — el test
@@ -118,7 +118,23 @@ embebido o del runtime RAII en el path standalone de la suite), reparación y
 paridad S1↔nativo.
 impacto: cierra el último RED de la familia que era de enlace-ahora-runtime
 toml.
-estado: PENDIENTE (registrado 2026-10-06 en R181 9657482)
+estado: COMPLETADO (R184-R186 e4e4022 — causa raíz doble: H-R188-1 params struct ownership liberados en el callee (→ préstamo, M4 §3.3) y H-R181-1 literales estáticos pasados a RAII texto (→ _syn_texto_duplicar al pool); conftest rt_objs pre-colección (H-R186-1); test_toml_raii 2/2 + oráculo r5 FIN RAII OK)
+
+### ME R188 — doble_free_params_struct (H-R188-1, hallado y CERRADO en R184)
+requisito: Manual 4 §3.3 — la propiedad solo se transfiere con move explícito;
+el default es préstamo; Manual 4 §5.2 — cleanup y liveness en el ámbito del
+llamador.
+hallazgo: emit_declarations.py registraba TODOS los parámetros con destructor
+en el scope del callee → pop_scope liberaba el NodoToml/NodoJson del LLAMADOR
+en la 1ª llamada → handle colgante → use-after-free + doble free (0xC0000374)
+en la 2ª/3ª llamada (diagnosticado con bisect toml_dbg+stub: doble [LIBERAR
+tipo=1] del mismo handle).
+implementacion: _es_destructor_ownership (context.py L574) distingue dtors de
+ownership (NodoToml/NodoJson → PRÉSTAMO, no se consumen en el callee) de
+_syn_texto_liberar (pool del callee, seguro porque el llamador DUPLICA los
+literales — H-R181-1).
+impacto: test_toml_raii 2/2 GREEN; sin fila de trabajo pendiente.
+estado: COMPLETADO (2026-10-07 en R184 e4e4022)
 
 ### ME R182+ — feature gaps (cola, una por ME con TDD)
 - wasm extendido (Fase 25: i64/f64/imports/exports — 3 RED ya escritos).
