@@ -16,7 +16,7 @@ from compilador.ast_nodes import (
     ExprCrearCanal, ExprRecibirCanal,
     LogLlamada, DefinicionFuncion,
 )
-from .context import GeneratorContext
+from .context import GeneratorContext, nombre_c_de_llamada
 
 
 # ================================================================
@@ -638,8 +638,22 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
     if isinstance(nodo, LlamadaFuncion):
         args = []
         if nodo.argumentos:
-            for a in nodo.argumentos:
+            # cumple Manual 2 §4.1 (ME r184_r185_e2e, H-R181-1): los parámetros
+            # texto de funciones usuario reciben RAII (emit_declarations registra
+            # el destructor del parámetro → el callee ejecuta
+            # _syn_texto_liberar); el contrato del runtime ("todo CadenaSegura
+            # es pool_alloc", memory.c) exige que el argumento sea heap. Un
+            # LITERAL estático se DUPLICA con _syn_texto_duplicar (pool_alloc)
+            # para que el free del callee sea válido (sin esto: 0xC0000374 heap
+            # corruption, repro test_toml_raii.py).
+            _dfu = getattr(ctx, '_funciones_usuario', {}).get(nodo.nombre)
+            for _ai, a in enumerate(nodo.argumentos):
                 arg_c = expr_a_c(ctx, a)
+                _expr_raiz = a.expresion if isinstance(a, ArgumentoTransferido) else a
+                if (_dfu is not None and isinstance(_expr_raiz, LiteralCadena)
+                        and _ai < len(_dfu.parametros)
+                        and _dfu.parametros[_ai].tipo in ('texto', 'cadena', 'string')):
+                    arg_c = f"_syn_texto_duplicar({arg_c})"
                 args.append(arg_c)
         tipo = tipo_de_expr(ctx, nodo)
         nombre = nodo.nombre
@@ -903,9 +917,15 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
                 return f"({nombre_inst}){{0}}"
             return f"({nombre_inst}){{{args_str}}}"
 
+        # cumple Manual 2 §5.1 (ME r184_r185_e2e, H-R181-4): nombre C del sitio
+        # de llamada — funciones usuario en colisión con stdlib.h se emiten
+        # `_syn_usuario_<n>`; las EXTERNAS conservan su nombre C original
+        # (Manual 6 §3.1, FFI deliberada).
+        nombre_c = nombre_c_de_llamada(ctx, nombre)
+
         # Coercion for functions expecting CadenaSegura
         if nombre in ctx._FUNCIONES_ESPERAN_TEXTO:
-            return f"{nombre}({args_str})"
+            return f"{nombre_c}({args_str})"
 
         # Check if we need .datos for C function calls
         if nombre in ctx._C_FUNCTIONS_NEED_DATOS:
@@ -937,7 +957,7 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
             # 33.4b: también cuando el .syn declara la externa con retorno
             # `entero` (p.ej. _syn_mapa_claves(m: entero) -> entero de
             # puente_ffi_lista_mapa) — el C real devuelve void* (lista).
-            ret = f"{nombre}({', '.join(adjusted)})"
+            ret = f"{nombre_c}({', '.join(adjusted)})"
             if not expected_types:
                 ret = f"(intptr_t){ret}"
             elif (nodo.nombre in getattr(ctx, '_externas_ret_entero', set())
@@ -967,9 +987,9 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
                             adjusted.append(f"({a}).datos")
                             continue
                 adjusted.append(a)
-            return f"{nombre}({', '.join(adjusted)})"
+            return f"{nombre_c}({', '.join(adjusted)})"
 
-        return f"{nombre}({args_str})"
+        return f"{nombre_c}({args_str})"
 
     if isinstance(nodo, ExprAccesoCampo):
         obj = expr_a_c(ctx, nodo.objeto)

@@ -12,6 +12,48 @@ from compilador.ast_nodes import (
     Programa, DefinicionFuncion, DefinicionEstructura, Nodo,
 )
 
+# cumple Manual 2 §5.1 (ME r184_r185_e2e, H-R181-4): símbolos de C stdlib con
+# los que una función usuario puede colisionar al emitirse con su nombre
+# Synapse (H-R181-4: `funcion abs(x: entero) -> entero` emitía
+# `int64_t abs(int64_t)` → "conflicting types" con la declaración de stdlib.h).
+# Definiciones/prototipos/llamadas a funciones USUARIO en colisión se emiten
+# como `_syn_usuario_<n>`. Debe mantenerse EN PARIDAD con la tabla estática de
+# `_es_palabra_reservada_c()` en nucleo/generador/orquestador.syn (oráculo
+# test_oraculos_r184_r185_e2e.py::r4_paridad).
+_COLISIONES_STDLIB = frozenset({
+    'abs', 'labs', 'llabs', 'exit', 'round', 'pow', 'div', 'rand', 'srand',
+    'atoi', 'atof', 'atol', 'strtol', 'printf', 'puts', 'putchar', 'getchar',
+    'scanf', 'malloc', 'calloc', 'realloc', 'free', 'memcpy', 'memmove',
+    'memset', 'memcmp', 'strcpy', 'strncpy', 'strcat', 'strncat', 'strcmp',
+    'strncmp', 'strlen', 'strchr', 'strrchr', 'strstr', 'strdup', 'sprintf',
+    'snprintf', 'sscanf', 'toupper', 'tolower', 'time', 'clock', 'getenv',
+    'system', 'qsort', 'bsearch', 'remove', 'rename',
+})
+
+
+def nombre_funcion_c(nombre: str) -> str:
+    """Nombre C de una DEFINICIÓN/PROTOTIPO de función usuario (Manual 2 §5.1).
+
+    H-R181-4: los nombres que colisionan con símbolos de stdlib.h se emiten
+    prefijados para evitar 'conflicting types'. Los demás se emiten intactos.
+    """
+    return f"_syn_usuario_{nombre}" if nombre in _COLISIONES_STDLIB else nombre
+
+
+# cumple Manual 6 §3.1 (ME r184_r185_e2e): FFI externa conserva su nombre C.
+def nombre_c_de_llamada(ctx, nombre: str) -> str:
+    """Nombre C en un SITIO DE LLAMADA (Manual 2 §5.1 + Manual 6 §3.1).
+
+    H-R181-4: igual que nombre_funcion_c(), pero SOLO si `nombre` es una
+    función DEFINIDA por el usuario (ctx._funciones_usuario); una externa
+    (DeclaracionExterna, M6 §3.1) conserva su nombre C original — es la ABI
+    FFI deliberada (`externo funcion abs(...)` debe llamar a la `abs` real).
+    """
+    if (nombre in _COLISIONES_STDLIB
+            and nombre in getattr(ctx, '_funciones_usuario', {})):
+        return f"_syn_usuario_{nombre}"
+    return nombre
+
 
 def _dividir_args_tipo(resto: str) -> List[str]:
     """Divide los argumentos de una instanciación ADT respetando el anidamiento
@@ -528,6 +570,16 @@ class GeneratorContext:
                 or self._es_tipo_rc(tipo_synapse)
                 or self._es_tipo_arc(tipo_synapse)
                 or self._es_tipo_debil(tipo_synapse))
+
+    def _es_destructor_ownership(self, tipo_synapse: str) -> bool:
+        # cumple Manual 4 §3.3 (ME r184_r185_e2e, H-R188-1): True si el
+        # destructor del tipo libera ESTRUCTURA/ARBOL propio (NodoToml/
+        # NodoJson), no un refcount ni un buffer de pool. Con paso por valor
+        # (copia superficial) liberar en el callee cuelga el objeto del
+        # llamador: la propiedad solo se transfiere con move explicito (§3.3);
+        # el default es prestamo (borrow).
+        dtor = self._destructor_map.get(tipo_synapse)
+        return dtor is not None and dtor != '_syn_texto_liberar'
 
     def _destructor_para_tipo(self, tipo_synapse: str,
                                var_name: str = '') -> tuple:

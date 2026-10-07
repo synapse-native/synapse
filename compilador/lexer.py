@@ -631,6 +631,11 @@ class Lexer:
                 # Si la palabra es un keyword seguida de '=' (asignación, no '=='),
                 # también tratarla como identificador (e.g. 'y = 5' donde 'y' es
                 # el keyword AND en español).
+                # cumple Manual 2 §3 (ME r184_r185_e2e, H-R181-3): keyword + ':' →
+                # identificador (posición de campo 'y: entero' y de parámetro
+                # 'crear_punto(x, y)'), salvo abridores de bloque que legítimamente
+                # preceden a ':' (sino:/requiere:/garantiza:/inseguro:/recuperar: —
+                # el último con patrón: 'texto_a_entero(v) recuperar: -1').
                 es_contexto_id = despues_de_punto
                 if not es_contexto_id and self.diccionario and palabra in self.diccionario:
                     _peek = i
@@ -641,6 +646,13 @@ class Lexer:
                             pass  # es comparación ==, mantener keyword
                         else:
                             es_contexto_id = True  # asignación: 'y = ...' → identifier
+                    elif _peek < len(texto) and texto[_peek] == ':':
+                        if self.diccionario[palabra] not in (
+                            TokenID.SINO, TokenID.REQUIERE, TokenID.GARANTIZA,
+                            TokenID.INSEGURO, TokenID.RECUPERAR,
+                            TokenID.VERDADERO, TokenID.FALSO, TokenID.NULO,
+                        ):
+                            es_contexto_id = True  # campo/parámetro: 'y: entero' → identifier
                 if es_contexto_id and self.diccionario and palabra in self.diccionario:
                     self.tokens.append(
                         Token(TokenID.IDENTIFIER, linea=self.linea_actual, columna=inicio, valor=palabra)

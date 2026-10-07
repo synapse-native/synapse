@@ -181,6 +181,18 @@ class ParserExpressionsMixin(ParserBase):
 
     def _parsear_primario(self) -> Nodo:
         t = self._mirar()
+        # cumple Manual 2 §12 (ME r184_r185_e2e, H-R181-3): keyword de operador
+        # (y/o/no) en posición de OPERANDO = nombre de usuario (`p.y = y`, RHS).
+        # En posición de operador `parsear_expr_binaria` los consume ANTES
+        # (L29 ops = {AND, OR}); aquí es inequívocamente un identificador. La
+        # negación `no` se consume en el bucle unario (L99) antes de llegar aquí.
+        if t.tipo in (TokenID.AND, TokenID.OR, TokenID.NOT):
+            self._avanzar()
+            return Identificador(
+                nombre=t.valor or t.tipo.name.lower(),
+                linea=t.linea,
+                columna=t.columna,
+            )
         if t.tipo == TokenID.NUMBER:
             self._avanzar()
             return LiteralNumero(valor=t.valor, linea=t.linea, columna=t.columna)

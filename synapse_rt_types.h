@@ -360,6 +360,10 @@ void* _syn_buffer_alloc(int tamano);
 void _syn_buffer_free(void* ptr);
 CadenaSegura _syn_recibir_como_texto(int fd, int tamano);
 void _syn_texto_liberar(CadenaSegura s);
+// cumple Manual 2 §4.1 (ME r184_r185_e2e, H-R181-1): duplica un CadenaSegura
+// al pool (runtime/core/memory.c) — argumentos literal hacia funciones
+// usuario con RAII de parámetro texto.
+CadenaSegura _syn_texto_duplicar(CadenaSegura s);
 
 // ============================================================
 // Defined in synapse_rt_concurrency.c:

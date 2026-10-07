@@ -526,6 +526,24 @@ funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
                             asm("  if (_pkw < len_texto && ((const char*)ptr_texto)[_pkw] == 61 && (_pkw + 1 >= len_texto || ((const char*)ptr_texto)[_pkw + 1] != 61)) es_asig = 1; }")
                         si es_asig == 1:
                             tok = 0
+                        // cumple Manual 2 §3 (ME r184_r185_e2e, H-R181-3): paridad
+                        // lexer.py — keyword + ':' -> identificador (posicion de campo
+                        // 'y: entero' y de parametro 'crear_punto(x, y)'), salvo los
+                        // abridores de bloque que legitimanete preceden a ':'
+                        // (T_SINO/T_REQUIERE/T_GARANTIZA/T_INSEGURO/T_RECUPERAR —
+                        // el último con patrón: 'texto_a_entero(v) recuperar: -1').
+                        es_dosp = 0
+                        inseguro:
+                            asm("{ int _pkw2 = i;")
+                            asm("  while (_pkw2 < len_texto && ((const char*)ptr_texto)[_pkw2] == 32) _pkw2++;")
+                            asm("  if (_pkw2 < len_texto && ((const char*)ptr_texto)[_pkw2] == 58) es_dosp = 1; }")
+                        // H-R184-1a (FIX): los literales nunca son nombres: si
+                        // 'si verdadero:' se degrada a 'si (var) verdadero:' el
+                        // semantico reporta 'verdadero no declarada' (uso legitimo
+                        // del literal, Manual 2 §2). Excluidos además de la
+                        // regla keyword + ':' (no existen como nombres).
+                        si es_dosp == 1 y tok != T_SINO y tok != T_REQUIERE y tok != T_GARANTIZA y tok != T_INSEGURO y tok != T_RECUPERAR y tok != T_VERDADERO y tok != T_FALSO y tok != T_NULO:
+                            tok = 0
                 si tok == 0:
                     tok = T_IDENTIFICADOR
                 si tok == T_IDENTIFICADOR:

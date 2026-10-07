@@ -1177,7 +1177,16 @@ funcion _oo_expr_a_c(est: GeneradorCEst, nodo: puntero, buf: puntero, bufsz: ent
         asm("        strcat(_b, \"}\");")
         asm("        return;")
         asm("    }")
-        asm("    if (_lf->nombre.datos) strcpy(_b, _lf->nombre.datos);")
+        asm("    // cumple Manual 2 §5.1 (ME r184_r185_e2e, H-R181-4): llamada a")
+        asm("    // función usuario en colisión con stdlib -> `_syn_usuario_<n>`; una")
+        asm("    // externa FFI conserva el nombre C original (Manual 6 §3.1) —")
+        asm("    // _es_funcdef_usuario distingue vía el registro de escaneo.syn.")
+        asm("    if (_lf->nombre.datos) {")
+        asm("        extern int64_t _es_palabra_reservada_c(void* nombre);")
+        asm("        extern int64_t _es_funcdef_usuario(void* nombre);")
+        asm("        if (_es_palabra_reservada_c((void*)_lf->nombre.datos) && _es_funcdef_usuario((void*)_lf->nombre.datos)) { strcpy(_b, \"_syn_usuario_\"); strcat(_b, _lf->nombre.datos); }")
+        asm("        else strcpy(_b, _lf->nombre.datos);")
+        asm("    }")
         asm("    strcat(_b, \"(\");")
         asm("    int _arg_idx = 0;")
         asm("    struct ListaNodo* _arg_cur = _lf->argumentos;")
@@ -2986,6 +2995,16 @@ funcion gen_escanear_retornos(est: GeneradorCEst, programa: Programa) -> nulo:
         asm("                _G_native_func_returns_count++;")
         asm("            }")
         asm("        }")
+        asm("        // cumple Manual 2 §5.1 (ME r184_r185_e2e, H-R181-4): registrar la")
+        asm("        // función DEFINIDA por el usuario — el emisor de llamadas")
+        asm("        // (expr_eval.syn) distingue llamada usuario (se manglea si colisiona")
+        asm("        // con stdlib) de externa FFI (nombre C original, Manual 6 §3.1).")
+        asm("        extern char _G_native_funcdefs[2048][64]; extern int _G_native_funcdefs_count;")
+        asm("        if (_geff->nombre.datos && _G_native_funcdefs_count < 2048) {")
+        asm("            int _gfd = 0;")
+        asm("            for (int _gfdi = 0; _gfdi < _G_native_funcdefs_count; _gfdi++) { if (strcmp(_G_native_funcdefs[_gfdi], _geff->nombre.datos) == 0) { _gfd = 1; break; } }")
+        asm("            if (!_gfd) { strncpy(_G_native_funcdefs[_G_native_funcdefs_count], _geff->nombre.datos, 63); _G_native_funcdefs[_G_native_funcdefs_count][63] = 0; _G_native_funcdefs_count++; }")
+        asm("        }")
         asm("        } else if (_gefn && _gefn->tipo.datos && strcmp(_gefn->tipo.datos, \"DeclaracionExterna\") == 0) {")
         asm("            struct DeclaracionExterna* _gex = (struct DeclaracionExterna*)_gefn;")
         asm("            if (_gex->nombre.datos && _gex->tipo_retorno.datos) {")
@@ -4010,7 +4029,14 @@ funcion gen_recorrer_toplevel(est: GeneradorCEst, programa: Programa) -> nulo:
         asm("        _pp0[_ppo0] = 0;")
         asm("        traducir_tipo_c((void*)_pf0->tipo_retorno.datos);")
         asm("        extern char _gen_tmp_buf[4096];")
-        asm("        snprintf(_psig0, 4096, \"%s %s(%s);\", _gen_tmp_buf, _pfn0, _pp0);")
+        asm("        // cumple Manual 2 §5.1 (ME r184_r185_e2e, H-R181-4): prototipo con")
+        asm("        // nombre en colisión con stdlib emitido `_syn_usuario_<n>` (paridad")
+        asm("        // con la firma de funciones.syn; las ramas _SPECIAL_SIGS de arriba")
+        asm("        // no cambian — son builtins de runtime, nunca colisionan).")
+        asm("        extern int64_t _es_palabra_reservada_c(void* nombre);")
+        asm("        char _pfnc0[96]; const char* _pfnc = _pfn0;")
+        asm("        if (_es_palabra_reservada_c((void*)_pfn0)) { snprintf(_pfnc0, 96, \"_syn_usuario_%s\", _pfn0); _pfnc = _pfnc0; }")
+        asm("        snprintf(_psig0, 4096, \"%s %s(%s);\", _gen_tmp_buf, _pfnc, _pp0);")
         asm("    }")
         asm("    gen_emitir_str(est, _psig0);")
         asm("}")
@@ -4317,7 +4343,15 @@ funcion gen_visitar_funcion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("    traducir_tipo_c((void*)_rt);")
         asm("    extern char _gen_tmp_buf[4096];")
         asm("    const char* _rct = _gen_tmp_buf;")
-        asm("    snprintf(_sig, 4096, \"%s %s(%s)\", _rct, _fn, _ps);")
+        asm("    // cumple Manual 2 §5.1 (ME r184_r185_e2e, H-R181-4): firma C de función")
+        asm("    // usuario — nombre en colisión con stdlib.h se emite `_syn_usuario_<n>`")
+        asm("    // (paridad S1 emit_declarations.py c_name). El dedup y los registros")
+        asm("    // (_G_emit_func_names/_G_native_func_returns) siguen usando el nombre")
+        asm("    // Synapse original (_fn) — solo el símbolo C cambia.")
+        asm("    extern int64_t _es_palabra_reservada_c(void* nombre);")
+        asm("    char _fncbuf[96]; const char* _fnc = _fn;")
+        asm("    if (_es_palabra_reservada_c((void*)_fn)) { snprintf(_fncbuf, 96, \"_syn_usuario_%s\", _fn); _fnc = _fncbuf; }")
+        asm("    snprintf(_sig, 4096, \"%s %s(%s)\", _rct, _fnc, _ps);")
         asm("    gen_emitir_str(est, _sig);")
         asm("    gen_abrir_bloque_c(est);")
         asm("    // F5-1 (Manual 2 §5.1): requiere se evalua antes de la primera")
@@ -4897,6 +4931,12 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     // ME-C4: tipo inferido de cada variable auto-declarada (paridad tipo_de_expr para OpBinaria)
     gen_emitir_linea(est, "char _G_fn_var_tipos[2048][64];")
     gen_emitir_linea(est, "")
+    // cumple Manual 2 §5.1 (ME r184_r185_e2e, H-R181-4): registro de funciones
+    // DEFINIDAS por el usuario (se llena en el pre-pass de escaneo.syn) —
+    // distingue una llamada usuario `abs` (se emite `_syn_usuario_abs`) de una
+    // externa FFI `abs` (conserva el nombre C original, Manual 6 §3.1).
+    gen_emitir_linea(est, "char _G_native_funcdefs[2048][64];")
+    gen_emitir_linea(est, "int _G_native_funcdefs_count;")
     // F5-1 (Manual 2 §5): contratos requiere/garantiza de la funcion actual.
     // _G_fn_garantizas_actuales = ListaNodo* con las expresiones de garantiza
     // (leidas por gen_visitar_retornar); _G_fn_ret_tipo_c = tipo C del retorno
@@ -5125,6 +5165,43 @@ funcion _es_builtin_runtime(nombre: puntero) -> entero:
         asm("for (int _bi = 0; _bi < (int)(sizeof(_rtb)/sizeof(_rtb[0])); _bi++) {")
         asm("    if (strcmp(_bn, _rtb[_bi]) == 0) return 1;")
         asm("}")
+        asm("return 0;")
+
+// ----------------------------------------------------------
+// cumple Manual 2 §5.1 (ME r184_r185_e2e, H-R181-4): tabla de símbolos de C
+// stdlib con los que una función usuario puede colisionar al emitirse con su
+// nombre Synapse. EN PARIDAD con _COLISIONES_STDLIB de
+// compilador/generator/context.py (oráculo r4_paridad de
+// test_oraculos_r184_r185_e2e.py). Las funciones usuario en colisión se
+// emiten `_syn_usuario_<n>` (firma, prototipo, llamada); las EXTERNAS
+// conservan su nombre C original (Manual 6 §3.1, FFI deliberada).
+// ----------------------------------------------------------
+funcion _es_palabra_reservada_c(nombre: puntero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
+    inseguro:
+        asm("const char* _rn = (const char*)nombre;")
+        asm("if (!_rn) return 0;")
+        asm("static const char* _resv[] = { \"abs\", \"labs\", \"llabs\", \"exit\", \"round\", \"pow\", \"div\", \"rand\", \"srand\", \"atoi\", \"atof\", \"atol\", \"strtol\", \"printf\", \"puts\", \"putchar\", \"getchar\", \"scanf\", \"malloc\", \"calloc\", \"realloc\", \"free\", \"memcpy\", \"memmove\", \"memset\", \"memcmp\", \"strcpy\", \"strncpy\", \"strcat\", \"strncat\", \"strcmp\", \"strncmp\", \"strlen\", \"strchr\", \"strrchr\", \"strstr\", \"strdup\", \"sprintf\", \"snprintf\", \"sscanf\", \"toupper\", \"tolower\", \"time\", \"clock\", \"getenv\", \"system\", \"qsort\", \"bsearch\", \"remove\", \"rename\" };")
+        asm("for (int _ri = 0; _ri < (int)(sizeof(_resv)/sizeof(_resv[0])); _ri++) {")
+        asm("    if (strcmp(_rn, _resv[_ri]) == 0) return 1;")
+        asm("}")
+        asm("return 0;")
+
+// cumple Manual 2 §5.1 (ME r184_r185_e2e, H-R181-4): ¿es `nombre` una función
+// DEFINIDA por el usuario (registrada en escaneo.syn)? Externas -> 0.
+funcion _es_funcdef_usuario(nombre: puntero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
+    inseguro:
+        asm("extern char _G_native_funcdefs[2048][64]; extern int _G_native_funcdefs_count;")
+        asm("const char* _un = (const char*)nombre;")
+        asm("if (!_un) return 0;")
+        asm("for (int _ui = 0; _ui < _G_native_funcdefs_count; _ui++) { if (strcmp(_G_native_funcdefs[_ui], _un) == 0) return 1; }")
         asm("return 0;")
 
 funcion gen_visitar_top_level(est: GeneradorCEst, stmt: puntero) -> nulo:

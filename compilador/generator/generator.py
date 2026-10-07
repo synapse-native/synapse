@@ -17,7 +17,7 @@ from compilador.ast_nodes import (
     SentenciaEnviarCanal, DeclaracionTipo,
     ExprAsm, LlamadaFuncion,
 )
-from .context import GeneratorContext, _dividir_args_tipo
+from .context import GeneratorContext, _dividir_args_tipo, nombre_funcion_c
 from .emit_control import visitar_si, visitar_mientras, visitar_para, visitar_coincidir
 from .emit_declarations import (
     visitar_funcion, visitar_estructura, _volcar_typedefs_genericos,
@@ -822,6 +822,10 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("extern CadenaSegura _syn_leer_archivo(CadenaSegura ruta);")
     # cumple Manual 2 §4.1 (r153): subcadena delega en el runtime real (clampeo).
     ctx.write_line("extern CadenaSegura _syn_texto_subcadena(CadenaSegura t, int64_t inicio, int64_t fin);")
+    # cumple Manual 2 §4.1 (ME r184_r185_e2e, H-R181-1): duplica un CadenaSegura
+    # al pool — los literales pasados a funciones usuario (RAII del parámetro)
+    # deben ser heap (contrato "todo CadenaSegura es pool_alloc", memory.c).
+    ctx.write_line("extern CadenaSegura _syn_texto_duplicar(CadenaSegura s);")
     ctx.write_line("")
     ctx.write_line("// --- OO AST node types ---")
     for t in ['Token', 'Nodo', 'ListaNodo', 'Programa',
@@ -1220,6 +1224,13 @@ class GeneradorC:
             # ME-B6: tipos de retorno (paridad con el bloque 'modo == modulo')
             ctx.write_line("char _G_native_func_returns[2048][64];")
             ctx.write_line("int _G_native_func_returns_count;")
+            # cumple Manual 2 §5.1 (ME r184_r185_e2e, H-R181-4): registro de
+            # funciones DEFINIDAS por el usuario (se llena en el pre-pass;
+            # paridad orquestador.syn L339-340 / escaneo.syn L164-168) —
+            # el EMBEDDED comparte generador con el nativo: paridad total
+            # de tablas de símbolos y del preámbulo C (M2 §5.1).
+            ctx.write_line("char _G_native_funcdefs[2048][64];")
+            ctx.write_line("int _G_native_funcdefs_count;")
             ctx.write_line("int _G_native_tipo_retorno(const char* fn, char* out) {")
             ctx.inc_indent()
             ctx.write_line("if (!fn || !out) return 0;")
@@ -1516,7 +1527,7 @@ class GeneradorC:
                             f"{ctx.traducir_tipo_c(p.tipo)}{'*' if p.tipo in ctx._POINTER_TYPES else ''} {p.nombre}"
                             for p in s.parametros
                         ) if s.parametros else "void"
-                    ctx.write_line(f"{tipo_ret} {s.nombre}({params});")
+                    ctx.write_line(f"{tipo_ret} {nombre_funcion_c(s.nombre)}({params});")  # cumple Manual 2 §5.1 (H-R181-4)
         if any(
             isinstance(s, DefinicionFuncion)
             and s.nombre not in ctx._RUNTIME_BUILTINS
@@ -1976,6 +1987,12 @@ class GeneradorC:
                 # ME-B6: tipos de retorno
                 ctx.write_line("char _G_native_func_returns[2048][64];")
                 ctx.write_line("int _G_native_func_returns_count;")
+                # cumple Manual 2 §5.1 (ME r184_r185_e2e, H-R181-4): registro de
+                # funciones DEFINIDAS por el usuario (paridad orquestador.syn) —
+                # el EMBEDDED comparte generador y preámbulo con el nativo (M2 §5.1).
+                # cumple Manual 2 §5.1 (ME r184_r185_e2e, H-R181-4, Embedded).
+                ctx.write_line("char _G_native_funcdefs[2048][64];")
+                ctx.write_line("int _G_native_funcdefs_count;")
                 ctx.write_line("int _G_native_tipo_retorno(const char* fn, char* out) {")
                 ctx.inc_indent()
                 ctx.write_line("if (!fn || !out) return 0;")

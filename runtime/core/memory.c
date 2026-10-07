@@ -458,6 +458,31 @@ void _syn_texto_liberar(CadenaSegura s) {
     if (s.datos) pool_free((void*)s.datos);  // cumple Manual 2 4.1 + §9.1: todo CadenaSegura es pool_alloc, RAII libera con pool_free
 }
 
+// cumple Manual 2 §4.1 (ME r184_r185_e2e, H-R181-1): duplica un CadenaSegura
+// al pool — los LITERALES estáticos que el emisor pasa a funciones usuario
+// (cuyo parámetro texto recibe RAII: _syn_texto_liberar en el callee, contrato
+// "todo CadenaSegura es pool_alloc") deben vivir en el heap para que el
+// pool_free del callee sea válido (sin esto: 0xC0000374 heap corruption).
+// cumple Manual 2 §5.1 (ME r184_r185_e2e, H-R181-1): en un SITIO DE LLAMADA
+// el literal es préstamo (M4 §3.3): el callee no libera memoria del llamador,
+// por eso el emisor duplica el literal antes de pasar el argumento texto.
+CadenaSegura _syn_texto_duplicar(CadenaSegura s) {
+    CadenaSegura r = { .longitud = 0, .datos = (char*)"" };
+    if (s.datos && s.longitud > 0) {
+        char* b = (char*)pool_alloc((size_t)s.longitud + 1);
+        if (b) {
+            memcpy(b, s.datos, (size_t)s.longitud);
+            b[s.longitud] = '\0';
+            r.longitud = s.longitud;
+            r.datos = b;
+        }
+    } else if (s.datos) {
+        r.datos = (char*)pool_alloc(1);
+        if (r.datos) ((char*)r.datos)[0] = '\0';
+    }
+    return r;
+}
+
 // ============================================================
 // Arena allocator (Manual 4 §2: Arenas por ámbito)
 // bump allocator: O(1) alloc, O(1) lib (bloque entero), 0 fragmentación.

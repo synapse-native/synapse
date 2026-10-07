@@ -17,7 +17,7 @@ from compilador.ast_nodes import (
     ExprAsm, Identificador, LlamadaFuncion, ArgumentoTransferido,
     DeclaracionTipo, LiteralCadena,
 )
-from .context import GeneratorContext, MAPA_TIPOS_C
+from .context import GeneratorContext, MAPA_TIPOS_C, nombre_funcion_c
 from .emit_expressions import (
     expr_a_c, tipo_de_expr, cadena_c_literal,
 )
@@ -610,14 +610,31 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
             for p in nodo.parametros
         ) if nodo.parametros else "void"
     # Rename 'principal' to '_principal_impl' to avoid conflict with C main()
-    c_name = '_principal_impl' if nodo.nombre == 'principal' else nodo.nombre
+    # cumple Manual 2 §5.1 (ME r184_r185_e2e, H-R181-4): función usuario cuyo
+    # nombre colisiona con stdlib.h (abs/min/max/exit/...) se emite como
+    # `_syn_usuario_<n>` (prototipo y definición en paridad; ver context.py).
+    c_name = '_principal_impl' if nodo.nombre == 'principal' else nombre_funcion_c(nodo.nombre)
     ctx.write_line(f"{tipo} {c_name}({params}) {{")
     ctx.inc_indent()
     ctx.push_scope()
 
     # Register parameters with destructors (transfer + rc/arc/débil)
+    # cumple Manual 4 §3.3 (ME r184_r185_e2e, H-R188-1): parámetro cuyo
+    # destructor es de ownership (NodoToml/NodoJson) NO se consume en el
+    # callee — el paso por valor es copia superficial y liberarlo aquí cuelga
+    # el objeto del llamador (doble free al llamar obtener_campo(seccion,..)
+    # 3 veces con el mismo handle). Préstamo por defecto; solo `transfer`
+    # explícito transfiere propiedad (§3.3).
+    # cumple Manual 4 §5.2 (ME r184_r185_e2e, H-R188-1): el cleanup del
+    # objeto vivo ocurre en el ÁMBITO del llamador (cleanup blocks con
+    # liveness), no en cada callee que lo recibió prestado. texto conserva
+    # su RAII en callee (H-R181-1: el llamador duplica literales al pool);
+    # rc/arc/débil decrementan refcount (no transfieren ownership).
     for p in nodo.parametros:
-        if p.es_transferencia or ctx._tipo_tiene_destructor(p.tipo):
+        if p.es_transferencia or (
+            ctx._tipo_tiene_destructor(p.tipo)
+            and not ctx._es_destructor_ownership(p.tipo)
+        ):
             ctx._scope_stack[-1][p.nombre] = p.tipo
 
     # Contract requires → asserts deshabilitados en S1 (redundantes con runtime)

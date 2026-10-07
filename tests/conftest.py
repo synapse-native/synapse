@@ -296,8 +296,14 @@ def _rt_mtime_max(paths):
     return mx
 
 
-@pytest.fixture(scope="session", autouse=True)
-def _auto_compilar_objetos_runtime():
+# cumple Manual 9 §6.2 (ME r184_r185_e2e, H-R186-1): los tests de integración
+# capturan RT_OBJS a NIVEL DE MÓDULO (al importar el test), pero el fixture
+# autouse de sesión corre POST-colección → los .o del runtime aún no existían
+# en la primera pasada y el filtro os.path.exists los excluía del enlace
+# (undefined references: _toml_parse, _syn_texto_liberar…). pytest_configure
+# corre ANTES de la colección: compila los objetos ahí y el fixture delega en
+# la misma función (idempotente por mtime).
+def _construir_objetos_runtime() -> None:
     """Compila los .o del runtime (raiz) desde fuente si faltan/desactualizados.
 
     Post-revision: dependencias = fuente + headers del runtime; los binarios
@@ -365,4 +371,21 @@ def _auto_compilar_objetos_runtime():
                 raise RuntimeError(f"no se pudo compilar {bin_name}.exe: {res.stderr[:400]}")
     except Exception as e:
         print(f"[ME-R7] WARNING: runtime objects no auto-compilados: {e}")
+
+
+def pytest_configure(config):
+    # cumple Manual 9 §6.2 (ME r184_r185_e2e, H-R186-1): PRE-colección — los
+    # objetos existen cuando los tests capturan RT_OBJS al importar.
+    _construir_objetos_runtime()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _auto_compilar_objetos_runtime():
+    """Delega en _construir_objetos_runtime (idempotente por mtime).
+
+    Conserva el contrato del fixture autouse de sesión para los tests que
+    consumen los artefactos en tiempo de fixture; pytest_configure ya los
+    dejó listos para la captura a nivel de módulo.
+    """
+    _construir_objetos_runtime()
     yield

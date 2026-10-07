@@ -621,6 +621,20 @@ funcion parsear_primario(est: ParserEst) -> entero:
                 asm("est->nodos[nodo_q].hijo_izq = nodo")
             nodo = nodo_q
         retornar nodo
+    // cumple Manual 2 §12 (ME r184_r185_e2e, H-R181-3): keyword de operador
+    // (T_Y/T_O/T_NO) en posicion de OPERANDO = nombre de usuario (`p.y = y`,
+    // RHS). token_es_nombre NO los incluye (son tokens de operador); aqui es
+    // inequivocamente identificador. La negacion `no` se consume en
+    // parsear_unario (L227) antes de llegar aqui. Paridad S1:
+    // parser_expressions.py _parsear_primario.
+    si t == T_Y o t == T_O o t == T_NO:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        pos_id = est.posicion
+        token_avanzar(est)
+        nodo = parser_nuevo_nodo(est, NODO_IDENTIFICADOR, linea, col)
+        nodo_guardar_token(est, nodo, pos_id)
+        retornar nodo
     parser_error(est, "Expresion inesperada", token_linea(est, est.posicion), token_columna(est, est.posicion))
     retornar 0
 
