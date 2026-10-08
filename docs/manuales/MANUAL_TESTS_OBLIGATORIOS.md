@@ -31,6 +31,7 @@ debe dejar en verde. Toda prueba (`test_*.py`) debe mapear a una entrada `OBL-*`
 - OBL-M3-04 | Manual 3 §3 (certificación) | **Certificación Syquex v1.0 (Hito 7)** | TDD | GREEN
 - OBL-M3-05 | Manual 3 §3 (fuzzing) | **Fuzzing Syquex: compilador nunca crashea con entradas invalidas** | TDD | GREEN
 - OBL-M3-06 | Manual 3 §3 | `patron ::= ... | numero`: patrón literal y wildcard `_` en `coincidir` sobre primitivos, paridad S1↔nativo (R180: parser nativo + emisor `case`/`default` sobre valor + test r11 alineado) | TDD | GREEN
+- OBL-M3-07 | Manual 3 §3 | `caso ::= patron "=>" ( sentencia | NEWLINE INDENT bloque DEDENT )`: 2+ casos con cuerpo-bloque seguidos en nativo, ADT ok/err, cierre en medio de función, dentro de `si`; paridad S1↔nativo (R183: flag `caso_parseado` en `parsear_coincidir`, el anti-cuelgue ya no consume el DESINDENTAR/patrón tras un caso parseado) | TDD | GREEN
 
 ## M4 — Gestión de memoria (RAII / alcance)
 - OBL-M4-01 | Manual 4 §2 | Arena allocator (bump O(1), cascada) | unit | GREEN

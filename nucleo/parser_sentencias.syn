@@ -541,6 +541,7 @@ funcion parsear_coincidir(est: ParserEst) -> entero:
         retornar 0
     primer_caso = 0
     ultimo_caso = 0
+    caso_parseado = 0
     si token_mirar(est) == T_NUEVALINEA:
         token_avanzar(est)
         // FASE A (A4.5): paridad con _P_bloque — se saltan TODAS las NL
@@ -682,11 +683,30 @@ funcion parsear_coincidir(est: ParserEst) -> entero:
                         inseguro:
                             asm("est->nodos[ultimo_caso].hermano = nodo_caso")
                     ultimo_caso = nodo_caso
-                si token_es_nombre(token_mirar(est)) != 1:
-                    // R11 anti-cuelgue (paridad A3.1): si el token no es nombre
-                    // no es un patron valido (ej. literal '1 =>') — avanzar para
-                    // no entrar en bucle infinito en el while de casos.
-                    token_avanzar(est)
+                    // cumple Manual 3 §3 (ME r183_coincidir_bloque_nativo R1):
+                    // cumple Manual 2 §1.3: los comentarios de este cambio usan
+                    // el estilo de linea // de M2 §1.3 (los comentarios de línea
+                    // comienzan con // y se extienden hasta el final de la línea).
+                    // la iteracion produjo un caso COMPLETO (patron + flecha +
+                    // cuerpo + encadenado): el cursor ya esta en el token real
+                    // siguiente (patron del caso siguiente o DESINDENTAR que
+                    // cierra el bloque de casos).
+                    caso_parseado = 1
+                si caso_parseado == 0:
+                    // R11 anti-cuelgue (paridad A3.1): si la iteracion NO
+                    // produjo caso y el token no es nombre, no es un patron
+                    // valido — avanzar para no entrar en bucle infinito en el
+                    // while de casos. H-R180-1: tras un caso parseado el
+                    // anti-cuelgue NO corre (se comia el DESINDENTAR que
+                    // cierra el bloque de casos y el bucle externo se comia
+                    // el cierre del cuerpo de la funcion — `funcion` quedaba
+                    // expuesto como def anidada, rc=1 'Nodo tipo
+                    // [DefinicionFuncion] no reconocido' — o el patron
+                    // numerico del caso siguiente,
+                    // token_es_nombre(T_NUMERO)==0, rc=8).
+                    si token_es_nombre(token_mirar(est)) != 1:
+                        token_avanzar(est)
+                caso_parseado = 0
                 siguiente
     si primer_caso > 0:
         inseguro:
