@@ -160,7 +160,7 @@ estado: PENDIENTE
 4. Antes de commitear: artefactos regenerados por suites → `git checkout --`.
 5. Prohibido --no-verify; los 7 gates del pre-commit mandan.
 
-### ME R183 — coincidir_bloque_nativo (H-R180-1, hallazgo de R180)
+### ME R183 — coincidir_bloque_nativo (H-R180-1, hallazgo de R180) — **COMPLETADO 70ca347 (2026-10-08)**
 requisito: Manual 3 §3 L140 — `caso ::= patron "=>" ( sentencia | NEWLINE
 INDENT bloque DEDENT )`: la segunda alternativa (cuerpo en bloque) ES ley
 (y S1 la implementa: r5_ref compila y corre `tres/hola/4`).
@@ -177,4 +177,14 @@ nodos_flujo.syn) hasta la divergencia; TDD con probe bloque-ADT (bisect_d de
 oráculo: bloque-ADT y bloque-literal compilan rc=0 y ejecutan en nativo con
 paridad S1.
 impacto: cierra la segunda forma del caso en nativo (paridad total M3 §3).
-estado: PENDIENTE (registrado 2026-10-05 en R180 be5d447)
+estado: **COMPLETADO** (2026-10-08, commit 70ca347) — causa raíz: el anti-cuelgue
+R11 del bucle de casos en parsear_coincidir corría también tras un caso parseado
+con éxito y consumía el DESINDENTAR que cierra el bloque de casos (b4: el bucle
+externo se comía el cierre del cuerpo de la función → `funcion principal`
+expuesto como def anidada → rc=1 "DefinicionFuncion no reconocido") o el patrón
+numérico del caso siguiente (b1/exotic: rc=8). Fix: flag `caso_parseado` — el
+anti-cuelgue solo corre si la iteración no produjo caso. Oráculo NUEVO
+test_oraculos_r183_coincidir_bloques.py 7/7 (RED 5/2 confirmado); bootstrap
+S2==S3 d8493487…397a944; expediente r183.md huella 19d51d2bf8e46079;
+verificar_alineacion SIN BRECHAS; contrastar PASA; MTO OBL-M3-07; unit 510/510;
+r180 4/4; r11 5/5. Reporte: docs/reportes/R183.md
