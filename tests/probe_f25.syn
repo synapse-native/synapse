@@ -1,0 +1,3 @@
+#lang: es
+funcion principal() -> nulo:
+    escribir_linea("hola wasm")

@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "b88df2bbbc5ea917",
+ "expediente": "docs/alineacion/r182a.md",
+ "fecha": "2026-10-09",
+ "archivos": [
+  "compilador/wat_generator.py",
+  "pipeline.py"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r182a_wasm_valido.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

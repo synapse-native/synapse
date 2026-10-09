@@ -624,6 +624,7 @@ def compilar_desde_syq(ruta_syq: str) -> Programa:
 # ============================================================
 # MAIN ENTRY POINT
 # ============================================================
+# cumple Manual 1 §3.1: pipeline compartido (.syn/.syq) con backend común
 def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                         output_lang: Optional[str] = None,
                         dump_ast: bool = False,
@@ -778,8 +779,19 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                 f.write(wat_code)
             print(f"[OK] WAT generado: {wat_path}")
 
-            # FASE 25: .wat → .wasm via wat2wasm
+            # FASE 25: .wat → .wasm via wat2wasm (Manual 8 §4.2: --target wasm)
+            # Buscar en PATH y en ubicaciones locales de emsdk (wabt).
+            # cumple Manual 8 §4.2: --target wasm resuelve el backend WASM
             wat2wasm = shutil.which('wat2wasm') or shutil.which('wat2wasm.exe')
+            if not wat2wasm:
+                import glob as _glob
+                for patron in ('C:/emsdk/node/*/wat2wasm.CMD',
+                               'C:/emsdk/node/*/wat2wasm.cmd',
+                               'C:/emsdk/node/*/wat2wasm.exe'):
+                    hallados = sorted(_glob.glob(patron))
+                    if hallados:
+                        wat2wasm = hallados[0]
+                        break
             if wat2wasm:
                 r = subprocess.run([wat2wasm, wat_path, '-o', wasm_path],
                                    capture_output=True, text=True, timeout=30)

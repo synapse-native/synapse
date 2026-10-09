@@ -1,0 +1,11 @@
+#lang: es
+funcion cuenta(n: entero) -> entero:
+    let total = 0
+    let i = 0
+    mientras i < n:
+        total = total + i
+        i = i + 1
+    retornar total
+
+funcion principal() -> nulo:
+    escribir_linea(entero_a_texto(cuenta(5)))

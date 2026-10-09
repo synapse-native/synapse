@@ -1,0 +1,22 @@
+#lang: es
+funcion suma(a: entero, b: entero) -> entero:
+    retornar a + b
+
+funcion clasificar(n: decimal) -> texto:
+    si n > 0.0:
+        retornar "positivo"
+    sino:
+        retornar "no positivo"
+
+funcion cuenta(n: entero) -> entero:
+    let total = 0
+    let i = 0
+    mientras i < n:
+        let total = total + i
+        let i = i + 1
+    retornar total
+
+funcion principal() -> nulo:
+    escribir_linea(entero_a_texto(suma(2, 3)))
+    escribir_linea(clasificar(3.5))
+    escribir_linea(entero_a_texto(cuenta(5)))

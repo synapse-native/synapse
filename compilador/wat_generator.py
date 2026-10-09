@@ -6,7 +6,7 @@
 #
 # Soporta: i32, i64, f64, memoria, imports, exports, globals.
 #
-# Referencias: Manual 1 §5 (Generador → WAT), §6 (Backend WASM)
+# Referencias: Manual 1 §3.2 (Generador → WAT), §6 (Backend WASM)
 #              Manual 4 §6.6 (Arenas de componente WASM)
 #              Manual 8 §4.2 (--target wasm)
 #
@@ -58,6 +58,9 @@ class WATGenerator:
         self._memory_pages = 1
         self._data_segments: List[tuple] = []  # (offset, string)
         self._data_offset = 0  # siguiente offset libre para data
+        self._funciones_ast: set = set()  # nombres de funciones definidas en el AST
+        self._funciones_llamadas: dict = {}  # nombre -> (params, result) primera llamada
+        self._param_names: set = set()  # nombres de params/locals ya declarados
 
     def _emit(self, line: str) -> None:
         if self._indent:
@@ -110,14 +113,51 @@ class WATGenerator:
         self._emit('(module')
         self._push_indent()
 
-        # Imports
+        # Funciones definidas en el AST (para distinguir call local vs import externa)
+        self._funciones_ast = {
+            s.nombre for s in self.ast.sentencias if isinstance(s, DefinicionFuncion)
+        }
+        self._funciones_llamadas = {}
+
+        # NOTA (Manual 1 §3.2): en WAT los imports deben preceder a TODAS las
+        # definiciones (wat2wasm: "imports must occur before all non-import
+        # definitions", incluso antes de memory/export). Memory/globals se
+        # emiten después de la fase de detección (ver Fase 2 más abajo).
+
+        # Imports explícitos (API registrada por el usuario del generador)
+        # cumple Manual 1 §3.2: el generador emite WAT válido (imports primero)
         for modulo, nombre, params, results in self._imports:
             params_str = ' '.join(f'(param {p})' for p in params)
             results_str = ' '.join(f'(result {r})' for r in results)
             sig = f'{params_str} {results_str}'.strip()
             self._emit(f'(import "{modulo}" "{nombre}" (func ${nombre} {sig}))')
 
-        # Memory
+        # Fase 1: generar funciones a un buffer aparte para detectar llamadas
+        # externas y data segments antes de ensamblar el módulo (Manual 1 §3.2:
+        # el WAT emitido debe ser válido — imports antes de definiciones).
+        # cumple Manual 1 §3.2: determinismo (orden de aparición, buffer único)
+        lines_modulo = self._lines
+        self._lines = []
+        for sentencia in self.ast.sentencias:
+            if isinstance(sentencia, DefinicionFuncion):
+                self._generar_funcion(sentencia)
+        lines_funciones = self._lines
+        self._lines = lines_modulo
+
+        # Fase 2: imports de llamadas externas detectadas (orden: primera
+        # aparición; toda función referenciada y no definida es un import de
+        # JS interop "env"). Van DESPUÉS de los imports explícitos y ANTES de
+        # memory/globals/funciones (wat2wasm exige imports primero).
+        ya_importadas = {i[1] for i in self._imports}
+        for nombre, (params, results) in self._funciones_llamadas.items():
+            if nombre in self._funciones_ast or nombre in ya_importadas:
+                continue
+            params_str = ' '.join(f'(param {p})' for p in params)
+            results_str = ' '.join(f'(result {r})' for r in results)
+            sig = f'{params_str} {results_str}'.strip()
+            self._emit(f'(import "env" "{nombre}" (func ${nombre} {sig}))')
+
+        # Memory (después de TODOS los imports)
         if self._memory_pages > 0:
             self._emit(f'(memory {self._memory_pages})')
             self._emit('(export "memory" (memory 0))')
@@ -128,12 +168,10 @@ class WATGenerator:
             mut_end = ')' if mutable else ''
             self._emit(f'(global ${nombre} {mut_str}{tipo}{mut_end} ({tipo}.const {valor}))')
 
-        # Funciones (primero generamos para poblar data_segments)
-        for sentencia in self.ast.sentencias:
-            if isinstance(sentencia, DefinicionFuncion):
-                self._generar_funcion(sentencia)
+        # Fase 3: ensamblar funciones + exports + data segments
+        self._lines.extend(lines_funciones)
 
-        # Exports (a nivel módulo, después de funciones)
+        # Exports (a nivel módulo)
         for nombre in self._exports:
             self._emit(f'(export "{nombre}" (func ${nombre}))')
 
@@ -142,6 +180,13 @@ class WATGenerator:
             escaped = texto.replace('\\', '\\\\').replace('"', '\\"')
             self._emit(f'(data (i32.const {offset}) "{escaped}")')
 
+        # Export automático del punto de entrada (Manual 8 §4.2: módulo wasm
+        # ejecutable desde JS). Determinista: solo el primero que exista.
+        for entrada in ('principal', 'main'):
+            if entrada in self._funciones_ast:
+                self._emit(f'(export "{entrada}" (func ${entrada}))')
+                break
+
         self._pop_indent()
         self._emit(')')
 
@@ -149,6 +194,7 @@ class WATGenerator:
 
     def _generar_funcion(self, fn: DefinicionFuncion) -> None:
         self._var_map = {}
+        self._param_names = set()
 
         # Params con tipos
         params_parts = []
@@ -158,19 +204,65 @@ class WATGenerator:
             self._var_map[p.nombre] = tipo_wasm or 'i32'
         params_str = ' '.join(params_parts)
 
-        # Result type
-        tipo_ret = self._tipo_a_wasm(fn.tipo_retorno)
+        # Result type — 'nulo'/'void' no produce result (función sin retorno)
+        tipo_ret = self._tipo_a_wasm(fn.tipo_retorno) if fn.tipo_retorno else None
+        if fn.tipo_retorno in (None, 'nulo', 'void'):
+            tipo_ret = None
         result_str = f'(result {tipo_ret})' if tipo_ret else ''
 
         self._emit(f'(func ${fn.nombre} {params_str} {result_str}'.strip())
         self._push_indent()
 
+        # Declarar locals: variables declaradas en el cuerpo que NO son params.
+        # Determinista: orden de aparición en el cuerpo.
+        declarados = set(p.nombre for p in fn.parametros)
+        self._declarar_locals(fn.cuerpo, declarados)
+
         self._emit(';; entry block')
         for stmt in fn.cuerpo:
             self._generar_sentencia(stmt)
 
+        # Validación estática WASM: el final del cuerpo de una func con result
+        # debe dejar el valor en el stack (implicit return), aunque todas las
+        # rutas hagan return explícito. Emitimos un default inalcanzable.
+        if tipo_ret:
+            self._emit(f'{tipo_ret}.const 0')
+
         self._pop_indent()
         self._emit(')')
+
+    def _firma_llamada_externa(self, nombre: str, argumentos: list) -> tuple:
+        """Infiere (params, result) best-effort para una llamada externa.
+
+        Determinista: los argumentos de la primera aparición fijan la firma;
+        llamadas posteriores reusan la primera firma registrada.
+        """
+        if nombre in self._funciones_llamadas:
+            return self._funciones_llamadas[nombre]
+        params = []
+        for arg in argumentos:
+            tipo = self._detectar_tipo_expr(arg) or 'i32'
+            params.append(tipo)
+        firma = (params, ['i32'])
+        self._funciones_llamadas[nombre] = firma
+        return firma
+
+    def _declarar_locals(self, sentencias: list, declarados: set) -> None:
+        """Declara (local ...) para cada DeclaracionVariable del cuerpo.
+
+        Recorre recursivamente bloques anidados (si/mientras). El orden es el
+        de aparición (determinista, Manual 1 §3.2).
+        """
+        for stmt in sentencias:
+            if isinstance(stmt, DeclaracionVariable) and stmt.nombre not in declarados:
+                tipo_wasm = self._tipo_a_wasm(stmt.tipo) or 'i32'
+                self._emit(f'(local ${stmt.nombre} {tipo_wasm})')
+                declarados.add(stmt.nombre)
+                self._var_map[stmt.nombre] = tipo_wasm
+            for atributo in ('cuerpo', 'cuerpo_sino'):
+                sub = getattr(stmt, atributo, None)
+                if isinstance(sub, list):
+                    self._declarar_locals(sub, declarados)
 
     def _generar_sentencia(self, stmt: Nodo) -> None:
         if isinstance(stmt, SentenciaRetornar):
@@ -187,15 +279,19 @@ class WATGenerator:
         elif isinstance(stmt, DeclaracionVariable):
             tipo_wasm = self._tipo_a_wasm(stmt.tipo) or 'i32'
             self._var_map[stmt.nombre] = tipo_wasm
-            if stmt.expr:
-                self._generar_expr(stmt.expr)
+            if stmt.expresion:
+                self._generar_expr(stmt.expresion)
                 self._emit(f'local.set ${stmt.nombre}')
         elif isinstance(stmt, AsignacionVariable):
-            if stmt.expr:
-                self._generar_expr(stmt.expr)
+            if stmt.expresion:
+                self._generar_expr(stmt.expresion)
                 self._emit(f'local.set ${stmt.nombre}')
         elif isinstance(stmt, SentenciaExpr):
             self._generar_expr(stmt.expr)
+            # Llamada en posición de sentencia: su resultado (i32) debe
+            # consumirse para no dejar el stack desbalanceado (WAT válido).
+            if isinstance(stmt.expr, LlamadaFuncion):
+                self._emit('drop')
         else:
             pass  # sentencias no soportadas aún
 
@@ -299,6 +395,11 @@ class WATGenerator:
             for arg in expr.argumentos:
                 self._generar_expr(arg)
             self._emit(f'call ${expr.nombre}')
+            # Llamada a función NO definida en el AST → import externa (JS interop).
+            # Se registra para emitir el (import ...) en generar(); el drop en
+            # posición de sentencia lo maneja _generar_sentencia.
+            if expr.nombre not in self._funciones_ast:
+                self._firma_llamada_externa(expr.nombre, expr.argumentos)
         else:
             self._emit('i32.const 0')
 
