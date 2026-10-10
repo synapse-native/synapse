@@ -1,6 +1,6 @@
 # DEUDA DE ALINEACIÓN (baseline) — no empeorar
 
-Generado: 2026-10-01
+Generado: 2026-10-10
 
 El gate de alineación solo bloquea lo que el cambio TOCA. Esta lista es
 la deuda heredada: no cuenta como brecha, pero ningún cambio nuevo puede
