@@ -152,20 +152,17 @@ magic 0asm, export entrada, imports-primero, determinismo byte a byte).
 estado: **COMPLETADO** (2026-10-09, commit 0c74d80) — evidencia
 auditoria/evidencia/b88df2bbbc5ea917.json; 514 unit, 16 wat_gen, 18 wasm/spa.
 
+### ME R182b — cierre deuda pre-existente test_traductor/test_concurrency
+- Hallazgo H-R182a-1 CERRADO (2026-10-10, commit 24d3912): causa raíz = bits
+  altos del puntero sin escribir en los 5 literales sintéticos del desugar de
+  `para` (syquex/parser.syn); el emisor JSON reconstruía una dirección inválida
+  → segfault. Regresión tests/syquex 279 passed / 1 skipped.
+- oráculo: auditoria/oraculos/oraculo_r182b.py PASS; evidencia
+  audia/evidencia/37994ff3735a2c44.json; reporte docs/reportes/R182b.md.
+- estado: **COMPLETADO**.
+
 ### ME R182+ — feature gaps (cola, una por ME con TDD)
 - H-R90-5 (métodos sobre locales en .syq).
-- ME_27/29/30 (~21 RED TDD: aiComplete/aiExplain/aiFix, federated, quantum
-  build, build/release) — R181 (harness) COMPLETADO: ya medibles.
-- DEUDA PRE-EXISTENTE hallada en R182a (1 failed + 9 errors en c2cd52e,
-  sin relación con el backend wasm): tests/syquex/test_traductor.py (9 errores
-  assertion) + tests/syquex/test_concurrency.py::test_enviar_canal —
-  bisección pendiente: reparar como ME con TDD (deuda del mismo área, mandato
-  "no importa de quién es").
-- YAML de CI release (10): signing/SLSA — infraestructura, requiere secretos →
-  documentar como deuda de infra con resolución asignada si no es local.
-- ~46 asserts residuales por familia (axon, borrowing, debug CLI, escuchar,
-  serialización embebida, lexer rc/modulo, salida_metal.c) tras R181.
-estado: PENDIENTE
 
 ## Reglas transversales del plan
 1. Cada ME: plan citando Manual X §Y → `alineacion.py --leer --me <id>` →
