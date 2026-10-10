@@ -665,7 +665,11 @@ funcion sq_estructura(est: ParserEst) -> entero:
             miembro = sq_nuevo(est, NODO_FUNCION, m_linea, m_col)
             inseguro:
                 asm("static const char _SQ_INIT[] = \"__init__\";")
-                asm("if (miembro < 65536) { est->nodos[miembro].ptr_str = (int)(uintptr_t)_SQ_INIT; est->nodos[miembro].len_str = 8; }")
+                // cumple Manual 3 §3 (desugar del para: spans sinteticos integros)
+                // R182b fix: los bits altos del puntero 64-bit deben escribirse en
+                // sq_tokens_hi[miembro], sin ellos trad_copiar_payload hereda basura
+                // y el emisor JSON reconstruye una direccion invalida (segfault).
+                asm("if (miembro < 65536) { est->nodos[miembro].ptr_str = (int)(uintptr_t)_SQ_INIT; est->nodos[miembro].len_str = 8; int* _hi_init=(int*)sq_tokens_hi(); if (_hi_init) _hi_init[miembro]=(int)((uintptr_t)_SQ_INIT>>32); }")
                 asm("est->nodos[miembro].hijo_izq = params")
                 asm("est->nodos[miembro].hijo_der = cuerpo")
         sino:
@@ -996,7 +1000,8 @@ funcion sq_para(est: ParserEst) -> entero:
             paso_r = sq_nuevo(est, NODO_NUMERO, linea, col)
             inseguro:
                 asm("static const char _SQ_ONE_R[] = \"1\";")
-                asm("if (paso_r >= 0 && paso_r < est->total_nodos) { est->nodos[paso_r].ptr_str = (int)(uintptr_t)_SQ_ONE_R; est->nodos[paso_r].len_str = 1; }")
+                // R182b fix: bits altos del puntero en sq_tokens_hi (ver fix __init__) — cumple Manual 1 §1.1 (span intacto para el backend compartido)
+                asm("if (paso_r >= 0 && paso_r < est->total_nodos) { est->nodos[paso_r].ptr_str = (int)(uintptr_t)_SQ_ONE_R; est->nodos[paso_r].len_str = 1; int* _hi_1r=(int*)sq_tokens_hi(); if (_hi_1r) _hi_1r[paso_r]=(int)((uintptr_t)_SQ_ONE_R>>32); }")
             retornar sq_para_desugar(est, idv, inicio_r, fin_r, paso_r, linea, col)
         cuerpo = sq_cuerpo_bloque_sq(est, linea, col)
         n = sq_nuevo(est, NODO_PARA_EN, linea, col)
@@ -1021,7 +1026,8 @@ funcion sq_para(est: ParserEst) -> entero:
         expr_paso = sq_nuevo(est, NODO_NUMERO, linea, col)
         inseguro:
             asm("static const char _SQ_ONE[] = \"1\";")
-            asm("if (expr_paso >= 0 && expr_paso < est->total_nodos) { est->nodos[expr_paso].ptr_str = (int)(uintptr_t)_SQ_ONE; est->nodos[expr_paso].len_str = 1; }")
+            // R182b fix: bits altos del puntero en sq_tokens_hi (ver fix __init__) — cumple Manual 1 §1.1 (span intacto para el backend compartido)
+            asm("if (expr_paso >= 0 && expr_paso < est->total_nodos) { est->nodos[expr_paso].ptr_str = (int)(uintptr_t)_SQ_ONE; est->nodos[expr_paso].len_str = 1; int* _hi_1p=(int*)sq_tokens_hi(); if (_hi_1p) _hi_1p[expr_paso]=(int)((uintptr_t)_SQ_ONE>>32); }")
     // Desagua común (helper): evita duplicar la maquinaria entre la forma
     // C-style y la forma rango 'en a..b' (Manual 3 §3 L132/L133).
     retornar sq_para_desugar(est, idv, inicio, fin, expr_paso, linea, col)
@@ -1047,10 +1053,12 @@ funcion sq_para_desugar(est: ParserEst, idv: entero, inicio: entero, fin: entero
         asm("est->nodos[init].hijo_der = inicio")
     lt = sq_binaria(est, idv, -1, fin)
     inseguro:
-        asm("if (lt >= 0 && lt < est->total_nodos) { static const char _LT[] = \"<\"; est->nodos[lt].ptr_str = (int)(uintptr_t)_LT; est->nodos[lt].len_str = 1; }")
+        // R182b fix: bits altos del puntero en sq_tokens_hi (ver fix __init__) — cumple Manual 1 §1.1 (span intacto para el backend compartido)
+        asm("if (lt >= 0 && lt < est->total_nodos) { static const char _LT[] = \"<\"; est->nodos[lt].ptr_str = (int)(uintptr_t)_LT; est->nodos[lt].len_str = 1; int* _hi_lt=(int*)sq_tokens_hi(); if (_hi_lt) _hi_lt[lt]=(int)((uintptr_t)_LT>>32); }")
     incr_val = sq_binaria(est, idv, -1, expr_paso)
     inseguro:
-        asm("if (incr_val >= 0 && incr_val < est->total_nodos) { static const char _PL[] = \"+\"; est->nodos[incr_val].ptr_str = (int)(uintptr_t)_PL; est->nodos[incr_val].len_str = 1; }")
+        // R182b fix: bits altos del puntero en sq_tokens_hi (ver fix __init__) — cumple Manual 1 §1.1 (span intacto para el backend compartido); cumple Manual 1 §5.1
+        asm("if (incr_val >= 0 && incr_val < est->total_nodos) { static const char _PL[] = \"+\"; est->nodos[incr_val].ptr_str = (int)(uintptr_t)_PL; est->nodos[incr_val].len_str = 1; int* _hi_pl=(int*)sq_tokens_hi(); if (_hi_pl) _hi_pl[incr_val]=(int)((uintptr_t)_PL>>32); }")
     incr = sq_nuevo(est, NODO_ASIGNACION, linea, col)
     inseguro:
         asm("est->nodos[incr].hijo_izq = idv")
