@@ -136,11 +136,31 @@ literales — H-R181-1).
 impacto: test_toml_raii 2/2 GREEN; sin fila de trabajo pendiente.
 estado: COMPLETADO (2026-10-07 en R184 e4e4022)
 
+### ME R182a — wasm backend F25 funcional — **COMPLETADO 0c74d80 (2026-10-09)**
+requisito: Manual 1 §3.2 — "Traduce el AST validado a código intermedio: C
+(C99/C11), LLVM IR o WAT (WASM)."; Manual 8 §4.2 — `--target native|wasm|llvm`.
+hallazgo: los "3 RED del plan" ya estaban verdes (test_wasm_extended 9/9, el C es
+autocontenido); el fallo REAL era el criterio F25 "genera WASM válido": el WAT
+emitía call a funciones no definidas sin import, sin locals, sin drop, y wat2wasm
+(locae en emsdk, fuera de PATH) rechazaba todo módulo.
+implementacion: wat_generator (imports automáticos env con firma inferida
+determinista, locals recursivos, drop en sentencia, export principal/main,
+result omitido para nulo, default inalcanzable con result, imports antes de toda
+definición); pipeline (búsqueda wat2wasm en emsdk lokal).
+oráculo: tests/auditoria/test_oraculos_r182a_wasm_valido.py 4/4 (wat2wasm rc=0,
+magic 0asm, export entrada, imports-primero, determinismo byte a byte).
+estado: **COMPLETADO** (2026-10-09, commit 0c74d80) — evidencia
+auditoria/evidencia/b88df2bbbc5ea917.json; 514 unit, 16 wat_gen, 18 wasm/spa.
+
 ### ME R182+ — feature gaps (cola, una por ME con TDD)
-- wasm extendido (Fase 25: i64/f64/imports/exports — 3 RED ya escritos).
 - H-R90-5 (métodos sobre locales en .syq).
 - ME_27/29/30 (~21 RED TDD: aiComplete/aiExplain/aiFix, federated, quantum
   build, build/release) — R181 (harness) COMPLETADO: ya medibles.
+- DEUDA PRE-EXISTENTE hallada en R182a (1 failed + 9 errors en c2cd52e,
+  sin relación con el backend wasm): tests/syquex/test_traductor.py (9 errores
+  assertion) + tests/syquex/test_concurrency.py::test_enviar_canal —
+  bisección pendiente: reparar como ME con TDD (deuda del mismo área, mandato
+  "no importa de quién es").
 - YAML de CI release (10): signing/SLSA — infraestructura, requiere secretos →
   documentar como deuda de infra con resolución asignada si no es local.
 - ~46 asserts residuales por familia (axon, borrowing, debug CLI, escuchar,
