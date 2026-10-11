@@ -626,7 +626,16 @@ funcion generar_etapa(ruta: cadena, salida: cadena, modo_validar: entero) -> Res
         asm("// Flags de optimización por modo (paridad pipeline.py)")
         asm("const char* _gcc_opt;")
         asm("if(_is_release){ _gcc_opt=\"-O3 -flto -DNDEBUG\"; }")
-        asm("else if(_is_debug){ _gcc_opt=\"-O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer\"; }")
+        asm("else if(_is_debug){")
+        // cumple Manual 9 §6.1 (r183d): MinGW-w64 no trae libasan/libubsan; el
+        // compilador nativo degrada a -O0 -g si el toolchain no puede linkear
+        // -fsanitize (paridad con pipeline.py: probe de link real). Salida = CWD.
+        asm("    const char* _psan = \"_probe_san_r183d.c\";")
+        asm("    FILE* _pf = fopen(_psan, \"wb\"); if (_pf) { fwrite(\"int main(void){return 0;}\\n\", 1, 24, _pf); fclose(_pf); }")
+        asm("    char _pcmd[512]; snprintf(_pcmd, 512, \"gcc -fsanitize=address,undefined %s -o %s.exe\", _psan, _psan);")
+        asm("    if (system(_pcmd) == 0) { _gcc_opt=\"-O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer\"; remove(\"_probe_san_r183d.c\"); remove(\"_probe_san_r183d.exe\"); }")
+        asm("    else { _gcc_opt=\"-O0 -g\"; remove(_psan); remove(\"_probe_san_r183d.exe\"); fprintf(stderr, \"[Synapse] --debug: sanitizadores no disponibles en este toolchain; se usa -O0 -g\\n\"); }")
+        asm("}")
         asm("else{ _gcc_opt=\"-O2\"; }")
         asm("// --profile: PGO instrumentation (Manual 8.3, paridad pgo_pipeline.sh)")
         asm("for(int _pi=2;_pi<_argc();_pi++){ CadenaSegura _pa=_argv(_pi); if(_pa.longitud>=9&&strcmp(_pa.datos,\"--profile\")==0&&_pi<_argc()-1){ CadenaSegura _pv=_argv(_pi+1); if(strcmp(_pv.datos,\"release-pgo\")==0){ _gcc_flags=\"-fprofile-generate\"; }else if(strcmp(_pv.datos,\"release-pgo-use\")==0){ _gcc_flags=\"-fprofile-use -flto\"; }else{ fprintf(stderr,\"[Synapse] WARNING: perfil desconocido '%s', ignorado\\n\",_pv.datos); } break; } }")
@@ -935,6 +944,17 @@ funcion escribir_reporte(ruta: texto, contenido: texto) -> entero:
 
 funcion principal() -> entero:
     r = 0
+    // --- R183d R1: --version / --help como flags globales (Manual 8 §4.2) ---
+    // Antes: principal() trataba argv(1) como ARCHIVO a compilar: synapse.exe
+    // --version/--help entraban a la pipeline y abortaban con rc=2 (hallazgo
+    // REAL-1 de las pruebas de operación como usuario, reporte R182c). El
+    // dispatcher Python de cli.py sí los soporta; el nativo los rechazaba.
+    // Ahora: impresión de uso + versión canónica desde el archivo VERSION
+    // (única fuente de verdad, misma convención M6/R150 del cli.py).
+    // cumple Manual 8 §4.2
+    inseguro:
+        asm("{ CadenaSegura _f1=_argv(1); if(_argc()>1 && _f1.datos && strcmp(_f1.datos,\"--version\")==0){ FILE* _vf=fopen(\"VERSION\",\"rb\"); char _vb[128]=\"8.1.0-industrial\"; if(_vf){ int _vn=(int)fread(_vb,1,sizeof(_vb)-1,_vf); fclose(_vf); if(_vn>0){ while(_vn>0 && (_vb[_vn-1]=='\\n' || _vb[_vn-1]=='\\r' || _vb[_vn-1]==' ')) _vn--; _vb[_vn]=0; } } printf(\"Synapse Compiler %s\\n\",_vb); r=0; return r; } }")
+        asm("{ CadenaSegura _f1=_argv(1); if(_argc()>1 && _f1.datos && strcmp(_f1.datos,\"--help\")==0){ fprintf(stderr, \"Uso: %s <archivo.syn> [-o <salida.exe>] | subcomando [flags] [archivo]\\n\", _argv(0).datos); fprintf(stderr, \"  %s axon fetch    - Leer y validar axon.toml\\n\", _argv(0).datos); fprintf(stderr, \"  %s lint <arch>   - Linting con --fix\\n\", _argv(0).datos); fprintf(stderr, \"  %s fmt <arch>    - Formatear con --check\\n\", _argv(0).datos); fprintf(stderr, \"  %s test <arch>   - Ejecutar tests\\n\", _argv(0).datos); fprintf(stderr, \"  %s check <arch>  - Validar sin generar binario\\n\", _argv(0).datos); fprintf(stderr, \"  %s --version     - Mostrar version\\n\", _argv(0).datos); r=0; return r; } }")
     inseguro:
         asm("if (_argc() < 2) { fprintf(stderr, \"Uso: %s <archivo.syn> [-o <salida.exe>]\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); fprintf(stderr, \"  %s axon fetch    - Leer y validar axon.toml\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); fprintf(stderr, \"  %s lint <arch>   - Linting con --fix\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); fprintf(stderr, \"  %s fmt <arch>    - Formatear con --check\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); fprintf(stderr, \"  %s test <arch>   - Ejecutar tests\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); r = 1; return r; }")
     cmd = argv_str(1)
@@ -1097,16 +1117,50 @@ funcion principal() -> entero:
         asm("r=cli_check(_sub_ruta); return r; }")
     // --- Pipeline de compilacion normal ---
     // cumple Manual 1 §3.1: CLI debe aceptar -o
-    ruta = argv_str(1)
-    salida_ruta = argv_str(2)
+    // R183d R2: prescan de flags ANTES de tratar argv(1) como archivo (Manual
+    // 8 §4.1: la forma canónica es `synapse build archivo.syn --target wasm`
+    // y también `synapse build --release app.syn --target wasm` — el flag
+    // global caía a la pipeline como ARCHIVO: "Archivo no encontrado: wasm"
+    // (hallazgo REAL-4b de las pruebas de operación como usuario, R182c).
+    // Ahora: escaneo argv completo, extraigo flags (--target X, --release,
+    // --debug, --safe, --output X, -o X) y deja la primera no-flag como ruta;
+    // si NO hay ruta es error de uso rc=1 (antes el flag era el archivo).
+    // --release/--debug/--safe/--target se aceptan y marcan el modo; el
+    // backend de targets (wasm/llvm) es npm build en pipeline.py — el
+    // dispatcher nativo los valida y continúa native (comportamiento
+    // declarado en R182a; forma canónica `build --target wasm` via cli.py).
+    // cumple Manual 8 §4.2 sin inventar backends inexistentes.
+    ruta = ""
+    salida_ruta = ""
     inseguro:
+        asm("{ CadenaSegura _rr={0,\"\"}; CadenaSegura _oo={0,\"\"}; int _pi3=1;")
+        asm("for(_pi3=1;_pi3<_argc();_pi3++){ CadenaSegura _aa=_argv(_pi3); int _hit=0;")
+        asm("if(_aa.datos[0]=='-' && _aa.longitud==2 && strcmp(_aa.datos,\"-o\")==0 && _pi3+1<_argc()){ _pi3++; CadenaSegura _nv=_argv(_pi3); char* _d=strdup(_nv.datos); if(_d){ _oo=(CadenaSegura){.longitud=_nv.longitud,.datos=_d}; } _hit=1; }")
+        asm("if(!_hit && _aa.datos[0]=='-' && _aa.longitud==8 && strcmp(_aa.datos,\"--output\")==0 && _pi3+1<_argc()){ _pi3++; CadenaSegura _nv=_argv(_pi3); char* _d=strdup(_nv.datos); if(_d){ _oo=(CadenaSegura){.longitud=_nv.longitud,.datos=_d}; } _hit=1; }")
+        asm("if(!_hit && _aa.datos[0]=='-' && _aa.longitud==8 && strcmp(_aa.datos,\"--target\")==0 && _pi3+1<_argc()){ _pi3++; CadenaSegura _tv=_argv(_pi3); if(!(strcmp(_tv.datos,\"native\")==0||strcmp(_tv.datos,\"wasm\")==0||strcmp(_tv.datos,\"llvm\")==0)){ fprintf(stderr,\"[Synapse] WARNING: --target %s no soportado por el dispatcher nativo (use cli.py)\\n\",_tv.datos); } _hit=1; }")
+        asm("if(!_hit && _aa.datos[0]=='-' && (_aa.longitud==9&&strcmp(_aa.datos,\"--release\")==0 || _aa.longitud==7&&strcmp(_aa.datos,\"--debug\")==0 || _aa.longitud==6&&strcmp(_aa.datos,\"--safe\")==0)){ _hit=1; }")
+        asm("if(!_hit && _aa.datos[0]=='-'){ fprintf(stderr,\"Flag no reconocido: %s\\n\",_aa.datos); r=1; return r; }")
+        asm("if(!_hit){ if(_rr.longitud==0){ _rr=_aa; } else if(_oo.longitud==0){ _oo=_aa; } }")
+        asm("}")
+        asm("if(_rr.longitud==0){ fprintf(stderr,\"Uso: %s <archivo.syn> [-o <salida.exe>] | subcomando [flags] [archivo]\\n\",_argv(0).datos); r=1; return r; }")
+        asm("char* _dupr=strdup(_rr.datos); if(_dupr){ ruta=(CadenaSegura){.longitud=_rr.longitud,.datos=_dupr}; }")
+        asm("if(_oo.datos && _oo.longitud>0){ char* _dupe=strdup(_oo.datos); if(_dupe){ salida_ruta=(CadenaSegura){.longitud=_oo.longitud,.datos=_dupe}; } }")
+        asm("}")
         asm("if (ruta.longitud == 0) { r = 1; return r; }")
-        asm("// Parse -o <output> flag (Manual 3: CLI debe aceptar -o)")
-        asm("int _ai; CadenaSegura _a;")
-        asm("for(_ai=2;_ai<_argc()-1;_ai++){ _a=_argv(_ai); if(_a.longitud==2&&strcmp(_a.datos,\"-o\")==0){ CadenaSegura _next=_argv(_ai+1); char*_dup=strdup(_next.datos); if(_dup){ salida_ruta=(CadenaSegura){.longitud=_next.longitud,.datos=_dup}; } break; } }")
-        asm("// Fallback: si argv(2) empieza con '-', no es salida posicional")
-        asm("if(salida_ruta.datos&&salida_ruta.longitud>0&&salida_ruta.datos[0]=='-'){ salida_ruta=(CadenaSegura){0,\"\"}; }")
-        asm("if (salida_ruta.longitud == 0) { salida_ruta = (CadenaSegura){.longitud=19,.datos=\"synapse_stage2.exe\"}; }")
+        // cumple Manual 8 §4.2 (--output): fallback de salida
+        asm("// R183d: el fallback predeterminado es <archivo>.exe (base del fuente),")
+        asm("// NO synapse_stage2.exe: compilar sin -o sobrescribiria el propio")
+        asm("// compilador autoalojado (destruye el bootstrap — detectado al probar")
+        asm("// el ME). Manual 8 §4.2 --output/-o MANDA: el fallback SOLO aplica si")
+        asm("// no se especifico salida (ni posicional ni flag).")
+        asm("if(salida_ruta.longitud==0){")
+        asm("  int _rl=(int)strlen(ruta.datos); char _base[512]={0}; int _ri=0, _rlast=-1;")
+        asm("  for(_ri=0;_ri<_rl;_ri++){ if(ruta.datos[_ri]=='/'||ruta.datos[_ri]=='\\\\') _rlast=_ri; }")
+        asm("  { int _bi=0; for(_ri=_rlast+1;_ri<_rl && _bi<505;_ri++) _base[_bi++]=ruta.datos[_ri]; _base[_bi]=0; }")
+        asm("  int _bl=(int)strlen(_base); if(_bl>4 && _stricmp(_base+_bl-4,\".syn\")==0){ _bl-=4; _base[_bl]=0; }")
+        asm("  if(_bl>0){ char _out2[512]; snprintf(_out2,sizeof(_out2),\"%s.exe\",_base); char* _d=strdup(_out2); if(_d){ salida_ruta=(CadenaSegura){.longitud=(int)strlen(_out2),.datos=_d}; } }")
+        asm("  if (salida_ruta.longitud == 0) { salida_ruta = (CadenaSegura){.longitud=19,.datos=\"synapse_stage2.exe\"}; }")
+        asm("}")
     // Pipeline nativa: leer -> tokenizar -> parsear -> (F8 stub) -> generar -> GCC
     _resultado = generar_etapa(ruta, salida_ruta, 0)
     si _resultado.tag == 0:

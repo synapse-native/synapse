@@ -86,6 +86,27 @@ def _resolver_toolchain_gcc() -> str:
     )
 
 
+def _soporta_sanitizers(compiler: str) -> bool:
+    """Detecta si el toolchain puede LINKEAR -fsanitize (Manual 9 §9.5).
+
+    R183d: en MinGW-w64 (GCC 16.1) el driver acepta -fsanitize=address,undefined
+    pero el linker no encuentra -lasan/-lubsan (no se distribuyen con el
+    toolchain). Solo compilar el fragmento miente; el probe incluye el enlace
+    para que la detección refleje la capacidad real del toolchain.
+    Garantiza: no lanza; False ante cualquier excepción.
+    """
+    import subprocess as _sp
+    sufiltro = '/tmp/_probe_san.c'
+    try:
+        with open(sufiltro, 'w') as f:
+            f.write('int main(void){return 0;}\n')
+        r = _sp.run([compiler, '-fsanitize=address,undefined', sufiltro,
+                     '-o', sufiltro + '.exe'], capture_output=True, timeout=30)
+        return r.returncode == 0
+    except Exception:
+        return False
+
+
 # ============================================================
 # RUNTIME MODULAR — compilación desde fuente (Manual 3 §3.1)
 # ME-R2: elimina la dependencia de .o precompilados que no existen
@@ -645,7 +666,20 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
     diag = DiagnosticManager()
 
     # Flags de compilación para la clave de caché (Manual 1 §165:PGO+LTO, Manual 8 §4.2 --release/--debug)
-    gcc_opt = "-O3 -flto -DNDEBUG" if modo_release else ("-O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer" if modo_debug else "-O2")
+    if modo_debug:
+        # cumple Manual 9 §6.1 (r183d): --debug pide sanitizadores, pero la
+        # distribución MinGW-w64 del toolchain no trae libasan/libubsan.
+        # Degradación documentada a -O0 -g: la depurabilidad (objetivo real del
+        # flag) se conserva y el build no se bloquea.
+        _gcc_dbg = _resolver_toolchain_gcc()
+        if _soporta_sanitizers(_gcc_dbg):
+            gcc_opt = "-O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer"
+        else:
+            gcc_opt = "-O0 -g"
+            print("[--debug] Sanitizadores (-fsanitize) no disponibles en este "
+                  "toolchain; se usa -O0 -g", file=sys.stderr)
+    else:
+        gcc_opt = "-O3 -flto -DNDEBUG" if modo_release else "-O2"
     flags_compilacion = os.environ.get('SYNAPSE_GCC_FLAGS', '') + f" {gcc_opt} -Wl,--stack,8388608 -Wl,--gc-sections"
 
     try:
