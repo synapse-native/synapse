@@ -1,0 +1,14 @@
+#lang: es
+funcion productor(c: Canal<entero>):
+    c <- 41
+    c <- 99
+    cerrar(c)
+
+funcion principal():
+    let c = Canal<entero>(10)
+    lanzar productor(c)
+    escuchar c:
+        let v = c ->
+        si v == 0:
+            romper
+        escribir_linea(entero_a_texto(v + 1))

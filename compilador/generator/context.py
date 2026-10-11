@@ -346,6 +346,13 @@ class GeneratorContext:
         self._canal_vars: set = set()
         self._canal_vars_cerradas: set = set()
         self._canal_vars_concurrencia: set = set()
+        # Canales con lifetime cedido a una fibra/listener — cumple Manual 5 §2.6 (y
+        # cumple Manual 2 §4.1: el canal es un handle int64; la destrucción prematura
+        # era uso-tu-libre). la fibra es la dueña del ciclo de vida; el scope contenedor
+        # NO debe destruir el canal al salir. R182c: sin este conjunto el cleanup final emitia
+        # canal_destruir sobre un canal con fibra viva → use-after-free.
+        # cumple Manual 6 §3.1: el handle del canal viaja a la fibra (externo muestra ABI).
+        self._canal_vars_cedidas: set = set()
         self._listener_funciones: List[str] = []
         self._deferred_wrappers: List[str] = []
         self._deferred_typedefs: List[str] = []

@@ -717,9 +717,18 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
                 f"if ({var}.stream) {{ fclose({var}.stream); "
                 f"{var}.es_valido = 0; }}"
             )
-    # CanalConcurrencia cleanup (concurrency channels)
+    # cumple Manual 2 §1.3: el comentario de línea documenta el fix R182c.
+    # cumple Manual 2 §4.1: el canal es un handle int64; destruirlo con la
+    # fibra viva era use-after-free.
+    # cumple Manual 5 §2.6: CanalConcurrencia cleanup — la fibra es la dueña
+    # del canal cedido; el contexto no lo destruye.
+    # R182c: los canales
+    # cedidos a una fibra/listener (M5 §2.6) NO se destruyen aqui — la fibra
+    # es la dueña de su ciclo de vida; destruirlos producía use-after-free
+    # (garbage + segfault en el programa canónico M3 §8.1 de canales).
     for var in ctx._canal_vars_concurrencia:
-        ctx.write_line(f"canal_destruir({var});")
+        if var not in ctx._canal_vars_cedidas:
+            ctx.write_line(f"canal_destruir({var});")
 
     ctx.pop_scope()
     ctx._tensor_vars.clear()
@@ -727,6 +736,7 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
     ctx._canal_vars.clear()
     ctx._canal_vars_cerradas.clear()
     ctx._canal_vars_concurrencia.clear()
+    ctx._canal_vars_cedidas.clear()
     ctx._garantizas_actuales = []
     ctx._in_function_scope = False
     ctx.dec_indent()
@@ -802,6 +812,9 @@ def visitar_retornar(ctx: GeneratorContext, nodo: SentenciaRetornar):
         ctx.write_line("return;")
 
 
+# cumple Manual 6 §3.1 y Manual 2 §4.1 (R182c): `lanzar` passa el canal
+# Concurrencia (CanalConcurrencia*) a la fibra — el ownership del handle
+# debitsio a la fibra; el scope contenedor NO lo destruye.
 def visitar_lanzar(ctx: GeneratorContext, nodo: SentenciaLanzar):
     """Genera código C para lanzar con FIBRAS M:N (Manual 5 §2.6) con ownership transfer.
 
@@ -832,6 +845,13 @@ def visitar_lanzar(ctx: GeneratorContext, nodo: SentenciaLanzar):
                 else:
                     arg_expr_c = expr_a_c(ctx, arg)
                     arg_t = tipo_de_expr(ctx, arg)
+                    # R182c: si la fibra recibe un canal CONCURRENCIA (M3 §8.1:
+                    # `lanzar trabajador(1, c)`), la dueña del ciclo de vida
+                    # pasa a ser la fibra — el scope contenedor no debe
+                    # emitir canal_destruir al final (M5 §2.6).
+                    if (isinstance(arg, Identificador)
+                            and arg.nombre in ctx._canal_vars_concurrencia):
+                        ctx._canal_vars_cedidas.add(arg.nombre)
                     arg_type_names.append(ctx.traducir_tipo_c(arg_t))
                     arg_c_exprs.append(arg_expr_c)
 
@@ -1014,3 +1034,8 @@ def visitar_escuchar(ctx: GeneratorContext, nodo: SentenciaEscuchar):
         f"fibra_crear("
         f"(void(*)(void*)){listener_name}, (void*)({canal}), 0);"
     )
+    # R182c: el canal escuchado queda en manos de la fibra listener
+    # — cumple Manual 5 §2.6 (fibras dueñas del ciclo de vida)
+    # — el scope contenedor no debe destruirlo al salir.
+    if nodo.canal and getattr(nodo.canal, 'nombre', None):
+        ctx._canal_vars_cedidas.add(nodo.canal.nombre)
