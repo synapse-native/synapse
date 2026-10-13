@@ -16,8 +16,11 @@
  M2 §13, 2 asserts débil<T> al runtime real Fase 23 WeakRef (Manual 4
  §4.2) por autorización Arquitecto regla 5 + 1 aserción de cuerpo
  @export al patrón Lifetime Scope; mapa_alineacion con entrada puntual
- canonical.py→M2 §13 (H-R183e-1 NUEVA: deprecar `compilador/*→Manual 1`
- del mapa legacy, resolución asignada, ratificación Arquitecto);
+ canonical.py→M2 §13 (H-R183e-1 RESUELTA: entrada puntual en
+ mapa_alineacion (canonical.py→M2 §13) + mapa legacy
+ `compilador/*→Manual 1` documentado como FALLBACK in situ
+ (mecanismo previsto por mapa_alineacion; sin cambios de
+ conducta del gate; verificador SIN BRECHAS tras el comentario));
  verificación: f1d 8/8 (2 E2E S2 ~222 s), vecinos 46✓, gates MTS
  (contrastar PASA 3 requisitos, expediente h_canon_let 0 brechas
  evidencia ad34c2eb084787cf, verificar_alineacion SIN BRECHAS,
@@ -42,8 +45,8 @@ Fase roadmap:      POST-FASE 33 — ME h_canon_let COMPLETADO (643b413):
                    WeakRef (Manual 4 §4.2, autorización Arquitecto) + 1 aser-
                    ción @export al Lifetime Scope; f1d 8/8, vecinos 46✓;
                    gates MTS/expediente/lectura OK (evidencia ad34c2eb...).
-                   Cola: H-R183e-1 (deprecar compilador/*→Manual 1 del mapa
-                   legacy, ratificación Arquitecto).
+                   Cola: plan maestro (H-R90-5, ME_27/29/30, ~46 asserts,
+                   YAML CI; docs/plan_maestro_deudas.md).
                    Antes: ME r183d_flags_debug COMPLETADO (0528b7a):
                    cierre de los hallazgos UX de R182c: --version/--help
                    rc=0, prescan de flags --target/--release/--debug/

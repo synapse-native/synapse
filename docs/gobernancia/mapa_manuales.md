@@ -104,6 +104,13 @@ fallará con instrucción explícita si un archivo modificado no está mapeado.
 }
 ```
 
+> **FALLBACK — H-R183e-1 (R183e, cierre)**: dominios "carpeta/* → Manual N"
+> de este bloque JSON son fallback. La semántica formal está en el
+> encabezado de `mapa_alineacion.md`: "un archivo sin entrada aquí cae al
+> mapa legacy para no quedar sin requisito; gana el patrón más específico".
+> Para nueva área de producción (p. ej. en `compilador/`): AGREGAR entrada
+> puntual en `mapa_alineacion.md` (sección puntual, no manual entero).
+
 ## Exclusiones (sin exigencia de lectura)
 
 Tests (`tests/**`), documentación (`docs/**`, `*.md` raíz), auditoría,
