@@ -16,19 +16,25 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   11 FAILED → 3 reparados (test_generator 3 asserts alineados al emisor
   vigente: Lifetime Scope `= 42LL; + return _ret_`, mangle
   `_principal_impl` H-R181-4, acceso puntero `= ptr->a;`) y 1 archivo
-  con SyntaxError de docstring reparado (test_debugger_timetravel —
-  colección bloqueada desde baselino previo) → 49 passed. RESTAN 8
-  FAILED medidos en: test_listen (4), test_cli_run_debug,
-  test_opensyn_cli, test_debugreverse (detalle exacto al correr el
-  archivo). Más cola declarada del baseline r183e (84 entradas
-  pre-fix, clasificadas/assert por revisar): artifact_signing (7,
-  hoy GREEN wait medición), lexer_ext (6, hoy GREEN), parser_ext (5),
-  debugger/debug familia (~10), axon_e2e (3), federated/pgo/lifetimes/
-  borrowing (2 c/u). Reglas duras de la República: asserts mucho más
-  nuevos corresponden al modelad del emisor actual Lifetime
-  Scope/WeakRef y decisión ratificada; a error no codegénico se
-  documenta como battlesteady. Item check por defecde debes registrar
-  los detalles verificados, no presupuestos.
+  con SyntaxError de docstring reparado (test_debugger_timetravel →
+  colección bloqueada desde baseline previo) → 49 passed.
+  ACTUALIZACIÓN R183e (misma sesión, medido): test_listen 4/4 RESUELTOS
+  — los tests usaban sintaxis `valor => ...` dentro de `escuchar` que
+  NO está en el manual; alineados a la forma canónica M5 §4.2
+  (`mensaje = ch ->` + bloque, all rc=0 por probe antes de editar);
+  con ello ya solo quedan 4 FAILED: test_cli_run_debug (4 — feature
+  gap del dispatcher: `synapse debug --help/step/reverse/snapshots`
+  rc=1, ME_27/29/30 del roadmap; M8 §5.2). HALLAZGO H-R184-1 (NUEVA,
+  con resolución asignada el ME R184): el parser S1 no acepta la forma
+  canónica `coincidir ch ->:` del M5 §3.6 ("se esperaba COLON, se
+  encontró ARROW") — el pattern ok(v) => / err(_) alineado al §3.6
+  queda bloqueado en S1 (S2/nativo por verificar). Más cola declarada
+  del baseline r183e (84 entradas pre-fix, clasificadas/assert por
+  revisar): parser_ext (5, hoy GREEN), axon_e2e (3),
+  federated/pgo/lifetimes/borrowing (2 c/u). Reglas del lote: asserts
+  nuevos corresponden al modelo del emisor vigente Lifetime
+  Scope/WeakRef con decisiones ratificadas; los errores de entorno se
+  documentan como feature gap, no se debilitan aserciones.
 
 ### ME R178 — check_cli (H-R176-2) — `synapse check` en cli.py
 requisito: Manual 8 §4 (+ subfase 26.1 del ROADMAP: flag `--check`/`--no-emit`
