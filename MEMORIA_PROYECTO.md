@@ -36,7 +36,15 @@
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      POST-FASE 33 — ME h_canon_let COMPLETADO (643b413):
+Fase roadmap:      POST-FASE 33 — ME R184 asserts_operativos ABIERTO
+                   (base e2ac5c7): deuda asserts/entorno medida en vivo:
+                   test_debugger_timetravel SyntaxError de docstring
+                   reparado + 3 asserts test_generator alineados al emisor
+                   vigente (Lifetime Scope, mangle principal) → 49 passed;
+                   restan 8 FAILED (listen/cli_run_debug/opensyn_cli/
+                   debug_reverse) + cola baseline r183e; detalle en
+                   docs/plan_maestro_deudas.md fila R184. Antes: ME
+                   h_canon_let COMPLETADO (643b413):
                    H-canon-LET CERRADA — el serializador canónico pisaba la
                    llave discriminante 'tipo' del JSON con la anotación del
                    `let` (round-trip .syn.json corrupto): anotación →

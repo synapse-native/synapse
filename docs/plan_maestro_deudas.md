@@ -10,6 +10,26 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
 
 ## Cola de MEs (prioridad por radio/costo, actualizable)
 
+- **R184/ME asserts_operativos (ABIERTO, 2026-10-13, base e2ac5c7):** deuda
+  de asserts/features medida en vivo tras el fix canónico (H-canon-LET
+  RESUELTA en 643b413 + R183e). Primer lote de 5 archivos medido hoy:
+  11 FAILED → 3 reparados (test_generator 3 asserts alineados al emisor
+  vigente: Lifetime Scope `= 42LL; + return _ret_`, mangle
+  `_principal_impl` H-R181-4, acceso puntero `= ptr->a;`) y 1 archivo
+  con SyntaxError de docstring reparado (test_debugger_timetravel —
+  colección bloqueada desde baselino previo) → 49 passed. RESTAN 8
+  FAILED medidos en: test_listen (4), test_cli_run_debug,
+  test_opensyn_cli, test_debugreverse (detalle exacto al correr el
+  archivo). Más cola declarada del baseline r183e (84 entradas
+  pre-fix, clasificadas/assert por revisar): artifact_signing (7,
+  hoy GREEN wait medición), lexer_ext (6, hoy GREEN), parser_ext (5),
+  debugger/debug familia (~10), axon_e2e (3), federated/pgo/lifetimes/
+  borrowing (2 c/u). Reglas duras de la República: asserts mucho más
+  nuevos corresponden al modelad del emisor actual Lifetime
+  Scope/WeakRef y decisión ratificada; a error no codegénico se
+  documenta como battlesteady. Item check por defecde debes registrar
+  los detalles verificados, no presupuestos.
+
 ### ME R178 — check_cli (H-R176-2) — `synapse check` en cli.py
 requisito: Manual 8 §4 (+ subfase 26.1 del ROADMAP: flag `--check`/`--no-emit`
 para validación rápida usada por el LSP/OpenSyn).
