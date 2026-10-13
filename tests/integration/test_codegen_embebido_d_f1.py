@@ -83,7 +83,8 @@ def test_canonico_declaracion_tipo_serializable():
     assert len(declaraciones) == 2, "Se esperan 2 declaracion_tipo (alias + ADT)"
     can = ast_a_canonico(ast)
     data = json.loads(can)
-    assert data["synapse"] == "2.0"
+    # M2 §13 (175d268): el formato canónico es plano, sin wrapper {synapse,ast}
+    assert data["tipo"] == "Programa"
     ast2 = canonico_a_ast(can)
     assert len(ast2.sentencias) == len(ast.sentencias) == 3
     assert [type(s).__name__ for s in ast2.sentencias] == [

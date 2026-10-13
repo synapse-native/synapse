@@ -200,7 +200,8 @@ funcion principal() -> nulo:
         assert not diag.hay_errores(), "Error compilando programa F1.4 canonico"
         can = ast_a_canonico(ast)
         data = json.loads(can)
-        assert data["synapse"] == "2.0"
+        # M2 §13 (175d268): el formato canónico es plano, sin wrapper {synapse,ast}
+        assert data["tipo"] == "Programa"
         ast2 = canonico_a_ast(can)
         fn = ast2.sentencias[0]
         assert fn.tipo_retorno == "rc<Entero>", (

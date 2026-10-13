@@ -97,7 +97,8 @@ funcion f() -> nulo:
         assert not diag.hay_errores(), "Error compilando programa F1.2c canonico"
         can = ast_a_canonico(ast)
         data = json.loads(can)
-        assert data["synapse"] == "2.0"
+        # M2 §13 (175d268): el formato canónico es plano, sin wrapper {synapse,ast}
+        assert data["tipo"] == "Programa"
         ast2 = canonico_a_ast(can)
         fn = [s for s in ast2.sentencias
               if type(s).__name__ == "DefinicionFuncion"][0]

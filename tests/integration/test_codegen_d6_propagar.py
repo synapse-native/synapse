@@ -93,7 +93,8 @@ def test_canonico_propagar_serializable():
     ast = _compilar_ast()
     can = ast_a_canonico(ast)
     data = json.loads(can)
-    assert data["synapse"] == "2.0"
+    # M2 §13 (175d268): el formato canónico es plano, sin wrapper {synapse,ast}
+    assert data["tipo"] == "Programa"
     ast2 = canonico_a_ast(can)
     assert len(ast2.sentencias) == len(ast.sentencias)
     # un uso de '?': en calcular (dividir(a, b)?); principal no propaga (void)

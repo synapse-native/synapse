@@ -118,7 +118,8 @@ estructura NodoLista:
         assert not diag.hay_errores(), "Error compilando programa F1.2d canonico"
         can = ast_a_canonico(ast)
         data = json.loads(can)
-        assert data["synapse"] == "2.0"
+        # M2 §13 (175d268): el formato canónico es plano, sin wrapper {synapse,ast}
+        assert data["tipo"] == "Programa"
         ast2 = canonico_a_ast(can)
         tipos = [type(s).__name__ for s in ast2.sentencias]
         assert tipos == ["DefinicionEstructura", "DeclaracionExport"], (
@@ -145,12 +146,16 @@ def test_codegen_s1_export_arc_debil():
     # Manual 2 S4.3 L151-153 + S4.1: arc<T>/debil<T> -> void* (placeholder ABI)
     assert "void* siguiente;" in codigo, (
         "campo arc<NodoLista> -> void* siguiente;")
-    assert "void* ref = nulo;" in codigo, (
-        "let ref: debil<NodoLista> = nulo -> void* ref = nulo;")
+    # Manual 4 S4.2 (runtime Fase 23, ME-F23-7): debil<T> -> WeakRef tipado;
+    # null inicializa el struct con ((WeakRef){0}).
+    assert "WeakRef ref = ((WeakRef){0});" in codigo, (
+        "let ref: debil<NodoLista> = nulo -> WeakRef ref = ((WeakRef){0});")
     # Manual 2 S2 L81 + Manual 6 S4: la funcion de @export se emite con cuerpo
     assert "int64_t sumar(int64_t a, int64_t b) {" in codigo, (
         "@export ( python ) funcion sumar -> int64_t sumar(int64_t a, int64_t b) {")
-    assert "return a + b;" in codigo or "return r;" in codigo, (
+    # El cuerpo materializa el retorno en un temporal del Lifetime Scope
+    # (_ret_N_M), por lo que el cuerpo se verifica por su sentencia real.
+    assert "int64_t r = (a + b);" in codigo and "return _ret_" in codigo, (
         "cuerpo de la funcion exportada presente en el C de salida")
 
 
@@ -182,8 +187,8 @@ funcion principal() -> nulo:
             "retorno arc<NodoLista> -> void* crear_nodo(int64_t v) {")
         assert "void* nodo = crear_nodo(1LL);" in codigo, (
             "let nodo: arc<NodoLista> -> void* nodo = ...;")
-        assert "void* debil_ref = nulo;" in codigo, (
-            "let debil_ref: debil<NodoLista> -> void* debil_ref = nulo;")
+    assert "WeakRef debil_ref = ((WeakRef){0});" in codigo, (
+        "let debil_ref: debil<NodoLista> -> WeakRef debil_ref = ((WeakRef){0});")
 
 
 def test_e2e_s1_f12d():

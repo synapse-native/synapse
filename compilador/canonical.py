@@ -191,6 +191,20 @@ _CAMPO_POR_NODO = {
     "SentenciaSi": {"cuerpo_sino": "sino"},
     "SentenciaMientras": {"cuerpo": "cuerpo"},
     "SentenciaEscuchar": {"cuerpo": "cuerpo"},
+    # H-canon-LET: el nodo DeclaracionVariable modela con nombre.  La
+    # anotación de tipo de variable usa el campo canónico 'tipo_annot'
+    # para evitar la COLISIÓN con la llave discriminante 'tipo' del JSON
+    # (sin este cambio el serializador sobreescribía 'tipo'='' o 'entero'
+    # y el round-trip perdía el tipo de nodo).  La paridad con el AST
+    # nativo (nucleo/ast_nodes.syn:83, campo tipo_param) queda preservada
+    # vía el puente (compilador/puente_canonico.py:506).
+    # cumple Manual 2 §13 (H-canon-LET, R183e): el JSON canónico plano del
+    # cumple Manual 1 §3.2 (mapa legacy compilador/* -> Manual 1): el AST
+    # en cada nodo ("tipo": "Programa"/"DeclaracionVariable"/...), por lo
+    # que ningún campo de anotación puede pisar esa llave.
+    # cumple Manual 1 §3.2 (mapa legacy compilador/* -> Manual 1): el AST
+    # canónico SemNodo[] que alimenta el backend es el mismo en S1 y nativo.
+    "DeclaracionVariable": {"tipo": "tipo_annot"},
 }
 
 # Campos que NO se serializan (internos)
@@ -316,6 +330,20 @@ def _dict_a_nodo(d: dict) -> Nodo:
             garantiza=garantiza,
             cuerpo=cuerpo,
         )
+
+    # --- Caso especial: DeclaracionVariable (`let`) ---
+    # H-canon-LET: el JSON canónico lleva el discriminante en 'tipo' y la
+    # anotación de la variable en 'tipo_annot' (paridad con el AST nativo:
+    # nucleo/ast_nodes.syn:83 campo tipo_param, compilador/puente_canonico.py:506).
+    if tipo == "DeclaracionVariable":
+        expr_raw = d.get("expresion")
+        expresion = _dict_a_nodo(expr_raw) if isinstance(expr_raw, dict) else None
+        return DeclaracionVariable(
+            nombre=d.get("nombre", ""),
+            tipo=d.get("tipo_annot", ""),
+            expresion=expresion,
+        )
+
 
     # --- Caso genérico ---
     kwargs = {}

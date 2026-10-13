@@ -81,6 +81,7 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "std/symbolic_exec.syn": ["Manual 2 §4.1"],
   "compilador/parser_control.py": ["Manual 2 §1.3"],
   "compilador/puente_canonico.py": ["Manual 3 §11.1", "Manual 6 §5.1"],
+  "compilador/canonical.py": ["Manual 2 §13"],
   "synapse_rt_types.h": ["Manual 2 §4.1"],
   "nucleo/parser_sentencias.syn": ["Manual 2 §1.3"],
   "syquex/expr.syn": ["Manual 3 §3"],
