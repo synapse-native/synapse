@@ -35,6 +35,16 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   nuevos corresponden al modelo del emisor vigente Lifetime
   Scope/WeakRef con decisiones ratificadas; los errores de entorno se
   documentan como feature gap, no se debilitan aserciones.
+- **R187/ME f14_mto_ci (COMPLETADO, 2026-10-14, 75dc6cf):** cierre del lote
+  en vuelo de la sesión anterior (recuperación, no deuda del maestro):
+  F1.4 check de cuerpo-bloque tras `funcion:` en el PARSER (M2 §2 L56/L60,
+  rc=1; `_validar_cuerpos` del lexer eliminado, M1 §3.1), release_matrix.yml
+  real + build.py S2==S3 + distribuir.py sellado (M9), fixtures canónicos
+  (M2 §13), paridad emisor embebido (H-R181-3), harnesses A2.3/A3.1.
+  Deuda/testigo asignado a ME futuro: H-R187-1 (preexistente: '(' sin
+  cerrar en firma malformada activa la continuación multilínea r153 y
+  suprime NEWLINE/INDENT/DEDENT del resto del archivo — ruido de cascada,
+  decisión del Arquitecto). Reporte: docs/reportes/R187.md.
 
 ### ME R178 — check_cli (H-R176-2) — `synapse check` en cli.py
 requisito: Manual 8 §4 (+ subfase 26.1 del ROADMAP: flag `--check`/`--no-emit`
