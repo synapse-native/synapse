@@ -1,4 +1,6 @@
 """
+
+Cumple MTO OBL-M5-01.
 test_canales_fibras.py — F4.2: Canales con bloqueo fiber-aware (Manual 5
 §2.6/§3; ROADMAP Fase 4)
 

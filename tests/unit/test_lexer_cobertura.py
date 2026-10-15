@@ -49,18 +49,24 @@ class TestLexerCoberturaExtra:
 
     # --- Lineas 406-408: funcion sin cuerpo ---
     def test_funcion_con_dos_puntos_sin_body(self):
-        """Lineas 406-408: funcion con ':' pero sin bloque indentado."""
+        """H-F1.4-1 (Manual 1 §3.1, ME f14_mto_ci): el LEXER es fase de tokens
+        (pipeline compartido M2 §2.1); la firma sin bloque indentado se
+        tokeniza legitimately (probes de firma; validación del bloque =
+        PARSER, RecuperacionErrores/TestParserFunciones)."""
         fuente = "#lang: es\nfuncion incompleta():\n\n"
-        with pytest.raises(SynapseError) as exc:
-            Lexer(fuente).tokenizar()
-        assert "sin cuerpo" in exc.value.mensaje
+        tokens = Lexer(fuente).tokenizar()
+        tipos = [t.tipo for t in tokens]
+        assert TokenID.FUNCION in tipos and TokenID.COLON in tipos
+        assert tipos[-1] == TokenID.EOF
 
     # --- Linea 415: archivo vacio -> error ---
     def test_archivo_vacio_error(self):
-        """M2 S1: archivo vacio debe ser rechazado con error."""
+        """F1.4 (M2 §2/ME f14_mto_ci): sin fuente no hay declaración de idioma
+        '#lang' — mismo mensaje de familia que la falta de #lang (1 entrada más
+        abajo del mismo flujo _detectar_idioma)."""
         with pytest.raises(SynapseError) as exc:
             Lexer("").tokenizar()
-        assert "vacío" in exc.value.mensaje.lower() or "vacio" in exc.value.mensaje.lower()
+        assert "declaración de idioma" in exc.value.mensaje
 
     # --- Linea 490: escape \t ---
     def test_cadena_escape_tab(self):

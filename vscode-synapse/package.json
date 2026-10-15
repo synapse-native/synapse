@@ -85,6 +85,10 @@
             {
                 "command": "synapse.aiBindings",
                 "title": "Synapse: Generar bindings desde cabecera C con IA"
+            },
+            {
+                "command": "synapse.aiFix",
+                "title": "Synapse: Sugerir correcciones con IA"
             }
         ],
         "configuration": {

@@ -1,4 +1,6 @@
 """
+
+Cumple MTO OBL-M4-02.
 FASE 23 ME-2: rc<T> y arc<T> reference counting (Manual 4 §3.2-3.3).
 
 Valida el rc/arc allocator C (runtime/core/memory.c) compilado contra

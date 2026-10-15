@@ -1,3 +1,5 @@
+
+# Cumple MTO OBL-M7-02.
 # -*- coding: utf-8 -*-
 """
 test_bucle_validacion.py — M7 §6.3: Bucle de corrección automática (3 intentos).

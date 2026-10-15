@@ -1,5 +1,6 @@
 from typing import List, Optional
 
+from compilador.diagnostics import ErrorCodes
 from compilador.ast_nodes import (
     TokenID, Nodo, Parametro,
     DefinicionFuncion, DefinicionEstructura,
@@ -155,7 +156,21 @@ class ParserDeclarationsMixin(ParserBase):
             if self._mirar().tipo == TokenID.DEDENT:
                 self._avanzar()
         else:
-            cuerpo = []
+            # cumple Manual 1 §3.1 (H-F1.4-1, ME f14_mto_ci): pipeline
+            # compartido — la existencia de cuerpo tras 'funcion:' es
+            # verificación del PARSER (fase de AST), no del lexer.
+            # cumple Manual 2 §2 L56: declaracion_funcion ::= ... ":"
+            # NEWLINE INDENT bloque DEDENT (sin alternativa vacía). La
+            # validación emigró del lexer (fase de tokens) al PARSER (fase de
+            # gramática), conservando la cobertura original
+            # (TestParserFunciones / RecuperacionErrores) y el mensaje exacto.
+            t_falta = self._mirar()
+            # ERR_LEX es el portador genérico ({mensaje}) con texto exacto del
+            # check original del lexer (fase movida, misma cobertura).
+            self.diag.reportar(ErrorCodes.ERR_LEX, t_falta,
+                               mensaje="Error de sintaxis: 'funcion' sin cuerpo (falta bloque indentado)")
+            self._sincronizar(_SYNC_TOP)
+            return None
 
         return DefinicionFuncion(
             nombre=tok_nombre.valor,

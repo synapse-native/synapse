@@ -1,5 +1,11 @@
 """
+
+Cumple MTO OBL-M3-05.
 test_syquex_parser.py — FASE 22 / R87: `syquex/parser.syn` (Manual 3 §3 EBNF).
+
+Cumple MTO OBL-M3-01 (parse/traduce la gramática núcleo M3 §3),
+OBL-M3-03 (metodos con self implícito, M3 §6/M6 §1.3) y
+OBL-M3-04 (certificación Syquex v1.0 — Hito 7, M3 §3: gramática EBNF completa).
 
 Compila por concatenación (lexer+expr+parser+driver) con el S1 y verifica
 el AST plano producido para una muestra que cubre la gramática núcleo:

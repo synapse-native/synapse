@@ -1,4 +1,6 @@
 """
+
+Cumple MTO OBL-M6-01. Cumple MTO OBL-M6-02.
 test_puente_ffi_lista_mapa.py — Fase 32.5 (Manual 6 §3.1, §3.2; Manual 2 §5.1)
 
 Valida el puente FFI para listas y mapas del runtime C:

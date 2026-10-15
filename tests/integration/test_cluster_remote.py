@@ -1,3 +1,5 @@
+
+# Cumple MTO OBL-M5-03.
 # -*- coding: utf-8 -*-
 """
 test_cluster_remote.py — M5 §9: Canal remoto (cluster).

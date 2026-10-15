@@ -18,6 +18,7 @@ extern char _G_fn_ret_tipo_c[64];  // F5-1
 #include <pthread.h>
 #include <string.h>
 #include <assert.h>
+#include <time.h>
 #ifdef _WIN32
 #include <io.h>
 #else
@@ -33,6 +34,29 @@ typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtua
 #define nulo ((void*)0)
 #define verdadero 1
 #define falso 0
+
+// --- Colecciones stdlib (runtime/core/lista.c, mapa.c) ---
+extern void* _syn_lista_crear(void);
+extern int64_t _syn_lista_longitud(void* l);
+extern void _syn_lista_limpiar(void* l);
+extern void _syn_mapa_limpiar(void* m);
+extern void _syn_lista_agregar(void* l, int64_t elemento);
+extern int64_t _syn_lista_obtener(void* l, int indice);
+extern void _syn_lista_establecer(void* l, int indice, int64_t valor);
+extern void _syn_lista_eliminar(void* l, int indice);
+extern void _syn_lista_liberar(void* l);
+extern void* _syn_mapa_crear(void);
+extern int64_t _syn_mapa_longitud(void* m);
+extern void _syn_mapa_poner(void* m, const char* clave, int64_t valor);
+extern int64_t _syn_mapa_obtener(void* m, const char* clave);
+extern int64_t _syn_mapa_contiene(void* m, const char* clave);
+extern void _syn_mapa_eliminar(void* m, const char* clave);
+extern void _syn_mapa_liberar(void* m);
+extern void* _syn_mapa_claves(void* m);
+extern void* _syn_mapa_valores(void* m);
+extern CadenaSegura _syn_leer_archivo(CadenaSegura ruta);
+extern CadenaSegura _syn_texto_subcadena(CadenaSegura t, int64_t inicio, int64_t fin);
+extern CadenaSegura _syn_texto_duplicar(CadenaSegura s);
 
 // --- OO AST node types ---
 struct Token;
@@ -208,6 +232,9 @@ extern char _G_native_structs[256][64];
 extern int _G_native_structs_count;
 extern int _G_native_es_estructura(const char* n);
 
+extern char _G_native_consts[512][64];
+extern int _G_native_consts_count;
+
 extern char _G_native_struct_campos[256][64][64];
 extern char _G_native_struct_campos_tipo[256][64][64];
 extern int _G_native_struct_campos_count[256];
@@ -217,6 +244,7 @@ extern int _G_native_campo_tipo(const char* sn, const char* cn, char* out);
 extern char _G_native_func_returns[2048][64];
 extern int _G_native_func_returns_count;
 extern int _G_native_tipo_retorno(const char* fn, char* out);
+extern int _G_native_tipo_retorno_span(const char* fn, char* out);
 
 extern char _G_native_adt_ctrs[256][64];
 extern char _G_native_adt_ctrs_adt[256][64];
@@ -240,6 +268,19 @@ extern int _G_native_adt_inst_nfields[64];
 extern int _G_native_adt_inst_count;
 extern int _G_native_adt_inst_ctr(const char* base, int tag, const char* tipo_c, char* out);
 
+extern char _G_native_gen[64][64];
+extern char _G_native_gen_param[64][64];
+extern char _G_native_gen_campos[64][8][64];
+extern char _G_native_gen_campos_tipo_syn[64][8][64];
+extern int _G_native_gen_ncampos[64];
+extern int _G_native_gen_count;
+extern char _G_native_gen_inst_type[64][64];
+extern char _G_native_gen_inst_c[64][64];
+extern char _G_native_gen_inst_base[64][64];
+extern int _G_native_gen_inst_count;
+extern int _G_native_gen_es(const char* n);
+extern int _G_native_gen_resolver(const char* base, const char* tipo_syn, char* out);
+
 // ME-B7: dedup de funciones emitidas y hoisting de variables (paridad orquestador nativo)
 extern char _G_emit_func_names[2048][64];
 extern int _G_emit_func_count;
@@ -257,6 +298,10 @@ extern void* rc_alloc(size_t tamano, void (*dtor)(void*));
 extern void rc_decrementar(void* ptr);
 extern void* arc_alloc(size_t tamano, void (*dtor)(void*));
 extern void arc_decrementar(void* ptr);
+extern void* _syn_rc_crear(void* data, void (*dtor)(void*));
+extern void _syn_rc_decrement(void* p);
+extern void* _syn_arc_crear(void* data, void (*dtor)(void*));
+extern void _syn_arc_decrement(void* ptr);
 extern WeakRef rc_weak_ref(void* ptr);
 extern void rc_weak_release(WeakRef* w);
 
@@ -311,19 +356,17 @@ extern CadenaSegura leer_linea(void);
 extern Canal abrir(CadenaSegura ruta, CadenaSegura modo);
 extern CadenaSegura leer(Canal canal);
 extern void cerrar_archivo(Canal canal);
-extern Tensor crear_tensor(int filas, int columnas);
+extern Tensor crear_tensor(int64_t filas, int64_t columnas);
 extern Tensor suma_tensor(Tensor a, Tensor b);
 extern Tensor producto_punto(Tensor a, Tensor b);
 extern Tensor relu(Tensor a);
-extern Tensor reserva(int tamano);
+extern Tensor reserva(int64_t tamano);
 extern void libera(Tensor bloque);
-extern Tensor suma(Tensor a, Tensor b);
-extern Tensor producto(Tensor a, Tensor b);
 extern int64_t texto_a_entero(CadenaSegura str);
 extern double texto_a_decimal(CadenaSegura str);
 extern CadenaSegura decimal_a_texto(double n);
 extern CadenaSegura entero_a_texto(int64_t n);
-extern int str_eq(CadenaSegura a, CadenaSegura b);
+extern int64_t str_eq(CadenaSegura a, CadenaSegura b);
 extern CadenaSegura concat(CadenaSegura a, CadenaSegura b);
 extern void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);
 extern void synapse_esperar_hilos(void);
@@ -342,10 +385,23 @@ typedef struct CanalConcurrencia CanalConcurrencia;
 extern CanalConcurrencia* canal_crear(uint32_t capacidad);
 extern void canal_enviar(CanalConcurrencia* canal, void* paquete);
 extern void* canal_recibir(CanalConcurrencia* canal, bool* cerrado);
+extern void canal_enviar_texto(CanalConcurrencia* canal, CadenaSegura t);
+extern CadenaSegura canal_recibir_texto(CanalConcurrencia* canal, bool* cerrado);
 extern void canal_destruir(CanalConcurrencia* canal);
 extern void cerrar(CanalConcurrencia* canal);
 // --- Deteccion SIMD unificada (delegada al runtime synapse_rt.o) ---
 extern void _simd_detectar(void);
+
+#if defined(__GNUC__)
+/* --- Fallbacks weak del runtime (compilacion standalone) --- */
+__attribute__((weak)) void pool_init(uint32_t total_blocks, uint32_t block_size) { (void)total_blocks; (void)block_size; }
+__attribute__((weak)) void* pool_alloc(size_t size) { return malloc(size); }
+__attribute__((weak)) void pool_free(void* ptr) { free(ptr); }
+__attribute__((weak)) void pool_destroy(void) { }
+__attribute__((weak)) void synapse_esperar_hilos(void) { }
+__attribute__((weak)) void synapse_esperar_fibras(void) { }
+__attribute__((weak)) void _simd_detectar(void) { }
+#endif
 
 // --- Contratos (requiere/garantiza) ---
 #ifdef SYNAPSE_RELEASE
@@ -388,13 +444,18 @@ typedef struct Resultado {
 
 static inline int risky_call(void) { return 0; }
 CadenaSegura _validar_ruta_segura(CadenaSegura ruta);
+Canal abrir(CadenaSegura ruta, CadenaSegura modo);
 int64_t ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica);
 int64_t ejecutar_comando(CadenaSegura cmd);
 int64_t eliminar_archivo(CadenaSegura ruta);
+void escribir(CadenaSegura texto);
 int64_t escribir_archivo(CadenaSegura ruta, CadenaSegura contenido);
+void escribir_linea(CadenaSegura texto);
 int existe_archivo(CadenaSegura ruta);
+CadenaSegura leer(Canal c);
 CadenaSegura leer_archivo(CadenaSegura ruta);
 CadenaSegura leer_bytes(int64_t cantidad);
+CadenaSegura leer_linea(void);
 CadenaSegura obtener_env(CadenaSegura nombre);
 int64_t prueba_clave_incorrecta(void);
 int64_t prueba_enviar_datos_canal(void);
@@ -406,6 +467,7 @@ int64_t prueba_handshake_bidireccional(void);
 int64_t prueba_iniciar_detener_nodo(void);
 int64_t prueba_resultado_algebraico(void);
 CadenaSegura sha256_texto(CadenaSegura datos);
+int64_t stdin_eof(void);
 
 extern CadenaSegura _syn_sha256_texto(CadenaSegura datos);
 extern int64_t _syn_ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica);
@@ -424,6 +486,7 @@ extern CadenaSegura _syn_leer(Canal c);
 extern void _syn_escribir(CadenaSegura texto);
 extern void _syn_escribir_linea(CadenaSegura texto);
 extern CadenaSegura _syn_leer_linea(void);
+extern int64_t _syn_stdin_eof(void);
 extern CadenaSegura _syn_leer_bytes(int64_t cantidad);
 extern int64_t _syn_fgetc_stdin(void);
 extern int64_t _syn_fprintf(int64_t canalm, CadenaSegura formato);

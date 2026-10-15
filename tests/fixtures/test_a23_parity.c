@@ -30,6 +30,8 @@ typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtua
 // --- Colecciones stdlib (runtime/core/lista.c, mapa.c) ---
 extern void* _syn_lista_crear(void);
 extern int64_t _syn_lista_longitud(void* l);
+extern void _syn_lista_limpiar(void* l);
+extern void _syn_mapa_limpiar(void* m);
 extern void _syn_lista_agregar(void* l, int64_t elemento);
 extern int64_t _syn_lista_obtener(void* l, int indice);
 extern void _syn_lista_establecer(void* l, int indice, int64_t valor);
@@ -42,8 +44,11 @@ extern int64_t _syn_mapa_obtener(void* m, const char* clave);
 extern int64_t _syn_mapa_contiene(void* m, const char* clave);
 extern void _syn_mapa_eliminar(void* m, const char* clave);
 extern void _syn_mapa_liberar(void* m);
+extern void* _syn_mapa_claves(void* m);
+extern void* _syn_mapa_valores(void* m);
 extern CadenaSegura _syn_leer_archivo(CadenaSegura ruta);
 extern CadenaSegura _syn_texto_subcadena(CadenaSegura t, int64_t inicio, int64_t fin);
+extern CadenaSegura _syn_texto_duplicar(CadenaSegura s);
 
 // --- OO AST node types ---
 struct Token;
@@ -255,6 +260,19 @@ extern int _G_native_adt_inst_nfields[64];
 extern int _G_native_adt_inst_count;
 extern int _G_native_adt_inst_ctr(const char* base, int tag, const char* tipo_c, char* out);
 
+extern char _G_native_gen[64][64];
+extern char _G_native_gen_param[64][64];
+extern char _G_native_gen_campos[64][8][64];
+extern char _G_native_gen_campos_tipo_syn[64][8][64];
+extern int _G_native_gen_ncampos[64];
+extern int _G_native_gen_count;
+extern char _G_native_gen_inst_type[64][64];
+extern char _G_native_gen_inst_c[64][64];
+extern char _G_native_gen_inst_base[64][64];
+extern int _G_native_gen_inst_count;
+extern int _G_native_gen_es(const char* n);
+extern int _G_native_gen_resolver(const char* base, const char* tipo_syn, char* out);
+
 // ME-B7: dedup de funciones emitidas y hoisting de variables (paridad orquestador nativo)
 extern char _G_emit_func_names[2048][64];
 extern int _G_emit_func_count;
@@ -366,6 +384,17 @@ extern void cerrar(CanalConcurrencia* canal);
 // --- Deteccion SIMD unificada (delegada al runtime synapse_rt.o) ---
 extern void _simd_detectar(void);
 
+#if defined(__GNUC__)
+/* --- Fallbacks weak del runtime (compilacion standalone) --- */
+__attribute__((weak)) void pool_init(uint32_t total_blocks, uint32_t block_size) { (void)total_blocks; (void)block_size; }
+__attribute__((weak)) void* pool_alloc(size_t size) { return malloc(size); }
+__attribute__((weak)) void pool_free(void* ptr) { free(ptr); }
+__attribute__((weak)) void pool_destroy(void) { }
+__attribute__((weak)) void synapse_esperar_hilos(void) { }
+__attribute__((weak)) void synapse_esperar_fibras(void) { }
+__attribute__((weak)) void _simd_detectar(void) { }
+#endif
+
 // --- Contratos (requiere/garantiza) ---
 #ifdef SYNAPSE_RELEASE
 #define assert_contrato(expr, msg) ((void)0)
@@ -391,6 +420,7 @@ int _G_safe_mode;  // M22.5: --safe flag for lifetime assertions
 char _G_native_structs[256][64];
 int _G_native_structs_count;
 char _G_native_consts[512][64];
+char _G_native_consts_txt[512];
 int _G_native_consts_count;
 int _G_native_es_estructura(const char* n) {
     if (!n) return 0;
@@ -419,6 +449,8 @@ int _G_native_campo_tipo(const char* sn, const char* cn, char* out) {
 
 char _G_native_func_returns[2048][64];
 int _G_native_func_returns_count;
+char _G_native_funcdefs[2048][64];
+int _G_native_funcdefs_count;
 int _G_native_tipo_retorno(const char* fn, char* out) {
     if (!fn || !out) return 0;
     for (int _i = 0; _i < _G_native_func_returns_count; _i++) {
@@ -510,6 +542,27 @@ int _G_native_adt_inst_ctr(const char* base, int tag, const char* tipo_c, char* 
     return 0;
 }
 
+char _G_native_gen[64][64];
+char _G_native_gen_param[64][64];
+char _G_native_gen_campos[64][8][64];
+char _G_native_gen_campos_tipo_syn[64][8][64];
+int _G_native_gen_ncampos[64];
+int _G_native_gen_count;
+char _G_native_gen_inst_type[64][64];
+char _G_native_gen_inst_c[64][64];
+char _G_native_gen_inst_base[64][64];
+int _G_native_gen_inst_count;
+int _G_native_gen_es(const char* n) {
+    if (!n) return 0;
+    for (int _i = 0; _i < _G_native_gen_count; _i++) { if (strcmp(_G_native_gen[_i], n) == 0) return 1; }
+    return 0;
+}
+int _G_native_gen_resolver(const char* base, const char* tipo_syn, char* out) {
+    if (!base || !out) return 0;
+    for (int _i = 0; _i < _G_native_gen_inst_count; _i++) { if (strcmp(_G_native_gen_inst_base[_i], base) == 0 && strcmp(_G_native_gen_inst_type[_i], tipo_syn) == 0) { strcpy(out, _G_native_gen_inst_c[_i]); return 1; } }
+    return 0;
+}
+
 char _G_emit_func_names[2048][64];
 int _G_emit_func_count;
 char _G_fn_vars[2048][64];
@@ -592,8 +645,8 @@ int main(int argc, char** argv) {
     _g_argv = argv;
     pool_init(POOL_BLOQUES, TAMANO_BLOQUE);
     _principal_impl();
-    pool_destroy(); // TMS: liberar pool antes de report (Manual 6 §4.4)
     synapse_esperar_hilos();
     synapse_esperar_fibras();
+    pool_destroy(); // TMS: liberar pool tras esperar fibras (Manual 6 §2.2)
     return 0;
 }

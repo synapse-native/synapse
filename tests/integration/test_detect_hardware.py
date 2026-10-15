@@ -1,5 +1,7 @@
 """Detect-hardware (Manual 9 §5.7): oráculo de tests/test_detect_hardware.c.
 
+Cumple MTO OBL-M9-01.
+
 TDD: tests/test_detect_hardware.c es la especificación (43 asserts). Si las
 primitivas de synapse_detectar_hardware no existen, el binario no enlaza.
 """

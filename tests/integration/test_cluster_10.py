@@ -1,3 +1,5 @@
+
+# Cumple MTO OBL-M5-02.
 # -*- coding: utf-8 -*-
 """
 test_cluster_10.py — Concurrencia Distribuida (Fase 19).

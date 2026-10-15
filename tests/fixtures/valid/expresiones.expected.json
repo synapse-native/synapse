@@ -1,51 +1,53 @@
 {
-  "_tipo": "Programa",
-  "sentencias": [
+  "tipo": "Programa",
+  "declaraciones": [
     {
-      "_tipo": "DefinicionFuncion",
+      "tipo": "FuncionDef",
       "nombre": "expr",
       "parametros": [],
       "tipo_retorno": "int",
-      "requiere": [],
-      "garantiza": [],
-      "cuerpo": [
-        {
-          "_tipo": "AsignacionVariable",
-          "nombre": "x",
-          "expresion": {
-            "_tipo": "OpUnaria",
-            "operador": "-",
-            "expr": {
-              "_tipo": "LiteralNumero",
-              "valor": 5
-            }
-          }
-        },
-        {
-          "_tipo": "SentenciaRetornar",
-          "expr": {
-            "_tipo": "OpBinaria",
-            "izquierdo": {
-              "_tipo": "Identificador",
-              "nombre": "x"
-            },
-            "operador": "*",
-            "derecho": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "LiteralNumero",
-                "valor": 2
-              },
-              "operador": "+",
-              "derecho": {
-                "_tipo": "LiteralNumero",
-                "valor": 3
+      "contratos": null,
+      "cuerpo": {
+        "tipo": "Bloque",
+        "sentencias": [
+          {
+            "tipo": "AsignacionVariable",
+            "nombre": "x",
+            "expresion": {
+              "tipo": "OpUnaria",
+              "operador": "-",
+              "valor": {
+                "tipo": "LiteralNumero",
+                "valor": 5
               }
             }
           },
-          "es_transferencia": false
-        }
-      ]
+          {
+            "tipo": "SentenciaRetornar",
+            "valor": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "x"
+              },
+              "operador": "*",
+              "derecha": {
+                "tipo": "ExpresionArit",
+                "izquierda": {
+                  "tipo": "LiteralNumero",
+                  "valor": 2
+                },
+                "operador": "+",
+                "derecha": {
+                  "tipo": "LiteralNumero",
+                  "valor": 3
+                }
+              }
+            },
+            "es_transferencia": false
+          }
+        ]
+      }
     }
   ],
   "is_no_std": false

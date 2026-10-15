@@ -1,4 +1,6 @@
 """
+
+Cumple MTO OBL-M5-02.
 test_cluster_multicast.py — Pruebas de integración para M8.6 (UDP Multicast Real).
 Manual 5 §6.4: multicast para descubrimiento y envío a múltiples nodos.
 

@@ -1,6 +1,8 @@
 """
 FASE 23 ME-4: Análisis de alcance y ciclos (Manual 3 §5 + Manual 4 §4.4/§5).
 
+Cumple MTO OBL-M3-02 (analizador de alcance arena/rc/arc/débil, M3 §5).
+
 Valida que syquex/analizador_alcance.syq:
 1. Compila correctamente con el frontend SyQuex
 2. Provee la API esperada (analizar_ciclos, analizar_funcion, analizar_programa)

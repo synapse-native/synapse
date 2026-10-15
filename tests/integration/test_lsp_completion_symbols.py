@@ -1,3 +1,5 @@
+
+# Cumple MTO OBL-M8-08.
 # -*- coding: utf-8 -*-
 """
 tests/integration/test_lsp_completion_symbols.py — textDocument/completion devuelve simbolos reales (gap FFI RAII).

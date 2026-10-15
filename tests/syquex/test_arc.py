@@ -1,4 +1,6 @@
 """
+
+Cumple MTO OBL-M4-02.
 FASE 23 ME-6: arc<T> atomic tests (Manual 4 §3.3, §9).
 
 Valida que arc<T> usa conteo atómico (__atomic) correctamente,

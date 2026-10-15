@@ -22,7 +22,8 @@
           "tipo": "arc<NodoLista>",
           "es_transferencia": false
         }
-      ]
+      ],
+      "param_generico": ""
     },
     {
       "tipo": "FuncionDef",
@@ -34,39 +35,44 @@
         "tipo": "Bloque",
         "sentencias": [
           {
-            "tipo": "",
+            "tipo": "DeclaracionVariable",
             "nombre": "x",
+            "tipo_annot": "",
             "expresion": {
               "tipo": "LiteralNumero",
               "valor": 5
             }
           },
           {
-            "tipo": "entero",
+            "tipo": "DeclaracionVariable",
             "nombre": "edad",
+            "tipo_annot": "entero",
             "expresion": {
               "tipo": "LiteralNumero",
               "valor": 10
             }
           },
           {
-            "tipo": "",
+            "tipo": "DeclaracionVariable",
             "nombre": "s",
+            "tipo_annot": "",
             "expresion": {
               "tipo": "LiteralCadena",
               "valor": "hola"
             }
           },
           {
-            "tipo": "débil<NodoLista>",
+            "tipo": "DeclaracionVariable",
             "nombre": "ref",
+            "tipo_annot": "débil<NodoLista>",
             "expresion": {
               "tipo": "LiteralNulo"
             }
           },
           {
-            "tipo": "",
+            "tipo": "DeclaracionVariable",
             "nombre": "t",
+            "tipo_annot": "",
             "expresion": {
               "tipo": "ExprTensor",
               "filas": {

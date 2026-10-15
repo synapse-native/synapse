@@ -1,5 +1,10 @@
 # cumple Manual 1 1: infraestructura Python del compilador Synapse
 # cumple Manual 8 4: toolchain de construcción
+# cumple Manual 1 §3.1: paridad de las 3 copias del lexer (mismo AST canónico
+#   en S1, nativo y este emisor embebido).
+# cumple Manual 2 §3: tabla de palabras reservadas multi-idioma del emisor
+#   embebido (_P_*) — keywords contextuales con fallback H-R181-3 en
+#   posición de nombre.
 """
 Generacion de codigo C auto-hospedado (tokenizer, parser, code generator).
 Funciones migradas del original generator.py con adaptacion al patron
@@ -200,6 +205,28 @@ def gen_tok_c(ctx: GeneratorContext):
             '            int _kt = T_IDENT;',
             '            for (int _ki = 0; _ks[_ki].p; _ki++) {',
             '                if (strcmp(' + P + 'tks[' + P + 'ntks].val, _ks[_ki].p) == 0) { _kt = _ks[_ki].t; break; }',
+            '            }',
+            '            // H-R181-3: cumple Manual 2 §3 (ME r184_r185_e2e + f14_mto_ci) — paridad de las TRES copias del',
+            '            // lexer — S1 (lexer.py), nativo (lexer.syn) y EMBEBIDO (este emisor):',
+            '            // keyword en posicion de nombre se degrada a identificador:',
+            '            // (a) tras un T_DOT (p.y = 4 / campo), (b) keyword seguido de COLON',
+            '            // simple (campo/parametro y: entero, crear_punto(x, y)), salvo abridores',
+            '            // de bloque (sino/recuperar/inseguro) y literales (H-R184-1a: verdadero/',
+            '            // falso/nulo NUNCA son nombres), y (c) keyword seguido de ASSIGN simple',
+            '            // (no EQ, regla de asignación: modulo = 5, y = 1). Sin esto el',
+            '            // parsear embebido se confiaba con los sensores del parser nativo —',
+            '            // divergencia nativo vs _P_* del harness native_puente_paridad.py.',
+            '            {',
+            '                int _ident_ctx = 0;',
+            '                if (' + P + 'ntks > 0 && (' + P + 'tks[' + P + 'ntks-1].tipo == T_DOT)) { _ident_ctx = 1; }',
+            '                else if (_kt != T_IDENT) {',
+            '                    int _j = i; while (_j < len && s[_j] == \' \') _j++;',
+            '                    if (_j < len) {',
+            '                        if (s[_j] == \':\' && !(_kt == T_ELSE || _kt == T_RECOVER || _kt == T_INSEGURO || _kt == T_TRUE || _kt == T_FALSE)) { _ident_ctx = 1; }',
+            '                        else if (s[_j] == \'=\' && (_j + 1 >= len || s[_j + 1] != \'=\')) { _ident_ctx = 1; }',
+            '                    }',
+            '                }',
+            '                if (_ident_ctx) { _kt = T_IDENT; }',
             '            }',
             '            ' + P + 'tks[' + P + 'ntks].tipo = _kt;',
             "            " + P + "ntks++; co += (i - st); continue;",

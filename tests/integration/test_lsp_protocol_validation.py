@@ -1,4 +1,6 @@
 """Tests TDD para ME-SEC-2: Validación de protocolo LSP siempre activa.
+
+Cumple MTO OBL-M8-09.
 Cumple MTO | Manual 8 §1.2 | Content-Length presente, positivo, con tope.
 Cumple Manual 2 §5.3 | contratos debug-only; validación explícita en todos los builds.
 Tests verifican que el LSP retorne ERRORES REALES, no solo que no crashee.

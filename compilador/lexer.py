@@ -355,70 +355,21 @@ class Lexer:
             self.pila_indent.pop()
             self.tokens.append(Token(TokenID.DEDENT, linea=self.linea_actual, columna=0))
         self.tokens.append(Token(TokenID.EOF, linea=self.linea_actual, columna=0))
-        self._validar_cuerpos()
+        # H-F1.4-1: cumple Manual 1 §3.1 — el lexer SOLO tokeniza; la
+        # validación de cuerpo-bloque tras 'funcion:' es del PARSER (fase de
+        # AST). El método _validar_cuerpos del lexer se ELIMINA (código muerto;
+        # regla de gobernanza: "código muerto se elimina"); TestParserFunciones
+        # y RecuperacionErrores conservan la cobertura en la fase correcta.
         return self.tokens
-
-    def _validar_cuerpos(self):
-        """Valida que 'funcion' tenga un bloque indentado después del ':'
-        (Manual 2 §2.1). Solo valida 'funcion' porque si/mientras pueden
-        aparecer en contextos de tokenización parcial.
-        Excluye 'externo funcion' (declaraciones externas no tienen cuerpo)."""
-        for i, tok in enumerate(self.tokens):
-            if tok.tipo == TokenID.FUNCION:
-                # Verificar que no es 'externo funcion'
-                if i > 0 and self.tokens[i - 1].tipo == TokenID.EXTERNO:
-                    continue
-                # Buscar el ':' que está al FINAL de la línea (antes de NEWLINE)
-                # No confundir con ':' dentro de parámetros (x: tipo)
-                ultimo_colon_idx = None
-                for j in range(i + 1, min(i + 30, len(self.tokens))):
-                    if self.tokens[j].tipo == TokenID.NEWLINE:
-                        break
-                    if self.tokens[j].tipo == TokenID.COLON:
-                        # Verificar que este ':' es el último token antes de NEWLINE
-                        # (no uno dentro de parámetros)
-                        ultimo_colon_idx = j
-                if ultimo_colon_idx is not None:
-                    # Verificar que la firma es completa: debe tener LPAREN + RPAREN
-                    # antes del ':' (para no atrapar firmas incompletas como 'funcion f( -> nulo:')
-                    tiene_lparen = False
-                    tiene_rparen = False
-                    for k in range(i, ultimo_colon_idx):
-                        if self.tokens[k].tipo == TokenID.LPAREN:
-                            tiene_lparen = True
-                        if self.tokens[k].tipo == TokenID.RPAREN:
-                            tiene_rparen = True
-                    if not (tiene_lparen and tiene_rparen):
-                        continue  # Firma incompleta, dejar que el parser la maneje
-                    # Verificar que después del ':' solo queda NEWLINE/EOF/DEDENT
-                    tiene_token_despues = False
-                    for k in range(ultimo_colon_idx + 1, len(self.tokens)):
-                        if self.tokens[k].tipo == TokenID.NEWLINE:
-                            break
-                        if self.tokens[k].tipo in (TokenID.IDENTIFIER, TokenID.LPAREN,
-                                                   TokenID.RPAREN, TokenID.COLON,
-                                                   TokenID.NUMBER, TokenID.STRING):
-                            tiene_token_despues = True
-                            break
-                    if tiene_token_despues:
-                        continue  # ':' es de parámetros, no de cabecera
-                    # Verificar que hay INDENT después del ':'
-                    tiene_indent = False
-                    for k in range(ultimo_colon_idx + 1, min(ultimo_colon_idx + 5, len(self.tokens))):
-                        if self.tokens[k].tipo == TokenID.INDENT:
-                            tiene_indent = True
-                            break
-                        if self.tokens[k].tipo == TokenID.EOF:
-                            break
-                    if not tiene_indent:
-                        raise SynapseError(
-                            f"Error de sintaxis: 'funcion' sin cuerpo (falta bloque indentado)",
-                            tok.linea, tok.columna
-                        )
 
     def _detectar_idioma(self):
         if not self.fuente.strip():
-            raise SynapseError("Error Crítico: Archivo vacío", 1, 0)
+            # F1.4: cumple Manual 2 §2 — misma familia de error que 'falta
+            # #lang': sin declaracion de idioma el lexer no puede seleccionar
+            # diccionario (grupo de entrada del _detectar_idioma).
+            raise SynapseError(
+                "Error Crítico: Falta declaración de idioma '#lang: <codigo>' en la línea 1", 1, 0
+            )
         primera = self.lineas[0].strip()
         if not primera.startswith('#lang:'):
             raise SynapseError(
@@ -637,6 +588,16 @@ class Lexer:
                 # preceden a ':' (sino:/requiere:/garantiza:/inseguro:/recuperar: —
                 # el último con patrón: 'texto_a_entero(v) recuperar: -1').
                 es_contexto_id = despues_de_punto
+                # F1.4: cumple Manual 2 §3 — keywords CONTEXTUALES con paridad del
+                # auto-hospedado (H-F1.4-2): 'modulo'/'module'/'rc' en posición
+                # variable/parámetro ('modulo = 5', 'rc = f()', 'modulo: puntero')
+                # emiten su TokenID preservando el lexema en .valor — el parser
+                # los acepta como identificador. NO se degradan a IDENTIFIER
+                # genérico (el oráculo test_keyword_* exige TokenID + lexema).
+                tok_kw_contextual = self.diccionario.get(palabra) if self.diccionario else None
+                es_kw_contextual = tok_kw_contextual in (
+                    TokenID.MODULO, TokenID.RC, TokenID.ARC,
+                )
                 if not es_contexto_id and self.diccionario and palabra in self.diccionario:
                     _peek = i
                     while _peek < len(texto) and texto[_peek] == ' ':
@@ -654,9 +615,15 @@ class Lexer:
                         ):
                             es_contexto_id = True  # campo/parámetro: 'y: entero' → identifier
                 if es_contexto_id and self.diccionario and palabra in self.diccionario:
-                    self.tokens.append(
-                        Token(TokenID.IDENTIFIER, linea=self.linea_actual, columna=inicio, valor=palabra)
-                    )
+                    if es_kw_contextual:
+                        # F1.4: contexto de identificador → TokenID contextual con lexema
+                        self.tokens.append(
+                            Token(tok_kw_contextual, linea=self.linea_actual, columna=inicio, valor=palabra)
+                        )
+                    else:
+                        self.tokens.append(
+                            Token(TokenID.IDENTIFIER, linea=self.linea_actual, columna=inicio, valor=palabra)
+                        )
                     despues_de_punto = False
                 elif self.diccionario and palabra in self.diccionario:
                     tok_tipo = self.diccionario[palabra]

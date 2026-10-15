@@ -1,3 +1,5 @@
+
+# Cumple MTO OBL-M5-01.
 # -*- coding: utf-8 -*-
 """
 test_canales_adv_10.py — Tests avanzados de canales (Fase 4).

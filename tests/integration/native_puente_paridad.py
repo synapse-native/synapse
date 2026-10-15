@@ -35,7 +35,7 @@ import tempfile
 
 import pytest
 
-RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if RAIZ not in sys.path:
     sys.path.insert(0, RAIZ)
 
@@ -70,12 +70,24 @@ _INCLUDES = (
 )
 
 _STUBS_RUNTIME = """
-int str_eq(CadenaSegura a, CadenaSegura b) {
-    if (a.longitud != b.longitud) return 0;
-    for (int i = 0; i < a.longitud; i++) if (a.datos[i] != b.datos[i]) return 0;
-    return 1;
-}
+// NOTA: el stub str_eq con firma int de la version antigua del harness
+// colisionaba con la funcion usuario str_eq del lexer concatenado (typedef
+// entero=int64_t, Manual 2 §4.1) y con los prototipos del generador.
+// _syn_texto_duplicar: API del runtime (H-R181-1, Manual 4 §4.1); este harness
+// sin pool usa malloc (el runtime real usa pool_alloc).
 void _syn_texto_liberar(CadenaSegura s) { (void)s; }
+CadenaSegura _syn_texto_duplicar(CadenaSegura s) {
+    CadenaSegura r; r.longitud = 0; r.datos = (char*)"";
+    if (s.datos && s.longitud > 0) {
+        char* b = (char*)malloc((size_t)s.longitud + 1);
+        if (b) {
+            memcpy(b, s.datos, (size_t)s.longitud);
+            b[s.longitud] = 0;
+            r.longitud = s.longitud; r.datos = b;
+        }
+    }
+    return r;
+}
 """
 
 # ============================================================================
@@ -262,7 +274,25 @@ def _generar_c_puente() -> str:
             f.write(fuente)
         ast, diag = compilar_desde_texto(path, set())
         assert not diag.hay_errores(), f"S1 fallo compilando nativo+puente (A3.1): {diag}"
-        return GeneradorC(ast).generar()
+        c = GeneradorC(ast).generar()
+        # El generador emite un main() stub de biblioteca sin 'principal'
+        # (H-R90-8 + D-R150-4); el harness aporta su DRIVER main: dos main =
+        # "redefinition of 'main'" (deuda heredada del stub moderno). Se strip
+        # el stub generado con la forma exacta del emisor _emit_main.
+        c = re.sub(
+            r"int main\(int argc, char\*\* argv\) \{\n"
+            r"\s*\(void\)argc; \(void\)argv;\n"
+            r"\s*pool_init\(POOL_BLOQUES, TAMANO_BLOQUE\);\n"
+            r"\s*synapse_esperar_hilos\(\);\n"
+            r"\s*synapse_esperar_fibras\(\);\n"
+            r"\s*pool_destroy\(\);[^\n]*\n"
+            r"\s*return 0;\n"
+            r"\}\n?",
+            "",
+            c,
+            count=1,
+        )
+        return c
 
 
 def _codigo_header() -> str:

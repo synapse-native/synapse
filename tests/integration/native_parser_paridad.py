@@ -42,7 +42,7 @@ import tempfile
 
 import pytest
 
-RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if RAIZ not in sys.path:
     sys.path.insert(0, RAIZ)
 
@@ -105,12 +105,24 @@ _INCLUDES = (
 )
 
 _STUBS_RUNTIME = """
-int str_eq(CadenaSegura a, CadenaSegura b) {
-    if (a.longitud != b.longitud) return 0;
-    for (int i = 0; i < a.longitud; i++) if (a.datos[i] != b.datos[i]) return 0;
-    return 1;
-}
+// NOTA: str_eq lo define el propio lexer.syn concatenado (int64_t; entero=alias
+// de int64_t, Manual 2 §4.1) — el stub con firma int de la version antigua del
+// harness producia "conflicting types for 'str_eq'" (deuda heredada, 2026-10-14).
+// _syn_texto_duplicar: API del runtime (H-R181-1, Manual 4 §4.1); en este
+// harness sin pool se apoya en malloc (el runtime real usa pool_alloc).
 void _syn_texto_liberar(CadenaSegura s) { (void)s; }
+CadenaSegura _syn_texto_duplicar(CadenaSegura s) {
+    CadenaSegura r; r.longitud = 0; r.datos = (char*)"";
+    if (s.datos && s.longitud > 0) {
+        char* b = (char*)malloc((size_t)s.longitud + 1);
+        if (b) {
+            memcpy(b, s.datos, (size_t)s.longitud);
+            b[s.longitud] = 0;
+            r.longitud = s.longitud; r.datos = b;
+        }
+    }
+    return r;
+}
 """
 
 _MAIN_C = r"""
@@ -231,7 +243,27 @@ def _generar_c_nativo() -> str:
             f.write(fuente)
         ast, diag = compilar_desde_texto(path, set())
         assert not diag.hay_errores(), f"S1 fallo compilando el parser nativo (A2.3): {diag}"
-        return GeneradorC(ast).generar()
+        c = GeneradorC(ast).generar()
+        # El generador emite un main() stub de biblioteca cuando NO hay
+        # 'funcion principal' (H-R90-8 + D-R150-4). El harness aporta su
+        # DRIVER main (_MAIN_C): dos int main = "redefinition of 'main'"
+        # (deuda heredada del stub moderno, 2026-10-14). Se elimina el stub
+        # generado (forma exacta del emisor _emit_main sin principal).
+        c = re.sub(
+            r"int main\(int argc, char\*\* argv\) \{\n"
+            r"\s*\(void\)argc; \(void\)argv;\n"
+            r"\s*pool_init\(POOL_BLOQUES, TAMANO_BLOQUE\);\n"
+            r"\s*synapse_esperar_hilos\(\);\n"
+            r"\s*synapse_esperar_fibras\(\);\n"
+            r"\s*pool_destroy\(\);[^\n]*\n"
+            r"\s*return 0;\n"
+            r"\}\n?",
+            "",
+            c,
+            count=1,
+        )
+        assert "int main(" not in c, "el stub de biblioteca no se elimino (forma del emisor cambió)"
+        return c
 
 
 def _gcc_disponible() -> bool:

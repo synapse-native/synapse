@@ -96,18 +96,18 @@ spanish.finish_subtitle=Synapse Language se ha instalado correctamente.
 
 
 [Types]
-; cumple Manual 9 §2.5: tipos de instalación configurables (3 opciones + custom)
+; cumple Manual 9 §2.5: tipos full/minimal/custom (manual manda "minimal" para solo-Synapse)
 Name: "full"; Description: "{cm:setup_type_full}"
-Name: "compact"; Description: "{cm:setup_type_synapse_only}"
+Name: "minimal"; Description: "{cm:setup_type_synapse_only}"
 Name: "syquex_only"; Description: "{cm:setup_type_syquex_only}"
 Name: "custom"; Description: "Instalación personalizada"; Flags: iscustom
 
 [Components]
 ; cumple Manual 9 §2.5: componentes independientes — Synapse/Syquex/OpenSyn seleccionables por separado
-Name: "synapse"; Description: "{cm:setup_type_synapse}"; Types: full compact
+Name: "synapse"; Description: "{cm:setup_type_synapse}"; Types: full minimal
 Name: "syquex"; Description: "{cm:setup_type_syquex}"; Types: full syquex_only
 Name: "opensyn"; Description: "{cm:setup_type_opensyn}"; Types: full
-Name: "vscode"; Description: "{cm:setup_type_vscode}"; Types: full compact
+Name: "vscode"; Description: "{cm:setup_type_vscode}"; Types: full minimal
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked

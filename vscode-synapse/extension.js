@@ -568,7 +568,52 @@ function _registrar_comandos_ia(contexto, cliente) {
         }
     );
 
-    contexto.subscriptions.push(comandoStatus, comandoExplain, comandoComplete, comandoTranspile, comandoBindings);
+    // synapse.aiFix — Sugerir correcciones para el código con errores (M8 §2.3)
+    const comandoFix = vscode.commands.registerCommand(
+        'synapse.aiFix',
+        async () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor) {
+                vscode.window.showWarningMessage('No hay editor activo');
+                return;
+            }
+
+            const seleccion = editor.selection;
+            let codigo = editor.document.getText(seleccion);
+            if (!codigo) {
+                vscode.window.showWarningMessage('Selecciona el código con errores a corregir');
+                return;
+            }
+
+            try {
+                const resultado = await cliente.sendRequest('synapse/aiFix', {
+                    textDocument: { uri: editor.document.uri.toString() },
+                    code: codigo,
+                });
+
+                if (resultado?.ai_available && resultado?.fixes?.length > 0) {
+                    const panel = vscode.window.createOutputChannel('Synapse IA');
+                    panel.clear();
+                    panel.appendLine('=== Correcciones sugeridas por IA ===');
+                    panel.appendLine('');
+                    for (const correccion of resultado.fixes) {
+                        panel.appendLine(typeof correccion === 'string'
+                            ? correccion
+                            : (correccion.title || correccion.description || JSON.stringify(correccion)));
+                    }
+                    panel.show();
+                } else {
+                    vscode.window.showWarningMessage(
+                        resultado?.message || 'IA local no disponible o sin correcciones'
+                    );
+                }
+            } catch (err) {
+                vscode.window.showErrorMessage(`Error IA: ${err.message}`);
+            }
+        }
+    );
+
+    contexto.subscriptions.push(comandoStatus, comandoExplain, comandoComplete, comandoTranspile, comandoBindings, comandoFix);
 }
 
 // ---------------------------------------------------------------------------

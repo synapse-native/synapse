@@ -1,4 +1,6 @@
 """
+
+Cumple MTO OBL-M4-04.
 FASE 23 ME-5: Scope analyzer runtime C + cleanup blocks tests
 ( Manual 4 §5.2-5.3, Manual 4 §9)
 

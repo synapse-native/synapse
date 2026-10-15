@@ -1,5 +1,7 @@
 """tests/integration/test_axon_hub.py — Manual 6 §6.8
 
+Cumple MTO OBL-M6-03.
+
 Valida el Axon Hub descentralizado: publicacion, verificacion y busqueda.
 """
 import pytest

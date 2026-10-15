@@ -1,3 +1,5 @@
+
+# Cumple MTO OBL-M7-03.
 # -*- coding: utf-8 -*-
 """
 test_transpile.py — M7 §7: Transpilación Python → Syquex.

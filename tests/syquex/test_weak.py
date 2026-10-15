@@ -1,4 +1,6 @@
 """
+
+Cumple MTO OBL-M4-03.
 FASE 23 ME-3: débil<T> referencias débiles (Manual 4 §4.2).
 
 Valida el WeakRef C (runtime/core/memory.c) compilado contra

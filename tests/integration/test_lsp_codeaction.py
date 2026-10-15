@@ -1,3 +1,5 @@
+
+# Cumple MTO OBL-M8-03.
 # -*- coding: utf-8 -*-
 """
 tests/integration/test_lsp_codeaction.py — LSP implementa textDocument/codeAction, formatting y signatureHelp.

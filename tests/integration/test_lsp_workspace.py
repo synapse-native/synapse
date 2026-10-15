@@ -1,3 +1,5 @@
+
+# Cumple MTO OBL-M8-04.
 # -*- coding: utf-8 -*-
 """
 tests/integration/test_lsp_workspace.py — LSP maneja workspace/didChangeConfiguration.

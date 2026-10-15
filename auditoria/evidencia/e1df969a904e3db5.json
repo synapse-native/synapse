@@ -1,0 +1,21 @@
+{
+ "cambio_hash": "e1df969a904e3db5",
+ "expediente": "docs/alineacion/f14_mto_ci.md",
+ "fecha": "2026-10-15",
+ "archivos": [
+  "build.py",
+  "compilador/generator/emit_selfhost.py",
+  "compilador/lexer.py",
+  "compilador/parser_declarations.py",
+  "distribuir.py"
+ ],
+ "oraculos": {
+  "auditoria/oraculos/oraculo_f14_mto_ci.py": true,
+  "tests/auditoria/test_oraculos_f14_mto_ci.py": true,
+  "tests/integration/test_build_py.py": true,
+  "tests/integration/test_distribucion.py": true,
+  "tests/integration/test_release_unificado.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

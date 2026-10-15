@@ -1,4 +1,6 @@
 """
+
+Cumple MTO OBL-M5-02.
 test_cluster_raft.py — Pruebas de integración para M8.3 (Consenso Raft).
 Manual 5 §6.5: Raft para consenso distribuido.
 Valida elección de líder, heartbeats, re-elección tras caída,

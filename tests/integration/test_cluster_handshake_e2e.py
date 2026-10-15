@@ -1,4 +1,6 @@
 """
+
+Cumple MTO OBL-M5-03.
 test_cluster_handshake_e2e.py — M18.3+M18.4: Arnes de prueba Handshake Ed25519.
 Manual 6 §5.3: Handshake Ed25519 zero-trust (TweetNaCl).
 
@@ -159,7 +161,7 @@ class TestM184_Unitarios:
 
 class TestM184_HandshakeCompleto:
     """Prueba dual-process: servidor y cliente como procesos separados.
-    
+
     Utiliza sockets RAW (sendto/recvfrom) independientes del runtime para
     garantizar interoperabilidad cross-process con verificacion Ed25519.
     """

@@ -1,4 +1,6 @@
 """
+
+Cumple MTO OBL-M4-01.
 FASE 23 ME-1: Arena allocator test (Manual 4 §2).
 
 Valida el arena allocator C (runtime/core/memory.c) compilado contra

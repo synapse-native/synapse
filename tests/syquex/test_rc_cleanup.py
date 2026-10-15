@@ -1,5 +1,7 @@
 """D-1 (Manual 4 §5.2): primitivas rc/arc del runtime.
 
+Cumple MTO OBL-M4-04.
+
 TDD: tests/test_rc_cleanup.c es la especificación. Si _syn_rc_*/_syn_arc_*
 no existen, el binario no compila/enlaza.
 """

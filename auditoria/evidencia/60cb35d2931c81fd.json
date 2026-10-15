@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "60cb35d2931c81fd",
+ "expediente": "docs/alineacion/h_canon_let.md",
+ "fecha": "2026-10-13",
+ "archivos": [
+  "compilador/canonical.py"
+ ],
+ "oraculos": {
+  "tests/integration/test_codegen_embebido_d_f1c.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

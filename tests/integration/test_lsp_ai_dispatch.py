@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Cumple MTO OBL-M8-05.
 """
 tests/integration/test_lsp_ai_dispatch.py — LSP dispatch comandos IA.
 Manual 8 §1.4, §2.3. ME-27_T3: synapse/aiStatus, aiTranspile, aiBindings.
