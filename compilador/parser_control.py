@@ -10,6 +10,7 @@ from compilador.ast_nodes import (
     SentenciaRomper, SentenciaSiguiente,
     BloqueInseguro,
     NodoCaso, NodoCoincidir,
+    ExprRecibirCanal,  # cumple Manual 5 §3.6 (ME r188_deuda_cero_1)
 )
 from compilador.diagnostics import ErrorCodes
 from compilador.parser_base import (
@@ -229,6 +230,19 @@ class ParserControlMixin(ParserBase):
 
         expresion = self._parsear_expresion()
 
+        # cumple Manual 5 §3.6 (H-R184-1, ME r188_deuda_cero_1): la forma
+        # canónica del cierre es `coincidir c ->:` — la flecha marca la
+        # recepción de canal y es OPCIONAL ante el ':' que abre el bloque
+        # de casos; el `coincidir c:` histórico sigue siendo válido.
+        # Paridad con nucleo/parser_sentencias.syn (T_FLECHA opcional).
+        if self._mirar().tipo == TokenID.ARROW:
+            # cumple Manual 5 §3.6 (ME r188_deuda_cero_1, forma canónica
+            # L220 `coincidir c ->:`): la flecha marca recepción de canal —
+            # el match se evalúa sobre el Resultado<T,texto> de recibir
+            # (el cierre del canal produce el caso err). El ':` de hoy abre
+            # el bloque de casos igual que en la forma histórica.
+            self._avanzar()
+            expresion = ExprRecibirCanal(canal=expresion, modo_resultado=True)
         if self._esperar(TokenID.COLON) is None:
             self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, self._mirar(),
                                esperado=':', encontrado=self._mirar().tipo.name)

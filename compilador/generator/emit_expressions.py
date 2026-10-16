@@ -1112,6 +1112,29 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         # rompe el while del listener cuando *cerrado == true (Manual 5 §4.3),
         # permitiendo distinguir el valor 0 del cierre del canal. Fuera del
         # escuchar se pasa &(bool){0} (el idiom `== nulo` sigue siendo leniency).
+        # cumple Manual 5 §3.6 (ME r188_deuda_cero_1): en modo_resultado (sujeto
+        # de `coincidir <canal> ->` la recibida se evalúa sobre el Resultado del
+        # receive: tag err cuando el canal está cerrado (cerradi=1), tag ok con
+        # el valor desboxeado en el caso contrario. La instancia ADT
+        # Resultado<elem,texto> ya se registró en visit_coincidir (D-2).
+        if getattr(nodo, 'modo_resultado', False):
+            _elem = _elemento_canal(ctx, nodo)
+            _inst = ctx.traducir_tipo_c(f'Resultado<{_elem},texto>')
+            canal = expr_a_c(ctx, nodo.canal) if nodo.canal else "NULL"
+            if _elem in ('texto', 'cadena', 'CadenaSegura'):
+                ok_val = "_mr0"
+                _recibe = f"canal_recibir_texto({canal}, &_ce0)"
+            else:
+                _unbox = {'entero': "_synapse_unbox_int(_mr0)",
+                          'decimal': "_synapse_unbox_float(_mr0)"}.get(_elem, "_mr0")
+                _recibe = f"canal_recibir({canal}, &_ce0)"
+                ok_val = _unbox
+            _cerr_err = '(CadenaSegura){.longitud=13, .datos="canal cerrado"}'
+            return (
+                "({ bool _ce0 = 0; void* _mr0 = " + _recibe + "; "
+                "_ce0 ? (" + _inst + "){.tag=1, .dato.err=" + _cerr_err + "} "
+                " : (" + _inst + "){.tag=0, .dato.ok=" + ok_val + "} ; })"
+            )
         if getattr(ctx, '_escuchar_modo', False):
             _elem = _elemento_canal(ctx, nodo)
             if _elem in ('texto', 'cadena', 'CadenaSegura'):

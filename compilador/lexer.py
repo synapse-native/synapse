@@ -404,6 +404,16 @@ class Lexer:
             if self.profundidad == 0:
                 self._procesar_indentacion(linea)
             self._tokenizar_linea(texto)
+            # cumple Manual 8 §4.1 (H-R187-1, ME r188_deuda_cero_1): una
+            # línea EN continuación cuyo texto termina en ':' es anómala —
+            # una llamada partida r153 jamás termina en ':' (el ':' cierra
+            # firma/estructura/bloque, Manual 2 §2). Firma malformada con
+            # '(' abierto: se reinicia la profundidad para que esta línea
+            # vuelva al flujo normal (NEWLINE abajo) y el resto del archivo
+            # conserve su estructura NEWLINE/INDENT/DEDENT; el error real
+            # se reporta en la línea de la firma (parser, M1 §3.1).
+            if self.profundidad > 0 and texto.endswith(':'):
+                self.profundidad = 0
             if self.profundidad > 0:
                 continue
             self.tokens.append(Token(TokenID.NEWLINE, linea=self.linea_actual, columna=0))

@@ -537,6 +537,13 @@ funcion parsear_coincidir(est: ParserEst) -> entero:
     expr = parsear_expresion(est)
     inseguro:
         asm("est->nodos[nodo].hijo_izq = expr")
+    // cumple Manual 5 §3.6 (H-R184-1, ME r188_deuda_cero_1): la forma
+    // canónica del cierre es `coincidir c ->:` — la flecha marca la
+    // recepción de canal y es OPCIONAL ante el ':' que abre el bloque de
+    // casos (el `coincidir c:` histórico sigue siendo válido). Paridad
+    // con compilador/parser_control.py:_parsear_coincidir (ARROW posible).
+    si token_mirar(est) == T_FLECHA:
+        token_avanzar(est)
     si token_esperar(est, T_DOSPUNTOS) == 0:
         retornar 0
     primer_caso = 0

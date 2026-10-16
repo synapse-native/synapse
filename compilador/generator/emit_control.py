@@ -8,10 +8,10 @@ Usa import tardío para evitar dependencias circulares con _visitar().
 
 from compilador.ast_nodes import (
     SentenciaSi, SentenciaMientras, SentenciaPara,
-    NodoCoincidir, NodoCaso,
+    NodoCoincidir, NodoCaso, ExprRecibirCanal,
 )
 from .context import GeneratorContext, _dividir_args_tipo
-from .emit_expressions import expr_a_c, tipo_de_expr
+from .emit_expressions import expr_a_c, tipo_de_expr, _elemento_canal
 
 
 def _visitar_stmt(ctx, nodo):
@@ -278,6 +278,22 @@ def visitar_coincidir(ctx: GeneratorContext, nodo: NodoCoincidir):
     """Genera código C para match/coincidir (switch sobre ADT tag o valor primitivo)."""
     expr = expr_a_c(ctx, nodo.expresion)
     tipo_syn = tipo_de_expr(ctx, nodo.expresion)  # Synapse type
+    # cumple Manual 5 §3.6 (H-R184-1, ME r188_deuda_cero_1): sujeto de
+    # `coincidir <canal> ->` — el match es sobre el Resultado<elem,texto>
+    # del receive (cierre del canal = caso err). Registrar la instancia ADT
+    # (D-2) ANTES de traducir (el tipo no aparece en el fuente: invisible
+    # para el pre-scan del walker) y emitir el sujeto con el compound del ADT.
+    if isinstance(nodo.expresion, ExprRecibirCanal) and getattr(nodo.expresion, 'modo_resultado', False):
+        _elem = _elemento_canal(ctx, nodo.expresion)
+        tipo_syn = f'Resultado<{_elem},texto>'
+        ctx.registrar_instancia_adt(tipo_syn)
+        # El typedef de la instancia ÚNICAMENTE existe si el fuente ya usó
+        # `Resultado<...>` (el pre-bloque R17/canal?) corrió ANTES del emit;
+        # si no, se re-emite AQUÍ (typedef en bloque, válido en C) para que
+        # el compound del sujeto resuelva. Idempotente: typedef idéntico.
+        from .emit_declarations import _emitir_typedefs_instancias as _emit_td
+        _emit_td(ctx)
+        expr = expr_a_c(ctx, nodo.expresion)
     tipo_c = ctx.traducir_tipo_c(tipo_syn)  # C type for declaration
     # H-R90-6: tipos primitivos no tienen .tag — switch sobre el valor directo
     PRIMITIVOS = {'entero', 'decimal', 'booleano', 'texto', 'cadena',

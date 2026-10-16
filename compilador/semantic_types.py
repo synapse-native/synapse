@@ -264,6 +264,13 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
             # §4.2 `valor = canal ->`). Fallback void* si el canal no esta tipado.
             tipo_canal = self._inferir_tipo(nodo.canal)
             if tipo_canal and tipo_canal.startswith('Canal<') and tipo_canal.endswith('>'):
+                # cumple Manual 5 §3.6 (ME r188_deuda_cero_1): en modo_resultado
+                # (sugeto de `coincidir <canal> ->`), el receive se evalúa sobre
+                # el Resultado<T,texto> de la recepción (el cierre del canal
+                # produce el caso err con el mensaje de Error). El tipo es el
+                # ok/err ADT builtin: ok(T) | err(texto).
+                if getattr(nodo, 'modo_resultado', False):
+                    return f'Resultado<{tipo_canal[6:-1]},texto>'
                 return tipo_canal[6:-1]
             return 'void*'
         elif isinstance(nodo, ExprIndice):

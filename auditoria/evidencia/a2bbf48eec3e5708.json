@@ -1,0 +1,27 @@
+{
+ "cambio_hash": "a2bbf48eec3e5708",
+ "expediente": "docs/alineacion/r188_deuda_cero_1.md",
+ "fecha": "2026-10-16",
+ "archivos": [
+  "compilador/ast_nodes.py",
+  "compilador/generator/context.py",
+  "compilador/generator/emit_control.py",
+  "compilador/generator/emit_expressions.py",
+  "compilador/lexer.py",
+  "compilador/parser_control.py",
+  "compilador/semantic_types.py",
+  "nucleo/lexer.syn",
+  "nucleo/parser_sentencias.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r183_coincidir_bloques.py": true,
+  "tests/auditoria/test_oraculos_r188_deuda_cero_1.py": true,
+  "tests/integration/test_ffi.py": true,
+  "tests/integration/test_match.py": true,
+  "tests/integration/test_parser_ext.py": true,
+  "tests/test_bindings_hook.py": true,
+  "tests/unit/test_lexer.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

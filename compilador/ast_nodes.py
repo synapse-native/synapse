@@ -426,4 +426,9 @@ class SentenciaEnviarCanal(Nodo):
 @dataclass
 class ExprRecibirCanal(Nodo):
     canal: Optional[Nodo] = None
+    # cumple Manual 5 §3.6 (H-R184-1, ME r188_deuda_cero_1): modo_resultado=True
+    # cuando la expresión es el SUJETO de un `coincidir <canal> ->` — el match
+    # se evalúa sobre el Resultado<T,texto> de recibir del canal (el cierre
+    # del canal produce el caso err); en False es receive de listener (M5 §4.2).
+    modo_resultado: bool = False
 

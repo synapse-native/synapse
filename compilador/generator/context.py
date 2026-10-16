@@ -703,6 +703,44 @@ class GeneratorContext:
     # Helpers
     # ================================================================
 
+    # cumple Manual 2 §4.2 (D-2, ME r188): registro central de una
+    # instanciación ADT `Base<A,B>` a partir de una cadena de tipo (paridad
+    # con el escaneo del AST de _recolectar_instancias_adt en generator.py).
+    # Cumple Manual 5 §3.6 (H-R184-1, ME r188_deuda_cero_1): el emisor de la
+    # nueva sintaxis emitida sin declaración en el fuente
+    # (M5 §3.6 match-sobre-receive `coincidir <canal> ->` usado en
+    # Resultado<T,texto>) la registra antes de traducir/emeter el struct C.
+    # el emisor de la nueva sintaxis emitida sin declaración en el fuente
+    # (M5 §3.6 match-sobre-receive `coincidir <canal> ->` usado en
+    # Resultado<T,texto>) la registra antes de traducir/emeter el struct C.
+    def registrar_instancia_adt(self, tipo_synapse: str) -> None:
+        if not tipo_synapse or '<' not in tipo_synapse or not tipo_synapse.endswith('>'):
+            return
+        base, _, resto = tipo_synapse.partition('<')
+        if base not in self._adt_parametros:
+            return
+        params = self._adt_parametros[base]
+        args = tuple(_dividir_args_tipo(resto[:-1]))
+        if len(args) != len(params):
+            return
+        # instancia anidada de los argumentos FIRST (post-orden, D-2)
+        for a in args:
+            self.registrar_instancia_adt(a)
+        if (base, args) in self._instancias_adt:
+            return
+
+        def _mangle_arg(a: str) -> str:
+            # D-2: arg anidado termina en '>' -> _sane deja doble guion bajo.
+            limpio = a[:-1] if a.endswith('>') else a
+            return ''.join(ch if ch.isalnum() or ch == '_' else '_' for ch in limpio)
+
+        nombre_c = base + '_' + '_'.join(_mangle_arg(a) for a in args)
+        campos = []
+        for ctor, t_syn in self._adt_constructores.get(base, []):
+            t_conc = args[params.index(t_syn)] if t_syn in params else t_syn
+            campos.append((ctor, t_conc))
+        self._instancias_adt[(base, args)] = {'nombre_c': nombre_c, 'campos': campos}
+
     def encontrar_principal(self) -> Optional[str]:
         for s in self.programa.sentencias:
             if isinstance(s, DefinicionFuncion) and s.nombre == 'principal':
