@@ -13,7 +13,15 @@
   "nucleo/lexer.syn",
   "nucleo/parser_sentencias.syn"
  ],
- "oraculos": {},
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r183_coincidir_bloques.py": true,
+  "tests/auditoria/test_oraculos_r188_deuda_cero_1.py": true,
+  "tests/integration/test_ffi.py": true,
+  "tests/integration/test_match.py": true,
+  "tests/integration/test_parser_ext.py": true,
+  "tests/test_bindings_hook.py": true,
+  "tests/unit/test_lexer.py": true
+ },
  "citas_muertas_repo": null,
  "modo": "block"
 }

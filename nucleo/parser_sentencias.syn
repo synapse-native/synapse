@@ -534,16 +534,37 @@ funcion parsear_coincidir(est: ParserEst) -> entero:
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
     nodo = parser_nuevo_nodo(est, NODO_COINCIDIR, linea, col)
+    pos_sujeto_ini = est.posicion
     expr = parsear_expresion(est)
-    inseguro:
-        asm("est->nodos[nodo].hijo_izq = expr")
     // cumple Manual 5 §3.6 (H-R184-1, ME r188_deuda_cero_1): la forma
     // canónica del cierre es `coincidir c ->:` — la flecha marca la
     // recepción de canal y es OPCIONAL ante el ':' que abre el bloque de
     // casos (el `coincidir c:` histórico sigue siendo válido). Paridad
     // con compilador/parser_control.py:_parsear_coincidir (ARROW posible).
+    // cumple Manual 5 §3.6 (ME r188b): caso_coincidir — "coincidir co ->:";
+    // la flecha marca el receive. El sujeto identificador de un token se
+    // re-embraga como NODO_RECIBIR_CANAL (span del token sujeto, paridad con
+    // parsear_recibir_canal: el puente construye
+    // ExprRecibirCanal{canal=Identificador(nx)}); el resto de la paridad de
+    // r188b (typedef/instancia Resultado<E,T> + binding .dato/E/err) vive en
+    // generador/nodos_flujo.syn:gen_visitar_coincidir e
+    // generador/expr_eval.syn (H-R188-2). El `coincidir c:` historico sigue.
     si token_mirar(est) == T_FLECHA:
         token_avanzar(est)
+        sujeto_un_token = 0
+        si est.posicion == pos_sujeto_ini + 2:
+            sujeto_un_token = 1
+        si sujeto_un_token == 1:
+            nodo_recv = parser_nuevo_nodo(est, NODO_RECIBIR_CANAL, linea, col)
+            nodo_guardar_token(est, nodo_recv, pos_sujeto_ini)
+            inseguro:
+                asm("est->nodos[nodo].hijo_izq = nodo_recv")
+        sino:
+            inseguro:
+                asm("est->nodos[nodo].hijo_izq = expr")
+    sino:
+        inseguro:
+            asm("est->nodos[nodo].hijo_izq = expr")
     si token_esperar(est, T_DOSPUNTOS) == 0:
         retornar 0
     primer_caso = 0

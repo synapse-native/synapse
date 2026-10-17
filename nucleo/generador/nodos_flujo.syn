@@ -1,6 +1,7 @@
 #lang: es
 // ============================================================
 // nodos_flujo.syn - Visitantes de control de flujo (OO style)
+// cumple Manual 2 §1.3: documentación de los visitantes en comentarios de línea // (paridad S1 emit_control.py)
 // ============================================================
 // Visitantes para nodos del AST usando formato OO (struct Nodo*).
 //
@@ -1343,13 +1344,63 @@ funcion gen_visitar_coincidir(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("if (!_mc) return;")
         asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"NodoCoincidir\");")
         asm("char _eb[4096]; _eb[0]=0;")
+        // ME r188b (H-R188-2, cumple Manual 5 §3.6): sujeto receive de
+        // `coincidir c ->:` -> modo_resultado (paridad S1 emit_control.py
+        // visitar_coincidir L286-294: registrar instancia ADT + emit typedef
+        // ANTES de traducir el sujeto porque el tipo NO aparece en el fuente y
+        // el pre-scan D-2 no lo ve). El parser (parser_sentencias.syn) envuelve
+        // el sujeto identificador en NODO_RECIBIR_CANAL; aqui registro
+        // `Resultado<elem,texto>` (los CTORS ok/err vienen del R24 builtin en
+        // monomorfizacion.syn), emito el typedef de la instancia a nivel global
+        // (el pre-bloque ya especifico el struct; sin paso, el C queda
+        // con el global vaco) y prendo el flag modo_resultado AWSem expr_eval.
+        asm("extern int _G_co_modo_resultado;")
+        asm("int _prev_mr = _G_co_modo_resultado; int _mr_on = 0; int _mr_keep = -1; _G_co_modo_resultado = 0;")
+        asm("if (_mc->expresion && _mc->expresion->tipo.datos && strcmp(_mc->expresion->tipo.datos, \"ExprRecibirCanal\") == 0) {")
+        asm("    struct ExprRecibirCanal* _mrrc = (struct ExprRecibirCanal*)_mc->expresion;")
+        asm("    char _mrelem[64]; _mrelem[0] = 0;")
+        asm("    if (_mrrc->canal && _mrrc->canal->tipo.datos && strcmp(_mrrc->canal->tipo.datos, \"Identificador\") == 0) {")
+        asm("        struct Identificador* _mrrid = (struct Identificador*)_mrrc->canal;")
+        asm("        if (_mrrid->nombre.datos) { extern int _G_native_canal_elem_tipo(const char*, char*); _G_native_canal_elem_tipo(_mrrid->nombre.datos, _mrelem); }")
+        asm("    }")
+        asm("    if (_mrelem[0]) {")
+        asm("        // nombre C del elemento y nombre Synapse del generic arg")
+        asm("        const char* _mrbase = _mrelem; const char* _mrsyn = _mrelem;")
+        asm("        if (strcmp(_mrelem, \"int64_t\") == 0) { _mrsyn = \"entero\"; } else if (strcmp(_mrelem, \"double\") == 0) { _mrsyn = \"decimal\"; } else if (strcmp(_mrelem, \"CadenaSegura\") == 0) { _mrsyn = \"texto\"; }")
+        asm("        char _mrtype[96]; snprintf(_mrtype, 95, \"Resultado<%s,texto>\", _mrsyn); _mrtype[95] = 0;")
+        asm("        extern char _G_native_adt_inst_type[64][64]; extern char _G_native_adt_inst_c[64][64]; extern int _G_native_adt_inst_count;")
+        asm("        int _mrreg = -1;")
+        asm("        for (int _mrq = 0; _mrq < _G_native_adt_inst_count; _mrq++) { if (strcmp(_G_native_adt_inst_type[_mrq], _mrtype) == 0) { _mrreg = _mrq; break; } }")
+        asm("        if (_mrreg < 0) { extern int64_t _G_native_adt_registrar_syn(void* tipo_syn); _mrreg = _G_native_adt_registrar_syn((void*)_mrtype) == 1 ? _G_native_adt_inst_count - 1 : -1; }")
+        asm("        if (_mrreg >= 0 && _mrreg < _G_native_adt_inst_count) {")
+        asm("            _mr_on = 1; _mr_keep = _mrreg;")
+        asm("            _G_co_modo_resultado = 1;")
+        asm("        }")
+        asm("    }")
+        asm("}")
         asm("if (_mc->expresion) { _oo_expr_a_c(est, _mc->expresion, _eb, 4096); }")
+        asm("_G_co_modo_resultado = _prev_mr;")
         asm("// R11: emitir switch sobre .tag del ADT (paridad S1 emit_control.py")
         asm("// visitar_coincidir: switch sobre var_temp.tag). Usamos la expresion")
         asm("// inline (sin variable temporal tipada - divergencia: si la expr tiene")
         asm("// efectos se evaluaria multiples veces; el uso canonico (identificador")
         asm("// de variable/parametro) es puro y funciona correctamente).")
         asm("gen_emitir_str(est, \"    {\");")
+        // ME r188b (cumple Manual 5 §3.6): typedef de la instancia DENTRO del
+        // bloque del coincide — scope C anidado nuevo por match, valido aunque
+        // haya varios `coincidir c ->:` en la MISMA funcion (H-r188b-2:
+        // typedef repetido a nivel de funcion = 'redefinition of struct').
+        asm("if (_mr_on) {")
+        asm("    gen_emitir_str_typedef_instancia(est, _mr_keep);")
+        // H-r188b-3 (paridad S1 emit_control.py: var_temp): la expresión del
+        // sujeto (statement-expression con canal_recibir) tiene EFECTOS — se
+        // evalúa UNA vez en la temporal _mv_r y el switch/casos la usan pura.
+        // Con la expresión inline el receive se repetía en el switch y en
+        // cada caso (drenaba el canal o se bloqueaba).
+        asm("    char _mrdl[4096]; snprintf(_mrdl, 4095, \"%s _mv_r = %s;\", _G_native_adt_inst_c[_mr_keep], _eb);")
+        asm("    gen_emitir_str(est, _mrdl);")
+        asm("    strcpy(_eb, \"_mv_r\");")
+        asm("}")
         // cumple Manual 3 §3 (ME r180_coincidir_nativo R2): el switch se emite
         // sobre el VALOR si (a) algun patron no-wildcard es un literal numero
         // (comienza con digito) o (b) el TIPO C del sujeto es entero/bool —

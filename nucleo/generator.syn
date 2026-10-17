@@ -660,6 +660,32 @@ funcion _oo_expr_a_c(est: GeneradorCEst, nodo: puntero, buf: puntero, bufsz: ent
         asm("        snprintf(_b, _sz, \"({ void* _m = canal_recibir(_canal, &_cerrado); if (_cerrado) break; %s; })\", _unbox);")
         asm("        return;")
         asm("    }")
+        asm("    extern int _G_co_modo_resultado;")
+        asm("    if (_G_co_modo_resultado && _relem[0] && strcmp(_relem, \"void\") != 0) {")
+        asm("        // cumple Manual 2 §1.3: documentación del emisor en comentarios de línea // (paridad S1 emit_expressions.py)")
+        asm("        // cumple Manual 5 §3.6 (ME r188b, H-R188-2): sujeto de `coincidir c ->:`")
+        asm("        // en modo_resultado. La instancia Resultado<elem,texto> YA se registró")
+        asm("        // (nodos_flujo.syn gen_visitar_coincidir) y el typedef se emitió — el")
+        asm("        // compone un statement-expression con tag 1 = err(canal cerrado) y tag 0")
+        asm("        // = ok(valor desboxeado del void*). Paridad compilador/generator/")
+        asm("        // emit_expressions.py visit(ExprRecibirCanal) modo_resultado (r188).")
+        asm("        char _rinst[96]; _rinst[0] = 0;")
+        asm("        const char* _rsyn = _relem;")
+        asm("        if (strcmp(_relem, \"int64_t\") == 0) { _rsyn = \"entero\"; } else if (strcmp(_relem, \"double\") == 0) { _rsyn = \"decimal\"; } else if (strcmp(_relem, \"CadenaSegura\") == 0) { _rsyn = \"texto\"; }")
+        asm("        char _rtype[96]; snprintf(_rtype, 95, \"Resultado<%s,texto>\", _rsyn); _rtype[95] = 0;")
+        asm("        extern char _G_native_adt_inst_type[64][64]; extern char _G_native_adt_inst_c[64][64]; extern int _G_native_adt_inst_count;")
+        asm("        for (int _rqi = 0; _rqi < _G_native_adt_inst_count; _rqi++) { if (strcmp(_G_native_adt_inst_type[_rqi], _rtype) == 0) { strcpy(_rinst, _G_native_adt_inst_c[_rqi]); break; } }")
+        asm("        if (_rinst[0]) {")
+        asm("            char _rcc2[2048]; _rcc2[0] = 0;")
+        asm("            if (_rc->canal && _rc->canal->tipo.datos) { _oo_expr_a_c(est, _rc->canal, _rcc2, 2048); } else { strcpy(_rcc2, \"NULL\"); }")
+        asm("            char _rokb[64]; _rokb[0] = 0;")
+        asm("            if (strcmp(_relem, \"int64_t\") == 0) { strcpy(_rokb, \"_synapse_unbox_int(_mr0)\"); }")
+        asm("            else if (strcmp(_relem, \"double\") == 0) { strcpy(_rokb, \"_synapse_unbox_float(_mr0)\"); }")
+        asm("            else { strcpy(_rokb, \"_mr0\"); }")
+        asm("            snprintf(_b, _sz, \"({ bool _ce0 = 0; void* _mr0 = canal_recibir(%s, &_ce0); _ce0 ? (%s){.tag=1, .dato.err=(CadenaSegura){.longitud=13, .datos=\\\"canal cerrado\\\"}} : (%s){.tag=0, .dato.ok=%s}; })\", _rcc2, _rinst, _rinst, _rokb);")
+        asm("            return;")
+        asm("        }")
+        asm("    }")
         asm("    char _rbuf[2048]; _rbuf[0] = 0;")
         asm("    {")
         asm("        char _rcc[2048]; _rcc[0] = 0;")
@@ -1291,6 +1317,7 @@ funcion _oo_expr_a_c(est: GeneradorCEst, nodo: puntero, buf: puntero, bufsz: ent
 #lang: es
 // ============================================================
 // nodos_flujo.syn - Visitantes de control de flujo (OO style)
+// cumple Manual 2 §1.3: documentación de los visitantes en comentarios de línea // (paridad S1 emit_control.py)
 // ============================================================
 // Visitantes para nodos del AST usando formato OO (struct Nodo*).
 //
@@ -2633,13 +2660,63 @@ funcion gen_visitar_coincidir(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("if (!_mc) return;")
         asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"NodoCoincidir\");")
         asm("char _eb[4096]; _eb[0]=0;")
+        // ME r188b (H-R188-2, cumple Manual 5 §3.6): sujeto receive de
+        // `coincidir c ->:` -> modo_resultado (paridad S1 emit_control.py
+        // visitar_coincidir L286-294: registrar instancia ADT + emit typedef
+        // ANTES de traducir el sujeto porque el tipo NO aparece en el fuente y
+        // el pre-scan D-2 no lo ve). El parser (parser_sentencias.syn) envuelve
+        // el sujeto identificador en NODO_RECIBIR_CANAL; aqui registro
+        // `Resultado<elem,texto>` (los CTORS ok/err vienen del R24 builtin en
+        // monomorfizacion.syn), emito el typedef de la instancia a nivel global
+        // (el pre-bloque ya especifico el struct; sin paso, el C queda
+        // con el global vaco) y prendo el flag modo_resultado AWSem expr_eval.
+        asm("extern int _G_co_modo_resultado;")
+        asm("int _prev_mr = _G_co_modo_resultado; int _mr_on = 0; int _mr_keep = -1; _G_co_modo_resultado = 0;")
+        asm("if (_mc->expresion && _mc->expresion->tipo.datos && strcmp(_mc->expresion->tipo.datos, \"ExprRecibirCanal\") == 0) {")
+        asm("    struct ExprRecibirCanal* _mrrc = (struct ExprRecibirCanal*)_mc->expresion;")
+        asm("    char _mrelem[64]; _mrelem[0] = 0;")
+        asm("    if (_mrrc->canal && _mrrc->canal->tipo.datos && strcmp(_mrrc->canal->tipo.datos, \"Identificador\") == 0) {")
+        asm("        struct Identificador* _mrrid = (struct Identificador*)_mrrc->canal;")
+        asm("        if (_mrrid->nombre.datos) { extern int _G_native_canal_elem_tipo(const char*, char*); _G_native_canal_elem_tipo(_mrrid->nombre.datos, _mrelem); }")
+        asm("    }")
+        asm("    if (_mrelem[0]) {")
+        asm("        // nombre C del elemento y nombre Synapse del generic arg")
+        asm("        const char* _mrbase = _mrelem; const char* _mrsyn = _mrelem;")
+        asm("        if (strcmp(_mrelem, \"int64_t\") == 0) { _mrsyn = \"entero\"; } else if (strcmp(_mrelem, \"double\") == 0) { _mrsyn = \"decimal\"; } else if (strcmp(_mrelem, \"CadenaSegura\") == 0) { _mrsyn = \"texto\"; }")
+        asm("        char _mrtype[96]; snprintf(_mrtype, 95, \"Resultado<%s,texto>\", _mrsyn); _mrtype[95] = 0;")
+        asm("        extern char _G_native_adt_inst_type[64][64]; extern char _G_native_adt_inst_c[64][64]; extern int _G_native_adt_inst_count;")
+        asm("        int _mrreg = -1;")
+        asm("        for (int _mrq = 0; _mrq < _G_native_adt_inst_count; _mrq++) { if (strcmp(_G_native_adt_inst_type[_mrq], _mrtype) == 0) { _mrreg = _mrq; break; } }")
+        asm("        if (_mrreg < 0) { extern int64_t _G_native_adt_registrar_syn(void* tipo_syn); _mrreg = _G_native_adt_registrar_syn((void*)_mrtype) == 1 ? _G_native_adt_inst_count - 1 : -1; }")
+        asm("        if (_mrreg >= 0 && _mrreg < _G_native_adt_inst_count) {")
+        asm("            _mr_on = 1; _mr_keep = _mrreg;")
+        asm("            _G_co_modo_resultado = 1;")
+        asm("        }")
+        asm("    }")
+        asm("}")
         asm("if (_mc->expresion) { _oo_expr_a_c(est, _mc->expresion, _eb, 4096); }")
+        asm("_G_co_modo_resultado = _prev_mr;")
         asm("// R11: emitir switch sobre .tag del ADT (paridad S1 emit_control.py")
         asm("// visitar_coincidir: switch sobre var_temp.tag). Usamos la expresion")
         asm("// inline (sin variable temporal tipada - divergencia: si la expr tiene")
         asm("// efectos se evaluaria multiples veces; el uso canonico (identificador")
         asm("// de variable/parametro) es puro y funciona correctamente).")
         asm("gen_emitir_str(est, \"    {\");")
+        // ME r188b (cumple Manual 5 §3.6): typedef de la instancia DENTRO del
+        // bloque del coincide — scope C anidado nuevo por match, valido aunque
+        // haya varios `coincidir c ->:` en la MISMA funcion (H-r188b-2:
+        // typedef repetido a nivel de funcion = 'redefinition of struct').
+        asm("if (_mr_on) {")
+        asm("    gen_emitir_str_typedef_instancia(est, _mr_keep);")
+        // H-r188b-3 (paridad S1 emit_control.py: var_temp): la expresión del
+        // sujeto (statement-expression con canal_recibir) tiene EFECTOS — se
+        // evalúa UNA vez en la temporal _mv_r y el switch/casos la usan pura.
+        // Con la expresión inline el receive se repetía en el switch y en
+        // cada caso (drenaba el canal o se bloqueaba).
+        asm("    char _mrdl[4096]; snprintf(_mrdl, 4095, \"%s _mv_r = %s;\", _G_native_adt_inst_c[_mr_keep], _eb);")
+        asm("    gen_emitir_str(est, _mrdl);")
+        asm("    strcpy(_eb, \"_mv_r\");")
+        asm("}")
         // cumple Manual 3 §3 (ME r180_coincidir_nativo R2): el switch se emite
         // sobre el VALOR si (a) algun patron no-wildcard es un literal numero
         // (comienza con digito) o (b) el TIPO C del sujeto es entero/bool —
@@ -3263,6 +3340,53 @@ funcion gen_escanear_adt_instancias(est: GeneradorCEst, programa: Programa) -> n
         asm("    _d2gd = _d2gd->cola;")
         asm("}")
         asm("fprintf(stderr, \"[Orquestador] D-2: %d ADT genericos registrados\\n\", _G_native_adt_gen_count); fflush(stderr);")
+// R24 (paridad S1 context.py L385/L394; cumple Manual 5 §3.6 — ME r188b,
+// H-R188-2: sujeto de `coincidir c ->:`): los ADT genéricos BUILTIN
+// Resultado<T,E>/Opcion<T> se usan en firmas y en modo_resultado
+// SIN DeclaracionTipo del usuario —
+        // el nativo debe conocerlos también para materializar la instancia
+        // monomorfizada (Resultado_entero_texto) en vez del placeholder
+        // Resultado_T (C inválido: 'Resultado_T' has no member named 'tag').
+        // Una DeclaracionTipo del usuario los sobreescribe: si ya hay un
+        // Resultado/Opcion registrado NÃO se duplica (scan a continuación).
+        asm("int _r24_rn = 0; int _r24_on = 0;")
+        asm("for (int _r24g = 0; _r24g < _G_native_adt_gen_count; _r24g++) { if (strcmp(_G_native_adt_gen[_r24g], \"Resultado\") == 0) _r24_rn = 1; if (strcmp(_G_native_adt_gen[_r24g], \"Opcion\") == 0) _r24_on = 1; }")
+        asm("if (!_r24_rn && _G_native_adt_gen_count < 63) {")
+        asm("    strncpy(_G_native_adt_gen[_G_native_adt_gen_count], \"Resultado\", 63); _G_native_adt_gen[_G_native_adt_gen_count][63] = 0;")
+        asm("    _G_native_adt_gen_nparams[_G_native_adt_gen_count] = 2;")
+        asm("    strncpy(_G_native_adt_gen_params[_G_native_adt_gen_count][0], \"T\", 63); _G_native_adt_gen_params[_G_native_adt_gen_count][0][63] = 0;")
+        asm("    strncpy(_G_native_adt_gen_params[_G_native_adt_gen_count][1], \"E\", 63); _G_native_adt_gen_params[_G_native_adt_gen_count][1][63] = 0;")
+        asm("    _G_native_adt_gen_count++;")
+        asm("}")
+        asm("if (!_r24_on && _G_native_adt_gen_count < 64) {")
+        asm("    strncpy(_G_native_adt_gen[_G_native_adt_gen_count], \"Opcion\", 63); _G_native_adt_gen[_G_native_adt_gen_count][63] = 0;")
+        asm("    _G_native_adt_gen_nparams[_G_native_adt_gen_count] = 1;")
+        asm("    strncpy(_G_native_adt_gen_params[_G_native_adt_gen_count][0], \"T\", 63); _G_native_adt_gen_params[_G_native_adt_gen_count][0][63] = 0;")
+        asm("    _G_native_adt_gen_count++;")
+        asm("}")
+        // R24 (paridad S1 context.py L388/L399): constructores BUILTIN ok(T)/err(E)
+        // y el tipo de campo genérico que _G_native_adt_registrar_syn sustituye
+        // con los args de la instancia (H-R188-2: receive del sujeto
+        // `coincidir c ->:` produce Resultado<elem,texto>). Registrados SOLO si
+        // el usuario no los declaró (una DeclaracionTipo Resultado gana).
+        asm("int _r24_kon = 0;")
+        asm("for (int _r24k = 0; _r24k < _G_native_adt_ctrs_count; _r24k++) { if (strcmp(_G_native_adt_ctrs[_r24k], \"ok\") == 0 && strcmp(_G_native_adt_ctrs_adt[_r24k], \"Resultado\") == 0) _r24_kon = 1; }")
+        asm("if (!_r24_kon && _G_native_adt_ctrs_count < 256) {")
+        asm("    strncpy(_G_native_adt_ctrs[_G_native_adt_ctrs_count], \"ok\", 63); _G_native_adt_ctrs[_G_native_adt_ctrs_count][63] = 0;")
+        asm("    strncpy(_G_native_adt_ctrs_adt[_G_native_adt_ctrs_count], \"Resultado\", 63); _G_native_adt_ctrs_adt[_G_native_adt_ctrs_count][63] = 0;")
+        asm("    _G_native_adt_ctrs_tag[_G_native_adt_ctrs_count] = 0;")
+        asm("    strncpy(_G_native_adt_ctrs_tipo[_G_native_adt_ctrs_count], \"T\", 63); _G_native_adt_ctrs_tipo[_G_native_adt_ctrs_count][63] = 0;")
+        asm("    _G_native_adt_ctrs_count++;")
+        asm("}")
+        asm("int _r24_ker = 0;")
+        asm("for (int _r24k2 = 0; _r24k2 < _G_native_adt_ctrs_count; _r24k2++) { if (strcmp(_G_native_adt_ctrs[_r24k2], \"err\") == 0 && strcmp(_G_native_adt_ctrs_adt[_r24k2], \"Resultado\") == 0) _r24_ker = 1; }")
+        asm("if (!_r24_ker && _G_native_adt_ctrs_count < 256) {")
+        asm("    strncpy(_G_native_adt_ctrs[_G_native_adt_ctrs_count], \"err\", 63); _G_native_adt_ctrs[_G_native_adt_ctrs_count][63] = 0;")
+        asm("    strncpy(_G_native_adt_ctrs_adt[_G_native_adt_ctrs_count], \"Resultado\", 63); _G_native_adt_ctrs_adt[_G_native_adt_ctrs_count][63] = 0;")
+        asm("    _G_native_adt_ctrs_tag[_G_native_adt_ctrs_count] = 1;")
+        asm("    strncpy(_G_native_adt_ctrs_tipo[_G_native_adt_ctrs_count], \"E\", 63); _G_native_adt_ctrs_tipo[_G_native_adt_ctrs_count][63] = 0;")
+        asm("    _G_native_adt_ctrs_count++;")
+        asm("}")
         asm("// Fase B: registrar una instanciacion `Base<A,B>` (dedup por tipo normalizado)")
         asm("// Se invoca con el string del tipo (retorno/param) en _d2t_buf.")
         asm("")
@@ -3499,6 +3623,47 @@ funcion gen_escanear_adt_instancias(est: GeneradorCEst, programa: Programa) -> n
         asm("    gen_emitir_str(est, _d2cl);")
         asm("    gen_emitir_str(est, \"\");")
         asm("}")
+
+// ----------------------------------------------------------
+// gen_emitir_str_typedef_instancia (cumple Manual 5 §3.6 — ME r188b, H-R188-2):
+// typedef de UNA
+// instancia ADT (por indice) — replica el cuerpo del pre-bloque R17 para el
+// sujeto de `coincidir c ->:` (modo_resultado). La instancia llega registrada
+// por _G_native_adt_registrar_syn; el call-site (nodos_flujo,
+// gen_visitar_coincidir) la emite DESPUES del pre-bloque para que el compound
+// del sujeto en el statement-expression resuelva (idempotente en C).
+// ----------------------------------------------------------
+funcion gen_emitir_str_typedef_instancia(est: GeneradorCEst, idx: entero):
+    // requiere: idx entero de instancia ADT registrada (0 <= idx <
+    //   _G_native_adt_inst_count); GeneradorCEst valido.
+    // garantiza: emite el typedef C de la instancia idx (nombre
+    //   _G_native_adt_inst_c[idx]) + linea vacia; sin efecto si idx fuera de
+    //   rango. Contratos en funcion publica nueva (cumple Manual 2 §12).
+    inseguro:
+        asm("extern char _G_native_adt_inst_base[64][64]; extern char _G_native_adt_inst_c[64][64]; extern char _G_native_adt_inst_fields_c[64][8][64]; extern int _G_native_adt_inst_nfields[64]; extern int _G_native_adt_inst_count;")
+        asm("int _d2e = (int)idx;")
+        asm("if (_d2e < 0 || _d2e >= _G_native_adt_inst_count) return;")
+        asm("char _d2h[4096];")
+        asm("snprintf(_d2h, 4096, \"typedef struct %s { int64_t tag; union {\", _G_native_adt_inst_c[_d2e]);")
+        asm("gen_emitir_str(est, _d2h);")
+        asm("int _d2c0 = 0;")
+        asm("for (int _d2ci = 0; _d2ci < _G_native_adt_ctrs_count; _d2ci++) { if (strcmp(_G_native_adt_ctrs_adt[_d2ci], _G_native_adt_inst_base[_d2e]) == 0) _d2c0++; }")
+        asm("if (_d2c0 > 0) {")
+        asm("    int _d2order[8]; int _d2no = 0;")
+        asm("    for (int _d2ti = 0; _d2ti < 8 && _d2no < _d2c0; _d2ti++) {")
+        asm("        for (int _d2ci = 0; _d2ci < _G_native_adt_ctrs_count; _d2ci++) { if (strcmp(_G_native_adt_ctrs_adt[_d2ci], _G_native_adt_inst_base[_d2e]) == 0 && _G_native_adt_ctrs_tag[_d2ci] == _d2ti) { _d2order[_d2no++] = _d2ci; break; } }")
+        asm("    }")
+        asm("    for (int _d2k = 0; _d2k < _d2no && _d2k < _G_native_adt_inst_nfields[_d2e] && _d2k < 8; _d2k++) {")
+        asm("        char _d2fld[4096];")
+        asm("        snprintf(_d2fld, 4096, \" %s %s;\", _G_native_adt_inst_fields_c[_d2e][_d2k], _G_native_adt_ctrs[_d2order[_d2k]]);")
+        asm("        gen_emitir_str(est, _d2fld);")
+        asm("    }")
+        asm("}")
+        asm("if (_G_native_adt_inst_nfields[_d2e] == 0) { gen_emitir_str(est, \" int _unidad;\"); }")
+        asm("char _d2cl[4096];")
+        asm("snprintf(_d2cl, 4096, \" } dato; } %s;\", _G_native_adt_inst_c[_d2e]);")
+        asm("gen_emitir_str(est, _d2cl);")
+        asm("gen_emitir_str(est, \"\");")
 
 // ----------------------------------------------------------
 // R28: derivar instancias de ADT desde ctors en EXPRESIONES
@@ -4600,6 +4765,7 @@ funcion gen_visitar_funcion(est: GeneradorCEst, stmt: puntero) -> nulo:
 #lang: es
 // ============================================================
 // orquestador.syn - Orquestador del generador nativo
+// cumple Manual 2 §1.3: documentación del orquestador en comentarios de línea // (paridad S1 generator.py)
 // ============================================================
 
 // ----------------------------------------------------------
@@ -4985,6 +5151,12 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "char _G_listeners[8][16384];")
     gen_emitir_linea(est, "int _G_listeners_count;")
     gen_emitir_linea(est, "int _G_listener_modo;")
+    // cumple Manual 5 §3.6 — ME r188b (H-R188-2): en modo_resultado (el receive `c ->` como sujeto de
+    // `coincidir c ->:`), expr_eval.syn emite el statement-expression sobre el
+    // ADT Resultado<elem,texto> del receive (paridad compilador/
+    // emit_expressions.py r188_deuda_cero_1). Definición única del global aquí;
+    // externs locales en nodos_flujo.syn (setter) y expr_eval.syn (reader).
+    gen_emitir_linea(est, "int _G_co_modo_resultado;")
     gen_emitir_linea(est, "")
     // F4.4: wrappers de `lanzar` (fibras M:N, Manual 5 §2.6) acumulados y
     // flusheados antes del main (patrón _G_listeners). El typedef del struct

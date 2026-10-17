@@ -1,6 +1,7 @@
 #lang: es
 // ============================================================
 // orquestador.syn - Orquestador del generador nativo
+// cumple Manual 2 §1.3: documentación del orquestador en comentarios de línea // (paridad S1 generator.py)
 // ============================================================
 
 // ----------------------------------------------------------
@@ -386,6 +387,12 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "char _G_listeners[8][16384];")
     gen_emitir_linea(est, "int _G_listeners_count;")
     gen_emitir_linea(est, "int _G_listener_modo;")
+    // cumple Manual 5 §3.6 — ME r188b (H-R188-2): en modo_resultado (el receive `c ->` como sujeto de
+    // `coincidir c ->:`), expr_eval.syn emite el statement-expression sobre el
+    // ADT Resultado<elem,texto> del receive (paridad compilador/
+    // emit_expressions.py r188_deuda_cero_1). Definición única del global aquí;
+    // externs locales en nodos_flujo.syn (setter) y expr_eval.syn (reader).
+    gen_emitir_linea(est, "int _G_co_modo_resultado;")
     gen_emitir_linea(est, "")
     // F4.4: wrappers de `lanzar` (fibras M:N, Manual 5 §2.6) acumulados y
     // flusheados antes del main (patrón _G_listeners). El typedef del struct

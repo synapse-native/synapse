@@ -980,6 +980,11 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("extern char _G_listeners[8][16384];")
     ctx.write_line("extern int _G_listeners_count;")
     ctx.write_line("extern int _G_listener_modo;")
+    # ME r188b (H-R188-2, cumple Manual 5 §3.6): sujeto de `coincidir c ->:` en
+    # modo_resultado — flag leído por expr_eval.syn (statement-expression del
+    # receive sobre Resultado<elem,texto>) y encendido por
+    # nodos_flujo.gen_visitar_coincidir (paridad orquestador nativo).
+    ctx.write_line("extern int _G_co_modo_resultado;")
     # F4.4: wrappers de `lanzar` (fibras M:N, Manual 5 §2.6) — paridad orquestador nativo
     ctx.write_line("extern char _G_lanzar_wrappers[8][4096];")
     ctx.write_line("extern int _G_lanzar_wrappers_count;")
@@ -1424,6 +1429,10 @@ class GeneradorC:
             ctx.write_line("char _G_listeners[8][16384];")
             ctx.write_line("int _G_listeners_count;")
             ctx.write_line("int _G_listener_modo;")
+            # ME r188b (H-R188-2, cumple Manual 5 §3.6): definicion unica del
+            # flag modo_resultado en TODOS los C generados por el preambulo
+            # (unity del compilador incluido) — sin esto no enlaza (H-R151-3).
+            ctx.write_line("int _G_co_modo_resultado;")
             # F4.4: wrappers de `lanzar` (fibras M:N, Manual 5 §2.6) acumulados y
             # flusheados antes del main (paridad orquestador.syn).
             ctx.write_line("char _G_lanzar_wrappers[8][4096];")
@@ -2182,6 +2191,10 @@ class GeneradorC:
                 ctx.write_line("char _G_listeners[8][16384];")
                 ctx.write_line("int _G_listeners_count;")
                 ctx.write_line("int _G_listener_modo;")
+                # ME r188b (H-R188-2, cumple Manual 5 §3.6): definicion unica del
+                # flag modo_resultado en este bloque de globals tambien (paridad
+                # con el bloque principal del preambulo, H-R151-3).
+                ctx.write_line("int _G_co_modo_resultado;")
                 # F4.4: wrappers de `lanzar` (fibras M:N, Manual 5 §2.6) acumulados y
                 # flusheados antes del main (paridad orquestador.syn).
                 ctx.write_line("char _G_lanzar_wrappers[8][4096];")

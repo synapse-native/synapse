@@ -257,9 +257,15 @@ extern char _G_native_canal_elem[512][64];
 extern int _G_native_canal_count;
 extern void _G_native_canal_elem_set(const char* _cname, const char* _celem);
 extern int _G_native_canal_elem_tipo(const char* _cname, char* _cout);
+// cumple Manual 2 §1.3: documentación de los globals de emisión en
+// comentarios de línea // (paridad con el preámbulo de generator.py).
 extern char _G_listeners[8][16384];
 extern int _G_listeners_count;
 extern int _G_listener_modo;
+// cumple Manual 5 §3.6 (ME r188b, H-R188-2): sujeto de `coincidir c ->:` en
+// modo_resultado — flag leído por expr_eval (statement-expression del receive
+// sobre Resultado<elem,texto>) y encendido por nodos_flujo.gen_visitar_coincidir.
+extern int _G_co_modo_resultado;
 extern char _G_lanzar_wrappers[8][4096];
 extern int _G_lanzar_wrappers_count;
 extern int _G_lanzar_count;
@@ -498,6 +504,7 @@ int _G_native_canal_elem_tipo(const char* _cname, char* _cout) {
 char _G_listeners[8][16384];
 int _G_listeners_count;
 int _G_listener_modo;
+int _G_co_modo_resultado;
 char _G_lanzar_wrappers[8][4096];
 int _G_lanzar_wrappers_count;
 int _G_lanzar_count;

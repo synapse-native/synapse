@@ -207,6 +207,37 @@ auditoria/evidencia/b88df2bbbc5ea917.json; 514 unit, 16 wat_gen, 18 wasm/spa.
   serialización embebida, lexer rc/modulo, salida_metal.c) tras R181.
 estado: PENDIENTE
 
+### ME r188a — deuda_cero_1 (H-R184-1): receive-modo-resultado S1 — **COMPLETADO 9f6b1cd (2026-10-16)**
+requisito: Manual 5 §3.6 — forma canónica `coincidir <canal> ->:` (flecha del
+receive OPCIONAL ante el ':' del bloque).
+hallazgo H-R184-1: el parser S1 rechazaba la forma canónica ("se esperaba COLON,
+se encontró ARROW"); el desugar sería trivial (el receive-es-sujeto
+Result҉ADO<elem,texto>).
+implementacion: flecha opcional en parser_control.py; ExprRecibirCanal
+.modo_resultado (ast_nodes); semantic_types tipo Resultado<elem,texto>;
+context.registrar_instancia_adt (tipo invisible para el pre-scan D-2);
+emit_control sujeto/typedef/compound + emit_expressions canal_recibir(&_ce0)
+con ADT especializado (_ce0: bool). Paridad de ENTRADA nativa:
+nucleo/parser_sentencias.syn + lexer.syn (fft: TokenID.ARROW opcional).
+oráculo: tests/auditoria/test_oraculos_r188_deuda_cero_1.py 4/4 (E2E ok=7/
+cerrado-2, histórica sin regresión, firma multilínea).
+estado: COMPLETADO (9f6b1cd, evidencia 2afa8c33ad689160 + a2bbf48...
+impacto: lee.
+
+### ME r188b — receive_resultado_nativo (H-R188-2): codegen nativo del receive-resultado
+requisito: Manual 5 §3.6 (M1 Ø1: mismo semantismo en ambos pipeline).
+hallazgo: el stage1 НАТVIVO ACEPTA la sintaxis `coincidir c ->:` (rc=0,
+grays compartida) pero su codegen/semantico trata el sujeto como
+struct ADT/puntero → C roto (probe nativo rc=5, log capturado).
+implementacion: semántica nativa del receive-modo-resultado (:expr_eval o
+equivalente: tipoപResultado<elem,texto>) + gen_visitar_coincidir (recorrido.syn
+generador: recibir + construir ADT especializado + case .tag) hasta probe
+nativo rc=0 con paridad S1 (misma salida de las dos ramas).
+oráculo: coincidir-canal con flecha compila y ejecuta en NATIVO (ok/err);
+expediente/probes según MTS.
+impacto: cierra la brecha nativa de §3.6 (después del r188a S1).
+estado: PENDIENTE (puesta en cola 2026-10-16, a partir del commit 9f6b1cd)
+
 ## Reglas transversales del plan
 1. Cada ME: plan citando Manual X §Y → `alineacion.py --leer --me <id>` →
    codificar con `// cumple Manual X §Y` → oráculo E2E → unit/regresión →

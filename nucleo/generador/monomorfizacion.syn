@@ -162,6 +162,53 @@ funcion gen_escanear_adt_instancias(est: GeneradorCEst, programa: Programa) -> n
         asm("    _d2gd = _d2gd->cola;")
         asm("}")
         asm("fprintf(stderr, \"[Orquestador] D-2: %d ADT genericos registrados\\n\", _G_native_adt_gen_count); fflush(stderr);")
+// R24 (paridad S1 context.py L385/L394; cumple Manual 5 §3.6 — ME r188b,
+// H-R188-2: sujeto de `coincidir c ->:`): los ADT genéricos BUILTIN
+// Resultado<T,E>/Opcion<T> se usan en firmas y en modo_resultado
+// SIN DeclaracionTipo del usuario —
+        // el nativo debe conocerlos también para materializar la instancia
+        // monomorfizada (Resultado_entero_texto) en vez del placeholder
+        // Resultado_T (C inválido: 'Resultado_T' has no member named 'tag').
+        // Una DeclaracionTipo del usuario los sobreescribe: si ya hay un
+        // Resultado/Opcion registrado NÃO se duplica (scan a continuación).
+        asm("int _r24_rn = 0; int _r24_on = 0;")
+        asm("for (int _r24g = 0; _r24g < _G_native_adt_gen_count; _r24g++) { if (strcmp(_G_native_adt_gen[_r24g], \"Resultado\") == 0) _r24_rn = 1; if (strcmp(_G_native_adt_gen[_r24g], \"Opcion\") == 0) _r24_on = 1; }")
+        asm("if (!_r24_rn && _G_native_adt_gen_count < 63) {")
+        asm("    strncpy(_G_native_adt_gen[_G_native_adt_gen_count], \"Resultado\", 63); _G_native_adt_gen[_G_native_adt_gen_count][63] = 0;")
+        asm("    _G_native_adt_gen_nparams[_G_native_adt_gen_count] = 2;")
+        asm("    strncpy(_G_native_adt_gen_params[_G_native_adt_gen_count][0], \"T\", 63); _G_native_adt_gen_params[_G_native_adt_gen_count][0][63] = 0;")
+        asm("    strncpy(_G_native_adt_gen_params[_G_native_adt_gen_count][1], \"E\", 63); _G_native_adt_gen_params[_G_native_adt_gen_count][1][63] = 0;")
+        asm("    _G_native_adt_gen_count++;")
+        asm("}")
+        asm("if (!_r24_on && _G_native_adt_gen_count < 64) {")
+        asm("    strncpy(_G_native_adt_gen[_G_native_adt_gen_count], \"Opcion\", 63); _G_native_adt_gen[_G_native_adt_gen_count][63] = 0;")
+        asm("    _G_native_adt_gen_nparams[_G_native_adt_gen_count] = 1;")
+        asm("    strncpy(_G_native_adt_gen_params[_G_native_adt_gen_count][0], \"T\", 63); _G_native_adt_gen_params[_G_native_adt_gen_count][0][63] = 0;")
+        asm("    _G_native_adt_gen_count++;")
+        asm("}")
+        // R24 (paridad S1 context.py L388/L399): constructores BUILTIN ok(T)/err(E)
+        // y el tipo de campo genérico que _G_native_adt_registrar_syn sustituye
+        // con los args de la instancia (H-R188-2: receive del sujeto
+        // `coincidir c ->:` produce Resultado<elem,texto>). Registrados SOLO si
+        // el usuario no los declaró (una DeclaracionTipo Resultado gana).
+        asm("int _r24_kon = 0;")
+        asm("for (int _r24k = 0; _r24k < _G_native_adt_ctrs_count; _r24k++) { if (strcmp(_G_native_adt_ctrs[_r24k], \"ok\") == 0 && strcmp(_G_native_adt_ctrs_adt[_r24k], \"Resultado\") == 0) _r24_kon = 1; }")
+        asm("if (!_r24_kon && _G_native_adt_ctrs_count < 256) {")
+        asm("    strncpy(_G_native_adt_ctrs[_G_native_adt_ctrs_count], \"ok\", 63); _G_native_adt_ctrs[_G_native_adt_ctrs_count][63] = 0;")
+        asm("    strncpy(_G_native_adt_ctrs_adt[_G_native_adt_ctrs_count], \"Resultado\", 63); _G_native_adt_ctrs_adt[_G_native_adt_ctrs_count][63] = 0;")
+        asm("    _G_native_adt_ctrs_tag[_G_native_adt_ctrs_count] = 0;")
+        asm("    strncpy(_G_native_adt_ctrs_tipo[_G_native_adt_ctrs_count], \"T\", 63); _G_native_adt_ctrs_tipo[_G_native_adt_ctrs_count][63] = 0;")
+        asm("    _G_native_adt_ctrs_count++;")
+        asm("}")
+        asm("int _r24_ker = 0;")
+        asm("for (int _r24k2 = 0; _r24k2 < _G_native_adt_ctrs_count; _r24k2++) { if (strcmp(_G_native_adt_ctrs[_r24k2], \"err\") == 0 && strcmp(_G_native_adt_ctrs_adt[_r24k2], \"Resultado\") == 0) _r24_ker = 1; }")
+        asm("if (!_r24_ker && _G_native_adt_ctrs_count < 256) {")
+        asm("    strncpy(_G_native_adt_ctrs[_G_native_adt_ctrs_count], \"err\", 63); _G_native_adt_ctrs[_G_native_adt_ctrs_count][63] = 0;")
+        asm("    strncpy(_G_native_adt_ctrs_adt[_G_native_adt_ctrs_count], \"Resultado\", 63); _G_native_adt_ctrs_adt[_G_native_adt_ctrs_count][63] = 0;")
+        asm("    _G_native_adt_ctrs_tag[_G_native_adt_ctrs_count] = 1;")
+        asm("    strncpy(_G_native_adt_ctrs_tipo[_G_native_adt_ctrs_count], \"E\", 63); _G_native_adt_ctrs_tipo[_G_native_adt_ctrs_count][63] = 0;")
+        asm("    _G_native_adt_ctrs_count++;")
+        asm("}")
         asm("// Fase B: registrar una instanciacion `Base<A,B>` (dedup por tipo normalizado)")
         asm("// Se invoca con el string del tipo (retorno/param) en _d2t_buf.")
         asm("")
@@ -398,6 +445,47 @@ funcion gen_escanear_adt_instancias(est: GeneradorCEst, programa: Programa) -> n
         asm("    gen_emitir_str(est, _d2cl);")
         asm("    gen_emitir_str(est, \"\");")
         asm("}")
+
+// ----------------------------------------------------------
+// gen_emitir_str_typedef_instancia (cumple Manual 5 §3.6 — ME r188b, H-R188-2):
+// typedef de UNA
+// instancia ADT (por indice) — replica el cuerpo del pre-bloque R17 para el
+// sujeto de `coincidir c ->:` (modo_resultado). La instancia llega registrada
+// por _G_native_adt_registrar_syn; el call-site (nodos_flujo,
+// gen_visitar_coincidir) la emite DESPUES del pre-bloque para que el compound
+// del sujeto en el statement-expression resuelva (idempotente en C).
+// ----------------------------------------------------------
+funcion gen_emitir_str_typedef_instancia(est: GeneradorCEst, idx: entero):
+    // requiere: idx entero de instancia ADT registrada (0 <= idx <
+    //   _G_native_adt_inst_count); GeneradorCEst valido.
+    // garantiza: emite el typedef C de la instancia idx (nombre
+    //   _G_native_adt_inst_c[idx]) + linea vacia; sin efecto si idx fuera de
+    //   rango. Contratos en funcion publica nueva (cumple Manual 2 §12).
+    inseguro:
+        asm("extern char _G_native_adt_inst_base[64][64]; extern char _G_native_adt_inst_c[64][64]; extern char _G_native_adt_inst_fields_c[64][8][64]; extern int _G_native_adt_inst_nfields[64]; extern int _G_native_adt_inst_count;")
+        asm("int _d2e = (int)idx;")
+        asm("if (_d2e < 0 || _d2e >= _G_native_adt_inst_count) return;")
+        asm("char _d2h[4096];")
+        asm("snprintf(_d2h, 4096, \"typedef struct %s { int64_t tag; union {\", _G_native_adt_inst_c[_d2e]);")
+        asm("gen_emitir_str(est, _d2h);")
+        asm("int _d2c0 = 0;")
+        asm("for (int _d2ci = 0; _d2ci < _G_native_adt_ctrs_count; _d2ci++) { if (strcmp(_G_native_adt_ctrs_adt[_d2ci], _G_native_adt_inst_base[_d2e]) == 0) _d2c0++; }")
+        asm("if (_d2c0 > 0) {")
+        asm("    int _d2order[8]; int _d2no = 0;")
+        asm("    for (int _d2ti = 0; _d2ti < 8 && _d2no < _d2c0; _d2ti++) {")
+        asm("        for (int _d2ci = 0; _d2ci < _G_native_adt_ctrs_count; _d2ci++) { if (strcmp(_G_native_adt_ctrs_adt[_d2ci], _G_native_adt_inst_base[_d2e]) == 0 && _G_native_adt_ctrs_tag[_d2ci] == _d2ti) { _d2order[_d2no++] = _d2ci; break; } }")
+        asm("    }")
+        asm("    for (int _d2k = 0; _d2k < _d2no && _d2k < _G_native_adt_inst_nfields[_d2e] && _d2k < 8; _d2k++) {")
+        asm("        char _d2fld[4096];")
+        asm("        snprintf(_d2fld, 4096, \" %s %s;\", _G_native_adt_inst_fields_c[_d2e][_d2k], _G_native_adt_ctrs[_d2order[_d2k]]);")
+        asm("        gen_emitir_str(est, _d2fld);")
+        asm("    }")
+        asm("}")
+        asm("if (_G_native_adt_inst_nfields[_d2e] == 0) { gen_emitir_str(est, \" int _unidad;\"); }")
+        asm("char _d2cl[4096];")
+        asm("snprintf(_d2cl, 4096, \" } dato; } %s;\", _G_native_adt_inst_c[_d2e]);")
+        asm("gen_emitir_str(est, _d2cl);")
+        asm("gen_emitir_str(est, \"\");")
 
 // ----------------------------------------------------------
 // R28: derivar instancias de ADT desde ctors en EXPRESIONES
