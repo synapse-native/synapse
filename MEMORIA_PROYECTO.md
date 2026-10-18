@@ -30,6 +30,26 @@
  cambio_hash (tras editar producción: hash a mano + re-sello), las
  lecturas del día se exigen por working tree no por staged, pre-commit
  con oráculos 2× excede 600 s → commit en background;
+ reportes docs/reportes/R190.md + R191.md (mandato deuda-cero
+ 2026-10-18, commits 78b8947/621051a — COLA CERRADA: R190 debug CLI M8
+ §3.4: ayuda rc=0 sin sesión, navegación sin traza rc≠0 contrato r150,
+ tests con traza TRACE v1 real — conflicto de dos tests resuelto por
+ mandato TDD: el oráculo inmutable r150 codifica el manual y el test de
+ integración se alineó; lección: sello .antes.json con el nombre del
+ ME derivado del plan no el alias; sesiones debug globales → patrón
+ respaldo/limpiar/restaurar. R191 deuda cero del lote baseline: pgo
+ aserción al rc de ley 1c1044c (principal→42), checker S1 aplica M2
+ §9.3 (retornar &local → MISMATCH con línea §10.1; retorarnar x de &T
+ con tipo crudo —el auto-deref M4 §4.2 no aplica en posición de
+ retorno—; rastreo de préstamos por llamadas _locales_vivos/_refs_de;
+ consumo por valor de prestado → MISMATCH), ErrorCodes LIFETIME
+ completos + plantillas 6 idiomas; federated con `nulo` canónico M2
+ §4.3 (7 sitios); lecciones: doblefuente de verdad (strings vs enum)
+ viola la taxonomía única, sello stale tras editar producción →
+ re-sello '#', cada archivo producción cita una sección del plan
+ (R187), --nuevo 'sin archivos de producción' no impide que el hook
+ exija el expediente); expedientes 63f5b931dae/94adcc427ab93c59;
+ antes:
  reporte docs/reportes/R189.md (r188b 2202cce COMPLETADO 2026-10-17 —
  H-R188-2 CERRADA: codegen NATIVO del receive-modo-resultado M5 §3.6
  con paridad S1: parser_sentencias.syn re-wrapea sujeto como
@@ -76,24 +96,23 @@
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      POST-FASE 33 — r188b COMPLETADO (2202cce, 2026-10-17):
-                   H-R188-2 CERRADA — codegen NATIVO del receive-modo-
-                   resultado `coincidir c ->:` (M5 §3.6) con paridad S1:
-                   parser_sentencias.syn re-wrapea sujeto como
-                   NODO_RECIBIR_CANAL; monomorfizacion.syn R24 ADT builtin
-                   Resultado/Opcion + ctors ok/err (paridad context.py)
-                   + gen_emitir_str_typedef_instancia (M2 §12);
-                   nodos_flujo.syn sujeto → instancia Resultado<elem,texto>
-                   + typedef + flag _G_co_modo_resultado; expr_eval.syn
-                   statement-expression canal_recibir(...&_ce0) con
-                   {.tag=0,.dato.ok=_unbox}/{.tag=1,.dato.err}; global único
-                   orquestador+generator_constants+generator.py (H-R151-3).
-                   Oráculo test_oraculos_r188b.py 3/3 (nativo ok=7/
-                   cerrado-2, histórica, paridad S1); bootstrap S2==S3
-                   2534e776…; regresión 15/15; unit 514✓; expediente 0
-                   brechas (c661ce1d660ed5b4); contrastar RC=0;
-                   verificar_alineacion SIN BRECHAS.
-                   NEXT: R184 asserts_operativos (abierto, 8 FAILED).
+Fase roadmap:      POST-FASE 33 — DEUDA CERO (mandato 2026-10-18): cola del
+                   plan maestro CERRADA — R184 resuelta por r190 (78b8947:
+                   debug CLI M8 §3.4, ayuda rc=0 sin sesión, navegación
+                   mantiene rc≠0 contrato r150, tests con traza TRACE v1
+                   real) + r191 (621051a: pgo rc de ley 42 en -O1/-O2;
+                   checker S1 aplica M2 §9.3 — MISMATCH en retorno-&local y
+                   consumo-con-préstamo-vivo, elisión §9.3 en retornar x,
+                   ErrorCodes LIFETIME completos + plantillas 6 idiomas,
+                   línea precisa §10.1 en LlamadaFuncion; federated al
+                   literal canónico `nulo` M2 §4.3). Oráculos r190 3/3 +
+                   r191 3/3; unit 514✓; lote 45+1✓; gates verdes ambos
+                   (expedientes 63f5b931/94adcc427ab93c59). Barrido de
+                   integración completa (1600) en background:
+                   logs/r191_integration_resumen.txt.
+                   NEXT: barrir resultados del barrido completo; después
+                   siguientes fases del roadmap (cola del plan maestro
+                   disponible para hallazgos NUEVOS).
                    Antes (2026-10-16):
                    ME r188_deuda_cero_1 COMPLETADO (9f6b1cd): H-R184-1
                    CERRADA en S1 — desugar `coincidir <canal> ->:` M5 §3.6

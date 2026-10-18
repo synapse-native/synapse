@@ -10,14 +10,23 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
 
 ## Cola de MEs (prioridad por radio/costo, actualizable)
 
-- **R184/ME asserts_operativos (ABIERTO, 2026-10-13, base e2ac5c7):** deuda
-  de asserts/features medida en vivo tras el fix canónico (H-canon-LET
-  RESUELTA en 643b413 + R183e). Primer lote de 5 archivos medido hoy:
+- **R184/ME asserts_operativos (CERRADO 2026-10-18 por r190+r191, commits
+  78b8947/621051a):** deuda de asserts/features medida en vivo tras el fix
+  canónico (H-canon-LET RESUELTA en 643b413 + R183e). Primer lote de 5
+  archivos:
   11 FAILED → 3 reparados (test_generator 3 asserts alineados al emisor
   vigente: Lifetime Scope `= 42LL; + return _ret_`, mangle
   `_principal_impl` H-R181-4, acceso puntero `= ptr->a;`) y 1 archivo
   con SyntaxError de docstring reparado (test_debugger_timetravel →
   colección bloqueada desde baseline previo) → 49 passed.
+  CIERRE (2026-10-18): los 4 RED de test_cli_run_debug cerrados en r190
+  (debug CLI alineado a M8 §3.4 con traza real; ayuda rc=0 sin sesión;
+  navegación mantiene rc≠0 contrato r150) y el lote declarado del baseline
+  (pgo 2 / lifetimes 2 / federated 5) cerrado en r191: aserción pgo al
+  rc de ley 1c1044c, checker S1 aplica M2 §9.3 (MISMATCH de
+  retorno-&local y de consumo-con-préstamo-vivo; enum+plantillas 6 idiomas,
+  línea precisa §10.1), federated al literal canónico `nulo` (M2 §4.3).
+  Oráculos r190 3/3 y r191 3/3; unit 514✓; lote 45+1✓.
   ACTUALIZACIÓN R183e (misma sesión, medido): test_listen 4/4 RESUELTOS
   — los tests usaban sintaxis `valor => ...` dentro de `escuchar` que
   NO está en el manual; alineados a la forma canónica M5 §4.2
