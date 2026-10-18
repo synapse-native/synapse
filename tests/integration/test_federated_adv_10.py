@@ -46,7 +46,7 @@ funcion principal() -> nulo:
         fuente = '''#lang: es
 importar std.federated
 funcion principal() -> nulo:
-    sesion = fed_iniciar(0, 10, 0.001, 5)
+    sesion = fed_iniciar(nulo, 10, 0.001, 5)
     perdida = fed_ronda_fedavg(sesion)
     fed_cerrar(sesion)
 '''
@@ -64,7 +64,7 @@ funcion principal() -> nulo:
         fuente = '''#lang: es
 importar std.federated
 funcion principal() -> nulo:
-    sesion = fed_iniciar(0, 10, 0.001, 5)
+    sesion = fed_iniciar(nulo, 10, 0.001, 5)
     fed_registrar_worker(sesion, "w1", "127.0.0.1", 9000, "pk_hex", 1.0)
     perdida = fed_entrenar(sesion)
     fed_cerrar(sesion)
@@ -90,7 +90,7 @@ class TestOrquestador:
         fuente = '''#lang: es
 importar std.federated
 funcion principal() -> nulo:
-    sesion = fed_iniciar(0, 10, 0.001, 5)
+    sesion = fed_iniciar(nulo, 10, 0.001, 5)
     fed_registrar_worker(sesion, "w1", "127.0.0.1", 9000, "pk1", 1.0)
     fed_registrar_worker(sesion, "w2", "127.0.0.2", 9001, "pk2", 2.0)
     i = 0
@@ -119,7 +119,7 @@ class TestIntegridadDatos:
         fuente = '''#lang: es
 importar std.federated
 funcion principal() -> nulo:
-    sesion = fed_iniciar(0, 10, 0.001, 5)
+    sesion = fed_iniciar(nulo, 10, 0.001, 5)
     fed_cerrar(sesion)
 '''
         from conftest import compilar_texto
@@ -134,7 +134,7 @@ funcion principal() -> nulo:
         fuente1 = '''#lang: es
 importar std.federated
 funcion principal() -> nulo:
-    sesion = fed_iniciar(0, 10, 0.001, 5)
+    sesion = fed_iniciar(nulo, 10, 0.001, 5)
     fed_cerrar(sesion)
 '''
         from conftest import compilar_texto

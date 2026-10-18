@@ -1,0 +1,15 @@
+{
+ "cambio_hash": "94bbe469d3b2788a",
+ "expediente": "docs/alineacion/r191_deuda_cero.md",
+ "fecha": "2026-10-18",
+ "archivos": [
+  "compilador/diagnostics.py",
+  "compilador/parser_expressions.py",
+  "compilador/semantic_checker.py"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r191.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

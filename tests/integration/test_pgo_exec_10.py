@@ -84,7 +84,13 @@ funcion principal() -> entero:
             if r.returncode == 0:
                 # Ejecutar el binario
                 r2 = subprocess.run([temp_exe], capture_output=True, text=True, timeout=5)
-                assert r2.returncode == 0, f"Binario -O1 no ejecuta: {r2.stderr[:200]}"
+                # Convención exit-code ratificada (H-R181-2, 1c1044c):
+                # principal() -> entero retorna 42 => rc=42 es el ÉXITO del
+                # código de ley; el rc==0 previo era de la convención
+                # aspiracional 8f3f15b (desalineada al codegen vigente).
+                assert r2.returncode == 42, (
+                    f"Binario -O1 no ejecuta con rc de ley: "
+                    f"rc={r2.returncode} {r2.stderr[:200]}")
             else:
                 pytest.skip(f"gcc -O1 falló: {r.stderr[:200]}")
         finally:
@@ -113,7 +119,12 @@ funcion principal() -> entero:
             )
             if r.returncode == 0:
                 r2 = subprocess.run([temp_exe], capture_output=True, text=True, timeout=5)
-                assert r2.returncode == 0, f"Binario -O2 no ejecuta: {r2.stderr[:200]}"
+                # Convención exit-code ratificada (H-R181-2, 1c1044c):
+                # principal() -> entero retorna 42 => rc=42 es el ÉXITO del
+                # código de ley (ver test_O1).
+                assert r2.returncode == 42, (
+                    f"Binario -O2 no ejecuta con rc de ley: "
+                    f"rc={r2.returncode} {r2.stderr[:200]}")
             else:
                 pytest.skip(f"gcc -O2 falló: {r.stderr[:200]}")
         finally:

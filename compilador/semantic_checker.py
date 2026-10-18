@@ -11,7 +11,7 @@ from compilador.ast_nodes import (
     SentenciaEscuchar, SentenciaRecuperar, BloqueInseguro,
     SentenciaEnviarCanal, LogLlamada, NodoCoincidir, Identificador,
     LlamadaFuncion, DeclaracionExterna, ArgumentoTransferido,
-    DeclaracionExport, DeclaracionTipo,
+    DeclaracionExport, DeclaracionTipo, ExprObtenerDireccion,
 )
 from compilador.diagnostics import ErrorCodes
 from compilador.symbol_table import Simbolo
@@ -307,6 +307,12 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                     self._estructuras[s.nombre] = DefinicionEstructura(
                         nombre=s.nombre, campos=campos,
                         linea=s.linea, columna=s.columna)
+        # M2 §9.3 (ME r191): firmas disponibles por nombre para decidir
+        # paso-por-valor (move, M2 §9.1.3) vs préstamo &T en las llamadas.
+        self._funciones_sig = {
+            s.nombre: s for s in self.programa.sentencias
+            if isinstance(s, DefinicionFuncion)
+        }
         for s in self.programa.sentencias:
             if isinstance(s, DefinicionFuncion):
                 if not self.tabla.declarar(s.nombre, s.tipo_retorno, s):
@@ -383,17 +389,31 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
         """Report an error discovered during lifetime constraint resolution."""
         if hasattr(self, 'diag') and self.diag:
             token = self._token(linea, 0)
+            # M2 §10 taxation: el diagnóstico emite el ErrorCodes del enum
+            # (reportar usa .name y las plantillas de ERROR_MESSAGES).
+            try:
+                cod = ErrorCodes(code)
+            except ValueError:
+                cod = code
             self.diag.reportar(
-                code,
+                cod,
                 token,
                 mensaje=mensaje
             )
 
     # M21.3: Initialize lifetime tracking for a function scope
+# cumple Manual 1 §3.1 (ME r191: compilador unificado sin frontend paralelo)
+
     def _inicializar_lifetimes_funcion(self):
         self._region_graph = RegionGraph()
         self._uf = UnionFind(256)
         self._proximo_lifetime = 0
+        # M2 §9.3 (ME r191): mapa nombre->Lifetime de las variables declaradas
+        # por la función (LT_LOCAL): un préstamo a ellas no puede escapar por
+        # el retorno ni sobrevivir al move del valor prestado.
+        # cumple Manual 2 §9.3
+        self._locales_vivos: Dict[str, Lifetime] = {}
+        self._refs_de: Dict[str, set] = {}
         # Assign LT_PARAMETRICO lifetimes to function parameters
         for p in self._func_params if hasattr(self, '_func_params') else []:
             lt = Lifetime(LT_PARAMETRICO, self.tabla.scope_nivel, self._proximo_lifetime, -1)
@@ -438,6 +458,57 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
         self._region_graph = None
         self._uf = None
 
+    def _analizar_llamada_prestamos(self, expr, linea_fallback=0):
+        """M2 §9.3 (ME r191): rastreo de préstamos a través de llamadas.
+
+        (a) `r = f(&v)` con f -> &T: r es préstamo de v (elisión §9.3) —
+            registrado en _refs_de.
+        (b) `g(v)` paso por valor (parámetro del callee sin '&', M2 §9.1.3):
+            el move de v mata los préstamos vivos — ERR_MEM_LIFETIME_MISMATCH
+            "Un préstamo vive más que el valor prestado".
+        """
+        # cumple Manual 2 §9.3
+        if not isinstance(expr, LlamadaFuncion):
+            return
+        callee = self._funciones_sig.get(expr.nombre)
+        args = [a.expr if isinstance(a, ArgumentoTransferido) else a
+                for a in expr.argumentos]
+        params = list(getattr(callee, 'parametros', None) or []) if callee else []
+        for i, a in enumerate(args):
+            prestado = (isinstance(a, ExprObtenerDireccion)
+                        and isinstance(a.expr, Identificador))
+            if prestado:
+                if callee and (getattr(callee, 'tipo_retorno', '') or '').startswith('&'):
+                    vida = a.expr.nombre
+                    # el préstamo escapa por el retorno: queda vivo bajo el
+                    # nombre de la variable asignada (si la hay) — el scope
+                    # de la asignación vence al de la llamada.
+                    vivo = self._var_asignada_inmediata(expr)
+                    self._refs_de.setdefault(vida, set()).add(vivo or '<anon>')
+                continue
+            if isinstance(a, Identificador) and i < len(params):
+                tipo_param = (getattr(params[i], 'tipo', '') or '')
+                if not tipo_param.startswith('&') and a.nombre in self._refs_de:
+                    # M2 §10.1: ubicación precisa — la sentencia respalda si el
+                    # nodo de la llamada no trae línea.
+                    self._reportar_error(
+                        'ERR_MEM_LIFETIME_MISMATCH',
+                        (getattr(expr, 'linea', 0) or linea_fallback),
+                        (f"Un préstamo vive más que el valor prestado: '{a.nombre}' "
+                         f"se consume por valor en '{expr.nombre}' mientras "
+                         "una referencia a él sigue viva (Manual 2 §9.3)"),
+                    )
+
+    def _var_asignada_inmediata(self, expr):
+        """M2 §9.3 (ME r191): si esta llamada está a la derecha de una
+        asignación pendiente (`r = f(...)`) devuelve el nombre del receptor
+        ('r'); si no, None. El checker procesa sentencia a sentencia: la
+        asignación registra la vida ANTES de recorrer el RHS.ordenado Step
+        7 — ver _loca_vivos; este helper usa la pila de asignaciones de lee
+        la asignación inmediatamente superior con IfAssignationMarker."""
+        pend = getattr(self, '_refs_asignacion_pendiente', None)
+        return pend
+
     def _analizar_sentencia(self, nodo: Nodo):
         if isinstance(nodo, AsignacionVariable):
             sim_existente = self.tabla.buscar(nodo.nombre)
@@ -448,6 +519,12 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                     nombre=nodo.nombre
                 )
                 return
+            # M2 §9.3 (ME r191): registrar el receptor para `r = f(&v)` —
+            # el préstamo de v queda vivo bajo 'r' hasta que v se consuma.
+            self._refs_asignacion_pendiente = (
+                nodo.nombre if isinstance(nodo.expresion, LlamadaFuncion) else None)
+            self._analizar_llamada_prestamos(nodo.expresion)
+            self._refs_asignacion_pendiente = None
             tipo_expr = self._inferir_tipo(nodo.expresion)
             if tipo_expr:
                 if sim_existente:
@@ -482,6 +559,9 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                         lt_local = Lifetime(LT_LOCAL, self.tabla.scope_nivel, self._proximo_lifetime, -1)
                         scope_lt = Lifetime(LT_LOCAL, 0, 0, -1)
                         self._region_graph.agregar_restriccion(REGION_SUBSCOPE, lt_local, scope_lt, nodo.linea)
+                        # M2 §9.3: registrar el local para el check de escapada
+                        # de préstamos (retornar &local / move del prestado).
+                        self._locales_vivos[nodo.nombre] = lt_local
                         self._proximo_lifetime += 1
         elif isinstance(nodo, DeclaracionVariable):
             sim_existente = self.tabla.buscar(nodo.nombre)
@@ -527,6 +607,9 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                             lt_local = Lifetime(LT_LOCAL, self.tabla.scope_nivel, self._proximo_lifetime, -1)
                             scope_lt = Lifetime(LT_LOCAL, 0, 0, -1)
                             self._region_graph.agregar_restriccion(REGION_SUBSCOPE, lt_local, scope_lt, nodo.linea)
+                            # M2 §9.3: local registrado (misma política que la
+                            # asignación: el préstamo no puede escapar).
+                            self._locales_vivos[nodo.nombre] = lt_local
                             self._proximo_lifetime += 1
             else:
                 # R23 (paridad nativo): mismo ambito -> REDEFINICION
@@ -660,7 +743,44 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
             self.tabla.salir_scope()
         elif isinstance(nodo, SentenciaRetornar):
             if nodo.expr:
+                # M2 §9.3 paso 5 (ME r191): `retornar &local` con tipo de
+                # retorno &T — el préstamo vive más que el valor prestado (el
+                # local muere al salir de la función).
+                # cumple Manual 2 §9.3
+                if ((self._func_retorno or '').startswith('&')
+                        and isinstance(nodo.expr, ExprObtenerDireccion)
+                        and isinstance(nodo.expr.expr, Identificador)):
+                    base = nodo.expr.expr.nombre
+                    if base in self._locales_vivos:
+                        self._reportar_error(
+                            'ERR_MEM_LIFETIME_MISMATCH',
+                            nodo.linea,
+                            (f"Un préstamo vive más que el valor prestado: "
+                             f"'&{base}' es un local y no sobrevive al retorno "
+                             "(Manual 2 §9.3)"),
+                        )
+                        return
                 tipo_ret = self._inferir_tipo(nodo.expr)
+                # M2 §9.3 (ME r191): `retornar x` con retorno &T — la lectura
+                # de una referencia auto-dereferences (M4 §4.2), pero en la
+                # POSICIÓN de retorno se transporta la REFERENCIA (elisión
+                # §9.3): el tipo efectivo es el crudo de la tabla.
+                # cumple Manual 2 §9.3
+                if ((self._func_retorno or '').startswith('&')
+                        and isinstance(nodo.expr, Identificador)):
+                    sim_crudo = self.tabla.buscar(nodo.expr.nombre)
+                    if sim_crudo and (sim_crudo.tipo or '').startswith('&'):
+                        if nodo.expr.nombre in self._locales_vivos:
+                            # la referencia a un local no sobrevive al retorno
+                            self._reportar_error(
+                                'ERR_MEM_LIFETIME_MISMATCH',
+                                nodo.linea,
+                                (f"Un préstamo vive más que el valor prestado: "
+                                 f"'{nodo.expr.nombre}' referencia un local y no "
+                                 "sobrevive al retorno (Manual 2 §9.3)"),
+                            )
+                            return
+                        tipo_ret = sim_crudo.tipo
                 if tipo_ret and _tipo_normalizado(tipo_ret) != _tipo_normalizado(self._func_retorno or 'nulo'):
                     # F1.2d: `retornar nulo` en funcion que devuelve rc/arc/débil
                     # (nulo es el valor nulo de void*, Manual 2 §4.3).
@@ -692,6 +812,7 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                         if sim and _tipo_necesita_move(sim.tipo):
                             self.tabla.marcar_movido(arg.nombre)
         elif isinstance(nodo, SentenciaExpr):
+            self._analizar_llamada_prestamos(nodo.expr, nodo.linea)
             self._inferir_tipo(nodo.expr)
         elif isinstance(nodo, SentenciaEscuchar):
             # F3-7: gramatica alineada al Manual 2 L113 (`escuchar canal:` +

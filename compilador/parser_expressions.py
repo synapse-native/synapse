@@ -314,6 +314,8 @@ class ParserExpressionsMixin(ParserBase):
             columna=tok_id.columna,
         )
 
+# cumple Manual 1 §3.1 (ME r191: compilador unificado sin frontend paralelo)
+
     def _parsear_llamada(self, id_nodo: Optional[Nodo] = None) -> LlamadaFuncion:
         if id_nodo is None:
             id_nodo = self._esperar(TokenID.IDENTIFIER)
@@ -342,11 +344,16 @@ class ParserExpressionsMixin(ParserBase):
         self._saltar_nueva_linea()
         self._esperar(TokenID.RPAREN)
         nombre = tok_id.nombre if isinstance(tok_id, Nodo) and hasattr(tok_id, 'nombre') else getattr(tok_id, 'valor', '?')
+        # M2 §10.1 (ME r191): ubicación precisa — el identificador puede llegar
+        # como Nodo (primario) o Token; la línea/columna existen en ambos.
+        # cumple Manual 2 §10.1
+        linea_llamada = tok_id.linea if isinstance(tok_id, Token) else (getattr(tok_id, 'linea', 0) or 0)
+        columna_llamada = tok_id.columna if isinstance(tok_id, Token) else (getattr(tok_id, 'columna', 0) or 0)
         return LlamadaFuncion(
             nombre=nombre,
             argumentos=args,
-            linea=tok_id.linea if isinstance(tok_id, Token) else 0,
-            columna=tok_id.columna if isinstance(tok_id, Token) else 0,
+            linea=linea_llamada,
+            columna=columna_llamada,
         )
 
     def _parsear_crear_canal(self, tok_id: Token) -> ExprCrearCanal:

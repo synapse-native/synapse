@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "63f5b931daef652e",
+ "expediente": "docs/alineacion/r190_debug_cli.md",
+ "fecha": "2026-10-18",
+ "archivos": [
+  "cli.py"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r190.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

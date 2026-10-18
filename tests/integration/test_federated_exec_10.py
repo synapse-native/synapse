@@ -120,7 +120,7 @@ funcion principal() -> nulo:
         fuente = '''#lang: es
 importar std.federated
 funcion principal() -> nulo:
-    sesion = fed_iniciar(0, 10, 0.001, 5)
+    sesion = fed_iniciar(nulo, 10, 0.001, 5)
     fed_registrar_worker(sesion, "w1", "127.0.0.1", 9000, "pk1", 1.0)
     i = 0
     mientras i < 5:
@@ -142,7 +142,7 @@ funcion principal() -> nulo:
         fuente = '''#lang: es
 importar std.federated
 funcion principal() -> nulo:
-    sesion = fed_iniciar(0, 10, 0.001, 5)
+    sesion = fed_iniciar(nulo, 10, 0.001, 5)
     fed_cerrar(sesion)
 '''
         ast, diag = compilar_texto(fuente)
