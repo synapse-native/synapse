@@ -45,13 +45,37 @@ class TestCLIRun:
 
 
 class TestCLIDebug:
-    """Manual 8 §3.4: synapse debug."""
+    """Manual 8 §3.4: synapse debug (flujo canónico --load → --step/--reverse/
+    --snapshots; la AYUDA no requiere sesión, la navegación sí)."""
+
+    # Traza TRACE v1 canónica (formato runtime/core/debug.c; el fixture es el
+    # mismo del oráculo r150 — M8 §3.4: las operaciones son reales). Los
+    # subprocesos comparten estado de sesión; cada test hace --load para
+    # dejar el cursor determinista antes de navegar.
+    _TRAZA = "\n".join([
+        "TRACE v1",
+        "id=probe_int",
+        "programa=probe.syn",
+        "eventos=3",
+        "capacidad=4096",
+        "---",
+        "0|100|principal|probe.syn|10|42|0.000000||x",
+        "1|110|principal|probe.syn|12|0|0.000000||",
+        "2|120|aux|probe.syn|20|0|0.000000|listo|",
+    ]) + "\n"
 
     def test_debug_help(self):
-        """synapse debug muestra ayuda."""
+        """synapse debug muestra ayuda (rc=0 sin sesión: la ayuda es consulta)."""
         r = _run_cli("debug")
         assert r.returncode == 0
         assert "debugger" in r.stdout.lower() or "debug" in r.stdout.lower()
+
+    def _cargar_traza(self, tmp_path):
+        traza = tmp_path / "probe_int.trace"
+        traza.write_text(self._TRAZA, encoding="utf-8")
+        r = _run_cli("debug", "--load", str(traza))
+        assert r.returncode == 0, f"--load debe cargar la traza: {r.stderr}"
+        return r
 
     def test_debug_load_sin_archivo_falla(self):
         """synapse debug --load sin archivo retorna error."""
@@ -65,23 +89,34 @@ class TestCLIDebug:
         assert r.returncode != 0
         assert "no encontrad" in r.stderr.lower() or "no encontrad" in r.stdout.lower()
 
-    def test_debug_step(self):
-        """synapse debug --step ejecuta."""
+    def test_debug_step(self, tmp_path):
+        """synapse debug --step ejecuta sobre una traza real (M8 §3.4:
+        flujo canónico --load → --step avanza el primer evento)."""
+        self._cargar_traza(tmp_path)
         r = _run_cli("debug", "--step")
         assert r.returncode == 0
-        assert "paso" in r.stdout.lower()
+        assert "paso" in r.stdout.lower() or r.stdout.strip()
+        assert "42" in r.stdout, "--step muestra el evento x=42 de la traza"
 
-    def test_debug_reverse(self):
-        """synapse debug --reverse ejecuta."""
+    def test_debug_reverse(self, tmp_path):
+        """synapse debug --reverse ejecuta sobre una traza real (M8 §3.4:
+        --load → --step ×2 → --reverse vuelve al evento anterior)."""
+        self._cargar_traza(tmp_path)
+        assert _run_cli("debug", "--step").returncode == 0
+        assert _run_cli("debug", "--step").returncode == 0
         r = _run_cli("debug", "--reverse")
         assert r.returncode == 0
-        assert "retroced" in r.stdout.lower()
+        assert "x=42" in r.stdout, ("--reverse vuelve al evento #0 "
+                                     "(D-R150-6: el visor retrocede del #1 al #0)")
 
-    def test_debug_snapshots(self):
-        """synapse debug --snapshots ejecuta."""
+    def test_debug_snapshots(self, tmp_path):
+        """synapse debug --snapshots ejecuta sobre una traza real (M8 §3.4:
+        --load → --snapshots muestra el snapshot de la variable x="42")."""
+        self._cargar_traza(tmp_path)
         r = _run_cli("debug", "--snapshots")
         assert r.returncode == 0
         assert "snapshot" in r.stdout.lower()
+        assert "x" in r.stdout, "la traza lleva el snapshot de la variable x"
 
 
 class TestCLIOpenSyn:

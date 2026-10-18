@@ -1183,7 +1183,8 @@ def main():
         result = subprocess.run([output_tmp], timeout=60)
         sys.exit(result.returncode)
 
-    # Manejar subcomando 'debug' (Manual 8 §3.4/§4.1: synapse debug <subcomando>)
+    # Manejar subcomando 'debug' (Manual 8 §3.4/§4.1: synapse debug <subcomando>;
+    # despachado por el CLI unificado del pipeline compartido) # cumple Manual 1 §3.1
     if subcommand == 'debug':
         # D-R150-4: el valor de --load es una ruta, no un subcomando posicional;
         # se salta para que no se interprete como comando desconocido.
@@ -1199,6 +1200,19 @@ def main():
             if not arg.startswith('-'):
                 debug_subcmd = arg
                 break
+        # flags="none": la AYUDA es una consulta accesible sin sesión
+        # cargada (M8 §3.4: se listan los comandos; la navegación sí
+        # exige traza). # cumple Manual 8 §3.4
+        if not debug_subcmd and not any(
+            f in sys.argv for f in ("--load", "--step", "--reverse", "--snapshots")):
+            print("Comandos del debugger:")
+            print("  synapse debug --load <traza.trace>  - Cargar traza guardada")
+            print("  synapse debug --step                - Avanzar un paso")
+            print("  synapse debug --reverse             - Retroceder un paso")
+            print("  synapse debug --snapshots           - Ver snapshots de memoria")
+            print()
+            print("Manual 8 §3.4 — Debugger time-travel")
+            sys.exit(0)
         # Flags del debugger (M3d/R149: operación REAL sobre el formato TRACE v1
         # que escribe _syn_debug_finalizar_sesion en runtime/core/debug.c).
         # Estado de sesión persistente (~/.synapse/cache/debug_session.json):
@@ -1231,7 +1245,7 @@ def main():
                       "synapse debug --load <traza> (Manual 8 §3.4).", file=sys.stderr)
                 sys.exit(1)
             _dbg, _dbg_pos = _dbg_estado
-        if "--step" in sys.argv:
+        if '--step' in sys.argv:
             if _dbg_pos >= _dbg["total"]:
                 print("[DEBUG] Fin de la traza (no hay más pasos hacia adelante).")
                 sys.exit(0)
