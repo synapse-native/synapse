@@ -224,19 +224,31 @@ cerrado-2, histórica sin regresión, firma multilínea).
 estado: COMPLETADO (9f6b1cd, evidencia 2afa8c33ad689160 + a2bbf48...
 impacto: lee.
 
-### ME r188b — receive_resultado_nativo (H-R188-2): codegen nativo del receive-resultado
-requisito: Manual 5 §3.6 (M1 Ø1: mismo semantismo en ambos pipeline).
-hallazgo: el stage1 НАТVIVO ACEPTA la sintaxis `coincidir c ->:` (rc=0,
+### ME r188b — receive_resultado_nativo (H-R188-2): codegen nativo del receive-resultado — **COMPLETADO 2202cce (2026-10-17)**
+requisito: Manual 5 §3.6 (M1 §3.1: mismo semantismo en ambos pipelines).
+hallazgo: el stage1 NATIVO ACEPTA la sintaxis `coincidir c ->:` (rc=0,
 grays compartida) pero su codegen/semantico trata el sujeto como
 struct ADT/puntero → C roto (probe nativo rc=5, log capturado).
-implementacion: semántica nativa del receive-modo-resultado (:expr_eval o
-equivalente: tipoപResultado<elem,texto>) + gen_visitar_coincidir (recorrido.syn
+implementacion: semántica nativa del receive-modo-resultado (expr_eval o
+equivalente: tipo Resultado<elem,texto>) + gen_visitar_coincidir (recorrido.syn/
 generador: recibir + construir ADT especializado + case .tag) hasta probe
 nativo rc=0 con paridad S1 (misma salida de las dos ramas).
 oráculo: coincidir-canal con flecha compila y ejecuta en NATIVO (ok/err);
 expediente/probes según MTS.
 impacto: cierra la brecha nativa de §3.6 (después del r188a S1).
-estado: PENDIENTE (puesta en cola 2026-10-16, a partir del commit 9f6b1cd)
+estado: **COMPLETADO** (2202cce, 2026-10-17) — causa raíz: el sujeto tras la
+flecha llegaba al codegen como identificador/puntero sin envoltura de receive.
+R1: parser_sentencias.syn re-wrapea el sujeto como NODO_RECIBIR_CANAL;
+monomorfizacion.syn R24 (ADT builtin Resultado/Opcion + ctors ok/err,
+paridad context.py S1) + gen_emitir_str_typedef_instancia (M2 §12);
+nodos_flujo.syn sujeto → instancia + typedef + flag _G_co_modo_resultado;
+expr_eval.syn statement-expression `canal_recibir(...&_ce0)` con ADT
+especializado; orquestador/generator_constants/generator.py global único
+(H-R151-3). Hoistos H-r188b-1/2/3 cerrados (typedef dentro del bloque, temp
+única, global compartido). Oráculo test_oraculos_r188b.py 3/3; bootstrap
+S2==S3 2534e776…; regresión 15/15; unit 514✓; expediente 0 brechas
+(c661ce1d660ed5b4); contrastar RC=0; verificar_alineacion SIN BRECHAS.
+Reporte: docs/reportes/R189.md
 
 ## Reglas transversales del plan
 1. Cada ME: plan citando Manual X §Y → `alineacion.py --leer --me <id>` →

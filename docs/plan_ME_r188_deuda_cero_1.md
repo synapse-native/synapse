@@ -33,7 +33,7 @@ diagnóstico ejecutado: stage1 fresco desde nucleo
 (python main.py nucleo/principal.syn) compila rc=0 — la gramática compartida
 acepta la flecha en el auto-hospedado; el CODEGEN/semantics del receive-resultado
 en nativo NO cierra (probe E2E nativo rc=5: 'co' es puntero, .dato.ok) →
-H-R188-1 NUEVA con resolución asignada al ME r188b (paridad semántica
+H-R188-2 NUEVA con resolución asignada al ME r188b (paridad semántica
 M1 §3.1, continuación directa).
 
 ## R2 — continuación multilínea acotada por el ':' de bloque (H-R187-1)
