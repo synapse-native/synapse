@@ -1,7 +1,7 @@
 # Expediente de alineación r191_deuda_cero
 
 base: HEAD  # commit sobre el que se leyó el manual
-cambio_hash: #
+cambio_hash: 94adcc427ab93c59
  94bbe469d3b2788a
 
 > Una ancla por requisito. `estado:` CUMPLE | DESVIACION.

@@ -10,7 +10,26 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
 
 ## Cola de MEs (prioridad por radio/costo, actualizable)
 
-- **R184/ME asserts_operativos (CERRADO 2026-10-18 por r190+r191, commits
+- **R192/ME deuda_barrido_r191 (NUEVA, 2026-10-19):** 19 fallos del barrido
+  completo de integración (1600 tests, post-commit d8f03ac, PYTEST_RC\=1,
+  2h39m), TRIADOS con worktree dual (HEAD 621051a vs working tree): TODOS
+  PREEXISTENTES (NO regresión de r191):
+  (A) infra 8: test_axon_e2e 3 (test_axon_lock: AssertionError del lock),
+  test_gen_helper, test_path_traversal_binary; test_cache_audit 1
+  (test_axon_lock_existente); test_opensyn_cli 3 (has_chat_mode /
+  principal_syn_exists / wrapper_exists); test_cache_adv_10 1
+  (test_segunda_compilacion_mas_rapida).
+  (B) paridad nativa S1 9: test_fase2_nativa_hm 2 (r17 orden instancia↔struct,
+  r18 match binding); test_cobertura_d5 2 (codegen_s1 extenso/principal);
+  test_binario_real_10 2 (suma, escribir_linea); test_contracts_e2e 2
+  (garantiza_pasa, requiere_pasa_en_runtime); test_e2e_borrow_abort 1.
+  (C) borrow checker 2: test_borrowing_adv_10 test_borrow_conflicto_detectado
+  + test_borrow_mutual_exclusivo — el parser NO acepta `d: &mutable Dato`
+  ("Se esperaba RPAREN") por lo que el conflicto `&mut` doble nunca llega al
+  checker; deuda del parser de params (M2 §9.3).
+  Resolución asignada: barrido grupo C en el próximo ME de lifetimes (r192);
+  grupos A/B en ME de fixtures/infra. Reporte de triaje: fila del día en
+  AUDITORIA_ALINEACION_MANUALES.
   78b8947/621051a):** deuda de asserts/features medida en vivo tras el fix
   canónico (H-canon-LET RESUELTA en 643b413 + R183e). Primer lote de 5
   archivos:

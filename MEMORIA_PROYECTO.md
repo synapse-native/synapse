@@ -107,9 +107,20 @@ Fase roadmap:      POST-FASE 33 — DEUDA CERO (mandato 2026-10-18): cola del
                    línea precisa §10.1 en LlamadaFuncion; federated al
                    literal canónico `nulo` M2 §4.3). Oráculos r190 3/3 +
                    r191 3/3; unit 514✓; lote 45+1✓; gates verdes ambos
-                   (expedientes 63f5b931/94adcc427ab93c59). Barrido de
-                   integración completa (1600) en background:
-                   logs/r191_integration_resumen.txt.
+                   (expedientes 63f5b931/94adcc427ab93c59). Barrido
+                   integración completa (1600) TERMINADO (2h39m,
+                   PYTEST_RC=1 con pipefail): **1547 passed / 34 skipped /
+                   19 failed**; TRIAJE dual-tree (worktree 621051a vs
+                   d8f03ac): TODOS los 19 PREEXISTENTES (deuda histórica,
+                   NO regresión de r191): (A) infra 8 (axon/cache/opensyn
+                   fixtures), (B) paridad S1 9 (fase2_hm/cobertura_d5/
+                   binario_real/contracts/borrow_abort — mensajes heredados),
+                   (C) borrowing_adv 2 — parser NO acepta `d: &mutable Dato`
+                   ("Se esperaba RPAREN") → deuda del parser de params,
+                   M2 §9.3. Cola NUEVA R192 en plan_maestro_deudas (grupos
+                   A/B/C con resolución asignada). NEXT: ME r192 grupo C
+                   (borcheck: parser de params &mut) y grupos A/B de
+                   fixtures/infra.
                    NEXT: barrir resultados del barrido completo; después
                    siguientes fases del roadmap (cola del plan maestro
                    disponible para hallazgos NUEVOS).
