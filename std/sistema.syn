@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 2 §5.1 (ME r192_deuda_barrido): cláusulas de contratos booleanas alineadas.
 // std.sistema — Interfaz con el sistema operativo
 // Integrante de la Biblioteca Estandar de Synapse.
 //
@@ -25,7 +26,7 @@ funcion _validar_ruta_segura(ruta: texto) -> texto:
     requiere:
         longitud(ruta) > 0
     garantiza:
-        resultado == "" o subcadena(resultado, 1, 2) == ":" o subcadena(resultado, 0, 1) == "/"
+        _resultado_ == "" o subcadena(_resultado_, 1, 2) == ":" o subcadena(_resultado_, 0, 1) == "/"
     cwd = _syn_normalizar_ruta(_syn_obtener_cwd())
     absoluta = ruta
     si subcadena(ruta, 1, 2) != ":" y subcadena(ruta, 0, 1) != "/" y subcadena(ruta, 0, 2) != "\\\\":

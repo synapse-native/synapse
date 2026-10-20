@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 2 §5.1 (ME r192_deuda_barrido): cláusulas de contratos booleanas alineadas.
 // cumple Manual 3 §12 (12.2): lint.syn se compone con formatter.syn vía import
 // módulo→módulo (ME formatter_fix, R1) — elimina el duplicado
 // normalizar_espacios cuya versión de 2 ramas ensombrece (first-wins del
@@ -54,7 +55,7 @@ funcion lint_tiene_aviso_en_linea(ads: Lista<Advertencia>, linea: entero) -> boo
     requiere:
         verdadero
     garantiza:
-        _resultado_ es verdadero o _resultado_ es falso
+        _resultado_ == 1 o _resultado_ == 0
     // cumple Manual 2 §4.3 (H-R153-17): recorrido con for-en (elemento
     // desencajonado por el emisor) en lugar de .obtener(i).campo.
     para a en ads:
@@ -109,7 +110,7 @@ funcion es_snake_case(nombre: texto) -> booleano:
     requiere:
         verdadero
     garantiza:
-        _resultado_ es verdadero o _resultado_ es falso
+        _resultado_ == 1 o _resultado_ == 0
     // H-R153-6: sin cadena larga de `o` (37 terminos) — el emisor de
     // expresiones del bootstrap pierde terminos en cadenas logicas largas
     // (hallazgo r153, verificado con probe y en _probe_or.c; ambos capas).

@@ -1,5 +1,6 @@
 #lang: es
-# cumple Manual 4 6: biblioteca estandar
+// cumple Manual 2 §5.1 (ME r192_deuda_barrido): cláusulas de contratos booleanas alineadas.
+# cumple Manual 2 12: biblioteca estandar con contratos en toda funcion publica
 // std.os — Información del sistema operativo y hardware
 // Integrante de la Biblioteca Estándar de Synapse.
 // Cumple Manual 9 §5.7: módulos std con FFI sobre runtime C.
@@ -25,35 +26,35 @@ funcion memoria_total() -> entero:
     requiere:
         verdadero
     garantiza:
-        resultado >= 0
+        _resultado_ >= 0
     retornar _syn_memoria_total()
 
 funcion memoria_libre() -> entero:
     requiere:
         verdadero
     garantiza:
-        resultado >= 0
+        _resultado_ >= 0
     garantiza:
-        resultado <= memoria_total()
+        _resultado_ <= memoria_total()
     retornar _syn_memoria_libre()
 
 funcion vram_total() -> entero:
     requiere:
         verdadero
     garantiza:
-        resultado >= 0
+        _resultado_ >= 0
     retornar _syn_vram_total()
 
 funcion cpu_nucleos() -> entero:
     requiere:
         verdadero
     garantiza:
-        resultado > 0
+        _resultado_ > 0
     retornar _syn_cpu_nucleos()
 
 funcion arquitectura() -> texto:
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0
     retornar _syn_arquitectura()

@@ -1,8 +1,9 @@
 #lang: es
-# cumple Manual 4 6: biblioteca estandar
+# cumple Manual 2 12: biblioteca estandar con contratos en toda funcion publica
 // std.io — Entrada/Salida estándar (consola y archivos)
 // Integrante de la Biblioteca Estandar de Synapse.
 // Cumple Manual 2 §12: contratos requiere/garantiza en todas las funciones públicas.
+// cumple Manual 2 §12: cada funcion publica IO lleva requiere/garantiza observable.
 //
 // Uso desde Synapse:
 //   importar std.io
@@ -13,22 +14,26 @@
 importar std.sistema
 
 funcion abrir(ruta: texto, modo: texto) -> Canal:
+// cumple Manual 2 §5.1: cláusulas booleanas (requiere antes del cuerpo,
+// garantiza tras cada retornar — M2 §5.1); dominio del handle M2 §12.
     requiere:
         longitud(ruta) > 0
     requiere:
         longitud(modo) > 0
     garantiza:
-        resultado >= 0
+        _resultado_.es_valido == 0 o _resultado_.es_valido == 1
     ruta_segura = _validar_ruta_segura(ruta)
     si ruta_segura == "":
         retornar 0
     retornar _syn_abrir(ruta_segura, modo)
 
 funcion leer(c: Canal) -> texto:
+    // M2 §5.1: la cláusula original `c >= 0` comparaba un Canal (struct)
+    // con un número — expresión no booleana; exige canal válido (campo).
     requiere:
-        c >= 0
+        c.es_valido == 1
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0
     retornar _syn_leer(c)
 
 externo funcion cerrar_archivo(c: Canal) -> nulo
@@ -45,7 +50,7 @@ funcion escribir_linea(texto: texto) -> nulo:
 
 funcion leer_linea() -> texto:
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0
     retornar _syn_leer_linea()
 
 // stdin_eof(): 1 = stdin agotado (EOF), 0 = hay (posiblemente más) entrada.
@@ -55,7 +60,7 @@ funcion leer_linea() -> texto:
 // cumple Manual 2 §5.1: contrato garantiza sobre el dominio del resultado
 funcion stdin_eof() -> entero:
     garantiza:
-        resultado == 0 o resultado == 1
+        _resultado_ == 0 o _resultado_ == 1
     retornar _syn_stdin_eof()
 
 // ============================================================
@@ -66,7 +71,7 @@ funcion leer_bytes(cantidad: entero) -> texto:
     requiere:
         cantidad >= 0
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0
     retornar _syn_leer_bytes(cantidad)
 
 externo funcion _syn_abrir(ruta: texto, modo: texto) -> Canal

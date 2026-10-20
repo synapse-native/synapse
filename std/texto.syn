@@ -1,5 +1,6 @@
 #lang: es
-# cumple Manual 4 6: biblioteca estandar
+// cumple Manual 2 §5.1 (ME r192_deuda_barrido): cláusulas de contratos booleanas alineadas.
+# cumple Manual 2 12: biblioteca estandar con contratos en toda funcion publica
 // std.texto — Manipulación de cadenas
 // Manual 8 §1.7.3: contiene, indice_de, reemplazar (builtins existentes)
 // Manual 8 §1.7.1-2: leer_bytes, escapar_json, a_texto (nuevos externos)
@@ -13,7 +14,7 @@ funcion contiene(texto: texto, subcadena: texto) -> entero:
     requiere:
         longitud(subcadena) > 0
     garantiza:
-        resultado == 0 o resultado == 1
+        _resultado_ == 0 o _resultado_ == 1
     // No hay liberación de recursos en esta función
     retornar _syn_texto_contiene(texto, subcadena)
 
@@ -26,7 +27,7 @@ funcion indice_de(texto: texto, subcadena: texto) -> entero:
     requiere:
         longitud(subcadena) > 0
     garantiza:
-        resultado >= -1
+        _resultado_ >= -1
     // No hay liberación de recursos en esta función
     retornar _syn_texto_indice_de(texto, subcadena)
 
@@ -39,7 +40,7 @@ funcion reemplazar(texto: texto, buscar: texto, reemplazar: texto) -> texto:
     requiere:
         longitud(buscar) > 0
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0
     // No hay liberación de recursos en esta función
     retornar _syn_texto_reemplazar(texto, buscar, reemplazar)
 
@@ -52,7 +53,7 @@ funcion termina_con(texto: texto, sufijo: texto) -> entero:
     requiere:
         longitud(sufijo) > 0
     garantiza:
-        resultado == 0 o resultado == 1
+        _resultado_ == 0 o _resultado_ == 1
     // No hay liberación de recursos en esta función
     retornar _syn_texto_termina_con(texto, sufijo)
 
@@ -63,7 +64,7 @@ funcion termina_con(texto: texto, sufijo: texto) -> entero:
 
 funcion recortar(texto: texto) -> texto:
     garantiza:
-        longitud(resultado) <= longitud(texto)
+        longitud(_resultado_) <= longitud(texto)
     retornar _syn_texto_recortar(texto)
 
 
@@ -73,13 +74,13 @@ funcion recortar(texto: texto) -> texto:
 
 funcion mayusculas(texto: texto) -> texto:
     garantiza:
-        longitud(resultado) == longitud(texto)
+        longitud(_resultado_) == longitud(texto)
     retornar _syn_texto_mayusculas(texto)
 
 
 funcion minusculas(texto: texto) -> texto:
     garantiza:
-        longitud(resultado) == longitud(texto)
+        longitud(_resultado_) == longitud(texto)
     retornar _syn_texto_minusculas(texto)
 
 
@@ -89,7 +90,7 @@ funcion minusculas(texto: texto) -> texto:
 
 funcion escapar_json(texto: texto) -> texto:
     garantiza:
-        longitud(resultado) >= longitud(texto)
+        longitud(_resultado_) >= longitud(texto)
     retornar _syn_escapar_json(texto)
 
 
@@ -99,13 +100,13 @@ funcion escapar_json(texto: texto) -> texto:
 
 funcion a_texto(valor: entero) -> texto:
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0
     retornar _syn_a_texto_entero(valor)
 
 
 funcion a_texto_decimal(valor: decimal) -> texto:
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0
     retornar _syn_a_texto_decimal(valor)
 
 importar std.sistema
@@ -118,7 +119,7 @@ funcion contiene(texto: texto, subcadena: texto) -> entero:
     requiere:
         longitud(subcadena) > 0
     garantiza:
-        resultado == 0 o resultado == 1
+        _resultado_ == 0 o _resultado_ == 1
     retornar _syn_texto_contiene(texto, subcadena)
 
 // ============================================================
@@ -129,7 +130,7 @@ funcion indice_de(texto: texto, subcadena: texto) -> entero:
     requiere:
         longitud(subcadena) > 0
     garantiza:
-        resultado >= -1
+        _resultado_ >= -1
     retornar _syn_texto_indice_de(texto, subcadena)
 
 // ============================================================
@@ -140,7 +141,7 @@ funcion reemplazar(texto: texto, buscar: texto, reemplazar: texto) -> texto:
     requiere:
         longitud(buscar) > 0
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0
     retornar _syn_texto_reemplazar(texto, buscar, reemplazar)
 
 // ============================================================
@@ -151,7 +152,7 @@ funcion termina_con(texto: texto, sufijo: texto) -> entero:
     requiere:
         longitud(sufijo) > 0
     garantiza:
-        resultado == 0 o resultado == 1
+        _resultado_ == 0 o _resultado_ == 1
     retornar _syn_texto_termina_con(texto, sufijo)
 
 // ============================================================
@@ -160,7 +161,7 @@ funcion termina_con(texto: texto, sufijo: texto) -> entero:
 
 funcion recortar(texto: texto) -> texto:
     garantiza:
-        longitud(resultado) <= longitud(texto)
+        longitud(_resultado_) <= longitud(texto)
     retornar _syn_texto_recortar(texto)
 
 // ============================================================
@@ -169,12 +170,12 @@ funcion recortar(texto: texto) -> texto:
 
 funcion mayusculas(texto: texto) -> texto:
     garantiza:
-        longitud(resultado) == longitud(texto)
+        longitud(_resultado_) == longitud(texto)
     retornar _syn_texto_mayusculas(texto)
 
 funcion minusculas(texto: texto) -> texto:
     garantiza:
-        longitud(resultado) == longitud(texto)
+        longitud(_resultado_) == longitud(texto)
     retornar _syn_texto_minusculas(texto)
 
 // ============================================================
@@ -183,7 +184,7 @@ funcion minusculas(texto: texto) -> texto:
 
 funcion escapar_json(texto: texto) -> texto:
     garantiza:
-        longitud(resultado) >= longitud(texto)
+        longitud(_resultado_) >= longitud(texto)
     retornar _syn_escapar_json(texto)
 
 // ============================================================
@@ -192,12 +193,12 @@ funcion escapar_json(texto: texto) -> texto:
 
 funcion a_texto(valor: entero) -> texto:
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0
     retornar _syn_a_texto_entero(valor)
 
 funcion a_texto_decimal(valor: decimal) -> texto:
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0
     retornar _syn_a_texto_decimal(valor)
 
 // ============================================================
@@ -227,13 +228,13 @@ externo funcion _syn_a_texto_decimal(valor: decimal) -> texto
 // Compara dos strings: 0 si son iguales, <0 si a<b, >0 si a>b
 funcion cmp_texto(a: texto, b: texto) -> entero:
     garantiza:
-        resultado == 0 o resultado < 0 o resultado > 0
+        _resultado_ == 0 o _resultado_ < 0 o _resultado_ > 0
     retornar _syn_strcmp(a, b)
 
 // Longitud de un string en bytes
 funcion strlen_s(a: texto) -> entero:
     garantiza:
-        resultado >= 0
+        _resultado_ >= 0
     retornar _syn_strlen(a)
 
 // Busca subcadena dentro de string, retorna posición o -1
@@ -241,7 +242,7 @@ funcion strstr_f(texto: texto, patron: texto) -> entero:
     requiere:
         longitud(patron) > 0
     garantiza:
-        resultado >= -1
+        _resultado_ >= -1
     retornar _syn_strstr(texto, patron)
 
 // Busca carácter dentro de string, retorna posición o -1
@@ -249,7 +250,7 @@ funcion strchr_f(texto: texto, caracter: entero) -> entero:
     requiere:
         caracter >= 0
     garantiza:
-        resultado >= -1
+        _resultado_ >= -1
     retornar _syn_strchr(texto, caracter)
 
 // Convierte string a entero
@@ -261,7 +262,7 @@ funcion atoi_f(texto: texto) -> entero:
 // Copia string (retorna nuevo string con memoria asignada)
 funcion strcpy_f(texto: texto) -> texto:
     garantiza:
-        longitud(resultado) == longitud(texto)
+        longitud(_resultado_) == longitud(texto)
     retornar _syn_strcpy(texto)
 
 // Copia a buffer con límite máximo
@@ -269,7 +270,7 @@ funcion strncpy_f(texto: texto, max_len: entero) -> texto:
     requiere:
         max_len > 0
     garantiza:
-        longitud(resultado) <= max_len
+        longitud(_resultado_) <= max_len
     retornar _syn_strncpy(texto, max_len)
 
 // ============================================================

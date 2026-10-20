@@ -90,7 +90,9 @@ def test_codegen_s1_programa_extenso():
     assert "int64_t exportada(int64_t x)" in codigo, "@export"
     assert "typedef struct Punto" in codigo, "estructura"
     assert "typedef int64_t AliasEntero" in codigo, "alias"
-    assert "#define LIMITE (10" in codigo, "constante"  # (10) o (10LL)
+    # R177-R5 (ratificada): constantes módulo S1 dejan de ser #define (colisión
+    # de macro en firmas que sombrean) → enum con guardas _SYN_CSTDECL_.
+    assert "enum { LIMITE = 10 };" in codigo, "constante"
     assert "#include \"stddef.h\"" in codigo, "importar_c"
     assert "extern int64_t ayuda_externa" in codigo, "externa"
 
@@ -144,12 +146,13 @@ def test_codegen_s1_principal_retorno():
     )
     ast = _compilar_ast(prog)
     codigo = GeneradorC(ast).generar()
-    # P1 (test_fixes, Manual 2 §4.2): codegen de principal con retorno entero
-    # aun no captura _rc en main(); se documenta como RED TDD hasta implementarse.
-    if "int64_t _rc = principal();" not in codigo or "return _rc;" not in codigo:
+    # Convenciones RATIFICADAS (R184/R188, le Major): mangle `_principal_impl`
+    # (H-R181-4) y la captura de rc de ley `int64_t _ret = _principal_impl();`
+    # + `return (int)_ret;` (convención 1c1044c, H-R181-2).
+    if "int64_t _ret = _principal_impl();" not in codigo or "return (int)_ret;" not in codigo:
         pytest.fail(
-            "RED TDD (D-5/P1): codegen de principal con retorno entero aun no "
-            "captura _rc en main() ni retorna _rc (Manual 5: main espera hilos y retorna rc)"
+            "code de principal con retorno entero debe capturar el r etorno en "
+            "main() y retornarlo como rc (legacy; registry `_ret = _principal_impl()` 1c1044c)"
         )
     assert "synapse_esperar_hilos();" in codigo, "main espera hilos (Manual 5)"
 

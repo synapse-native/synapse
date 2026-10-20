@@ -401,6 +401,13 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "char _G_lanzar_wrappers[8][4096];")
     gen_emitir_linea(est, "int _G_lanzar_wrappers_count;")
     gen_emitir_linea(est, "int _G_lanzar_count;")
+    // cumple Manual 2 §5.1/§5.2 (ME r192_deuda_barrido): macro de contratos
+    // usada por asserts requiere/garantiza emitidos en funciones.syn y
+    // nodos_flujo.syn — delega en assert(): release compila con -DNDEBUG
+    // (cumple Manual 2 §5.3) y la reduce a ((void)0), costo cero en release.
+    gen_emitir_linea(est, "// --- Contratos (requiere/garantiza) — cumple Manual 2 §5.1/§5.2 (ME r192) ---")
+    gen_emitir_linea(est, "#define assert_contrato(expr, msg) assert((expr) && msg)")
+    gen_emitir_linea(est, "")
     // F5-1: garantiza globals del codegen (definidos aqui, usados via
     // asm() en funciones.syn/nodos_flujo.syn para emitir asserts)
     gen_emitir_linea(est, "void* _G_fn_garantizas_actuales = 0;")
@@ -802,7 +809,7 @@ funcion _syn_tipo_escalar(t: puntero) -> entero:
     requiere:
         verdadero
     garantiza:
-        _resultado_ es verdadero o _resultado_ es falso
+        _resultado_ == 1 o _resultado_ == 0
     inseguro:
         r = 0
         asm("const char* _ts = (const char*)t;")

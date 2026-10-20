@@ -73,7 +73,9 @@ funcion principal() -> entero:
 '''
         exe = _compilar_main(fuente, str(tmp_path))
         res = subprocess.run([exe], capture_output=True, text=True, timeout=10)
-        assert res.returncode == 0, f"exit code={res.returncode}, stderr={res.stderr}"
+        # Convención 1c1044c (ratificada r181/r191): rc == retorno de principal
+        # (principal retorna dividir(10,5)=2 ⇒ rc=2; H-R181-2).
+        assert res.returncode == 2, f"rc de ley: {res.returncode}, stdout={res.stdout}"
         assert "2" in res.stdout  # 10/5 = 2
         assert _codigo_c_tiene_assert(fuente), "el C generado debe tener assert en debug"
 
@@ -106,11 +108,12 @@ funcion cuadrado(x: entero) -> entero:
 funcion principal() -> entero:
     retorno = cuadrado(-5)
     escribir_linea(entero_a_texto(retorno))
-    retornar retorno
-'''
+    retornar retorno'''
         exe = _compilar_main(fuente, str(tmp_path))
         res = subprocess.run([exe], capture_output=True, text=True, timeout=10)
-        assert res.returncode == 0, f"exit code={res.returncode}, stderr={res.stderr}"
+        # Convención 1c1044c (ratificada r181/r191): rc == retorno de principal
+        # (principal retorna cuadrado(-5)=25 ⇒ rc=25; H-R181-2).
+        assert res.returncode == 25, f"rc de ley: {res.returncode}, stdout={res.stdout}"
         assert "25" in res.stdout
 
     def test_garantiza_falla_con_negativo(self, tmp_path):

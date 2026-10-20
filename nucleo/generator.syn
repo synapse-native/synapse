@@ -984,6 +984,16 @@ funcion _oo_expr_a_c(est: GeneradorCEst, nodo: puntero, buf: puntero, bufsz: ent
         asm("            if (strncmp(_lgn, \"Lista<\", 6) == 0 || strncmp(_lgn, \"Mapa<\", 5) == 0) { strcpy(_lg_t, \"void*\"); }")
         asm("            else { strncpy(_lg_t, _lgn, 63); _lg_t[63] = 0; }")
         asm("        }")
+        asm("        // cumple Manual 2 §5.1/§5.2 (ME r192_deuda_barrido): en cláusulas de")
+        asm("        // contrato `longitud(_resultado_)`, el identificador _resultado_ NO")
+        asm("        // esta registrado en la tabla de simbolos nativa -> _lg_t queda")
+        asm("        // vacio: caia al fallback (...) .longitud sobre void* (gcc rc=1). El")
+        asm("        // tipo real es el del retorno declarado")
+        asm("        // de la funcion actual (_G_fn_ret_tipo_c, F5-1): void* -> delega en")
+        asm("        // _syn_lista_longitud (r153 H-R153-15); CadenaSegura -> .longitud.")
+        asm("        if (!_lg_t[0] && strcmp(_lg_arg, \"_resultado_\") == 0) {")
+        asm("            extern char _G_fn_ret_tipo_c[64]; strncpy(_lg_t, _G_fn_ret_tipo_c, 63); _lg_t[63] = 0;")
+        asm("        }")
         asm("        if (_lg_t[0] == 'L' && strncmp(_lg_t, \"Lista<\", 6) == 0) { snprintf(_b, _sz, \"_syn_lista_longitud(%s)\", _lg_arg); return; }")
         asm("        if (_lg_t[0] == 'M' && strncmp(_lg_t, \"Mapa<\", 5) == 0) { snprintf(_b, _sz, \"_syn_mapa_longitud(%s)\", _lg_arg); return; }")
         asm("        // r153 (H-R153-15): coleccion via funcion importada (lint_archivo ->")
@@ -1682,8 +1692,13 @@ funcion gen_visitar_retornar(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("        if (_gin) {")
         asm("            char _gib[4096]; _gib[0] = 0;")
         asm("            _oo_expr_a_c(est, _gin, _gib, 4096);")
-        // Contratos garantiza deshabilitados en S1 (redundantes con runtime)
-        // Fix ME-27_T3: S1 codegen no traduce correctamente resultado/longitud() a C.
+        // cumple Manual 2 §5.1 (ME r192_deuda_barrido): garantiza se evalua en
+        // cada retornar, con _resultado_ ya asignado (texto M2 §5.1/§5.2; la
+        // deshabilitación ME-27_T3 no fue ratificada D-* — brecha corregida).
+        asm("            if (_gib[0]) {")
+        asm("                char _gil[4200];")
+        asm("                snprintf(_gil, 4200, \"    assert_contrato((%s), \\\"Fallo en contrato: garantiza\\\");\", _gib); gen_emitir_str(est, _gil);")
+        asm("            }")
         asm("        }")
         asm("        _gi = _gi->cola;")
         asm("      }")
@@ -4521,7 +4536,8 @@ funcion gen_visitar_funcion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("    gen_abrir_bloque_c(est);")
         asm("    // F5-1 (Manual 2 §5.1): requiere se evalua antes de la primera")
         asm("    // instruccion -> asserts al inicio del cuerpo (paridad")
-        asm("    // emit_declarations.py L461-465, incl. guard #ifndef SYNAPSE_RELEASE).")
+        asm("    // emit_declarations.py, ME r192: macro assert_contrato + assert.h")
+        asm("    // (cumple Manual 2 §5.3: NDEBUG en release elimina la aserción, costo cero).")
         asm("    extern void* _G_fn_garantizas_actuales; extern char _G_fn_ret_tipo_c[64];")
         asm("    _G_fn_garantizas_actuales = (void*)_f->garantiza;")
         asm("    strncpy(_G_fn_ret_tipo_c, _rct, 63); _G_fn_ret_tipo_c[63] = 0;")
@@ -4538,9 +4554,7 @@ funcion gen_visitar_funcion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("                _oo_expr_a_c(est, _gin, _gib, 4096);")
         asm("                if (_gib[0]) {")
         asm("                    char _gil[4200];")
-        asm("                    snprintf(_gil, 4200, \"    #ifndef SYNAPSE_RELEASE\"); gen_emitir_str(est, _gil);")
-        asm("                    snprintf(_gil, 4200, \"    assert((%s) && \\\"Fallo en contrato: requiere\\\");\", _gib); gen_emitir_str(est, _gil);")
-        asm("                    snprintf(_gil, 4200, \"    #endif\"); gen_emitir_str(est, _gil);")
+        asm("                    snprintf(_gil, 4200, \"    assert_contrato((%s), \\\"Fallo en contrato: requiere\\\");\", _gib); gen_emitir_str(est, _gil);")
         asm("                }")
         asm("            }")
         asm("            _gz = _gz->cola;")
@@ -4751,8 +4765,10 @@ funcion gen_visitar_funcion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("            if (_gvfn) {")
         asm("                char _gvb[4096]; _gvb[0] = 0;")
         asm("                _oo_expr_a_c(est, _gvfn, _gvb, 4096);")
-        // Contratos garantiza deshabilitados en S1 (redundantes con runtime)
-        // Fix ME-27_T3: S1 codegen no traduce correctamente resultado/longitud() a C.
+        asm("                if (_gvb[0]) {")
+        asm("                    char _gvl[4200];")
+        asm("                    snprintf(_gvl, 4200, \"    assert_contrato((%s), \\\"Fallo en contrato: garantiza\\\");\", _gvb); gen_emitir_str(est, _gvl);")
+        asm("                }")
         asm("            }")
         asm("            _gvf = _gvf->cola;")
         asm("        }")
@@ -5165,6 +5181,13 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "char _G_lanzar_wrappers[8][4096];")
     gen_emitir_linea(est, "int _G_lanzar_wrappers_count;")
     gen_emitir_linea(est, "int _G_lanzar_count;")
+    // cumple Manual 2 §5.1/§5.2 (ME r192_deuda_barrido): macro de contratos
+    // usada por asserts requiere/garantiza emitidos en funciones.syn y
+    // nodos_flujo.syn — delega en assert(): release compila con -DNDEBUG
+    // (cumple Manual 2 §5.3) y la reduce a ((void)0), costo cero en release.
+    gen_emitir_linea(est, "// --- Contratos (requiere/garantiza) — cumple Manual 2 §5.1/§5.2 (ME r192) ---")
+    gen_emitir_linea(est, "#define assert_contrato(expr, msg) assert((expr) && msg)")
+    gen_emitir_linea(est, "")
     // F5-1: garantiza globals del codegen (definidos aqui, usados via
     // asm() en funciones.syn/nodos_flujo.syn para emitir asserts)
     gen_emitir_linea(est, "void* _G_fn_garantizas_actuales = 0;")
@@ -5566,7 +5589,7 @@ funcion _syn_tipo_escalar(t: puntero) -> entero:
     requiere:
         verdadero
     garantiza:
-        _resultado_ es verdadero o _resultado_ es falso
+        _resultado_ == 1 o _resultado_ == 0
     inseguro:
         r = 0
         asm("const char* _ts = (const char*)t;")

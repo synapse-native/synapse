@@ -637,10 +637,15 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
         ):
             ctx._scope_stack[-1][p.nombre] = p.tipo
 
-    # Contract requires → asserts deshabilitados en S1 (redundantes con runtime)
-    # Los contratos quedan como documentación en .syn y se validan en runtime.
-    # Fix ME-27_T3: S1 codegen no traduce correctamente resultado/longitud() a C.
-    pass
+    # cumple Manual 2 §5.1 (ME r192_deuda_barrido): requiere se evalúa antes
+    # de la primera instrucción → asserts al inicio del cuerpo (paridad with
+    # nucleo/generador/funciones.syn L233-253: macro assert_contrato + guard
+    # NDEBUG implícito de assert.h — cumple Manual 2 §5.3: en release la aserción se elimina (costo cero).
+    # La emisión anterior (ME-27_T3) estaba deshabilitada sin ratificación
+    # D-*: desviación corregida hacia el manual (bitácora H-r192-1).
+    for _req_expr in nodo.requiere:
+        _req_c = expr_a_c(ctx, _req_expr)
+        ctx.write_line(f'assert_contrato({_req_c}, "Fallo en contrato: requiere");')
 
     ctx._garantizas_actuales = nodo.garantiza
 
@@ -768,8 +773,15 @@ def visitar_retornar(ctx: GeneratorContext, nodo: SentenciaRetornar):
         if ret_tipo_c == "Canal" and ret_expr.strip() in ("0", "0LL", "0ll"):
             ret_expr = "{0}"
         ctx.write_line(f"{ret_tipo_c} _resultado_ = {ret_expr};")
-        # Garantiza asserts deshabilitados en S1 (redundantes con runtime)
-        ctx._garantizas_actuales = []
+        # cumple Manual 2 §5.1 (ME r192_deuda_barrido): garantiza se evalúa
+        # con _resultado_ ya asignado y ANTES del return (paridad con
+        # nucleo/generador/nodos_flujo.syn L361-374, mensaje de paridad).
+        # Registrar el tipo de _resultado_ para que funciones builtin de la
+        # cláusula (longitud/validaciones) resuelvan en expr_a_c (M2 §5.1).
+        ctx._variables['_resultado_'] = ret_tipo_syn
+        for _gz_expr in ctx._garantizas_actuales:
+            _gz_c = expr_a_c(ctx, _gz_expr)
+            ctx.write_line(f'assert_contrato({_gz_c}, "Fallo en contrato: garantiza");')
         ctx.emit_all_destructors(exclude_var=excl)
         if nodo.es_transferencia:
             ctx.write_line("return ->_resultado_;")
@@ -777,8 +789,16 @@ def visitar_retornar(ctx: GeneratorContext, nodo: SentenciaRetornar):
             ctx.write_line("return _resultado_;")
         return
 
-    # Garantiza assertions deshabilitados en S1 (redundantes con runtime)
-    ctx._garantizas_actuales = []
+    # cumple Manual 2 §5.1 (ME r192_deuda_barrido): garantiza se evalúa en
+    # CADA `retornar` (regla M2 §5.1, no solo el primero). En funciones void
+    # sin _resultado_ los asserts se emiten igual (paridad
+    # nucleo/generador/funciones.syn
+    # L445-461, "garantiza (final)"); verificador_formal prohíbe _resultado_
+    # en garantiza de funciones void (Manual 2 §5.2).
+    if ctx._garantizas_actuales and not nodo.expr:
+        for _gz_expr in ctx._garantizas_actuales:
+            _gz_c = expr_a_c(ctx, _gz_expr)
+            ctx.write_line(f'assert_contrato({_gz_c}, "Fallo en contrato: garantiza");')
 
     if nodo.expr:
         ret_tipo_syn = ctx._current_func_return_type  # Use declared return type

@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 2 §5.1 (ME r192_deuda_barrido): cláusulas de contratos booleanas alineadas.
 // nucleo/reports.syn — Reportes CI/CD para synapse test
 // cumple Manual 2 §12: nucleo/reports.syn — reportes JUnit XML, JSON y coverage HTML
 // cumple Manual 9 §6.2: reportes junit/json para CI/CD (bootstrap verificable)
@@ -207,7 +208,7 @@ funcion contiene(lista: Lista<texto>, valor: texto) -> booleano:
     requiere:
         verdadero
     garantiza:
-        _resultado_ es verdadero o _resultado_ es falso
+        _resultado_ == 1 o _resultado_ == 0
     para item en lista:
         si item == valor:
             retornar verdadero

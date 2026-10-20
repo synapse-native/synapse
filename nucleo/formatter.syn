@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 2 §5.1 (ME r192_deuda_barrido): cláusulas de contratos booleanas alineadas.
 // nucleo/formatter.syn — Formateador nativo (backend canonico de `synapse fmt`)
 // cumple Manual 2 §12: nucleo/formatter.syn — formateador con reglas de estilo
 // cumple Manual 3 §12: colecciones de la biblioteca estándar en su API
@@ -232,7 +233,7 @@ funcion verificar_formato(ruta: texto) -> booleano:
     requiere:
         longitud(ruta) > 0
     garantiza:
-        _resultado_ es verdadero o _resultado_ es falso
+        _resultado_ == 1 o _resultado_ == 0
     let contenido = leer_archivo(ruta)
     let formateado = formatear_texto(contenido)
     retornar contenido == formateado
@@ -243,7 +244,7 @@ funcion fmt_archivo(ruta: texto) -> booleano:
     requiere:
         longitud(ruta) > 0
     garantiza:
-        _resultado_ es verdadero o _resultado_ es falso
+        _resultado_ == 1 o _resultado_ == 0
     let contenido = leer_archivo(ruta)
     let formateado = formatear_texto(contenido)
     si contenido == formateado:

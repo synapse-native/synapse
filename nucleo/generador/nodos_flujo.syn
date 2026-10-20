@@ -366,8 +366,13 @@ funcion gen_visitar_retornar(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("        if (_gin) {")
         asm("            char _gib[4096]; _gib[0] = 0;")
         asm("            _oo_expr_a_c(est, _gin, _gib, 4096);")
-        // Contratos garantiza deshabilitados en S1 (redundantes con runtime)
-        // Fix ME-27_T3: S1 codegen no traduce correctamente resultado/longitud() a C.
+        // cumple Manual 2 §5.1 (ME r192_deuda_barrido): garantiza se evalua en
+        // cada retornar, con _resultado_ ya asignado (texto M2 §5.1/§5.2; la
+        // deshabilitación ME-27_T3 no fue ratificada D-* — brecha corregida).
+        asm("            if (_gib[0]) {")
+        asm("                char _gil[4200];")
+        asm("                snprintf(_gil, 4200, \"    assert_contrato((%s), \\\"Fallo en contrato: garantiza\\\");\", _gib); gen_emitir_str(est, _gil);")
+        asm("            }")
         asm("        }")
         asm("        _gi = _gi->cola;")
         asm("      }")

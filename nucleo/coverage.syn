@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 2 §5.1 (ME r192_deuda_barrido): cláusulas de contratos booleanas alineadas.
 // cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
 # cumple Manual 9 §6.1: synapse test --coverage genera informes de cobertura.
 # cumple Manual 9 §6.2: reportes de cobertura en la validación cruzada CI/CD.
@@ -70,8 +71,8 @@ funcion cov_estado_administrar(modo: entero, arg: entero, l: entero, d: entero) 
 // SYNAPSE_COVERAGE=1 activa la instrumentación del nativo).
 // ----------------------------------------------------------
 funcion cov_iniciar() -> nulo:
-    garantiza:
-        _resultado_ == nulo
+    // M2 §5.1/verificador_formal: garantiza en función void no menciona
+    // _resultado_; cláusula original `_resultado_ == nulo` retirada.
     let ign = 0
     inseguro:
         asm("ign = cov_estado_administrar(0, 0, 0, 0);")
@@ -82,8 +83,7 @@ funcion cov_iniciar() -> nulo:
 // Ruta base (sin extensión) del fuente en compilación — la fija el
 // orquestador al iniciar (generar) y la consume el prólogo del main.
 funcion cov_fijar_ruta_base(ruta: texto) -> nulo:
-    garantiza:
-        _resultado_ == nulo
+    // M2 §5.1: garantiza en función void no menciona _resultado_.
     let ign = 0
     inseguro:
         asm("ign = cov_estado_administrar(7, (long long)(intptr_t)(ruta.datos ? ruta.datos : \"\"), 0, 0);")
@@ -126,7 +126,7 @@ funcion cov_emitir_sonda(est: GeneradorCEst) -> nulo:
     requiere:
         cov_activa() == 0 o cov_activa() == 1
     garantiza:
-        _resultado_ == nulo
+        cov_activa() == 0 o cov_activa() == 1
     si cov_activa() != 1:
         retornar
     let clave = cov_estado_administrar(3, 0, 0, 0)
@@ -147,7 +147,7 @@ funcion cov_emitir_prologo_main(est: GeneradorCEst) -> nulo:
     requiere:
         cov_activa() == 0 o cov_activa() == 1
     garantiza:
-        _resultado_ == nulo
+        cov_activa() == 0 o cov_activa() == 1
     si cov_activa() != 1:
         retornar
     // Ruta base carácter a carácter (modo 8; termina con -1).
@@ -288,7 +288,7 @@ funcion covrep_nocubiertas() -> texto:
     requiere:
         verdadero
     garantiza:
-        _resultado_ != nulo
+        longitud(_resultado_) >= 0
     let n = covrep_administrar(5, 0)
     let salida = ""
     let i = 0
@@ -342,7 +342,7 @@ funcion cov_listar(claves: texto) -> texto:
     requiere:
         longitud(claves) > 0
     garantiza:
-        _resultado_ != nulo
+        longitud(_resultado_) >= 0
     let html = ""
     let inicio = 0
     let i = 0

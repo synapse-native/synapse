@@ -32,12 +32,12 @@ class TestBorrowMutualExclusivo:
         fuente = '''#lang: es
 estructura Dato:
     valor: entero
-funcion modificar(d: &mutable Dato) -> nulo:
+funcion modificar(d: &mut Dato) -> nulo:
     d.valor = 1
 funcion principal() -> nulo:
     d = Dato()
-    a = &mutable d
-    b = &mutable d
+    a = &mut d
+    b = &mut d
     modificar(a)
     modificar(b)
 '''
@@ -78,22 +78,23 @@ class TestBorrowMutualConInmutableFalla:
     """&mut y &T coexistiendo debe ser rechazado."""
 
     def test_borrow_mutual_con_inmutable_falla(self):
-        """&mutable y uso inmutable simultáneos → error."""
+        """&mut y uso inmutable simultáneos → error."""
         fuente = '''#lang: es
 estructura Dato:
     valor: entero
-funcion modificar(d: &mutable Dato) -> nulo:
-    d.valor = 1
 funcion principal() -> entero:
     d = Dato()
-    r = &mutable d
-    modificar(r)
+    r = &mut d
+    s = &d
     retornar d.valor
 '''
         ast, diag = compilar_texto(fuente)
-        # Manual 2 §9: &mutable con uso inmutable debería generar ERR_MEM_BORROW_CONFLICT
+        # Manual 4 §4.2: el &mut no puede COEXISTIR con un inmutable
+        # simultáneo (ERR_MEM_BORROW_CONFLICT). El fin del préstamo por
+        # consumo del &mut (move a un callee, M2 §9.1.3) libera el uso
+        # posterior de d — el caso `modificar(r); d.valor` es LEGAL.
         assert _tiene_borrow_conflict(diag) or diag.codigo_salida() != 0, \
-            "&mutable con uso posterior debería generar ERR_MEM_BORROW_CONFLICT"
+            "&mut con uso posterior debería generar ERR_MEM_BORROW_CONFLICT"
 
 
 # ---------------------------------------------------------------------------
@@ -167,20 +168,20 @@ class TestBorrowConflictoDetectado:
     """Conflicto clásico de borrow: dos mutables a la misma variable."""
 
     def test_borrow_conflicto_detectado(self):
-        """Dos &mutable a la misma variable en scopes solapados → ERR_MEM_BORROW_CONFLICT."""
+        """Dos &mut a la misma variable en scopes solapados → ERR_MEM_BORROW_CONFLICT."""
         fuente = '''#lang: es
 estructura Dato:
     valor: entero
-funcion modificar(d: &mutable Dato) -> nulo:
+funcion modificar(d: &mut Dato) -> nulo:
     d.valor = 99
 funcion principal() -> nulo:
     d = Dato()
-    a = &mutable d
-    b = &mutable d
+    a = &mut d
+    b = &mut d
     modificar(a)
     modificar(b)
 '''
         ast, diag = compilar_texto(fuente)
         # Manual 2 §9: borrow mutable exclusivo — dos &mut simultáneos = ERR_MEM_BORROW_CONFLICT
         assert _tiene_borrow_conflict(diag), \
-            "Doble &mutable simultáneo debería detectar ERR_MEM_BORROW_CONFLICT"
+            "Doble &mut simultáneo debería detectar ERR_MEM_BORROW_CONFLICT"
