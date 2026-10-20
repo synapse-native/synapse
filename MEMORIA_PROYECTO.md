@@ -1058,3 +1058,5 @@ Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc d
   Además el plan ganó los bloques M16/M17 (rondas 3-4) con citas M2 §2/§4.1 y el
   gate MTS fase 4b contrastar.py pasa con 14 requisitos y 2 oráculos ejecutados en
   release (docs/verificacion_ME_r150_funcional.md creado).
+
+<!-- H-R192-4 (2026-10-20): el pre-commit ( fasta "Limpiando artefactos de build (solo no rastreados)") BORRA binarios no rastreados del source tree — synapse_stage*.exe NO se versionan (correcto); tras cualquier commit, restaurar la cadena con `.venv/Scripts/python.exe build.py` (rc=0, S2==S3). La evidencia del hook (auditoria/evidencia/<hash>.json) se REGENERA determinista (lista sorted); commitear la regenerada y el próximo hook no producirá diff. -->
