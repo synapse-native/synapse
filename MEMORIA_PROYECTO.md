@@ -118,9 +118,22 @@ Fase roadmap:      POST-FASE 33 — DEUDA CERO (mandato 2026-10-18): cola del
                    (C) borrowing_adv 2 — parser NO acepta `d: &mutable Dato`
                    ("Se esperaba RPAREN") → deuda del parser de params,
                    M2 §9.3. Cola NUEVA R192 en plan_maestro_deudas (grupos
-                   A/B/C con resolución asignada). NEXT: ME r192 grupo C
-                   (borcheck: parser de params &mut) y grupos A/B de
-                   fixtures/infra.
+                   A/B/C con resolución asignada). R192 COMPLETADO
+                   (4e97f3f, 2026-10-20): contratos reactivados S1+nativo
+                   con paridad (M2 §5.1/§5.2/§5.3 §12, macro assert_contrato,
+                   _resultado_ tipado vía _G_fn_ret_tipo_c + delegación de
+                   handle M6 §3.1), std barrida (40+ cláusulas canónicas,
+                   Canal: es_valido/dominio), citas fabricadas "Manual 1
+                   §165" corregidas a M2 §5.3 (M1 solo tiene §1–§9),
+                   oráculos r192 (contracts_e2e + bootstrap S2==S3
+                   780e2419384c), expediente 0 brechas a 17 archivos
+                   (evidencia 6425a7aa2f59cf8d), contrastar RC=0, unit 514✓,
+                   grupos B/C del barrido VERDE (112+15+8+1+7). Grupos A
+                   (fixtures/infra axon/cache/opensyn) PENDIENTES: deuda
+                   de infra sin reparar, triada en R191 fila del día.
+                   NEXT: grupos A del barrido (ME de fixtures/infra) y
+                   siguientes fases del roadmap (cola del plan maestro
+                   disponible para hallazgos NUEVOS).
                    NEXT: barrir resultados del barrido completo; después
                    siguientes fases del roadmap (cola del plan maestro
                    disponible para hallazgos NUEVOS).

@@ -10,7 +10,7 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
 
 ## Cola de MEs (prioridad por radio/costo, actualizable)
 
-- **R192/ME deuda_barrido_r191 (NUEVA, 2026-10-19):** 19 fallos del barrido
+- **R192/ME deuda_barrido_r191 (CERRADA 2026-10-20, commit 4e97f3f):** 19 fallos del barrido
   completo de integración (1600 tests, post-commit d8f03ac, PYTEST_RC\=1,
   2h39m), TRIADOS con worktree dual (HEAD 621051a vs working tree): TODOS
   PREEXISTENTES (NO regresión de r191):
@@ -30,6 +30,15 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   Resolución asignada: barrido grupo C en el próximo ME de lifetimes (r192);
   grupos A/B en ME de fixtures/infra. Reporte de triaje: fila del día en
   AUDITORIA_ALINEACION_MANUALES.
+  **CIERRE (2026-10-20, 4e97f3f):** grupos B (paridad nativa S1: fase2_hm
+  112✓, cobertura_d5 15✓, binario_real 8✓, contracts_e2e 9✓ rc de ley
+  1c1044c, borrow_abort 1✓) y C (borrowing_adv_10 7✓ — la sintaxis vigente
+  es `&mut` M4 §4.2; la forma retirada `&mutable` Foster se alineó al manual).
+  Nemotecnia de la deuda: los fallos eran asserts desalineados a
+  convenciones ratificadas + contratos invalidados por el emisor roto
+  ME-27_T3, no bugs del compilador. Contratos reactivados S1+nativo con
+  paridad (M2 §5.1/§5.3 §12); std barrida (M2 §5.1 §12 + M3 §12).
+  Reporte: docs/reportes/R192.md.
   78b8947/621051a):** deuda de asserts/features medida en vivo tras el fix
   canónico (H-canon-LET RESUELTA en 643b413 + R183e). Primer lote de 5
   archivos:
