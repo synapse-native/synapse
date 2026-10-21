@@ -128,15 +128,25 @@ Fase roadmap:      POST-FASE 33 — DEUDA CERO (mandato 2026-10-18): cola del
                    oráculos r192 (contracts_e2e + bootstrap S2==S3
                    780e2419384c), expediente 0 brechas a 17 archivos
                    (evidencia 6425a7aa2f59cf8d), contrastar RC=0, unit 514✓,
-                   grupos B/C del barrido VERDE (112+15+8+1+7). Grupos A
-                   (fixtures/infra axon/cache/opensyn) PENDIENTES: deuda
-                   de infra sin reparar, triada en R191 fila del día.
-                   NEXT: grupos A del barrido (ME de fixtures/infra) y
-                   siguientes fases del roadmap (cola del plan maestro
-                   disponible para hallazgos NUEVOS).
-                   NEXT: barrir resultados del barrido completo; después
-                   siguientes fases del roadmap (cola del plan maestro
-                   disponible para hallazgos NUEVOS).
+                   grupos B/C del barrido VERDE (112+15+8+1+7). R193
+                   COMPLETADO (a78c57a, 2026-10-21): GRUPO A cerrado —
+                   barrido r191 EN CERO (A+B+C). El frente de fixtures
+                   destapó dos hallazgos de PRODUCCIÓN: H-R193-1 (enlace
+                   cacheado _link_object sin paridad con el enlace normal:
+                   sin módulos quantum/federated/IA ⇒ undefined
+                   qc_aplicar_pauli_z; sin allow-multiple-definition ⇒
+                   multiple definition _syn_qec_verificar_estado_logico
+                   en TODO hit del enlace incremental; sin -static/env) y
+                   H-R193-2 (key de caché de .o con base_flags crudo:
+                   doble espacio desalineado entre caminos ⇒ 46 .o
+                   recompilados en CADA pasada ~90 s). E2E: 2.ª pasada
+                   0,9 s con [CACHE HIT] y 0 recompilas — cache.syn M1
+                   §4 operativo. Oráculo r193 PASS (grupo A RC=0: 5+4+3+9);
+                   expediente r193 0 brechas (evidencia 270133df57df7614,
+                   anclas M1 §3.1/§4/§7.2), contrastar RC=0, unit 514✓.
+                   Grupos B/C sin cambios (r192). NEXT: siguientes fases
+                   del roadmap (cola del plan maestro disponible para
+                   hallazgos NUEVOS).
                    Antes (2026-10-16):
                    ME r188_deuda_cero_1 COMPLETADO (9f6b1cd): H-R184-1
                    CERRADA en S1 — desugar `coincidir <canal> ->:` M5 §3.6
@@ -1060,3 +1070,16 @@ Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc d
   release (docs/verificacion_ME_r150_funcional.md creado).
 
 <!-- H-R192-4 (2026-10-20): el pre-commit (paso “Limpiando artefactos de build") BORRA binarios no rastreados del source tree — synapse_stage*.exe NO se versionan (correcto); tras cualquier commit, restaurar la cadena con `.venv/Scripts/python.exe build.py` (rc=0, S2==S3). La evidencia del hook (auditoria/evidencia/<hash>.json) se REGENERA determinista (lista sorted); commitear la regenerada y el próximo hook no producirá diff. -->
+
+<!-- H-R193-3 (r193, 2026-10-21) Lección de fixtures/infra: un meta-test de
+auditoría cuyo cuerpo termina en `return bool` y comparte un contador global
+PASS/FAIL tiene aserciones FALLIDAS fillas de pago: pytest ignora el valor de
+retorno (PytestReturnNotNoneWarning), el check queda impago en el contador y
+el SIGUIENTE test lo cobra (el assert FAIL==0 vivía solo en el último test).
+Cobrar la cuenta POR TEST (fixture autouse de reset + assert propio) vuelve
+legible cuál check falla. Compañera H-R193-4: cuando un mismo comando de
+enlace se arma en DOS caminos del pipeline, la paridad debe ser COMPLETA
+(módulos, flags del ld Y base_flags) antes de subir cualquier piececita
+suelta; y las keys de caché que comparan strings deben canonizar espacios
+(' '.join(s.split())) — el doble espacio con flags vacíos vaciaba el HIT del
+runtime (46 .o recompilados ~90 s por pasada). -->

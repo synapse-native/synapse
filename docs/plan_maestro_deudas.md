@@ -30,6 +30,18 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   Resolución asignada: barrido grupo C en el próximo ME de lifetimes (r192);
   grupos A/B en ME de fixtures/infra. Reporte de triaje: fila del día en
   AUDITORIA_ALINEACION_MANUALES.
+  **CIERRE DEL GRUPO A (2026-10-21, a78c57a, ME r193_fixtures_infra):** los 8
+  fallos de infra CERRADOS con dos hallazgos de producción descubiertos por
+  ese frente (H-R193-1/H-R193-2): el enlace cacheado `_link_object` faltaba
+  de paridad respecto del enlace normal (módulos quantum/federated/IA,
+  `-Wl,--allow-multiple-definition` por el dup de quantum_err_corr.o,
+  `-static` win32 + SYNAPSE_GCC_FLAGS) y la key de caché de los .o comparaba
+  `base_flags` crudo (doble espacio desalineado entre caminos ⇒ 46 .o recompilados
+  en cada pasada ~90 s). E2E: 2.ª pasada 0,9 s con [CACHE HIT] y 0
+  recompilas — cache.syn (M1 §4) operativo. Oráculo r193 PASS (grupo A
+  completo RC=0); unit 514 ✓; expediente 0 brechas (270133df57df7614);
+  contrastar RC=0. Reporte: docs/reportes/R193.md. BARRIDO r191 EN CERO
+  (A+B+C).
   **CIERRE (2026-10-20, 4e97f3f):** grupos B (paridad nativa S1: fase2_hm
   112✓, cobertura_d5 15✓, binario_real 8✓, contracts_e2e 9✓ rc de ley
   1c1044c, borrow_abort 1✓) y C (borrowing_adv_10 7✓ — la sintaxis vigente
