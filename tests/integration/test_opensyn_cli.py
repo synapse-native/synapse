@@ -9,6 +9,12 @@ import shutil
 import subprocess
 import os
 
+# cumple Manual 1 §7.2 / Manual 9 §5 (ME r193_fixtures_infra): las rutas de
+# artefactos de instalación (wrapper opensyn.bat, principal.syn) se anclan a la
+# RAÍZ del repo derivada de __file__ — el cwd del runner no es una dependencia
+# de la suite (en el barrido r191 con cwd≠raíz estos 3 tests fallaron).
+RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
 @pytest.fixture
 def synapse_installed():
     """Fixture: verifica instalación Synapse"""
@@ -27,7 +33,7 @@ class TestOpenSynCLI:
 
     def test_opensyn_wrapper_exists(self):
         """Wrapper `opensyn.bat` debe existir en opensyn/"""
-        wrapper = 'opensyn/opensyn.bat'
+        wrapper = os.path.join(RAIZ, 'opensyn', 'opensyn.bat')
         assert os.path.exists(wrapper), \
             f"Wrapper no encontrado: {wrapper}"
 
@@ -44,7 +50,7 @@ class TestOpenSynCLI:
 
     def test_opensyn_principal_syn_exists(self):
         """principal.syn debe contener funciones de oraculo"""
-        with open('opensyn/principal.syn', 'r', encoding='utf-8') as f:
+        with open(os.path.join(RAIZ, 'opensyn', 'principal.syn'), 'r', encoding='utf-8') as f:
             content = f.read()
         assert 'importar std.oraculo' in content, \
             "Falta import std.oraculo en principal.syn"

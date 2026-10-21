@@ -9,18 +9,25 @@ pytestmark = pytest.mark.integration
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-def _find_python():
-    for exe in ["python3", "python"]:
-        try:
-            subprocess.run([exe, "--version"], capture_output=True, check=True)
-            return exe
-        except:
-            continue
-    return "python"
-
-PYTHON = _find_python()
+# cumple Manual 1 §7.2 (ME r193_fixtures_infra): la suite completa de pruebas
+# debe pasar bajo el intérprete del PROYECTO (que tiene pytest y el sys.path
+# del repo), no bajo un `python`/`python3` del sistema arbitrario. La detección
+# _find_python() resolvía el venv ajeno de otra herramienta (sin pytest) y el
+# subproceso `pytest tests/integration/test_axon_e2e.py` moría con rc=1.
+PYTHON = sys.executable
 
 PASS, FAIL = 0, 0
+# cumple Manual 1 §7.2 (ME r193_fixtures_infra): cada test del auditor parte
+# de contadores LIMPIOS y cobra SU propia cuenta. Antes, el único assert del
+# contador global vivía al final de test_axon_lock_existente, así que un check
+# fallido de T1-T3 (que terminaban en `return bool` — pytest ignora el valor y
+# los marcaba passed) quedaba impago y lo cobraba el test Axon T1 siguiente.
+@pytest.fixture(autouse=True)
+def _contadores_limpios_por_test():
+    global PASS, FAIL
+    PASS, FAIL = 0, 0
+    yield
+
 def check(desc, cond, detail=""):
     global PASS, FAIL
     if cond:
@@ -63,9 +70,10 @@ def test_cache_hit():
         check("[CACHE HIT] en segunda compilacion", "[CACHE" in out2 or "HIT" in out2, out2[-300:])
         check(f"Segunda ({t_second:.3f}s) mas rapida que primera ({t_first:.3f}s)",
               t_second < t_first, f"{t_first:.3f}s -> {t_second:.3f}s")
-        return rc1 == 0 and rc2 == 0
-    return False
-
+        # HIT real, determinista (ME r193): la segunda pasada NO recompila el
+        # runtime — los [RUNTIME] gcc -c solo pueden aparecer en la primera.
+        check("Sin recompilacion del runtime en segunda pasada (HIT real)",
+              "[RUNTIME] gcc -c" not in out2, out2[-300:])
     assert FAIL == 0, "Checks fallaron"
 def test_cache_stale():
     """Modificar std/ leaf file y detectar STALE en recompilacion incremental"""
@@ -86,7 +94,7 @@ def test_cache_stale():
         rc1, out1, err1 = run([PYTHON, "main.py", "--incremental", test_syn, "-o", os.path.join(td, "out1.exe")])
         check("Compilacion inicial exitosa", rc1 == 0, err1[-200:])
         if rc1 != 0:
-            return False
+            pytest.fail(f"Compilacion inicial fallo: {err1[-200:]}")
 
         # Add a comment to std/io.syn to simulate modification
         if os.path.exists(std_io):
@@ -103,17 +111,19 @@ def test_cache_stale():
                 shutil.copy2(backup, std_io)
                 os.remove(backup)
 
-                return rc2 == 0
+                # STALE real, determinista (ME r193): la recompilacion tras
+                # tocar std/ NO vuelve a compilar el runtime (objs cacheados,
+                # fuente sin cambios) — solo el objeto de usuario.
+                check("Sin recompilacion del runtime en recompilacion STALE",
+                      "[RUNTIME] gcc -c" not in out2, out2[-300:])
             except Exception as e:
                 # Restore
                 if os.path.exists(backup):
                     shutil.copy2(backup, std_io)
                     os.remove(backup)
-                print(f"  ERROR: {e}")
-                return False
+                pytest.fail(f"ERROR en STALE: {e}")
         else:
-            print(f"  SKIP: {std_io} not found")
-            return True
+            pytest.skip(f"{std_io} not found")
 
     assert FAIL == 0, "Checks fallaron"
 def test_cache_determinismo():
@@ -129,8 +139,6 @@ def test_cache_determinismo():
     # Different content = different hash
     h3 = hashlib.sha256(b"otro contenido").hexdigest()
     check("SHA-256 diferenciador: distinto contenido = distinto hash", h1 != h3)
-
-    return h1 == h2 and h1 != h3
 
     assert FAIL == 0, "Checks fallaron"
 def test_axon_lock_existente():

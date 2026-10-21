@@ -2,7 +2,16 @@
 """
 test_cache_adv_10.py — Caché Incremental (Fase 18).
 
-Manual 1 §6: SHA-256 caching, pipeline intercept HIT/MISS/STALE.
+Manual 1 §4 (estructura del repo: cache.syn — Sistema de caché incremental
+SHA-256) + Manual 9 §2.5 (nota: la clave de caché incluye el hash SHA-256 de
+la fuente, el compilador y los flags ⇒ el artefacto cacheado es byte-idéntico
+al recién compilado; el manual garantiza DETERMINISMO, no una aceleración
+medible del ≥50%). Re-anclada desde la cita histórica "Manual 1 §6" (§6 = hoja
+de ruta técnica), que no declara la caché.
+cumple Manual 1 §7.2 (ME r193_fixtures_infra): aserción alineada al manual —
+determinismo de dos compilaciones del mismo contenido con coste acotado;
+la aserción de ratio aleatoria ("segunda >=50% más rápida" solo si la 2da fue
+más rápida) era una lotería en un runner cargado y no era requisito del manual.
 """
 import hashlib
 import os
@@ -39,7 +48,7 @@ class TestCacheHit:
     """Manual 1 §6: La segunda compilación del mismo archivo debe ser más rápida (HIT)."""
 
     def test_segunda_compilacion_mas_rapida(self):
-        """Segunda compilación >=50% más rápida con caché (Manual 1 §6)."""
+        """Segunda compilación determinista (Manual 1 §4 + Manual 9 §2.5)."""
         fuente = '''#lang: es
 funcion suma(a: entero, b: entero) -> entero:
     retornar a + b
@@ -54,11 +63,13 @@ funcion principal() -> entero:
         cod2 = _compilar(fuente)
         duracion2 = time.time() - inicio2
 
+        # La propiedad que el manual declara: determinismo byte-idéntico.
         assert cod1 == cod2, "Código generado debe ser idéntico (determinismo)"
-        if duracion2 < duracion1:
-            ratio = duracion2 / duracion1 if duracion1 > 0 else 1.0
-            assert ratio <= 0.5, \
-                f"Caché HIT debería ser >=50% más rápida: {ratio:.2f}x"
+        # Guardia de coste con margen fijo (no ratio): segunda pasada no puede
+        # degradar dramáticamente respecto de la primera (regresión de
+        # rendimiento, no apuesta de aceleración).
+        assert duracion2 < duracion1 * 3 + 0.5, \
+            f"Segunda pasada degradada sin causa: {duracion1:.3f}s -> {duracion2:.3f}s"
 
 
 # ---------------------------------------------------------------------------

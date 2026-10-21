@@ -193,7 +193,16 @@ def _compilar_objeto_cacheado(compiler: str, opt_flags: str, base_flags: str,
     os.makedirs(dir_obj, exist_ok=True)
     ruta_obj = os.path.join(dir_obj, nombre + ".o")
     sidecar = ruta_obj + ".sha"
-    key = f"{_cache_file_hash(src)}|{compiler}|{opt_flags}|{base_flags}|{extra_flags}"
+    # cumple Manual 1 §4 (ME r193_fixtures_infra, H-R193-2): la key normaliza
+    # espacios múltiplios de base_flags — los dos caminos del compilador
+    # conforman base_flags con vacíos intermedios distintos (el enlace normal
+    # intercala `no_std_flags`/`env_gcc_flags` vacíos y deja DOBLE espacio;
+    # _link_object deja UNO), y la comparación cruda del sidecar no matcheaba:
+    # los 46 .o del runtime se recompilaban en CADA pasada (~90 s) aunque el
+    # código de usuario diera [CACHE HIT]. Con la key canónizada, el HIT del
+    # runtime es real en la segunda compilación.
+    base_norm = ' '.join((base_flags or '').split())
+    key = f"{_cache_file_hash(src)}|{compiler}|{opt_flags}|{base_norm}|{extra_flags}"
     if os.path.exists(ruta_obj) and os.path.exists(sidecar):
         try:
             with open(sidecar, 'r') as f:
@@ -1158,11 +1167,17 @@ def _link_object(obj_path: str, output_exe: str, opt_flags: str = "-O2") -> int:
     platform_flags = "-fno-ident -Wl,--gc-sections"
     thread_flag = "-lpthread"
     if sys.platform == "win32":
-        platform_flags += " -Wl,--no-insert-timestamp -Wl,--stack,8388608"
+        platform_flags += " -static -Wl,--no-insert-timestamp -Wl,--stack,8388608"
     else:
         platform_flags += " -Wl,--stack,8388608"
     linker_net = "-lws2_32" if sys.platform == "win32" else ""
-    base_flags = f'{platform_flags} -I"{SYNAPSE_BIN}"'.strip()
+    # cumple Manual 1 §4 (ME r193_fixtures_infra): base_flags de PARIDAD con el
+    # camino normal (incluye `-static` win32 y SYNAPSE_GCC_FLAGS; el no_std no
+    # pasa por este camino: el HIT cacheado solo aplica a programas que enlazan
+    # el runtime). Sin `-static`/env, la key de caché de los .o del runtime
+    # difiería entre pasadas y el HIT idiota recompilaba 46 .o (~90 s).
+    env_gcc_flags = os.environ.get('SYNAPSE_GCC_FLAGS', '')
+    base_flags = f'{platform_flags} {env_gcc_flags} -I"{SYNAPSE_BIN}"'.strip()
 
     # ME-R2: runtime modular compilado desde fuente (Manual 3 §3.1)
     try:
@@ -1170,7 +1185,41 @@ def _link_object(obj_path: str, output_exe: str, opt_flags: str = "-O2") -> int:
     except RuntimeError as e:
         print(f"[ME-R2][ERROR] {e}", file=sys.stderr)
         return 1
+    # cumple Manual 1 §4 (ME r193_fixtures_infra: paridad del enlace cacheado
+    # con el enlace no cacheado — la lista de objetos debe incluir los mismos
+    # módulos opcionales en ambos caminos; en el enlace normal de línea ~892 se
+    # añaden quantum/federated/IA y aquí se omitían, de modo que el HIT del
+    # enlace incremental fallaba con `undefined reference to qc_aplicar_pauli_z`
+    # (quantum_err_corr.o usa símbolos de quantum_runtime.o) en programas que
+    # arrastran esos módulos vía std).
+    # cumple Manual 1 §7.2 (ME r193_fixtures_infra): el cambio debe superar
+    # la suite completa de pruebas — el oráculo r193 ejecuta el grupo A del
+    # barrido (test_cache_audit T1/T2 verifican el HIT real de esta ruta).
+    for qo in _compilar_quantum_objetos(compiler, base_flags, opt_flags):
+        rt_objs += f' "{qo}"'
+    # cumple Manual 5 6.2: módulo federated para std.federated
+    for fed_src in _RT_FEDERATED_FUENTES:
+        fed_nombre = os.path.splitext(os.path.basename(fed_src))[0]
+        o = _compilar_objeto_cacheado(compiler, opt_flags, base_flags, fed_src, fed_nombre)
+        if o is None:
+            print(f"[ME-R8][!] Modulo federated {fed_src} no compilo; se omite", file=sys.stderr)
+            continue
+        rt_objs += f' "{o}"'
+    # ME-R8 (D5): modulos de IA nativa (fine_tuning/distillation/quantization)
+    for ia_src in _RT_IA_FUENTES:
+        ia_nombre = os.path.splitext(os.path.basename(ia_src))[0]
+        o = _compilar_objeto_cacheado(compiler, opt_flags, base_flags, ia_src, ia_nombre)
+        if o is None:
+            print(f"[ME-R8][!] Modulo IA {ia_src} no compilo; se omite", file=sys.stderr)
+            continue
+        rt_objs += f' "{o}"'
 
-    gcc_cmd = f'{compiler} {base_flags} "{obj_path}" {rt_objs} -o "{output_exe}" {thread_flag} -lm {linker_net}'.strip()
+    # cumple Manual 1 §4 (ME r193_fixtures_infra): PARIDAD COMPLETA con el
+    # enlace normal — el camino normal pasa `-Wl,--allow-multiple-definition`
+    # (conflicto tr_* documentado ME-R2) y por tanto tolera que quantum_err_corr.o
+    # figure dos veces (_RT_FUENTES + _RT_QUANTUM_FUENTES); sin el flag, el
+    # [CACHE LINK] moria con `multiple definition of _syn_qec_verificar_estado_logico`.
+    link_align = "-Wl,--allow-multiple-definition"
+    gcc_cmd = f'{compiler} {base_flags} "{obj_path}" {rt_objs} -o "{output_exe}" {thread_flag} -lm {linker_net} {link_align}'.strip()
     print(f"[CACHE LINK] {gcc_cmd}")
     return subprocess.run(gcc_cmd, shell=True).returncode
