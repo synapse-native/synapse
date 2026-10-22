@@ -10,7 +10,7 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
 
 ## Cola de MEs (prioridad por radio/costo, actualizable)
 
-- **R194/ME debt_gobernanza (CERRADA en vuelo, 2026-10-22, commit pendiente de hash):**
+- **R194/ME debt_gobernanza (CERRADA 2026-10-22, commit aade9dc):**
   mandato explícito del Arquitecto ("eligencia el agujero de seguridad; catálogo real,
   nada de placeholder; completa las citas; no se deja deuda") → 6 frentes en un ME:
   (R1) H-CFG-2 CERRADO — sandbox `_syn_ruta_validar` (runtime/core/sistema.c,

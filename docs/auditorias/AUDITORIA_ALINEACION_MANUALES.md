@@ -564,3 +564,28 @@ oculta sus checks fallidos en un contador global compartido (cobrar la cuenta
 por test); las keys de caché que comparan strings deben CANONIZAR espacios;
 la réplica de comando en dos caminos exige PARIDAD COMPLETA (módulos, flags de
 ld y base_flags). Reporte: docs/reportes/R193.md | a78c57a | Manual 1 §7.2 §4 §3.1, Manual 9 §2.5 | 0 brechas |
+### R194 — ME r194_deuda_gobernanza (2026-10-22, aade9dc)
+Deuda de gobernanza a CERO bajo mandato expreso del Arquitecto ("catálogo real,
+nada de placeholder; completa las citas; no se deja deuda"). (R1) H-CFG-2
+CERRADO: sandbox `_syn_ruta_validar` (composición `_syn_normalizar_ruta` +
+`_syn_ruta_en_directorio`, contención del cwd) enraizado en AMBOS emisores
+S1+nativo — builtin leer_archivo/existe_archivo sin import pasa por el
+validador antes del runtime; externs con firma int64_t alineada a
+std/sistema.syn. Oráculo NUEVO test_oraculos_r194_sandbox 4/4 (E2E release:
+dentro OK, evasión RECHAZADA sin crash, paridad). (R2) H-R144-3 RESUELTA/
+VERIFICADA: 5/5 SHA256 de modelos.toml == X-Linked-ETag LFS de HuggingFace
+(captura HEAD 2026-10-22 comiteada; oráculo determinista r194_catalogo_verificar
+rc=0, sin tests de red). (R3) 3 SIN_CITA de tests/opensyn cerrados — docstrings
+de cita OBL-M32-04..06 → Manual 32 §3 §5 §6. (R4) H-CONTROL-3 saneado: --solo-mto
+rc=0 con 0 AVISO (52 entradas OBL). (R6) D-R194-1 RATIFICADA: lista blanca
+cerrada FAMILIA_ESTRUCTURAL_RATIFICADA en auditar_calidad_tests.py; puerta
+--estricto-sniff activa rc=0; RESUMEN reporta el conteo exento. (R5) cierre
+"CERRADO (R183e)" presente y corroborado en test_ai_explain.py. Expediente 0
+brechas (sello 060024ceeb5779fb); contrastar RC=0; verificar_alineacion SIN
+BRECHAS; unit 514 ✓; lectura previa 9 archivos vinculada. Lecciones: los
+oráculos del plan MTS deben ser RUTAS ejecutables con marca PASS (la prosa
+descarrila el gate); el separador de citas del registro de lectura es ";";
+contrastar exige en verificacion_ME una línea por requisito con la sección
+EXACTA del plan (M9 §5.3, no la del expediente).
+Reporte: docs/reportes/R194.md | aade9dc | Manual 7 §2.3 §7.3, Manual 9 §5.3
+§5.6, Manual 32 §3 §5 §6, Manual 3 §3, Manual 1 §3.1 | 0 brechas |
