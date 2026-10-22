@@ -436,13 +436,18 @@ Próximo ME:        POST-FASE 33 — SIN deudas ejecutables de la certificación
                    Arquitecto). Leer ROADMAP con el Arquitecto para la siguiente
                    fase (termina en §33.5).
                    FASE 33 COMPLETA (33.1 e780627, 33.2 d0386f3, 33.4a 5ff9235, 33.4b dfdb1bd,
-                   33.5 55a9950) — leer ROADMAP para la siguiente fase. Ratificaciones
-                   pendientes del Arquitecto: D-R163-1 (para k en mapa: k=claves, el par
-                   ordenado del ROADMAP contradice M3 §3 L133), H-CFG-2 (sandbox para
-                   lecturas builtin), H-R144-3 (cierre modelos.toml), 3 SIN_CITA heredados
-                   de Fase 32 en tests/opensyn (ver lección R160); 33.3 pendiente de
-                   ratificación (desviaciones R149 §5); MEs futuros
-                   del reporte FASE_33_CERTIFICACION.
+                   33.5 55a9950) — leer ROADMAP para la siguiente fase.                   ordenado del ROADMAP contradice M3 §3 L133) — RATIFICADA 2026-10-22
+                   (el Arquitecto: "todo se ajusta a los manuales, incluyendo el
+                   roadmap" → k=claves, forma implementada dfdb1bd, es la correcta),
+                   H-CFG-2 (sandbox para lecturas builtin) — CERRADO en ME
+                   r194_deuda_gobernanza (sandbox enraizado en emisores S1+nativo,
+                   oráculo 4/4), H-R144-3 (cierre modelos.toml) — CERRADA 2026-10-22
+                   (evidencia ETag 5/5), 3 SIN_CITA heredados de Fase 32 en
+                   tests/opensyn — CERRADOS (OBL-M7-04/05/06 en MTO, auditor
+                   rc=0); 33.3 (desviaciones R149 §5) — CERRADO (única desviación
+                   vigente test_ai_explain, ya CERRADO en R183e); decisión NUEVA
+                   D-R194-1 ratificada por el Arquitecto (allowlist suites-guarda
+                   estructurales, 24 archivos, lista cerrada).
 Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc del
                    entorno de integración (rutas -I, embedded_libs.h, orden de
                    objetos, targets on-demand para los 21 RED TDD; ~27 fallos
@@ -473,8 +478,11 @@ Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc d
                    CERRADAS esta sesión:
                    test_control_flow_pipeline (e0cbb35),
                    test_validation_loop_syn_exists (63c1731), TestRequisitosManuales
-                   (b1ac1c2), test_permisos_cita_r6 (72d77f3). Ratificar D-R163-1,
-                   H-CFG-2/H-R144-3/SIN_CITA Fase 32; 33.3 pendiente (desviaciones R149 §5)
+                   (b1ac1c2), test_permisos_cita_r6 (72d77f3). RATIFICACIONES/CIERRES
+                   2026-10-22 (ME r194): D-R163-1 RATIFICADA (k=claves), H-CFG-2
+                   CERRADO (sandbox emisores), H-R144-3 CERRADA (ETag 5/5),
+                   3 SIN_CITA Fase 32 CERRADOS (OBL-M7-04/05/06), 33.3 CERRADO,
+                   D-R194-1 (allowlist SNIFF_AMP) RATIFICADA
 Últimos commits:    3a0a0f7 (docs: post-commit R175 — reporte, bitácora y memoria; verificacion_ME sellada)
                     90eb18c (fix(syquex): retirar stubs de principal obsoletos — paridad .syn/.syq restaurada, 4 warps CERRADOS)
                     1e1584b (fix(syquex): 3 bugs del camino .syq — for-en SentenciaPara canónico, iterable en semántico, cast len)
@@ -629,7 +637,13 @@ Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc d
 - **H-R140 (REGISTRADO, e4d09c0 — cliente HTTP sin plazo):** `_ollama_leer_respuesta` (runtime/core/ollama.c) usaba `recv()` bloqueante sin timeout ni plazo absoluto: si Ollama aceptaba la conexión y se colgaba (llama-server caído a mitad de generación, doble instancia, carga lenta del modelo), opensyn quedaba congelado en "Tu>" en silencio indefinido. Fix: `SO_RCVTIMEO` 2 s + plazo absoluto de 300 s por request (carga en frío + generación) + corte temprano cuando `Content-Length` queda satisfecho; código de resultado que distingue error de red (-1), plazo agotado (-2) y corte a mitad de cuerpo (-3), traducido por `_syn_ollama_consultar` a un mensaje claro. Lección: todo cliente de red del runtime debe tener plazo absoluto + timeout de grano fino; el chat imprime "[*] Consultando a <modelo>…" antes de cada llamada bloqueante para que la carga del modelo sea visible.
 - **ME-agente-herramientas (CALIDAD, pendiente opcional):** con qwen-coder el modelo a veces responde directamente (con el contexto ya inyectado) en lugar de pedir [TOOL] — aceptable porque la inyección estática cubre la mayoría de preguntas del repo; refuerzo con few-shot de [TOOL] en el System Prompt queda como mejora opcional de prompts.
 - **H-R144-2 (REGISTRADO, db4ccf9):** VRAM/RAM/CPU detectan -1 en contexto elevado del instalador → modo silencioso elige siempre el 1B (conservador); ME futuro: logging de detección + fallback.
-- **H-R144-3 (REGISTRADO, db4ccf9):** `opensyn/modelos.toml` distribuido contiene URLs/hashes placeholder (`abc123...`) — catálogo runtime con datos falsos; regenerar con datos reales (ME futuro; no afecta al instalador).
+- **H-R144-3 (RESUELTA/VERIFICADA 2026-10-22, ME r194_deuda_gobernanza):** el catálogo
+  `opensyn/modelos.toml` fue limpiado ya en el árbol (URLs/SHA256 reales, 0 placeholders).
+  Cierre con EVIDENCIA fresca: los 5 SHA256 del toml verificados HOY contra el
+  `X-Linked-ETag` (LFS oid real) de HuggingFace vía curl -sIL → 5/5 coincidencia byte a
+  byte (04cebb6f…118, c3866cb9…6d17, f4222b2c…dd857, b889f38e…243ce, 26e7ece4…cecee).
+  Ratificado por el Arquitecto en sesión 2026-10-22 ("el catálogo debe ser real, nada
+  de placeholder").
 - **H-R144-5 (REGISTRADO, db4ccf9):** upgrade silencioso con GGUF existente salta la provisión de llama-server (bloque `if not UseExisting`); caso borde tras crash sin modelo ni server (ME futuro).
 - **H-R144-4 (DOCUMENTADO):** MSYS Git Bash manglea `/FLAG` de instaladores silenciosos (usar .cmd literal o MSYS2_ARG_CONV_EXCL); el diálogo de idioma aparece en VERYSILENT sin /LANG (Inno, 2 [Languages]).
 - **H-R144-6 (RESUELTO, sesión 2026-09-08):** prompt enviado al modelo LLM contiene bytes basura (16 bytes de prefijo no ASCII) que corrompen el system prompt, causando que el modelo no responda correctamente. Causa raíz: `visitar_asignacion` en `compilador/generator/emit_declarations.py` generaba `_syn_texto_liberar(var)` ANTES de evaluar la expresión RHS — use-after-free para `sys = concat(sys, ctx)` que liberaba `sys` antes de que `concat` leyera su valor. Fix: evaluar en variable temporal única (`_syn_tmp_{var}_{counter}`) ANTES de liberar. Elimina trabajo previo de skip de 16 bytes en `ollama.c` (ya no necesario). Lección: RAII con reasignación requiere evaluar RHS primero; el compilador debe generar código defensivo incluso cuando el usuario viola semántica de borrowing.
@@ -698,9 +712,9 @@ Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc d
   tests (no de tests, regla 5 intacta): `tdd:` añadido a markers; el oráculo de
   colección limpia detectó además `e2e` sin registrar (H-TDD-1) → registrados ambos,
   0 PytestUnknownMarkWarning en la suite (oráculo permanente OBL-TDD-R1/R2).
-- **H-R144-3 (PROPUESTA DE CIERRE):** `opensyn/modelos.toml` actual tiene URLs
-  HuggingFace LFS reales + SHA-256 reales, 0 placeholders (grep 2026-09-25) —
-  ratificar cierre el Arquitecto.
+- **H-R144-3 (CERRADA, ratificada por el Arquitecto 2026-10-22, ME r194):** `opensyn/modelos.toml` tiene URLs
+  HuggingFace LFS reales + SHA-256 reales, 0 placeholders; los 5 SHA256 re-verificados 2026-10-22 contra
+  X-Linked-ETag (5/5 coinciden). Cierre ejecutado (ver fila H-R144-3 RESUELTA arriba).
 - Verificado sano: pytest tests/opensyn 122 passed/1 skipped; oráculos
   historial/autocomplete/banner/ia_gguf GREEN (agente RED por entorno, sin backend IA);
   LSP responde initialize JSON-RPC; 13 comandos TUI presentes; sandbox M7 §1.1 activo.

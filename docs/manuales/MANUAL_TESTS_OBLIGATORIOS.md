@@ -53,6 +53,9 @@ debe dejar en verde. Toda prueba (`test_*.py`) debe mapear a una entrada `OBL-*`
 - OBL-M7-01 | Manual 7 §2.3 | Inyección de contexto estático (reglas Syquex) en prompt | integración | GREEN
 - OBL-M7-02 | Manual 7 §4.2 | Bucle de validación 3 intentos | integración | GREEN
 - OBL-M7-03 | Manual 6 §6.2 | Transpilación Python→Syquex: el .syq generado COMPILA | integración | GREEN
+- OBL-M7-04 | Manual 7 §7.3 / Manual 2 §12 | Memoria persistente cifrada (PatronAprendido/MemoriaNegativa/EntradaCifrada; contratos requiere/garantiza) | TDD | GREEN ← Etapa 32.3
+- OBL-M7-05 | Manual 7 §2 / Manual 2 §12 | Pipeline multi-agente (fases deterministas; contratos requiere/garantiza) | TDD | GREEN ← Etapa 32.4
+- OBL-M7-06 | Manual 7 §4.2 / Manual 2 §12 | Verificación AOT con auto-refutación (CasosLimite ejecutados en real; contratos requiere/garantiza) | TDD | GREEN ← Etapa 32.5
 
 ## M8 — HERRAMIENTAS DE DESARROLLO (F27, ACTIVO)
 - OBL-M8-01 | Manual 8 §1.2 | LSP initialize/initialized/shutdown | integración | GREEN

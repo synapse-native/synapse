@@ -30,6 +30,41 @@ import subprocess
 import sys
 from pathlib import Path
 
+# D-R194-1 (ratificación regla 5, Arquitecto, sesión 2026-10-22): las aserciones
+# ESTRUCTURALES (assert de literal sobre fuente/artefacto sin ejecución) en las
+# suites ya commiteadas de esta lista cerrada son VÁLIDAS como suites-guarda
+# estructurales (precedente: 52d199f "consolidación estructural según M1 §2";
+# familia TestCitasCumpleManual, lección R172). La puerta --estricto-sniff fata
+# SNIFF_AMP SOLO para archivos NUEVOS/MODIFICADOS fuera de esta lista. Lista
+# CERRADA: añadir archivos requiere nueva decisión del Arquitecto. El RESUMEN
+# nunca oculta el conteo exento.
+FAMILIA_ESTRUCTURAL_RATIFICADA = {
+    "auditoria/test_oraculos_r153.py",
+    "axon/test_workspace.py",
+    "integration/test_axon_lock.py",
+    "integration/test_coverage.py",
+    "integration/test_reports.py",
+    "integration/test_slsa_sbom_security.py",
+    "nucleo/test_fmt.py",
+    "nucleo/test_lint.py",
+    "opensyn/test_architect_det.py",
+    "opensyn/test_explorer_det.py",
+    "opensyn/test_grafo.py",
+    "security/test_slsa_sbom.py",
+    "syquex/test_pruebas.py",
+    "test_auditoria_alineacion.py",
+    "test_opensyn_bindings.py",
+    "test_opensyn_transpiler.py",
+    "test_string_escape.py",
+    "unit/test_lexer.py",
+    "unit/test_lexer_cobertura.py",
+    "unit/test_llm_bridge.py",
+    "unit/test_lsp.py",
+    "unit/test_lsp_f12.py",
+    "unit/test_parser.py",
+    "unit/test_rag_file_finder.py",
+}
+
 MAN_PAT = re.compile(r"Manual\s+\d+")
 OBL_PAT = re.compile(r"OBL-M[A-Z0-9]+-\d+")
 # assert ... in <artefacto generado>  (presencia de texto, no comportamiento)
@@ -63,8 +98,20 @@ EXEC_PAT = re.compile(
 )
 
 
+def _rel_tests(path):
+    try:
+        rel = os.path.relpath(path, RAIZ / "tests").replace("\\", "/")
+    except ValueError:
+        return os.path.abspath(path).replace("\\", "/")
+    return rel
+
+
 def scan_file(path):
     issues = []
+    # D-R194-1: los archivos de la lista cerrada son suites-guarda estructurales
+    # RATIFICADAS: sus aserciones de literal se reportan aparte (RATIFICADO),
+    # nunca como SNIFF_AMP fatalizable.
+    ratified = _rel_tests(path) in FAMILIA_ESTRUCTURAL_RATIFICADA
     try:
         src = open(path, encoding="utf-8", errors="ignore").read()
     except Exception:
@@ -85,9 +132,14 @@ def scan_file(path):
         if SUBSTR_PAT.search(blk) and not ejecuta:
             issues.append(("SNIFF", path, "assert substring en artefacto sin ejecutar/compilar"))
         elif SUBSTR_AMP_PAT.search(blk) and not ejecuta:
-            issues.append(("SNIFF_AMP", path,
-                           "assert de literal sin compilar/ejecutar (patrón ampliado; "
-                           "reestructurar como oráculo conductual o ratificar Arquitecto)"))
+            if ratified:
+                # D-R194-1: suite-guarda estructural ratificada — visible, no fatal.
+                issues.append(("RATIFICADO", path, "aserción estructural exenta por "
+                               "D-R194-1 (lista cerrada suites-guarda)"))
+            else:
+                issues.append(("SNIFF_AMP", path,
+                               "assert de literal sin compilar/ejecutar (patrón ampliado; "
+                               "reestructurar como oráculo conductual o ratificar Arquitecto)"))
     return issues
 
 
@@ -264,11 +316,17 @@ def main():
 
     sin_cita = [p for p in problems if p[0] == "SIN_CITA"]
     sniff = [p for p in problems if p[0] == "SNIFF"]
+    ratificados = [p for p in problems if p[0] == "RATIFICADO"]
     sin_obl = [p for p in problems if p[0] == "SIN_OBL"]
     amp = [p for p in problems if p[0] == "SNIFF_AMP"]
-    if amp and args.estricto_sniff:
-        problems = [p for p in problems if p[0] != "SNIFF_AMP"]  # ya fatales
-
+    # D-R194-1 (regla 5, ratificado 2026-10-22):
+    #   1. RATIFICADO es visible en el listado y contado aparte, NUNCA fata rc.
+    #   2. SNIFF_AMP sigue fatándose con --estricto-sniff para TODOS los
+    #      archivos fuera de la lista cerrada; --estricto-sniff NO convierte
+    #      RATIFICADO en fatal (listas exentas explícitas, nada engullido).
+    if len(amp) and args.estricto_sniff:
+        sys.exit("FATAL (estricto-sniff): aserciones estructurales NUEVAS fuera "
+                 "de D-R194-1: " + ", ".join(p[1] for p in amp[:10]))
     for kind, path, msg in problems:
         try:
             rel = os.path.relpath(path, args.root)
@@ -277,10 +335,11 @@ def main():
         print(f"[{kind}] {rel}: {msg}")
     print(f"\nRESUMEN: {len(sin_cita)} SIN_CITA, {len(sniff)} SNIFF, "
           f"{len(sin_obl)} SIN_OBL{' (fatales en modo incremental)' if sin_obl else ''}, "
-          f"{len(amp)} SNIFF_AMP{' (FATALES con --estricto-sniff)' if amp else ''}")
+          f"{len(amp)} SNIFF_AMP{' (FATALES con --estricto-sniff)' if amp else ''}, "
+          f"{len(ratificados)} RATIFICADO (exentos D-R194-1, {len(FAMILIA_ESTRUCTURAL_RATIFICADA)} archivos de la lista)")
     print(f"[MTO] {mto_msg}")
 
-    if problems or not mto_ok:
+    if sin_cita or sniff or sin_obl or amp or not mto_ok:
         sys.exit(1)
     print("OK: sin problemas de calidad de test")
     sys.exit(0)

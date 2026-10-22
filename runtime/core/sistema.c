@@ -153,6 +153,52 @@ int _syn_ruta_en_directorio(CadenaSegura ruta, CadenaSegura dir) {
     return nx == '/' || nx == '\\';
 }
 
+// cumple Manual 7 §7.3 (H-CFG-2, ME r194_deuda_gobernanza): validador del
+// sandbox para las builtins de LECTURA (leer_archivo/existe_archivo llamadas
+// SIN `importar std.sistema` — el emisor enraiza la llamada aquí antes de
+// tocar el runtime de io.c/modelo.c). Composición de los primitivos vigentes
+// (H-EOF-3a/b, una sola taxonomía: _syn_normalizar_ruta + _syn_ruta_en_directorio):
+// resuelve la relativa contra el cwd normalizado (igual que std.sistema
+// _validar_ruta_segura — Manual 7 §2.1), normaliza, y EXIGE contención del cwd
+// (borde de componente). Evasión del cwd → CadenaSegura vacía (""), que los
+// consumidores tratan como lectura/exitencia fallida; los guards de
+// _syn_leer_archivo (io.c: longitud<=0) y _syn_existe_archivo (modelo.c: fopen
+// falla con "") la convierten en ''/falso SIN abrir NADA.
+// Contratos (Manual 2 §12, en C la spec es el comentario+primitivos):
+//   requiere: ruta.usuario válida (len>0) — el emisor solo llama con texto
+//   garantiza: devuelve ruta NORMALIZADA dentro del cwd, ó {0, ""}
+CadenaSegura _syn_ruta_validar(CadenaSegura ruta) {
+    if (ruta.datos == NULL || ruta.longitud <= 0) return (CadenaSegura){0, ""};
+    CadenaSegura cwd_raw = _syn_obtener_cwd();
+    if (cwd_raw.datos == NULL || cwd_raw.longitud <= 0) return (CadenaSegura){0, ""};
+    CadenaSegura cwd = _syn_normalizar_ruta(cwd_raw);
+    if (cwd.datos == NULL || cwd.longitud <= 0) return (CadenaSegura){0, ""};
+    // absoluta? (C:\, \\UNC, /posix) — misma regla que std/sistema.syn
+    // (subcadena 1,2 == "\" ó 0,1 == "/" ó 0,2 == "\\\\").
+    char c0 = ruta.datos[0];
+    int es_absoluta = c0 == '/' || c0 == '\\' ||
+                      (ruta.longitud >= 2 && c0 != '\0' && ruta.datos[1] == ':');
+    CadenaSegura absoluta = ruta;
+    if (!es_absoluta) {
+        char sep = '/';
+#ifdef _WIN32
+        sep = '\\';
+#endif
+        int tl = cwd.longitud + 1 + ruta.longitud;
+        char* buf = (char*)pool_alloc((size_t)(tl + 1));
+        if (!buf) return (CadenaSegura){0, ""};
+        memcpy(buf, cwd.datos, (size_t)cwd.longitud);
+        buf[cwd.longitud] = sep;
+        memcpy(buf + cwd.longitud + 1, ruta.datos, (size_t)ruta.longitud);
+        buf[tl] = '\0';
+        absoluta = (CadenaSegura){ .longitud = tl, .datos = buf };
+    }
+    CadenaSegura norm = _syn_normalizar_ruta(absoluta);
+    if (norm.datos == NULL || norm.longitud <= 0) return (CadenaSegura){0, ""};
+    if (!_syn_ruta_en_directorio(norm, cwd)) return (CadenaSegura){0, ""};
+    return norm;
+}
+
 // ============================================================
 // HERRAMIENTAS DEL AGENTE OPENSYN (Manual 7 §8 / §2.3)
 // cumple Manual 5 §1: estado mutable compartido prohibido — estas

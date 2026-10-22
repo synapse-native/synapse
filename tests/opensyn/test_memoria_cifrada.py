@@ -2,6 +2,10 @@
 TDD tests para opensyn/memoria_persistente_cifrada.syn
 Fase 32.3: Memoria Persistente Cifrada
 
+cumple Manual 7 §7.3 (privacidad/seguridad de la memoria del agente) y
+Manual 2 §12 (contratos requiere/garantiza en toda función pública).
+OBL-M7-04.
+
 Estrategia: verificar estructuras, funciones y contratos
 sin depender de SQLite cifrado real (stub de bajo nivel).
 """

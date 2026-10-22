@@ -10,6 +10,36 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
 
 ## Cola de MEs (prioridad por radio/costo, actualizable)
 
+- **R194/ME debt_gobernanza (CERRADA en vuelo, 2026-10-22, commit pendiente de hash):**
+  mandato explícito del Arquitecto ("eligencia el agujero de seguridad; catálogo real,
+  nada de placeholder; completa las citas; no se deja deuda") → 6 frentes en un ME:
+  (R1) H-CFG-2 CERRADO — sandbox `_syn_ruta_validar` (runtime/core/sistema.c,
+  composición `_syn_normalizar_ruta`+`_syn_ruta_en_directorio` H-EOF-3a/b,
+  contención del cwd) enraizado en AMBOS emisores: builtin `leer_archivo`/
+  `existe_archivo` SIN import pasan por el validador antes del runtime
+  (emit_expressions.py + orquestador.syn enraizado al sandbox, separador
+  `_syn_leer_archivo(_syn_ruta_validar(arg))`); externs añadidos a ambos
+  preámbulos con firma `int64_t` alineada a std/sistema.syn (evita conflicting
+  types en TU compartidos — hallazgo del bootstrap); oráculo NUEVO
+  tests/auditoria/test_oraculos_r194_sandbox.py 4/4 (E2E pipeline real:
+  lectura dentro OK, evasión fuera RECHAZADA sin crash, paridad nativa).
+  (R2) H-R144-3 CERRADA con evidencia: 5/5 SHA256 de modelos.toml verificadas
+  2026-10-22 contra X-Linked-ETag (LFS) de HuggingFace.
+  (R3) MTO saneado de citas fantasma y GREEN sin citador; 3 SIN_CITA heredados
+  de Fase 32 CERRADOS (OBL-M7-04/05/06 añadidas, auditar rc=0).
+  (R4) Full-scan auditor: 0 SIN_CITA, 0 SNIFF, 0 SIN_OBL.
+  (R5) D-R163-1 RATIFICADA (Arquitecto: "todo se ajusta a los manuales, incluyendo
+  el roadmap" → k=claves vigente dfdb1bd) y 33.3 (R149 §5) CERRADO — única
+  desviación vigente test_ai_explain ya cerrada en R183e.
+  (R6) D-R194-1 RATIFICADA por el Arquitecto (sesión 2026-10-22): las suites-guarda
+  estructurales ya commiteadas (24 archivos, 113 aserciones) son VÁLIDAS; lista
+  cerrada FAMILIA_ESTRUCTURAL_RATIFICADA en auditar_calidad_tests.py (D-R194-1);
+  los archivos NUEVOS/MODIFICADOS fuera de ella faten con --estricto-sniff;
+  el RESUMEN muestra el conteo exento (nunca oculto).
+  Bootstrap S1/S2/S3 con el fix sellado (S2==S3 verificado por build.py).
+  Gestión de deuda restante: el barrido integración r191 quedó en CERO
+  (grupos A+B+C cerrados en r193/r192); deuda nueva que aparezca en el
+  barrido del día se tria con la misma cola.
 - **R192/ME deuda_barrido_r191 (CERRADA 2026-10-20, commit 4e97f3f):** 19 fallos del barrido
   completo de integración (1600 tests, post-commit d8f03ac, PYTEST_RC\=1,
   2h39m), TRIADOS con worktree dual (HEAD 621051a vs working tree): TODOS

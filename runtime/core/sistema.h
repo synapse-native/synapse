@@ -14,6 +14,9 @@ CadenaSegura concat(CadenaSegura a, CadenaSegura b);
 CadenaSegura _syn_normalizar_ruta(CadenaSegura ruta);
 CadenaSegura _syn_obtener_cwd(void);
 int _syn_ruta_en_directorio(CadenaSegura ruta, CadenaSegura dir);
+// cumple Manual 7 §7.3 (H-CFG-2, r194): validador del sandbox de lecturas
+// (relativa→cwd, normaliza, exige contención; evasión → CadenaSegura vacía).
+CadenaSegura _syn_ruta_validar(CadenaSegura ruta);
 // cumple Manual 7 2.3 (R2): herramientas de lectura local del agente —
 // listar directorio y capturar salida de comandos de solo-lectura.
 CadenaSegura _syn_listar_directorio(CadenaSegura ruta);

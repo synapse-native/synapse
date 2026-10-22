@@ -871,10 +871,18 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         # cumple Manual 2 §4.3 (H-R153-2): leer_archivo/existe_archivo builtins —
         # delegan en el runtime real (runtime/core/io.c _syn_leer_archivo y
         # runtime/core/modelo.c _syn_existe_archivo).
+        # cumple Manual 7 §7.3 (H-CFG-2, r194_deuda_gobernanza): la builtin SIN
+        # import de std.sistema queda enraizada al sandbox — la ruta pasa por
+        # _syn_ruta_validar (runtime/core/sistema.c: relativa→cwd, normaliza,
+        # contención del cwd) y una evasión del cwd retorna "": los guards de
+        # _syn_leer_archivo (len<=0) y _syn_existe_archivo (fopen("")) la
+        # convierten en texto vacío / falso SIN abrir nada. Con `importar
+        # std.sistema` el wrapper shadower ya valida (OBL-CFG-R1) y esta rama
+        # no llega a ejecutarse contra rutas sin validar.
         if nombre == 'leer_archivo':
-            return f"_syn_leer_archivo({args[0]})"
+            return f"_syn_leer_archivo(_syn_ruta_validar({args[0]}))"
         if nombre == 'existe_archivo':
-            return f"_syn_existe_archivo({args[0]})"
+            return f"_syn_existe_archivo(_syn_ruta_validar({args[0]}))"
 
         if nombre == 'subcadena':
             # cumple Manual 2 §4.1 (r153): delega en el runtime real

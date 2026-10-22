@@ -820,6 +820,16 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("extern void* _syn_mapa_valores(void* m);")
     # cumple Manual 2 §4.3 (H-R153-2): leer_archivo delega en el runtime real.
     ctx.write_line("extern CadenaSegura _syn_leer_archivo(CadenaSegura ruta);")
+    # cumple Manual 2 §4.3 (H-CFG-2, r194_deuda_gobernanza): existe_archivo
+    # builtin — el extern faltaba y el call-site era C no compilable
+    # (implicit declaration); firma `int` idéntica al runtime (modelo.c).
+    # cumple Manual 7 §7.3 (H-CFG-2, r194): prototipo alineado a la convención
+    # del módulo std/sistema.syn (externo entero -> int64_t, M2 §4.1); un
+    # prototipo 'int' choca con él en TU compartidos (gcc: conflicting types).
+    ctx.write_line("extern int64_t _syn_existe_archivo(CadenaSegura ruta);")
+    # cumple Manual 7 §7.3 (H-CFG-2, r194_deuda_gobernanza): validador del
+    # sandbox de lecturas — paridad del extern con orquestador.syn.
+    ctx.write_line("extern CadenaSegura _syn_ruta_validar(CadenaSegura ruta);")
     # cumple Manual 2 §4.1 (r153): subcadena delega en el runtime real (clampeo).
     ctx.write_line("extern CadenaSegura _syn_texto_subcadena(CadenaSegura t, int64_t inicio, int64_t fin);")
     # cumple Manual 2 §4.1 (ME r184_r185_e2e, H-R181-1): duplica un CadenaSegura

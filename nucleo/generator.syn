@@ -999,6 +999,7 @@ funcion _oo_expr_a_c(est: GeneradorCEst, nodo: puntero, buf: puntero, bufsz: ent
         asm("        // r153 (H-R153-15): coleccion via funcion importada (lint_archivo ->")
         asm("        // Lista<Advertencia>) llega como handle void*: longitud delega en el")
         asm("        // runtime, el fallback (.longitud) rompe gcc sobre void*.")
+        asm("        // cumple Manual 6 §3.1: handle entero del lado Synapse = void* lado C.")
         asm("        if (strcmp(_lg_t, \"void*\") == 0) { snprintf(_b, _sz, \"_syn_lista_longitud(%s)\", _lg_arg); return; }")
         asm("        snprintf(_b, _sz, \"(%s).longitud\", _lg_arg);")
         asm("        return;")
@@ -1036,16 +1037,21 @@ funcion _oo_expr_a_c(est: GeneradorCEst, nodo: puntero, buf: puntero, bufsz: ent
         asm("    // existe_archivo delegan en el runtime real (runtime/core/io.c y")
         asm("    // runtime/core/modelo.c); el nombre Synapse viaja verbatim y gcc")
         asm("    // falla con 'implicit declaration' + 'invalid initializer'.")
+        asm("    // cumple Manual 7 §7.3 (H-CFG-2, r194_deuda_gobernanza): la ruta pasa")
+        asm("    // por el validador del sandbox (_syn_ruta_validar, runtime/core/")
+        asm("    // sistema.c) — evasión del cwd → CadenaSegura vacía, los guards de")
+        asm("    // io.c/modelo.c la convierten en ''/falso SIN abrir nada. Paridad")
+        asm("    // S1 emit_expressions.py (mismo enrutado).")
         asm("    if (_lf->nombre.datos && strcmp(_lf->nombre.datos, \"leer_archivo\") == 0 && _lf->argumentos && _lf->argumentos->cabeza) {")
         asm("        char _la1[2048]; _la1[0] = 0;")
         asm("        _oo_expr_a_c(est, _lf->argumentos->cabeza, _la1, 2048);")
-        asm("        snprintf(_b, _sz, \"_syn_leer_archivo(%s)\", _la1);")
+        asm("        snprintf(_b, _sz, \"_syn_leer_archivo(_syn_ruta_validar(%s))\", _la1);")
         asm("        return;")
         asm("    }")
         asm("    if (_lf->nombre.datos && strcmp(_lf->nombre.datos, \"existe_archivo\") == 0 && _lf->argumentos && _lf->argumentos->cabeza) {")
         asm("        char _ea1[2048]; _ea1[0] = 0;")
         asm("        _oo_expr_a_c(est, _lf->argumentos->cabeza, _ea1, 2048);")
-        asm("        snprintf(_b, _sz, \"_syn_existe_archivo(%s)\", _ea1);")
+        asm("        snprintf(_b, _sz, \"_syn_existe_archivo(_syn_ruta_validar(%s))\", _ea1);")
         asm("        return;")
         asm("    }")
         asm("    if (_lf->nombre.datos && (strncmp(_lf->nombre.datos, \"Lista<\", 6) == 0 || strncmp(_lf->nombre.datos, \"Mapa<\", 5) == 0)) {")
@@ -5258,6 +5264,15 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     // cumple Manual 2 §4.3 (r153 R4n): paridad S1 — leer_archivo delega en el
     // runtime real (igual que generator.py L723); lo usan lint.syn/reports.syn.
     gen_emitir_linea(est, "extern CadenaSegura _syn_leer_archivo(CadenaSegura ruta);")
+    // cumple Manual 2 §4.3 (H-CFG-2, r194_deuda_gobernanza): paridad S1 —
+    // extern de existe_archivo (firma `int` idéntica al runtime, modelo.c).
+    // cumple Manual 7 §7.3 (H-CFG-2, r194): prototipo alineado a la convención
+    // de std/sistema.syn (externo entero -> int64_t, M2 §4.1) para evitar el
+    // conflicto de TU compartidos (gcc: conflicting types con el extern 'int').
+    gen_emitir_linea(est, "extern int64_t _syn_existe_archivo(CadenaSegura ruta);")
+    // cumple Manual 7 §7.3 (H-CFG-2, r194_deuda_gobernanza): validador del
+    // sandbox de lecturas — paridad del extern con generator.py (H-CFG-2).
+    gen_emitir_linea(est, "extern CadenaSegura _syn_ruta_validar(CadenaSegura ruta);")
     // cumple Manual 2 §4.3 (r153 R3n): runtime de colecciones — mismos externs
     // que el preludio de compilador/generator.py (S1) para Lista<T>/Mapa<K, V>.
     gen_emitir_linea(est, "extern void* _syn_lista_crear(void);")

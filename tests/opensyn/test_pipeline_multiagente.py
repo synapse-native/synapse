@@ -2,6 +2,9 @@
 TDD tests para opensyn/pipeline_multiagente.syn
 Fase 32.4: Pipeline Multi-Agente Optimizado
 
+cumple Manual 7 §2 (arquitectura de OpenSyn) y Manual 2 §12 (contratos
+requiere/garantiza en toda función pública). OBL-M7-05.
+
 Estrategia: verificar estructuras, funciones y contratos
 sin depender de LLM real (stub de bajo nivel).
 """

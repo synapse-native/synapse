@@ -2,6 +2,9 @@
 TDD tests para opensyn/verificacion_aot.syn
 Fase 32.5: Verificación AOT con Auto-Refutación
 
+cumple Manual 7 §4.2 (flujo de validación de la petición de IA) y
+Manual 2 §12 (contratos requiere/garantiza). OBL-M7-06.
+
 Estrategia: verificar estructuras, funciones y contratos
 sin depender de compilación real (stub de bajo nivel).
 """
