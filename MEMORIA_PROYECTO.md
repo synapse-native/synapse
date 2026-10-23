@@ -482,7 +482,17 @@ Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc d
                    2026-10-22 (ME r194): D-R163-1 RATIFICADA (k=claves), H-CFG-2
                    CERRADO (sandbox emisores), H-R144-3 CERRADA (ETag 5/5),
                    3 SIN_CITA Fase 32 CERRADOS (OBL-M7-04/05/06), 33.3 CERRADO,
-                   D-R194-1 (allowlist SNIFF_AMP) RATIFICADA
+                   D-R194-1 (allowlist SNIFF_AMP) RATIFICADA;
+                   R195_instalador CERRADA (2026-10-23, 53578a6): los 3 skips
+                   de la familia instalador se cerraron ENTREGANDO el artefacto
+                   exigido por cada test inmutable (sin tocar tests):
+                   scripts/uninstall.py real (reversa install.sh + installer.syn,
+                   --list/--dry-run/--yes, E2E en HOME temporal),
+                   synapse_lsp.exe compilado en raíz con el pipeline real
+                   (nucleo/lsp_v3.syn --release, 304 KB, artefacto local no
+                   comiteado — regenerable con ese comando) e install.sh
+                   delegador en raíz (M9 §7); familia 25 passed / 0 skipped
+                   (rc=0).
 Últimos commits:    3a0a0f7 (docs: post-commit R175 — reporte, bitácora y memoria; verificacion_ME sellada)
                     90eb18c (fix(syquex): retirar stubs de principal obsoletos — paridad .syn/.syq restaurada, 4 warps CERRADOS)
                     1e1584b (fix(syquex): 3 bugs del camino .syq — for-en SentenciaPara canónico, iterable en semántico, cast len)

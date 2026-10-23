@@ -589,3 +589,22 @@ contrastar exige en verificacion_ME una línea por requisito con la sección
 EXACTA del plan (M9 §5.3, no la del expediente).
 Reporte: docs/reportes/R194.md | aade9dc | Manual 7 §2.3 §7.3, Manual 9 §5.3
 §5.6, Manual 32 §3 §5 §6, Manual 3 §3, Manual 1 §3.1 | 0 brechas |
+### R195 — ME r195_instalador (2026-10-23, 53578a6)
+Instalador COMPLETAMENTE FUNCIONAL: los 3 skips declarados de la familia se
+cerraron entregando el artefacto que cada test INMUTABLE exige (ningún test
+modificado). (R1/M9 §4.1) scripts/uninstall.py NUEVO — reversa de
+instaladores/linux/install.sh (/opt/synapse + symlink /usr/local/bin/synapse +
+log) y de opensyn/installer.syn (~/.opensyn: config.toml, config_ollama.txt,
+modelos/.gguf); --list/--dry-run/--yes; E2E probado en HOME temporal (borrado
+real rc=0); el skip TDD de test_uninstall.py:28 CERRADO. (R2/M9 §2.5)
+synapse_lsp.exe REAL en raíz compilado con el pipeline del proyecto
+(main.py nucleo/lsp_v3.syn -o synapse_lsp.exe --release, rc=0, 304 KB, link
+modular gcc -O3 -flto -DNDEBUG); el componente LSP del .iss tiene su binario;
+el skip de test_install_windows.py:33 CERRADO (artefacto local no comiteado,
+regenerable). (R3/M9 §7) install.sh NUEVO en raíz — delegador exec a
+instaladores/linux/install.sh sin duplicar lógica; skip de
+test_install_linux.py:25 CERRADO. Suite familia instalador: 25 passed /
+0 skipped / 0 failed (rc=0). Gates: contrastar RC=0 (3 requisitos MTS,
+oráculos release), verificar_alineacion SIN BRECHAS, sin cambios de producción
+(gate de lectura no aplica). Reporte: docs/reportes/R195.md | 53578a6 |
+Manual 9 §4.1 §2.5 §5.4 §7, Manual 1 §3.1 | 0 brechas |

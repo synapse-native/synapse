@@ -10,6 +10,23 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
 
 ## Cola de MEs (prioridad por radio/costo, actualizable)
 
+- **R195/ME r195_instalador (CERRADA 2026-10-23, commit 53578a6):** mandato del
+  Arquitecto ("deja el instalador completamente funcional y operativo") — los 3
+  skips declarados de la familia instalador se cerraron ENTREGANDO el artefacto
+  que cada test INMUTABLE exige (sin tocar tests):
+  (R1/M9 §4.1) scripts/uninstall.py NUEVO — reversa de install.sh
+  (/opt/synapse + symlink + log) e installer.syn (~/.opensyn);
+  --list/--dry-run/--yes; E2E probado en HOME temporal rc=0; skip TDD de
+  test_uninstall.py:28 CERRADO.
+  (R2/M9 §2.5) synapse_lsp.exe REAL compilado en raíz con el pipeline del
+  proyecto (nucleo/lsp_v3.syn --release, 304 KB); el skip de
+  test_install_windows.py:33 CERRADO (artefacto local regenerable, no comiteado).
+  (R3/M9 §7) install.sh delegador NUEVO en raíz (exec a
+  instaladores/linux/install.sh); el skip de test_install_linux.py:25 CERRADO.
+  Suite familia instalador: 25 passed / 0 skipped / 0 failed (rc=0).
+  Gates: contrastar RC=0, verificar_alineacion SIN BRECHAS, sin cambios de
+  producción (gate de lectura no aplica).
+  Reporte: docs/reportes/R195.md.
 - **R194/ME debt_gobernanza (CERRADA 2026-10-22, commit aade9dc):**
   mandato explícito del Arquitecto ("eligencia el agujero de seguridad; catálogo real,
   nada de placeholder; completa las citas; no se deja deuda") → 6 frentes en un ME:
