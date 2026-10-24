@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "e6682be16415e284",
+ "expediente": "docs/alineacion/r196_deuda_contrato_y_cobertura.md",
+ "fecha": "2026-10-23",
+ "archivos": [
+  "std/texto.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r196_contrato_cobertura.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}
