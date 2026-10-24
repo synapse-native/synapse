@@ -7,7 +7,34 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-10-13** (R183e ME h_canon_let 643b413 COMPLETADO —
+Última actualización: **2026-10-23** (R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
+ cierre de los 2 fallos DETERMINISTAS del barrido r195 (1569✓/25skip/6✗;
+ los 5 del grupo A pasaban aislados, infra del barrido):
+ (R1/H-R196-1 decisión Arquitecto ratificada "corregir contrato al manual")
+ std/texto.syn: retirado `requiere: longitud(subcadena)>0` de contiene/indice_de
+ (4 sitios — las 12 funciones del std están DUPLICADAS en 2 bloques completos,
+ H-R196-2; el emisor deduplica a 1 def C y la última copia gana, verificado en
+ el C generado); M8 §1.7.3 declara los bindings SIN precondición y la cláusula
+ del barrido r192 abortaba rc=127 ("Fallo en contrato: requiere") con subcadena
+ vacía; E2E: contiene("hola","")→1, indice_de("hola","")→0; test_string_utils
+ 13/13. (R2) cobertura S1 44.719%→51.228% ≥45% (test inmutable
+ test_syquex_coverage::test_cobertura_total_minima, verificado aislado rc=0)
+ con tests NUEVOS tests/syquex/test_sandbox_cover_r196.py (probes .syn por el
+ pipeline real: sandbox H-CFG-2 leer/existe dentro-fuera + builtins de texto;
+ +538 stmts cubiertos); oráculo NUEVO r196 4/4; gates MTS: expediente sellado
+ (re-sello cambio_hash contra el INDEX tras normalización CRLF del add —
+ lección d948cab: cmd_verificar auto-escribe el hash en el working tree y el
+ hook lo compara contra el index), contrastar RC=0 2× en hook hook,
+ verificar_alineacion SIN BRECHAS, gate de lectura exige la cita EXACTA del
+ MAPA (Manual 2 §5.1 para std/texto.syn, no la del requisito M8 §1.7.3);
+ deudas NUEVAS a cola maestro: H-R196-2 (dedupe std/texto.syn), H-R196-3
+ (frontend Syquex SEGFAULT 0xC0000005 compilando .syq con
+ Resultado/err/ok/abrir/atrapar — 10 fallos del medidor de coverage
+ test_result×5 + test_concurrency×5 — tests/syquex está FUERA del barrido de
+ integración; repro aislado "Formato canónico no reconocido"; familia H-R182b);
+ lección: no filtrar output de background por tail (se perdieron 7 de 10
+ FAILED del medidor hasta el re-run; logs/media_coverage_r196.log completo);
+ reporte docs/reportes/R196.md. antes: (R183e ME h_canon_let 643b413 COMPLETADO —
  cierre del bug H-canon-LET: el serializador canónico
  `compilador/canonical.py` pisaba la llave discriminante "tipo" del
  JSON con la anotación del `let` (round-trip .syn.json corrupto);

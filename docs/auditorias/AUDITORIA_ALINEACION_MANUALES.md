@@ -608,3 +608,38 @@ test_install_linux.py:25 CERRADO. Suite familia instalador: 25 passed /
 oráculos release), verificar_alineacion SIN BRECHAS, sin cambios de producción
 (gate de lectura no aplica). Reporte: docs/reportes/R195.md | 53578a6 |
 Manual 9 §4.1 §2.5 §5.4 §7, Manual 1 §3.1 | 0 brechas |
+### R196 — ME r196_deuda_contrato_y_cobertura (2026-10-23, d022ad8)
+Cierre de los 2 fallos DETERMINISTAS del barrido r195 (los 5 del grupo A
+pasaban aislados — infra del barrido). (R1/H-R196-1, decisión Arquitecto
+ratificada "corregir contrato al manual") std/texto.syn: retirado
+`requiere: longitud(subcadena) > 0` de contiene e indice_de (4 sitios — las
+funciones están DUPLICADAS en el archivo H-R196-2, el emisor deduplica a 1 def
+C; última copia gana). M8 §1.7.3 declara los bindings externos SIN
+precondición; el barrido r192 añadió la cláusula sin mandato del manual y el
+runtime abortaba (rc=127 "Fallo en contrato: requiere") con subcadena vacía.
+Cerró test_string_utils::test_contiene_subcadena_vacia (13/13) con semántica
+E2E verificada: contiene("hola","")→1, indice_de("hola","")→0, rc=0.
+(R2) test_syquex_coverage::test_cobertura_total_minima: la suite fija del
+medidor ya no ejercitaba el código nuevo del compilador (sandbox H-CFG-2
+r194) — coverage 44.719% < 45%. Reparación SIN touch de tests inmutables:
+tests/syquex/test_sandbox_cover_r196.py NUEVO (TDD, 2 probes .syn por el
+pipeline real: sandbox leer/existe dentro-fuera + builtins de texto
+post-r196) — +538 stmts cubiertos → 51.228% ≥ 45% (verificado aislado
+rc=0: test_cobertura_total_minima + test_cobertura_lexer PASSED). Oráculo
+NUEVO tests/auditoria/test_oraculos_r196_contrato_cobertura.py 4/4.
+Deuda NUEVA registrada: H-R196-2 duplicación de 12 funciones en std/texto.syn
+(two copies completas; resolución ME futuro); H-R196-3 frontend Syquex
+SEGFAULT (0xC0000005) compilando .syq con Resultado/err/ok/abrir — 10 fallos
+del medidor de coverage (test_result×5 + test_concurrency×5, FUERA del
+barrido de integración, repro aislado rc=0xC0000005 "Formato canónico no
+reconocido"); misma familia que H-R182b.
+Gates: expediente docs/alineacion/r196_deuda_contrato_y_cobertura.md (evidencia
+auditoria/evidencia/hash), contrastar RC=0, verificar_alineacion SIN BRECHAS,
+lectura previa 3 registros vinculados. Lecciones: cmd_verificar auto-escribe
+`cambio_hash` en el expediente del WORKING TREE — si el blob del INDEX difiere
+(normalización CRLF del add), el hook lo rechaza: re-sellar contra el hash del
+index (d948cab); el gate de lectura exige la cita exacta del MAPA (Manual 2
+§5.1 para std/texto.syn), no la del requisito; las salidas del medidor de
+coverage en background no deben pasar por `tail` (pérdida de FAILED).
+Reporte: docs/reportes/R196.md | d022ad8 |
+Manual 2 §5.1, Manual 8 §1.7.3, Manual 3 §3, Manual 7 §7.3 | 0 brechas |

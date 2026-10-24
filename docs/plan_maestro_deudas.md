@@ -10,6 +10,28 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
 
 ## Cola de MEs (prioridad por radio/costo, actualizable)
 
+- **R196/ME r196_deuda_contrato_y_cobertura (CERRADA 2026-10-23, commit d022ad8):**
+  los 2 fallos DETERMINISTAS del barrido r195 cerrados (los 5 del grupo A
+  pasaban aislados — infra del barrido):
+  (R1/H-R196-1, decisión Arquitecto ratificada "corregir contrato al manual")
+  `requiere: longitud(subcadena) > 0` retirado de contiene/indice_de en
+  std/texto.syn (4 sitios; M8 §1.7.3 declara bindings SIN precondición; el
+  barrido r192 la añadió sin mandato). Runtime E2E ya lo manejaba
+  (contiene("hola","")→1, indice_de→0). Cierra
+  test_string_utils::test_contiene_subcadena_vacia (13/13).
+  (R2) cobertura 44.719%→51.228% (≥45%) con tests NUEVOS
+  tests/syquex/test_sandbox_cover_r196.py (probes .syn por el pipeline:
+  sandbox H-CFG-2 dentro/fuera + builtins de texto); cierra
+  test_syquex_coverage::test_cobertura_total_minima (verificado aislado rc=0).
+  Gates: expediente sellado (hash del index), contrastar RC=0 (2× en hook),
+  verificar_alineacion SIN BRECHAS, oráculo r196 4/4.
+  **Deuda NUEVA a cola:** H-R196-2 (std/texto.syn con 12 funciones duplicadas
+  en 2 bloques; dedupe ME futuro) y H-R196-3 (frontend Syquex SEGFAULT
+  0xC0000005 compilando .syq con Resultado/err/ok/abrir/atrapar — 10 fallos
+  del medidor de coverage: test_result×5 + test_concurrency×5, fuera del
+  barrido de integración; repro aislado; familia de H-R182b; ME futuro de
+  bisección).
+  Reporte: docs/reportes/R196.md.
 - **R195/ME r195_instalador (CERRADA 2026-10-23, commit 53578a6):** mandato del
   Arquitecto ("deja el instalador completamente funcional y operativo") — los 3
   skips declarados de la familia instalador se cerraron ENTREGANDO el artefacto
