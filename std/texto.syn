@@ -10,9 +10,10 @@
 // §1.7.3 — Contiene (builtin existente en texto.c)
 // ============================================================
 
+// cumple Manual 8 §1.7.3 (ME r196): binding sin precondición — el manual
+// declara `externo funcion contiene(...)` sin requiere; runtime maneja vacía.
+// cumple Manual 2 §5.1 (ME r196): cláusulas booleanas alineadas.
 funcion contiene(texto: texto, subcadena: texto) -> entero:
-    requiere:
-        longitud(subcadena) > 0
     garantiza:
         _resultado_ == 0 o _resultado_ == 1
     // No hay liberación de recursos en esta función
@@ -23,9 +24,10 @@ funcion contiene(texto: texto, subcadena: texto) -> entero:
 // §1.7.3 — Índice de (builtin existente en texto.c)
 // ============================================================
 
+// cumple Manual 8 §1.7.3 (ME r196): binding sin precondición — misma
+// naturaleza que contiene (subcadena vacía válida, indice_de → 0).
+// cumple Manual 2 §5.1 (ME r196): cláusulas booleanas alineadas.
 funcion indice_de(texto: texto, subcadena: texto) -> entero:
-    requiere:
-        longitud(subcadena) > 0
     garantiza:
         _resultado_ >= -1
     // No hay liberación de recursos en esta función
@@ -115,9 +117,10 @@ importar std.sistema
 // §1.7.3 — Contiene (builtin existente en texto.c)
 // ============================================================
 
+// cumple Manual 8 §1.7.3 (ME r196): binding sin precondición — el manual
+// declara `externo funcion contiene(...)` sin requiere; runtime maneja vacía.
+// cumple Manual 2 §5.1 (ME r196): cláusulas booleanas alineadas.
 funcion contiene(texto: texto, subcadena: texto) -> entero:
-    requiere:
-        longitud(subcadena) > 0
     garantiza:
         _resultado_ == 0 o _resultado_ == 1
     retornar _syn_texto_contiene(texto, subcadena)
@@ -126,9 +129,10 @@ funcion contiene(texto: texto, subcadena: texto) -> entero:
 // §1.7.3 — Índice de (builtin existente en texto.c)
 // ============================================================
 
+// cumple Manual 8 §1.7.3 (ME r196): binding sin precondición — misma
+// naturaleza que contiene (subcadena vacía válida, indice_de → 0).
+// cumple Manual 2 §5.1 (ME r196): cláusulas booleanas alineadas.
 funcion indice_de(texto: texto, subcadena: texto) -> entero:
-    requiere:
-        longitud(subcadena) > 0
     garantiza:
         _resultado_ >= -1
     retornar _syn_texto_indice_de(texto, subcadena)
