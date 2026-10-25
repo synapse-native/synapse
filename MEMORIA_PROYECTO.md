@@ -123,8 +123,25 @@
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      POST-FASE 33 — DEUDA CERO (mandato 2026-10-18): cola del
-                   plan maestro CERRADA — R184 resuelta por r190 (78b8947:
+Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-10-25 sesión:** R197
+                   COMPLETADO (ad4f5bd): ME r197_instalador_usuario — hallazgos
+                   de EJECUTAR el instalador como usuario (rc=0 ≠ funciona):
+                   wrapper _syn_hash_archivo(CadenaSegura) en runtime/core/modelo.c
+                   (la nativa const char* leía longitud como puntero: hash
+                   VACÍO), descarga TLS vía curl (-L -fsS --create-dirs),
+                   externos -> entero (r194) + convención 0=éxito; E2E RC=0 con
+                   hash verificado (gguf 873 MB) y config.toml/config_ollama.txt
+                   generados. Gates: plan MTS contrastar RC=0; expediente r197
+                   0 brechas (evidencia 0491b2530072b608); verificar_alineacion
+                   SIN BRECHAS; familia instalador 17/17; oráculo 8/8.
+                   Deudas NUEVAS a cola: H-R197-1 (emisor libera texto cedido a
+                   campo de struct → config.ruta reciclada; repro determinista;
+                   misma que los 2 fallos PREEXISTENTES de
+                   test_oraculos_config_ruta rc=0xC0000374, herencia
+                   confirmada con bisect-stash) y H-R197-3 (seleccionar_modelo
+                   hardcodeado vs modelos.toml M9 §5.6, DESVIACION del
+                   expediente). Reporte docs/reportes/R197.md. Antes (mandato
+                   2026-10-18): cola del plan maestro CERRADA — R184 resuelta por r190 (78b8947:
                    debug CLI M8 §3.4, ayuda rc=0 sin sesión, navegación
                    mantiene rc≠0 contrato r150, tests con traza TRACE v1
                    real) + r191 (621051a: pgo rc de ley 42 en -O1/-O2;

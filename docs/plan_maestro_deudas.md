@@ -10,6 +10,29 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
 
 ## Cola de MEs (prioridad por radio/costo, actualizable)
 
+- **R197/ME r197_instalador_usuario (CERRADA 2026-10-25, commit ad4f5bd):**
+  hallazgos de EJECUTAR el instalador como usuario real (rc=0 ≠ funciona):
+  (R1) wrapper `_syn_hash_archivo(CadenaSegura)` en runtime/core/modelo.c —
+  la nativa `const char*` de axon.c leía `longitud` como puntero y el hash
+  salía VACÍO ("checksum incorrecto" con el archivo CORRECTO); E2E real RC=0
+  con hash verificado (gguf 873 MB).
+  (R2) descarga TLS vía curl del sistema (`curl -L -fsS --create-dirs`) —
+  `_syn_descargar` es HTTP/1.0 plano sin TLS/redirects (HF 30x HTML).
+  (R3) externos `-> entero` (int64_t, r194; el TU del instalador no compilaba)
+  + convención 0=éxito en escribir_config.
+  Gates: expediente r197 0 brechas (evidencia 0491b2530072b608), plan MTS
+  contrastar RC=0, verificar_alineacion SIN BRECHAS, familia instalador 17/17,
+  oráculo 8/8. Reporte: docs/reportes/R197.md.
+  **Deuda NUEVA a cola:** H-R197-1 (REPRO DETERMINISTA: el emisor libera el
+  parámetro `texto` cedido a un campo de struct al retornar — H-R182c-1
+  extendida a structs — y el slab TLS reciclado corrompe el campo →
+  config.toml `ruta` prefix reciclado; fix: emisor + self-host + rebuild +
+  bootstrap 3 etapas, ME propio; provoca también los 2 fallos PREEXISTENTES
+  de test_oraculos_config_ruta — rc=0xC0000374 heap corruption en el
+  contrato garantiza del probe, bisect con stash OK) y H-R197-3
+  (seleccionar_modelo hardcodeado; §7.2.5 exige leer modelos.toml M9 §5.6;
+  DESVIACION en expediente con correccion anclada al diff installer.syn:10-11;
+  ME propio con binding TOML).
 - **R196/ME r196_deuda_contrato_y_cobertura (CERRADA 2026-10-23, commit d022ad8):**
   los 2 fallos DETERMINISTAS del barrido r195 cerrados (los 5 del grupo A
   pasaban aislados — infra del barrido):

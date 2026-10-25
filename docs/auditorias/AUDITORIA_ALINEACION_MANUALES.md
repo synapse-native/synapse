@@ -643,3 +643,37 @@ index (d948cab); el gate de lectura exige la cita exacta del MAPA (Manual 2
 coverage en background no deben pasar por `tail` (pérdida de FAILED).
 Reporte: docs/reportes/R196.md | d022ad8 |
 Manual 2 §5.1, Manual 8 §1.7.3, Manual 3 §3, Manual 7 §7.3 | 0 brechas |
+### R197 — ME r197_instalador_usuario (2026-10-25, ad4f5bd)
+Cierre de los hallazgos de EJECUTAR el instalador como usuario real
+(H-R182c-1 aplicada al instalador: rc=0 ≠ funciona). (1) R1 hash con ABI
+CadenaSegura: el binding externo pasa CadenaSegura por valor y la nativa
+_syn_sha256_archivo (axon.c) recibía const char* — leía `longitud` como
+puntero, fopen fallaba y el hash salía VACÍO: "checksum incorrecto" con el
+archivo CORRECTO; fix wrapper _syn_hash_archivo en runtime/core/modelo.c
+(callers nativos intactos). (2) R2 descarga TLS: _syn_descargar es HTTP/1.0
+plano sin TLS ni redirects (HF responde 30x HTML ~1KB) + curl(23) sin
+--create-dirs; fix descargar_url() vía _syn_ejecutar_comando con curl del
+sistema (-L -fsS --create-dirs), M9 §5.4 camino descendente. (3) R3 firmas
+`entero`/convención 0=éxito (r194). E2E REAL: installer.exe RC=0 "Modelo ya
+descargado y verificado" (gguf 873 MB, hash correcto) + config.toml y
+config_ollama.txt generados. Deudas NUEVAS a cola: H-R197-1 (repro
+determinista: el emisor libera el parámetro `texto` cedido a un campo de
+struct — H-R182c-1 extendida a structs — y el slab reciclado corrompe el
+campo → config.toml `ruta` prefix reciclado "config.toml\0eek-coder...";
+fix: emisor + self-host + rebuild + bootstrap 3 etapas, ME propio) y
+H-R197-3 (seleccionar_modelo hardcodeado, §7.2.5 exige leer modelos.toml
+M9 §5.6; nota anclada al diff installer.syn:10-11 como correccion de la
+DESVIACION del expediente). TDD/MTO: test_oraculos_config_ruta 2 fallos
+PREEXISTENTES confirmados por bisect con stash (rc=0xC0000374 heap
+corruption en el probe — misma familia H-R197-1). Gates: plan MTS
+docs/plan_ME_r197.md contrastar RC=0, expediente docs/alineacion/r197.md
+0 brechas (evidencia auditoria/evidencia/0491b2530072b608.json, 3 CUMPLE +
+1 DESVIACION), verificar_alineacion SIN BRECHAS, familia instalador 17/17,
+oraculo_r197_instalador.py 8/8 PASS. Lecciones: los externos `logico` vs
+`entero` desalineados al preámbulo int64_t compartido (r194) bloqueaban el
+TU del instalador (exe stale parece éxito); correr el EXE del artefacto
+destapa bugs de ABI que ninguna suite de compilación ve; el gate
+`--cached` exige STAGEAR antes de --verificar o el diff queda vacío
+(correccion "no toca el cambio" fantasma).
+Reporte: docs/reportes/R197.md | ad4f5bd |
+Manual 7 §2.5, Manual 9 §5.2, Manual 9 §5.3, Manual 9 §5.4, Manual 8 §1.7.3, Manual 2 §12 | 0 brechas |
