@@ -1,11 +1,14 @@
 #lang: es
 # opensyn/installer.syn - Instalador OpenSyn
 # Manual 7 §2.3, Manual 9 §5.2-5.4
-# cumple Manual 7 2.3
-# cumple Manual 9 5.2
-# cumple Manual 9 5.3
-# cumple Manual 9 5.4
-# cumple Manual 2 12 (contratos requiere/garantiza)
+# cumple Manual 7 §2.3
+# cumple Manual 7 §2.5 — instalador de OpenSyn: detecta hardware, selecciona y descarga el modelo
+# cumple Manual 9 §5.2
+# cumple Manual 9 §5.3
+# cumple Manual 9 §5.4
+# cumple Manual 2 §12 (contratos requiere/garantiza)
+# deuda H-R197-3 (corrección M9 §5.6, ME a cola): la tabla de selección vive hardcodeada
+# en seleccionar_modelo(); el §7.2.5 exige leer la lista desde modelos.toml distribuido.
 
 estructura HardwareInfo:
     ram_total: entero
@@ -23,12 +26,20 @@ externo funcion _syn_memoria_total() -> entero
 externo funcion _syn_vram_total() -> entero
 externo funcion _syn_cpu_nucleos() -> entero
 externo funcion _syn_arquitectura() -> texto
-externo funcion _syn_existe_archivo(ruta: texto) -> logico
-externo funcion _syn_eliminar_archivo(ruta: texto) -> logico
-externo funcion _syn_sha256_archivo(ruta: texto) -> texto
-externo funcion _syn_descargar(url: texto, destino: texto) -> logico
+// cumple Manual 8 §1.7.3: firmas `entero` (int64_t) alineadas a std/sistema.syn —
+// el preámbulo compartido emite int64_t (r194) y el externo `logico` (int)
+// generaba conflicting types en el TU (installer no compilaba, exe stale).
+externo funcion _syn_existe_archivo(ruta: texto) -> entero
+externo funcion _syn_eliminar_archivo(ruta: texto) -> entero
+// firma CadenaSegura canónica — wrapper _syn_hash_archivo en runtime/core/modelo.c
+// (la _syn_sha256_archivo nativa de axon.c recibe const char*: ABI mismatch que
+// dejaba el hash VACÍO — "checksum incorrecto" con el archivo correcto, hallazgo
+// de pruebas como usuario 2026-10-25)
+externo funcion _syn_hash_archivo(ruta: texto) -> texto
 externo funcion _syn_home() -> texto
-externo funcion _syn_escribir_archivo(ruta: texto, contenido: texto) -> logico
+externo funcion _syn_escribir_archivo(ruta: texto, contenido: texto) -> entero
+// firma canónica de std/sistema.syn — descendant vía curl del sistema (M9 §5.4)
+externo funcion _syn_ejecutar_comando(cmd: texto) -> entero
 
 funcion memoria_total() -> entero:
     retornar _syn_memoria_total()
@@ -114,7 +125,22 @@ funcion seleccionar_capas_gpu(vram: entero) -> entero:
         sino:
             retornar 35
 
-// cumple Manual 9 5.3
+// cumple Manual 9 §5.3 — descargar_url: descargaۈ TLS+redirecciones via curl del
+// sistema (el _syn_descargar de axon.c es HTTP/1.0 plano sin TLS ni redirects:
+// a huggingface.co responde 30x HTML ~1KB → checksum incorrecto hallado en
+// pruebas de usuario 2026-10-25). Verificación SHA-256 sigue en descargar_modelo.
+funcion descargar_url(url: texto, destino: texto) -> logico:
+    requiere:
+        longitud(url) > 0
+        longitud(destino) > 0
+    garantiza:
+        verdadero
+    // --create-dirs: el instalador no pre-crea ~/.opensyn/models; curl (23)
+    // "ERROR on write" como usuario sin el flag (hallazgo 2026-10-25).
+    let comando: texto = "curl -L -fsS --create-dirs -o " + destino + " " + url
+    retornar _syn_ejecutar_comando(comando) == 0
+
+// cumple Manual 9 §5.3 — descargar_modelo: verifica SHA-256 tras la descarga
 funcion descargar_modelo(info: ModeloInfo) -> Resultado<texto, texto>:
     requiere:
         longitud(info.nombre) > 0
@@ -122,24 +148,25 @@ funcion descargar_modelo(info: ModeloInfo) -> Resultado<texto, texto>:
     garantiza:
         verdadero
     let ruta: texto = _syn_home() + "/.opensyn/models/" + info.nombre + ".gguf"
-    si _syn_existe_archivo(ruta):
-        let hash: texto = _syn_sha256_archivo(ruta)
+    si _syn_existe_archivo(ruta) == 1:
+        let hash: texto = _syn_hash_archivo(ruta)
         si hash == info.sha256:
             escribir_linea("Modelo ya descargado y verificado")
             retornar ok(ruta)
         sino:
             escribir_linea("Hash incorrecto, eliminando archivo corrupto")
             _syn_eliminar_archivo(ruta)
-    escribir_linea("Descargando modelo (" + entero_a_texto(info.tamano_aprox / 1073741824) + " GB)...")
-    si no _syn_descargar(info.url, ruta):
+    escribir_linea("Descargando modelo (" + entero_a_texto(info.tamano_aprox / 1048576) + " MB)...")
+    si no descargar_url(info.url, ruta):
         retornar err("Error al descargar el modelo")
-    let hash: texto = _syn_sha256_archivo(ruta)
+    let hash: texto = _syn_hash_archivo(ruta)
     si hash != info.sha256:
         _syn_eliminar_archivo(ruta)
         retornar err("Checksum incorrecto")
     retornar ok(ruta)
 
-# cumple Manual 9 5.4 — principal: orquesta instalación completa
+# cumple Manual 9 §5.4 — principal: orquesta instalación completa
+# cumple Manual 7 §2.5 — instalación la primera vez que el usuario activa OpenSyn
 funcion principal() -> nulo:
     let hw: HardwareInfo = detectar_hardware()
     let hilos: entero = seleccionar_hilos(hw.cpu_nucleos)
@@ -155,15 +182,15 @@ funcion principal() -> nulo:
     let ruta_modelo: texto = _syn_home() + "/.opensyn/models/" + modelo.nombre + ".gguf"
     # cumple Manual 9 §5.3: descargar y verificar modelo
     let ruta_descarga: texto = _syn_home() + "/.opensyn/models/" + modelo.nombre + ".gguf"
-    si _syn_existe_archivo(ruta_descarga):
-        let hash: texto = _syn_sha256_archivo(ruta_descarga)
+    si _syn_existe_archivo(ruta_descarga) == 1:
+        let hash: texto = _syn_hash_archivo(ruta_descarga)
         si hash == modelo.sha256:
             escribir_linea("Modelo ya descargado y verificado")
         sino:
             escribir_linea("Hash incorrecto, re-descargando...")
             _syn_eliminar_archivo(ruta_descarga)
-            si _syn_descargar(modelo.url, ruta_descarga):
-                let hash2: texto = _syn_sha256_archivo(ruta_descarga)
+            si descargar_url(modelo.url, ruta_descarga):
+                let hash2: texto = _syn_hash_archivo(ruta_descarga)
                 si hash2 != modelo.sha256:
                     _syn_eliminar_archivo(ruta_descarga)
                     escribir_linea("Error: checksum incorrecto tras descarga")
@@ -172,11 +199,11 @@ funcion principal() -> nulo:
                 escribir_linea("Error al descargar el modelo")
                 retornar
     sino:
-        escribir_linea("Descargando modelo (" + entero_a_texto(modelo.tamano_aprox / 1073741824) + " GB)...")
-        si no _syn_descargar(modelo.url, ruta_descarga):
+        escribir_linea("Descargando modelo (" + entero_a_texto(modelo.tamano_aprox / 1048576) + " MB)...")
+        si no descargar_url(modelo.url, ruta_descarga):
             escribir_linea("Error al descargar el modelo")
             retornar
-        let hash3: texto = _syn_sha256_archivo(ruta_descarga)
+        let hash3: texto = _syn_hash_archivo(ruta_descarga)
         si hash3 != modelo.sha256:
             _syn_eliminar_archivo(ruta_descarga)
             escribir_linea("Error: checksum incorrecto")
@@ -190,7 +217,7 @@ funcion principal() -> nulo:
     _syn_escribir_archivo(config_ollama_ruta, config_ollama_contenido)
     escribir_linea("Configuracion Ollama escrita en " + config_ollama_ruta)
 
-# cumple Manual 9 5.3 — instalar_modelo: descarga y verifica modelo según HW
+# cumple Manual 9 §5.3 — instalar_modelo: descarga y verifica modelo según HW
 funcion instalar_modelo(hw: HardwareInfo) -> Resultado<texto, texto>:
     requiere:
         hw.vram_total >= 0
@@ -200,7 +227,7 @@ funcion instalar_modelo(hw: HardwareInfo) -> Resultado<texto, texto>:
     escribir_linea("Modelo seleccionado: " + modelo.nombre)
     retornar descargar_modelo(modelo)
 
-# cumple Manual 9 5.4 — ConfigInfo: configuración para llama-server
+# cumple Manual 9 §5.4 — ConfigInfo: configuración para llama-server
 estructura ConfigInfo:
     nombre_modelo: texto
     ruta_modelo: texto
@@ -211,7 +238,7 @@ estructura ConfigInfo:
     host: texto
     timeout: entero
 
-# cumple Manual 9 5.4 — generar_config: produce ConfigInfo basada en HW
+# cumple Manual 9 §5.4 — generar_config: produce ConfigInfo basada en HW
 funcion generar_config(hw: HardwareInfo, modelo: ModeloInfo, ruta_modelo: texto) -> ConfigInfo:
     requiere:
         longitud(ruta_modelo) > 0
@@ -232,7 +259,7 @@ funcion generar_config(hw: HardwareInfo, modelo: ModeloInfo, ruta_modelo: texto)
     cfg.timeout = 30
     retornar cfg
 
-# cumple Manual 9 5.4 — escribir_config: escribe ~/.opensyn/config.toml
+# cumple Manual 9 §5.4 — escribir_config: escribe ~/.opensyn/config.toml
 funcion escribir_config(config: ConfigInfo) -> logico:
     requiere:
         longitud(config.ruta_modelo) > 0
@@ -241,7 +268,8 @@ funcion escribir_config(config: ConfigInfo) -> logico:
         verdadero
     let ruta: texto = _syn_home() + "/.opensyn/config.toml"
     let contenido: texto = "[general]\n" + "idioma = \"es\"\n" + "editor = \"vscode\"\n\n" + "[modelo]\n" + "nombre = \"" + config.nombre_modelo + "\"\n" + "ruta = \"" + config.ruta_modelo + "\"\n" + "n_ctx = " + entero_a_texto(config.n_ctx) + "\n" + "n_threads = " + entero_a_texto(config.n_threads) + "\n" + "n_gpu_layers = " + entero_a_texto(config.n_gpu_layers) + "\n\n" + "[server]\n" + "puerto = " + entero_a_texto(config.puerto) + "\n" + "host = \"" + config.host + "\"\n" + "timeout = " + entero_a_texto(config.timeout) + "\n"
-    si _syn_escribir_archivo(ruta, contenido):
+    // convención canónica runtime/core/io.c: 0 = éxito, -1 = fallo (existe_archivo usa 1/0)
+    si _syn_escribir_archivo(ruta, contenido) == 0:
         escribir_linea("Configuracion escrita en " + ruta)
         retornar verdadero
     sino:

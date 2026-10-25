@@ -47,6 +47,8 @@ extern void _syn_mapa_liberar(void* m);
 extern void* _syn_mapa_claves(void* m);
 extern void* _syn_mapa_valores(void* m);
 extern CadenaSegura _syn_leer_archivo(CadenaSegura ruta);
+extern int64_t _syn_existe_archivo(CadenaSegura ruta);
+extern CadenaSegura _syn_ruta_validar(CadenaSegura ruta);
 extern CadenaSegura _syn_texto_subcadena(CadenaSegura t, int64_t inicio, int64_t fin);
 extern CadenaSegura _syn_texto_duplicar(CadenaSegura s);
 
@@ -305,6 +307,7 @@ extern int _G_native_canal_elem_tipo(const char* _cname, char* _cout);
 extern char _G_listeners[8][16384];
 extern int _G_listeners_count;
 extern int _G_listener_modo;
+extern int _G_co_modo_resultado;
 extern char _G_lanzar_wrappers[8][4096];
 extern int _G_lanzar_wrappers_count;
 extern int _G_lanzar_count;
@@ -395,16 +398,9 @@ __attribute__((weak)) void synapse_esperar_fibras(void) { }
 __attribute__((weak)) void _simd_detectar(void) { }
 #endif
 
-// --- Contratos (requiere/garantiza) ---
-#ifdef SYNAPSE_RELEASE
-#define assert_contrato(expr, msg) ((void)0)
-#else
-#define assert_contrato(expr, msg) \
-    do { if (!(expr)) { \
-        fprintf(stderr, "CONTRATO: %s en %%s:%%d\\n", \
-                msg, __FILE__, __LINE__); \
-        exit(1); }} while(0)
-#endif
+// --- Contratos (requiere/garantiza) — cumple Manual 2 §5.1/§5.2 (ME r192) ---
+// cumple Manual 2 §5.3: en release NDEBUG elimina la aserción (costo cero).
+#define assert_contrato(expr, msg) assert((expr) && msg)
 
 char _gen_tmp_buf[4096];
 
@@ -588,6 +584,7 @@ int _G_native_canal_elem_tipo(const char* _cname, char* _cout) {
 char _G_listeners[8][16384];
 int _G_listeners_count;
 int _G_listener_modo;
+int _G_co_modo_resultado;
 char _G_lanzar_wrappers[8][4096];
 int _G_lanzar_wrappers_count;
 int _G_lanzar_count;
@@ -693,6 +690,7 @@ extern int64_t cluster_detener_nodo(void);
 extern int64_t cluster_enviar_hello(CadenaSegura ip, int64_t puerto, CadenaSegura id_origen, CadenaSegura pubkey_hex);
 extern int64_t cluster_canal_remoto_enviar(CadenaSegura ip, int64_t puerto, CadenaSegura datos, int64_t lon, int64_t chan_id);
 CadenaSegura _validar_ruta_segura(CadenaSegura ruta) {
+    assert_contrato(((ruta).longitud > 0LL), "Fallo en contrato: requiere");
     CadenaSegura cwd = {0};
     CadenaSegura absoluta = {0};
     CadenaSegura normalizada = {0};
@@ -713,65 +711,71 @@ CadenaSegura _validar_ruta_segura(CadenaSegura ruta) {
     normalizada = _syn_tmp_normalizada_4;
     if ((!_syn_ruta_en_directorio(normalizada, cwd))) {
         CadenaSegura _resultado_ = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
+        assert_contrato((((str_eq(_resultado_, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1) || (str_eq(_syn_texto_subcadena(_resultado_, 1LL, (1LL)+(2LL)), (CadenaSegura){ .longitud = (int)strlen(":"), .datos = ":" }) == 1)) || (str_eq(_syn_texto_subcadena(_resultado_, 0LL, (0LL)+(1LL)), (CadenaSegura){ .longitud = (int)strlen("/"), .datos = "/" }) == 1)), "Fallo en contrato: garantiza");
         _syn_texto_liberar(ruta);
         return _resultado_;
           /* [Lifetime Scope: exit depth=1] */
     }
-    CadenaSegura _ret_38_5 = normalizada;
-    return _ret_38_5;
+    CadenaSegura _resultado_ = normalizada;
+    assert_contrato((((str_eq(_resultado_, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1) || (str_eq(_syn_texto_subcadena(_resultado_, 1LL, (1LL)+(2LL)), (CadenaSegura){ .longitud = (int)strlen(":"), .datos = ":" }) == 1)) || (str_eq(_syn_texto_subcadena(_resultado_, 0LL, (0LL)+(1LL)), (CadenaSegura){ .longitud = (int)strlen("/"), .datos = "/" }) == 1)), "Fallo en contrato: garantiza");
+    return _resultado_;
       /* [Lifetime Scope: exit depth=0] */
 }
 
 Canal abrir(CadenaSegura ruta, CadenaSegura modo) {
+    assert_contrato(((modo).longitud > 0LL), "Fallo en contrato: requiere");
     CadenaSegura ruta_segura = {0};
-    CadenaSegura _syn_tmp_ruta_segura_6 = _validar_ruta_segura(ruta);
+    CadenaSegura _syn_tmp_ruta_segura_5 = _validar_ruta_segura(ruta);
     _syn_texto_liberar(ruta_segura);
-    ruta_segura = _syn_tmp_ruta_segura_6;
+    ruta_segura = _syn_tmp_ruta_segura_5;
     if ((str_eq(ruta_segura, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
         Canal _resultado_ = {0};
+        assert_contrato(((_resultado_.es_valido == 0LL) || (_resultado_.es_valido == 1LL)), "Fallo en contrato: garantiza");
         _syn_texto_liberar(ruta);
         _syn_texto_liberar(modo);
         return _resultado_;
           /* [Lifetime Scope: exit depth=1] */
     }
-    Canal _ret_25_7 = _syn_abrir(ruta_segura, modo);
-    return _ret_25_7;
+    Canal _resultado_ = _syn_abrir(ruta_segura, modo);
+    assert_contrato(((_resultado_.es_valido == 0LL) || (_resultado_.es_valido == 1LL)), "Fallo en contrato: garantiza");
+    return _resultado_;
       /* [Lifetime Scope: exit depth=0] */
 }
 
 int64_t ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica) {
-    int64_t _ret_23_8 = _syn_ed25519_verificar(mensaje, firma, clave_publica);
+    int64_t _ret_23_6 = _syn_ed25519_verificar(mensaje, firma, clave_publica);
     _syn_texto_liberar(mensaje);
     _syn_texto_liberar(firma);
     _syn_texto_liberar(clave_publica);
-    return _ret_23_8;
+    return _ret_23_6;
       /* [Lifetime Scope: exit depth=0] */
 }
 
 int64_t ejecutar_comando(CadenaSegura cmd) {
-    int64_t _ret_48_9 = _syn_ejecutar_comando(cmd);
+    int64_t _ret_49_7 = _syn_ejecutar_comando(cmd);
     _syn_texto_liberar(cmd);
-    return _ret_48_9;
+    return _ret_49_7;
       /* [Lifetime Scope: exit depth=0] */
 }
 
 int64_t eliminar_archivo(CadenaSegura ruta) {
     CadenaSegura ruta_segura = {0};
-    CadenaSegura _syn_tmp_ruta_segura_10 = _validar_ruta_segura(ruta);
+    CadenaSegura _syn_tmp_ruta_segura_8 = _validar_ruta_segura(ruta);
     _syn_texto_liberar(ruta_segura);
-    ruta_segura = _syn_tmp_ruta_segura_10;
+    ruta_segura = _syn_tmp_ruta_segura_8;
     if ((str_eq(ruta_segura, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
-        int64_t _ret_74_11 = (-1LL);
+        int64_t _ret_75_9 = (-1LL);
         _syn_texto_liberar(ruta);
-        return _ret_74_11;
+        return _ret_75_9;
           /* [Lifetime Scope: exit depth=1] */
     }
-    int64_t _ret_75_12 = _syn_eliminar_archivo(ruta_segura);
-    return _ret_75_12;
+    int64_t _ret_76_10 = _syn_eliminar_archivo(ruta_segura);
+    return _ret_76_10;
       /* [Lifetime Scope: exit depth=0] */
 }
 
 void escribir(CadenaSegura texto) {
+    assert_contrato(((texto).longitud >= 0LL), "Fallo en contrato: requiere");
     _syn_escribir(texto);
       /* [Lifetime Scope: exit depth=0] */
     _syn_texto_liberar(texto);
@@ -779,22 +783,23 @@ void escribir(CadenaSegura texto) {
 
 int64_t escribir_archivo(CadenaSegura ruta, CadenaSegura contenido) {
     CadenaSegura ruta_segura = {0};
-    CadenaSegura _syn_tmp_ruta_segura_13 = _validar_ruta_segura(ruta);
+    CadenaSegura _syn_tmp_ruta_segura_11 = _validar_ruta_segura(ruta);
     _syn_texto_liberar(ruta_segura);
-    ruta_segura = _syn_tmp_ruta_segura_13;
+    ruta_segura = _syn_tmp_ruta_segura_11;
     if ((str_eq(ruta_segura, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
-        int64_t _ret_53_14 = (-1LL);
+        int64_t _ret_54_12 = (-1LL);
         _syn_texto_liberar(ruta);
         _syn_texto_liberar(contenido);
-        return _ret_53_14;
+        return _ret_54_12;
           /* [Lifetime Scope: exit depth=1] */
     }
-    int64_t _ret_54_15 = _syn_escribir_archivo(ruta_segura, contenido);
-    return _ret_54_15;
+    int64_t _ret_55_13 = _syn_escribir_archivo(ruta_segura, contenido);
+    return _ret_55_13;
       /* [Lifetime Scope: exit depth=0] */
 }
 
 void escribir_linea(CadenaSegura texto) {
+    assert_contrato(((texto).longitud >= 0LL), "Fallo en contrato: requiere");
     _syn_escribir_linea(texto);
       /* [Lifetime Scope: exit depth=0] */
     _syn_texto_liberar(texto);
@@ -802,58 +807,63 @@ void escribir_linea(CadenaSegura texto) {
 
 int existe_archivo(CadenaSegura ruta) {
     CadenaSegura ruta_segura = {0};
-    CadenaSegura _syn_tmp_ruta_segura_16 = _validar_ruta_segura(ruta);
+    CadenaSegura _syn_tmp_ruta_segura_14 = _validar_ruta_segura(ruta);
     _syn_texto_liberar(ruta_segura);
-    ruta_segura = _syn_tmp_ruta_segura_16;
+    ruta_segura = _syn_tmp_ruta_segura_14;
     if ((str_eq(ruta_segura, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
-        int _ret_68_17 = 0;
+        int _ret_69_15 = 0;
         _syn_texto_liberar(ruta);
-        return _ret_68_17;
+        return _ret_69_15;
           /* [Lifetime Scope: exit depth=1] */
     }
-    int _ret_69_18 = (_syn_existe_archivo(ruta_segura) == 1LL);
-    return _ret_69_18;
+    int _ret_70_16 = (_syn_existe_archivo(ruta_segura) == 1LL);
+    return _ret_70_16;
       /* [Lifetime Scope: exit depth=0] */
 }
 
 CadenaSegura leer(Canal c) {
+    assert_contrato((c.es_valido == 1LL), "Fallo en contrato: requiere");
     CadenaSegura _resultado_ = _syn_leer(c);
+    assert_contrato(((_resultado_).longitud >= 0LL), "Fallo en contrato: garantiza");
     return _resultado_;
       /* [Lifetime Scope: exit depth=0] */
 }
 
 CadenaSegura leer_archivo(CadenaSegura ruta) {
     CadenaSegura ruta_segura = {0};
-    CadenaSegura _syn_tmp_ruta_segura_19 = _validar_ruta_segura(ruta);
+    CadenaSegura _syn_tmp_ruta_segura_17 = _validar_ruta_segura(ruta);
     _syn_texto_liberar(ruta_segura);
-    ruta_segura = _syn_tmp_ruta_segura_19;
+    ruta_segura = _syn_tmp_ruta_segura_17;
     if ((str_eq(ruta_segura, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
-        CadenaSegura _ret_59_20 = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
+        CadenaSegura _ret_60_18 = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
         _syn_texto_liberar(ruta);
-        return _ret_59_20;
+        return _ret_60_18;
           /* [Lifetime Scope: exit depth=1] */
     }
-    CadenaSegura _ret_60_21 = _syn_leer_archivo(ruta_segura);
-    return _ret_60_21;
+    CadenaSegura _ret_61_19 = _syn_leer_archivo(ruta_segura);
+    return _ret_61_19;
       /* [Lifetime Scope: exit depth=0] */
 }
 
 CadenaSegura leer_bytes(int64_t cantidad) {
+    assert_contrato((cantidad >= 0LL), "Fallo en contrato: requiere");
     CadenaSegura _resultado_ = _syn_leer_bytes(cantidad);
+    assert_contrato(((_resultado_).longitud >= 0LL), "Fallo en contrato: garantiza");
     return _resultado_;
       /* [Lifetime Scope: exit depth=0] */
 }
 
 CadenaSegura leer_linea(void) {
     CadenaSegura _resultado_ = _syn_leer_linea();
+    assert_contrato(((_resultado_).longitud >= 0LL), "Fallo en contrato: garantiza");
     return _resultado_;
       /* [Lifetime Scope: exit depth=0] */
 }
 
 CadenaSegura obtener_env(CadenaSegura nombre) {
-    CadenaSegura _ret_63_22 = _syn_obtener_env(nombre);
+    CadenaSegura _ret_64_20 = _syn_obtener_env(nombre);
     _syn_texto_liberar(nombre);
-    return _ret_63_22;
+    return _ret_64_20;
       /* [Lifetime Scope: exit depth=0] */
 }
 
@@ -882,13 +892,13 @@ int64_t _principal_impl(void) {
     escribir_linea(_syn_texto_duplicar((CadenaSegura){ .longitud = (int)strlen("========================================"), .datos = "========================================" }));
     escribir_linea(_syn_texto_duplicar((CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }));
     if ((total_fallos > 0LL)) {
-        int64_t _ret_346_23 = 1LL;
-        return _ret_346_23;
+        int64_t _ret_346_21 = 1LL;
+        return _ret_346_21;
           /* [Lifetime Scope: exit depth=1] */
     }
     else {
-        int64_t _ret_348_24 = 0LL;
-        return _ret_348_24;
+        int64_t _ret_348_22 = 0LL;
+        return _ret_348_22;
           /* [Lifetime Scope: exit depth=1] */
     }
       /* [Lifetime Scope: exit depth=0] */
@@ -903,15 +913,15 @@ int64_t prueba_clave_incorrecta(void) {
     fallos = 0LL;
     escribir_linea(_syn_texto_duplicar((CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }));
     escribir_linea(_syn_texto_duplicar((CadenaSegura){ .longitud = (int)strlen("=== Prueba 4: Rechazo de clave publica incorrecta ==="), .datos = "=== Prueba 4: Rechazo de clave publica incorrecta ===" }));
-    CadenaSegura _syn_tmp_par_a_25 = cluster_generar_par_claves();
+    CadenaSegura _syn_tmp_par_a_23 = cluster_generar_par_claves();
     _syn_texto_liberar(par_a);
-    par_a = _syn_tmp_par_a_25;
-    CadenaSegura _syn_tmp_par_b_26 = cluster_generar_par_claves();
+    par_a = _syn_tmp_par_a_23;
+    CadenaSegura _syn_tmp_par_b_24 = cluster_generar_par_claves();
     _syn_texto_liberar(par_b);
-    par_b = _syn_tmp_par_b_26;
-    CadenaSegura _syn_tmp_firma_27 = cluster_firmar_mensaje((CadenaSegura){ .longitud = (int)strlen("synapse-handshake:test"), .datos = "synapse-handshake:test" }, par_a);
+    par_b = _syn_tmp_par_b_24;
+    CadenaSegura _syn_tmp_firma_25 = cluster_firmar_mensaje((CadenaSegura){ .longitud = (int)strlen("synapse-handshake:test"), .datos = "synapse-handshake:test" }, par_a);
     _syn_texto_liberar(firma);
-    firma = _syn_tmp_firma_27;
+    firma = _syn_tmp_firma_25;
     resultado = cluster_verificar_firma((CadenaSegura){ .longitud = (int)strlen("synapse-handshake:test"), .datos = "synapse-handshake:test" }, firma, par_b);
     if ((resultado != 0LL)) {
         escribir_linea(_syn_texto_duplicar((CadenaSegura){ .longitud = (int)strlen("[OK] verificar_firma() rechaza clave publica incorrecta"), .datos = "[OK] verificar_firma() rechaza clave publica incorrecta" }));
@@ -922,8 +932,8 @@ int64_t prueba_clave_incorrecta(void) {
         fallos = (fallos + 1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
-    int64_t _ret_122_28 = fallos;
-    return _ret_122_28;
+    int64_t _ret_122_26 = fallos;
+    return _ret_122_26;
       /* [Lifetime Scope: exit depth=0] */
 }
 
@@ -965,8 +975,8 @@ int64_t prueba_enviar_datos_canal(void) {
         fallos = (fallos + 1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
-    int64_t _ret_284_29 = fallos;
-    return _ret_284_29;
+    int64_t _ret_284_27 = fallos;
+    return _ret_284_27;
       /* [Lifetime Scope: exit depth=0] */
 }
 
@@ -979,9 +989,9 @@ int64_t prueba_enviar_hello(void) {
     fallos = 0LL;
     escribir_linea(_syn_texto_duplicar((CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }));
     escribir_linea(_syn_texto_duplicar((CadenaSegura){ .longitud = (int)strlen("=== Prueba 7: Envio HELLO ==="), .datos = "=== Prueba 7: Envio HELLO ===" }));
-    CadenaSegura _syn_tmp_par_30 = cluster_generar_par_claves();
+    CadenaSegura _syn_tmp_par_28 = cluster_generar_par_claves();
     _syn_texto_liberar(par);
-    par = _syn_tmp_par_30;
+    par = _syn_tmp_par_28;
     rc = cluster_iniciar_nodo(0LL);
     if ((rc >= 0LL)) {
         escribir_linea(_syn_texto_duplicar((CadenaSegura){ .longitud = (int)strlen("[OK] nodo iniciado"), .datos = "[OK] nodo iniciado" }));
@@ -1012,8 +1022,8 @@ int64_t prueba_enviar_hello(void) {
         fallos = (fallos + 1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
-    int64_t _ret_252_31 = fallos;
-    return _ret_252_31;
+    int64_t _ret_252_29 = fallos;
+    return _ret_252_29;
       /* [Lifetime Scope: exit depth=0] */
 }
 
@@ -1025,12 +1035,12 @@ int64_t prueba_firma_corrupta(void) {
     fallos = 0LL;
     escribir_linea(_syn_texto_duplicar((CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }));
     escribir_linea(_syn_texto_duplicar((CadenaSegura){ .longitud = (int)strlen("=== Prueba 3: Rechazo de firma corrupta (Zero-Trust) ==="), .datos = "=== Prueba 3: Rechazo de firma corrupta (Zero-Trust) ===" }));
-    CadenaSegura _syn_tmp_par_32 = cluster_generar_par_claves();
+    CadenaSegura _syn_tmp_par_30 = cluster_generar_par_claves();
     _syn_texto_liberar(par);
-    par = _syn_tmp_par_32;
-    CadenaSegura _syn_tmp_firma_33 = cluster_firmar_mensaje((CadenaSegura){ .longitud = (int)strlen("synapse-handshake:test"), .datos = "synapse-handshake:test" }, par);
+    par = _syn_tmp_par_30;
+    CadenaSegura _syn_tmp_firma_31 = cluster_firmar_mensaje((CadenaSegura){ .longitud = (int)strlen("synapse-handshake:test"), .datos = "synapse-handshake:test" }, par);
     _syn_texto_liberar(firma);
-    firma = _syn_tmp_firma_33;
+    firma = _syn_tmp_firma_31;
     resultado = cluster_verificar_firma((CadenaSegura){ .longitud = (int)strlen("synapse-handshake:test-DIFFERENT"), .datos = "synapse-handshake:test-DIFFERENT" }, firma, par);
     if ((resultado != 0LL)) {
         escribir_linea(_syn_texto_duplicar((CadenaSegura){ .longitud = (int)strlen("[OK] verificar_firma() rechaza mensaje incorrecto"), .datos = "[OK] verificar_firma() rechaza mensaje incorrecto" }));
@@ -1041,8 +1051,8 @@ int64_t prueba_firma_corrupta(void) {
         fallos = (fallos + 1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
-    int64_t _ret_99_34 = fallos;
-    return _ret_99_34;
+    int64_t _ret_99_32 = fallos;
+    return _ret_99_32;
       /* [Lifetime Scope: exit depth=0] */
 }
 
@@ -1054,12 +1064,12 @@ int64_t prueba_firmar_verificar(void) {
     fallos = 0LL;
     escribir_linea(_syn_texto_duplicar((CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }));
     escribir_linea(_syn_texto_duplicar((CadenaSegura){ .longitud = (int)strlen("=== Prueba 2: Firma y verificacion Ed25519 ==="), .datos = "=== Prueba 2: Firma y verificacion Ed25519 ===" }));
-    CadenaSegura _syn_tmp_par_35 = cluster_generar_par_claves();
+    CadenaSegura _syn_tmp_par_33 = cluster_generar_par_claves();
     _syn_texto_liberar(par);
-    par = _syn_tmp_par_35;
-    CadenaSegura _syn_tmp_firma_36 = cluster_firmar_mensaje((CadenaSegura){ .longitud = (int)strlen("synapse-handshake:test-message"), .datos = "synapse-handshake:test-message" }, par);
+    par = _syn_tmp_par_33;
+    CadenaSegura _syn_tmp_firma_34 = cluster_firmar_mensaje((CadenaSegura){ .longitud = (int)strlen("synapse-handshake:test-message"), .datos = "synapse-handshake:test-message" }, par);
     _syn_texto_liberar(firma);
-    firma = _syn_tmp_firma_36;
+    firma = _syn_tmp_firma_34;
     if ((str_eq(firma, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
         escribir_linea(_syn_texto_duplicar((CadenaSegura){ .longitud = (int)strlen("[FALLO] firmar_mensaje() retorna firma vacia"), .datos = "[FALLO] firmar_mensaje() retorna firma vacia" }));
         fallos = (fallos + 1LL);
@@ -1079,8 +1089,8 @@ int64_t prueba_firmar_verificar(void) {
         fallos = (fallos + 1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
-    int64_t _ret_77_37 = fallos;
-    return _ret_77_37;
+    int64_t _ret_77_35 = fallos;
+    return _ret_77_35;
       /* [Lifetime Scope: exit depth=0] */
 }
 
@@ -1090,9 +1100,9 @@ int64_t prueba_generar_par(void) {
     fallos = 0LL;
     escribir_linea(_syn_texto_duplicar((CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }));
     escribir_linea(_syn_texto_duplicar((CadenaSegura){ .longitud = (int)strlen("=== Prueba 1: Generar par Ed25519 ==="), .datos = "=== Prueba 1: Generar par Ed25519 ===" }));
-    CadenaSegura _syn_tmp_par_38 = cluster_generar_par_claves();
+    CadenaSegura _syn_tmp_par_36 = cluster_generar_par_claves();
     _syn_texto_liberar(par);
-    par = _syn_tmp_par_38;
+    par = _syn_tmp_par_36;
     if ((str_eq(par, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
         escribir_linea(_syn_texto_duplicar((CadenaSegura){ .longitud = (int)strlen("[FALLO] generar_par() retorna vacio"), .datos = "[FALLO] generar_par() retorna vacio" }));
         fallos = (fallos + 1LL);
@@ -1102,8 +1112,8 @@ int64_t prueba_generar_par(void) {
         escribir_linea(_syn_texto_duplicar((CadenaSegura){ .longitud = (int)strlen("[OK] generar_par() no retorna vacio"), .datos = "[OK] generar_par() no retorna vacio" }));
           /* [Lifetime Scope: exit depth=1] */
     }
-    int64_t _ret_49_39 = fallos;
-    return _ret_49_39;
+    int64_t _ret_49_37 = fallos;
+    return _ret_49_37;
       /* [Lifetime Scope: exit depth=0] */
 }
 
@@ -1119,15 +1129,15 @@ int64_t prueba_handshake_bidireccional(void) {
     fallos = 0LL;
     escribir_linea(_syn_texto_duplicar((CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }));
     escribir_linea(_syn_texto_duplicar((CadenaSegura){ .longitud = (int)strlen("=== Prueba 5: Handshake bidireccional A <-> B ==="), .datos = "=== Prueba 5: Handshake bidireccional A <-> B ===" }));
-    CadenaSegura _syn_tmp_par_a_40 = cluster_generar_par_claves();
+    CadenaSegura _syn_tmp_par_a_38 = cluster_generar_par_claves();
     _syn_texto_liberar(par_a);
-    par_a = _syn_tmp_par_a_40;
-    CadenaSegura _syn_tmp_par_b_41 = cluster_generar_par_claves();
+    par_a = _syn_tmp_par_a_38;
+    CadenaSegura _syn_tmp_par_b_39 = cluster_generar_par_claves();
     _syn_texto_liberar(par_b);
-    par_b = _syn_tmp_par_b_41;
-    CadenaSegura _syn_tmp_firma_a_42 = cluster_firmar_mensaje((CadenaSegura){ .longitud = (int)strlen("synapse-handshake:pubkey-B"), .datos = "synapse-handshake:pubkey-B" }, par_a);
+    par_b = _syn_tmp_par_b_39;
+    CadenaSegura _syn_tmp_firma_a_40 = cluster_firmar_mensaje((CadenaSegura){ .longitud = (int)strlen("synapse-handshake:pubkey-B"), .datos = "synapse-handshake:pubkey-B" }, par_a);
     _syn_texto_liberar(firma_a);
-    firma_a = _syn_tmp_firma_a_42;
+    firma_a = _syn_tmp_firma_a_40;
     if ((str_eq(firma_a, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
         escribir_linea(_syn_texto_duplicar((CadenaSegura){ .longitud = (int)strlen("[FALLO] A no genera firma de handshake"), .datos = "[FALLO] A no genera firma de handshake" }));
         fallos = (fallos + 1LL);
@@ -1147,9 +1157,9 @@ int64_t prueba_handshake_bidireccional(void) {
         fallos = (fallos + 1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
-    CadenaSegura _syn_tmp_firma_b_43 = cluster_firmar_mensaje((CadenaSegura){ .longitud = (int)strlen("synapse-handshake:pubkey-A"), .datos = "synapse-handshake:pubkey-A" }, par_b);
+    CadenaSegura _syn_tmp_firma_b_41 = cluster_firmar_mensaje((CadenaSegura){ .longitud = (int)strlen("synapse-handshake:pubkey-A"), .datos = "synapse-handshake:pubkey-A" }, par_b);
     _syn_texto_liberar(firma_b);
-    firma_b = _syn_tmp_firma_b_43;
+    firma_b = _syn_tmp_firma_b_41;
     if ((str_eq(firma_b, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
         escribir_linea(_syn_texto_duplicar((CadenaSegura){ .longitud = (int)strlen("[FALLO] B no genera firma de respuesta"), .datos = "[FALLO] B no genera firma de respuesta" }));
         fallos = (fallos + 1LL);
@@ -1179,8 +1189,8 @@ int64_t prueba_handshake_bidireccional(void) {
         fallos = (fallos + 1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
-    int64_t _ret_178_44 = fallos;
-    return _ret_178_44;
+    int64_t _ret_178_42 = fallos;
+    return _ret_178_42;
       /* [Lifetime Scope: exit depth=0] */
 }
 
@@ -1233,8 +1243,8 @@ int64_t prueba_iniciar_detener_nodo(void) {
         fallos = (fallos + 1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
-    int64_t _ret_218_45 = fallos;
-    return _ret_218_45;
+    int64_t _ret_218_43 = fallos;
+    return _ret_218_43;
       /* [Lifetime Scope: exit depth=0] */
 }
 
@@ -1269,20 +1279,21 @@ int64_t prueba_resultado_algebraico(void) {
         fallos = (fallos + 1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
-    int64_t _ret_313_46 = fallos;
-    return _ret_313_46;
+    int64_t _ret_313_44 = fallos;
+    return _ret_313_44;
       /* [Lifetime Scope: exit depth=0] */
 }
 
 CadenaSegura sha256_texto(CadenaSegura datos) {
-    CadenaSegura _ret_20_47 = _syn_sha256_texto(datos);
+    CadenaSegura _ret_20_45 = _syn_sha256_texto(datos);
     _syn_texto_liberar(datos);
-    return _ret_20_47;
+    return _ret_20_45;
       /* [Lifetime Scope: exit depth=0] */
 }
 
 int64_t stdin_eof(void) {
     int64_t _resultado_ = _syn_stdin_eof();
+    assert_contrato(((_resultado_ == 0LL) || (_resultado_ == 1LL)), "Fallo en contrato: garantiza");
     return _resultado_;
       /* [Lifetime Scope: exit depth=0] */
 }

@@ -965,6 +965,28 @@ int _syn_eliminar_archivo(CadenaSegura ruta) {
     return r;
 }
 
+/*
+ * cumple Manual 9 §5.3: hash SHA-256 de archivo con ABI CadenaSegura.
+ * R269 fallo EJECUTANDO como usuario 2026-10-25: el binding externo del
+ * compilador pasa CadenaSegura (struct por valor) y la implementación nativa
+ * _syn_sha256_archivo (runtime/core/axon.c) recibe const char* — el callee
+ * leía `longitud` como puntero, fopen fallaba y el hash salía VACÍO: el
+ * instalador OpenSyn reportaba "Error: checksum incorrecto" con el archivo
+ * CORRECTO (vs X-Linked-ETag de HuggingFace, verificado con curl).
+ * Wrapper con el patrón de _syn_existe_archivo/_syn_eliminar_archivo de
+ * este archivo; los llamadores nativos C de axon.c/axon_rt.c no cambian.
+ */
+CadenaSegura _syn_hash_archivo(CadenaSegura ruta) {
+    if (ruta.datos == NULL || ruta.longitud <= 0) return (CadenaSegura){0, ""};
+    char* cstr = (char*)malloc((size_t)(ruta.longitud + 1));
+    if (!cstr) return (CadenaSegura){0, ""};
+    memcpy(cstr, ruta.datos, (size_t)ruta.longitud);
+    cstr[ruta.longitud] = '\0';
+    CadenaSegura hash = _syn_sha256_archivo((const char*)cstr);
+    free(cstr);
+    return hash;
+}
+
 
 
 /*

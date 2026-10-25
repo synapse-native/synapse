@@ -55,6 +55,8 @@ extern void _syn_mapa_liberar(void* m);
 extern void* _syn_mapa_claves(void* m);
 extern void* _syn_mapa_valores(void* m);
 extern CadenaSegura _syn_leer_archivo(CadenaSegura ruta);
+extern int64_t _syn_existe_archivo(CadenaSegura ruta);
+extern CadenaSegura _syn_ruta_validar(CadenaSegura ruta);
 extern CadenaSegura _syn_texto_subcadena(CadenaSegura t, int64_t inicio, int64_t fin);
 extern CadenaSegura _syn_texto_duplicar(CadenaSegura s);
 
@@ -313,6 +315,7 @@ extern int _G_native_canal_elem_tipo(const char* _cname, char* _cout);
 extern char _G_listeners[8][16384];
 extern int _G_listeners_count;
 extern int _G_listener_modo;
+extern int _G_co_modo_resultado;
 extern char _G_lanzar_wrappers[8][4096];
 extern int _G_lanzar_wrappers_count;
 extern int _G_lanzar_count;
@@ -403,16 +406,9 @@ __attribute__((weak)) void synapse_esperar_fibras(void) { }
 __attribute__((weak)) void _simd_detectar(void) { }
 #endif
 
-// --- Contratos (requiere/garantiza) ---
-#ifdef SYNAPSE_RELEASE
-#define assert_contrato(expr, msg) ((void)0)
-#else
-#define assert_contrato(expr, msg) \
-    do { if (!(expr)) { \
-        fprintf(stderr, "CONTRATO: %s en %%s:%%d\\n", \
-                msg, __FILE__, __LINE__); \
-        exit(1); }} while(0)
-#endif
+// --- Contratos (requiere/garantiza) — cumple Manual 2 §5.1/§5.2 (ME r192) ---
+// cumple Manual 2 §5.3: en release NDEBUG elimina la aserción (costo cero).
+#define assert_contrato(expr, msg) assert((expr) && msg)
 
 extern int _g_argc;
 extern char** _g_argv;

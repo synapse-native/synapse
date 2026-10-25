@@ -49,6 +49,7 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "syquex/traductor.syn": ["Manual 6 §1"],
   "runtime/core/memory.c": ["Manual 4 §2"],
   "runtime/core/io.c": ["Manual 5 §2.6"],
+  "runtime/core/modelo.c": ["Manual 9 §5.3"],
   "std/sistema.syn": ["Manual 2 §5.1"],
   "runtime/core/concurrency.c": ["Manual 5 §2.1"],
   "runtime/core/ollama.c": ["Manual 7 §2.2"],

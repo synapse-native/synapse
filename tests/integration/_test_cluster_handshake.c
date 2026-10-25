@@ -183,6 +183,7 @@ int _G_native_canal_elem_tipo(const char* _cname, char* _cout) {
 char _G_listeners[8][16384];
 int _G_listeners_count;
 int _G_listener_modo;
+int _G_co_modo_resultado;
 char _G_lanzar_wrappers[8][4096];
 int _G_lanzar_wrappers_count;
 int _G_lanzar_count;
