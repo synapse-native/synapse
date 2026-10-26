@@ -123,7 +123,32 @@
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-10-25 sesión:** R197
+Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-10-26 sesión:** R198
+                   COMPLETADO (18ee4ee): ME r198_cesion_struct — cierre
+                   H-R197-1 (emisor liberaba el texto cedido a campo de
+                   struct: slab reciclado → config.toml `ruta` corrupta):
+                   S1 emit_declarations.py visitar_asignacion_campo + nativo
+                   nodos_flujo.syn gen_visitar_asignacion_campo (unity
+                   re-sellada con _rebuild_generator.py) marcan el ORIGEN
+                   CONSUMIDO (move semantics M4 §3.3, paridad
+                   ArgumentoTransferido H-R182c-1 extendida a cesión-campo;
+                   M2 §5.1 el cleanup RAII respeta la cesión; M2 §12
+                   contratos en el probe). Probe determinista
+                   auditoria/probes/probe_cesion_struct.syn + oráculo NUEVO
+                   oraculo_r198_cesion.py 3/3 (C sin _syn_texto_liberar(p) en
+                   armado, salida íntegra rc=0); E2E real: config.toml `ruta`
+                   ÍNTEGRA. Gates: plan MTS contrastar RC=0; expediente r198
+                   0 brechas (evidencia e004e8e8e8645718, 5 CUMPLE);
+                   verificar_alineacion SIN BRECHAS. Resolución asignada al
+                   ME r198b (emisor de contratos, familia H-R196-3):
+                   `garantiza` sobre retorno texto evalúa
+                   `_resultado_`/`resultado` del pool tras el cleanup
+                   (test_oraculos_config_ruta rc=0xC0000009 hoy vs
+                   0xC0000374 ayer, PREEXISTENTE al bisect) + compilación S1
+                   de opensyn/principal.syn falla (`longitud(resultado)` sin
+                   renombrar + robo del `_resultado_` int64 de otra función —
+                   resolver por TIPOS, no por nombre de variable).
+                   Reporte docs/reportes/R198.md. Antes (2026-10-25): R197
                    COMPLETADO (ad4f5bd): ME r197_instalador_usuario — hallazgos
                    de EJECUTAR el instalador como usuario (rc=0 ≠ funciona):
                    wrapper _syn_hash_archivo(CadenaSegura) en runtime/core/modelo.c

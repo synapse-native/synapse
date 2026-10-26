@@ -10,6 +10,33 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
 
 ## Cola de MEs (prioridad por radio/costo, actualizable)
 
+- **R198/ME r198_cesion_struct (CERRADA 2026-10-26, commit 18ee4ee):**
+  cierre H-R197-1 — cesión de `texto` a campo de struct transfiere la
+  propiedad al CAMPO y el ORIGEN queda CONSUMIDO (move semantics M4 §3.3,
+  paridad H-R182c-1 extendida de args a asignación-campo; M2 §5.1 el cleanup
+  RAII del scope respeta la cesión; M2 §12 contratos en el probe nuevo).
+  Emisores S1 (emit_declarations.py visitar_asignacion_campo) y nativo
+  (nodos_flujo.syn gen_visitar_asignacion_campo + unity regenerada con
+  _rebuild_generator.py). Probe determinista auditoria/probes/
+  probe_cesion_struct.syn (C sin `_syn_texto_liberar(p)` en armado, salida
+  íntegra rc=0) + oráculo auditando/oraculos/oraculo_r198_cesion.py 3/3; E2E
+  real del instalador: config.toml `ruta` íntegra.
+  Gates: plan MTS docs/plan_ME_r198_cesion_struct.md contrastar RC=0,
+  expediente docs/alineacion/r198_cesion_struct.md 0 brechas (evidencia
+  e004e8e8e8645718, 5 CUMPLE), verificar_alineacion SIN BRECHAS. Reporte:
+  docs/reportes/R198.md. Resoluciones ACTUALIZADAS: la deuda fija H-R196-3
+  (emisor de contratos con `garantiza` sobre el valor de retorno texto:
+  probe rc=0xC0000009 hoy vs 0xC0000374 ayer, misma cláusula) queda con
+  resolución asignada al **ME r198b** junto al hallazgo nuevo de la misma
+  familia (compilación S1 de opensyn/principal.syn falla: `garantiza:
+  longitud(resultado)` sin renombrar a `_resultado_` + robo del
+  `_resultado_` int64 de otra función — el emisor de contratos debe resolver
+  el símbolo del valor de retorno por TIPOS, no por nombre de variable).
+  *Nota de alcance:* el plan de r197 contemplaba "bootstrap 3 etapas" para
+  esta familia; el fix del emisor S1 NO requiere bootstrap (S1 Python es el
+  compilador de producción); la paridad nativa quedó cubierta por el módulo
+  + rebuild de la unity — bootstrap integral queda pendiente del ME de
+  bootstrap dedicado.
 - **R197/ME r197_instalador_usuario (CERRADA 2026-10-25, commit ad4f5bd):**
   hallazgos de EJECUTAR el instalador como usuario real (rc=0 ≠ funciona):
   (R1) wrapper `_syn_hash_archivo(CadenaSegura)` en runtime/core/modelo.c —

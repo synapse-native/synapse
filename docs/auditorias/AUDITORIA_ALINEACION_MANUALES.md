@@ -677,3 +677,38 @@ destapa bugs de ABI que ninguna suite de compilación ve; el gate
 (correccion "no toca el cambio" fantasma).
 Reporte: docs/reportes/R197.md | ad4f5bd |
 Manual 7 §2.5, Manual 9 §5.2, Manual 9 §5.3, Manual 9 §5.4, Manual 8 §1.7.3, Manual 2 §12 | 0 brechas |
+### R198 — ME r198_cesion_struct (2026-10-26, 18ee4ee)
+Cierre de H-R197-1 (cesión de propiedad texto→campo de struct). El emisor S1
+(visitar_asignacion_campo) y el nativo (gen_visitar_asignacion_campo + unity
+regenerada con _rebuild_generator.py, lección H-R180-2) marcaban el CAMPO, no
+el ORIGEN, al asignar un `texto` a un campo de struct: el cleanup RAII del
+scope emitía `_syn_texto_liberar(p)` tras la cesión — el slab TLS reciclaba el
+buffer y el siguiente concat corrompía el campo (config.toml `ruta` con prefijo
+reciclado + NUL, repro determinista 2026-10-25). Fix MÍNIMO: el ORIGEN queda
+CONSUMIDO (move semantics Manual 4 §3.3, paridad con ArgumentoTransferido
+H-R182c-1 extendida de args a asignación-campo; Manual 2 §5.1 — el scope respeta
+la cesión; Manual 2 §12 — contratos requiere/garantiza añadidos a la función
+nueva del probe). Verificación: probe determinista
+auditoria/probes/probe_cesion_struct.syn — el C emitido NO libera `p` en
+`armado` y la salida sale ÍNTEGRA (rc=0, `pre:C:\Users\marce/…gguf:post`); E2E
+real del instalador: config.toml `ruta` íntegra. Oráculo NUEVO
+auditoria/oraculos/oraculo_r198_cesion.py 3/3 PASS. Deuda heredada H-R196-3
+(emisor de contratos: `garantiza` sobre el valor de retorno texto evalúa
+`_resultado_`/`resultado` del POOL tras el cleanup — test_oraculos_config_ruta
+rc=0xC0000009 fallo limpio del mismo contrato que ayer rompía con
+0xC0000374) queda con resolución asignada al ME r198b; compilación S1 de
+opensyn/principal.syn falla en el garantiza (`longitud(resultado)` sin
+renombrar a `_resultado_` + robo de `_resultado_` int64 de otra función) —
+misma resolución r198b (emisor de contratos: resolver por TIPOS, no por
+nombre). Gates: plan MTS docs/plan_ME_r198_cesion_struct.md contrastar RC=0,
+expediente docs/alineacion/r198_cesion_struct.md 0 brechas (evidencia
+e004e8e8e8645718, 5 CUMPLE), verificar_alineacion SIN BRECHAS, familia
+borrowing/borrow_abort pasó (1 failed + 1 error PREEXISTENTES de la familia
+contratos r198b). Lecciones: el gate del expediente exige la cita del MAPA
+(M2 §5.1/§1.3) con ancla `cumple` DEDICADA en ±3 líneas (un comentario solo
+colecta UN cumple — lección R168); el cambio_hash muta al tocar el probe
+(re-sello manual del expediente, precedente d948cab); la función nueva del
+probe .syn sin contratos es brecha del gate (Manual 2 §12 exige requiere/
+garantiza hasta en un probe).
+Reporte: docs/reportes/R198.md | 18ee4ee |
+Manual 4 §3.3, Manual 2 §5.1, Manual 2 §12 | 0 brechas |
