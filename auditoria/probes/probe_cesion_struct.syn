@@ -1,0 +1,23 @@
+#lang: es
+# probe_cesion_struct.syn — repro determinista de H-R197-1 (ME r198_cesion_struct)
+# El emisor liberaba el parametro `p` cedido a un campo de struct:
+#   c.ruta_modelo = p; struct Cfg r = c; _syn_texto_liberar(p); return r;
+# El slab TLS recicla el buffer y el concat siguiente corrompe el campo.
+# Esperado (correcto): rc=0 y linea "MODELO=<ruta completa>" SIN corrupcion.
+estructura Cfg:
+    ruta_modelo: texto
+
+externo funcion _syn_home() -> texto
+
+// cumple Manual 2 §12: toda función pública nueva lleva requiere/garantiza
+funcion armado(p: texto) -> Cfg:
+    requiere: longitud(p) > 0
+    garantiza: longitud(c.ruta_modelo) > 0
+    let c: Cfg
+    c.ruta_modelo = p
+    retornar c
+
+funcion principal() -> nulo:
+    let ruta: texto = _syn_home() + "/.opensyn/models/" + "deepseek-coder-1.3b-Q4_K_M.gguf"
+    let cfg: Cfg = armado(ruta)
+    escribir_linea("MODELO=" + "pre:" + cfg.ruta_modelo + ":post")

@@ -958,6 +958,25 @@ funcion gen_visitar_asignacion_campo(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("char _linea[8192];")
         asm("snprintf(_linea, 8192, \"    %s%s%s = %s;\", _buf, _sep, _ac->nombre_campo.datos ? _ac->nombre_campo.datos : \"\", _buf2);")
         asm("gen_emitir_str(est, _linea);")
+        // cumple Manual 4 §3.3 (ME r198_cesion_struct, H-R197-1): asignar un
+        // `texto` local/parametro a un campo de struct TRANSFIERE la propiedad
+        // al campo (paridad S1 visitar_asignacion_campo): el cleanup RAII del
+        // scope (gen_cerrar_bloque_c, emision_c.syn) NO debe liberar el ORIGEN
+        // — el slab reciclabia el buffer y el concat siguiente corrompia el
+        // campo (config.toml `ruta` corrupta, repro determinista r197).
+        // Sentinela de scope: depth=-1 + nombre vacio (misma convención que
+        // el 'Mark as removed' del propio gen_cerrar_bloque_c).
+        // cumple Manual 2 §5.1 (ME r198): el cleanup del scope respeta la
+        // cesión de propiedad — el origen Transferido sale sin liberarse.
+        asm("if (_ac->expresion && _ac->expresion->tipo.datos && strcmp(_ac->expresion->tipo.datos, \"Identificador\") == 0) {")
+        asm("    struct Identificador* _ri = (struct Identificador*)_ac->expresion;")
+        asm("    if (_ri->nombre.datos) {")
+        asm("        extern int _G_scope_vars_depth[256]; extern char _G_scope_vars_names[256][64]; extern int _G_scope_vars_total; extern int _G_scope_vars_kind[256];")
+        asm("        for (int _ti = 0; _ti < _G_scope_vars_total; _ti++) {")
+        asm("            if (_G_scope_vars_kind[_ti] == 0 && _G_scope_vars_depth[_ti] >= 0 && strcmp(_G_scope_vars_names[_ti], _ri->nombre.datos) == 0) { _G_scope_vars_depth[_ti] = -1; _G_scope_vars_names[_ti][0] = 0; break; }")
+        asm("        }")
+        asm("    }")
+        asm("}")
 
 // ----------------------------------------------------------
 // gen_visitar_expr

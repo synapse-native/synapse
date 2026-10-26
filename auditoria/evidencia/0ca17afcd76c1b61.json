@@ -1,0 +1,15 @@
+{
+ "cambio_hash": "0ca17afcd76c1b61",
+ "expediente": "docs/alineacion/r198_cesion_struct.md",
+ "fecha": "2026-10-26",
+ "archivos": [
+  "compilador/generator/emit_declarations.py",
+  "nucleo/generador/nodos_flujo.syn",
+  "nucleo/generator.syn"
+ ],
+ "oraculos": {
+  "auditoria/oraculos/oraculo_r198_cesion.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

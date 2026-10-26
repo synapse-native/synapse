@@ -503,6 +503,21 @@ def visitar_asignacion_campo(ctx: GeneratorContext, nodo: AsignacionCampo):
         )
     obj = expr_a_c(ctx, nodo.objeto)
     val = expr_a_c(ctx, nodo.expresion)
+    # cumple Manual 4 §3.3 (ME r198_cesion_struct, H-R197-1): asignar un
+    # `texto` local/parámetro a un campo de struct TRANSFIERE la propiedad al
+    # campo (el padro es quien queda dueño del buffer). El cleanup RAII del
+    # scope de la función (pop_scope) NO debe liberar el ORIGEN: antes emitía
+    # `_syn_texto_liberar(p)` tras la cesión — el slab TLS recicla el buffer y
+    # el siguiente concat escribe encima — corrompiendo el campo (config.toml
+    # `ruta` corrupta, repro determinista del E2E como usuario 2026-10-25).
+    # Marcar el origen CONSUMIDO (move semantics, paridad con los
+    # ArgumentoTransferido del canal H-R182c-1).
+    # cumple Manual 2 §5.1: la sesión RAII del scope respeta la cesión de
+    # propiedad — el origen Transferido sale del cleanup sin liberarse.
+    if isinstance(nodo.expresion, Identificador):
+        _rhs_tipo = tipo_de_expr(ctx, nodo.expresion)
+        if _rhs_tipo in ('texto', 'cadena', 'CadenaSegura'):
+            ctx._consumed_vars.add(nodo.expresion.nombre)
     obj_tipo = tipo_de_expr(ctx, nodo.objeto)
     es_puntero = obj_tipo.endswith('*')
     nombre_struct = ''
