@@ -712,3 +712,48 @@ probe .syn sin contratos es brecha del gate (Manual 2 §12 exige requiere/
 garantiza hasta en un probe).
 Reporte: docs/reportes/R198.md | 18ee4ee |
 Manual 4 §3.3, Manual 2 §5.1, Manual 2 §12 | 0 brechas |
+### R198b — ME r198b_contratos (2026-10-27, f10401f)
+Cierre de H-R196-3 (deuda a cola de R196/R198, ME asignado en
+plan_maestro_deudas). Veredicto contra la hipótesis: el emisor de contratos
+NO estaba roto — emitía fielmente el AST (emit_declarations.py garantiza en
+cada `retornar` con `_resultado_` del tipo REAL, L781-816, M2 §5.1); las
+cláusulas del std/opensyn estaban escritas bajo semánticas no canónicas y el
+código desviado se corrigió hacia el manual (precedente ratificado
+H-R196-1). Fix en cláusulas, no en emisor: (1) std/sistema.syn L29+L35 —
+`subcadena(ruta,1,2)` fin-inclusivo (producía ":/" y abortaba limpio
+rc=0xC0000009 el garantiza de _validar_ruta_segura) → `subcadena(ruta,1,1)`
+fin EXCLUSIVO (semántica (inicio,largo) r196, runtime/core/texto.c), mismo
+patrón en el `si` de resolución relativa; (2) opensyn/principal.syn L213 —
+alias bare `resultado` → `_resultado_` (alias canónico M2 §5.1) en el
+garantiza de ruta_config_absoluta (la compilación S1 fallaba: robo del
+`_resultado_` int64 de OTRA función); (3) opensyn/principal.syn L1065 —
+`longitud(_resultado_) >= 0` sobre retorno ENTERO en pct_contexto →
+`_resultado_ >= 0` (el C inventado por la cláusula NO compilaba:
+"incompatible type for argument 1 of 'longitud'"); esta cláusula es del
+recorrido de validación M7 §4.2 que compila código con el CLI real.
+Verificación: oráculo NUEVO auditoria/oraculos/oraculo_r198b_contratos.py
+3/3 PASS (A1 compilación de opensyn/principal.syn rc=0 — antes fallaba la
+COMPILACIÓN; A2 suite sandbox de contratos 5/5 — antes 3✓/1✗/1 error con
+abort rc=0xC0000009; A3 regresión r198 3/3); regresión contratos/sandbox
+44 passed (test_contracts*10 + string_utils + test_sandbox_cover_r196) +
+borrowing 17 passed. Gates: plan MTS docs/plan_ME_r198b_contratos.md
+contrastar RC=0 (oráculo ejecutado release + vínculo plan↔código);
+expediente docs/alineacion/r198b_contratos.md 0 brechas (3 CUMPLE,
+evidencia auditoria/evidencia/ca4229aa1e9364ab.json); verificar_alineacion
+SIN BRECHAS; sello de lectura previa r198b_contratos.antes.json (base
+3aa5b6c); gate de lectura cubierto por 3 registros. Hallazgo NUEVO
+(H-R198b-1, resolución a la cola maestro): la fase de re-sello de cambio_hash
+en cmd_verificar (alineacion.py L920-957) es un CÍRCULO — el mensaje pide
+"re-ejecutá --verificar para re-sellar" pero el re-sello (L945-952) SOLO se
+ejecuta tras pasar y el mismatch (L455-463) hace return 1 ANTES; además
+cambio_hash lee blobs del INDEX (`:{ruta}`, L114-117), así que un --verificar
+SIN stage previo sella un hash fantasma (8b8b3688… con blobs vacíos) que el
+add posterior invalida (causa raíz del gap de este ME, precedentes d948cab /
+lección R188). Recuperación usada: edición manual del expediente al hash
+vigente + --verificar (converge: el hash no cubre el expediente).
+Lecciones: el expediente debe sellarse SIEMPRE tras `git add` dados los
+blobs del index; la lectura del expediente con --exigir-sello valida su
+EXISTENCIA pero lo freshens al contenido ACTUAL (el sello .antes creado
+post-código queda funcional, no probatorio-antes).
+Reporte: docs/reportes/R198b.md | f10401f |
+Manual 2 §5.1, Manual 2 §12, Manual 7 §2.1, Manual 7 §4.2 | 0 brechas |

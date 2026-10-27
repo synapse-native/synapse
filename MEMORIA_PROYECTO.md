@@ -123,8 +123,41 @@
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-10-26 sesión:** R198
-                   COMPLETADO (18ee4ee): ME r198_cesion_struct — cierre
+Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-10-27 sesión:** R198b
+                   COMPLETADO (f10401f): ME r198b_contratos — cierre
+                   H-R196-3 con veredicto CONTRA la hipótesis: el emisor
+                   de contratos NO estaba roto (emitía fielmente el AST,
+                   M2 §5.1 en CADA retornar con _resultado_ del tipo REAL,
+                   emit_declarations.py L781-816); las cláusulas del
+                   std/opensyn estaban bajo semánticas no canónicas y se
+                   corrigieron hacia el manual (precedente H-R196-1):
+                   std/sistema.syn subcadena (1,2)→(1,1) fin EXCLUSIVO
+                   (r196) en garantiza _validar_ruta_segura + patrón
+                   relativo; principal.syn L213 alias bare `resultado`→
+                   `_resultado_` (ruta_config_absoluta) y L1065
+                   `longitud(_resultado_) >= 0` → `_resultado_ >= 0`
+                   (pct_contexto, recorrido de validación M7 §4.2).
+                   Oráculo NUEVO oraculo_r198b_contratos.py 3/3 (A1
+                   compilación principal.syn rc=0, A2 sandbox contratos
+                   5/5 antes 3✓/1✗/1E rc=0xC0000009, A3 regresión r198);
+                   contratos/sandbox 44 passed + borrowing 17. Gates:
+                   plan MTS contrastar RC=0; expediente r198b_contratos
+                   0 brechas (3 CUMPLE, evidencia ca4229aa1e9364ab);
+                   verificar_alineacion SIN BRECHAS; sello
+                   r198b_contratos.antes.json (base 3aa5b6c). Hallazgo
+                   NUEVO H-R198b-1 con resolución a la cola maestro:
+                   CÍRCULO del re-sello de cambio_hash en cmd_verificar
+                   (alineacion.py L920-957) — el mensaje pide re-ejecutar
+                   --verificar para re-sellar pero el re-sello L945-952
+                   solo corre tras pasar y el mismatch L455-463 retorna
+                   1 ANTES; amplificador: cambio_hash lee blobs del INDEX
+                   (`:{ruta}`), un --verificar SIN stage sella hash
+                   fantasma (8b8b3688… con blobs vacíos) que el add
+                   invalida (precedentes d948cab/lección R188):
+                   EXPEDIENTE SIEMPRE sellado tras git add; ME futuro:
+                   re-sello auto-sanante de una pasada (in-proceso,
+                   oráculos incluidos). Reporte docs/reportes/R198b.md
+                   Antes (2026-10-26): R198 COMPLETADO (18ee4ee): ME r198_cesion_struct — cierre
                    H-R197-1 (emisor liberaba el texto cedido a campo de
                    struct: slab reciclado → config.toml `ruta` corrupta):
                    S1 emit_declarations.py visitar_asignacion_campo + nativo
