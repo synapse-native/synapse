@@ -252,6 +252,65 @@ def ruta_expediente(me):
     return EXPEDIENTES_DIR / f"{me}.md"
 
 
+def resellar_hash_expediente(me, ch):
+    # cumple Manual 6 §5; ME r198b1_resello
+    """Reescribe la línea `cambio_hash:` del expediente del ME con la huella
+    vigente. Devuelve True si modificó el archivo.
+
+    H-R198b-1: el código desviado de cmd_verificar hacía imposible el re-sello
+    (el mensaje pedía re-ejecutar --verificar, pero el re-sello solo corría
+    tras pasar y el mismatch retornaba antes). Este helper unifica el re-sello
+    del éxito y el resane del mismatch; converge porque la huella cubre blobs
+    de producción, nunca el expediente.
+    """
+    if not me or not ch:
+        return False
+    ruta = ruta_expediente(me)
+    if not ruta.exists():
+        return False
+    texto = ruta.read_text(encoding="utf-8", errors="replace")
+    nuevo = re.sub(r"^cambio_hash:.*$", f"cambio_hash: {ch}", texto,
+                   count=1, flags=re.M)
+    if nuevo == texto:
+        return False
+    ruta.write_text(nuevo, encoding="utf-8")
+    return True
+
+
+def _solo_brecha_hash_stale(errores):
+    # cumple Manual 6 §5; ME r198b1_resello
+    """True si TODAS las brechas son el cambio_hash stale del expediente.
+
+    H-R198b-1: el resane subsiste SOLO a ese caso — no puede enmascarar
+    fallas reales de anclas/citas/oráculos.
+    """
+    patron = re.compile(r"^cambio_hash del expediente \(\S+\) no coincide "
+                        r"con el actual")
+    return bool(errores) and all(patron.match(str(e)) for e in errores)
+
+
+def _avisos_sin_stage(prod):
+    # cumple Manual 6 §5; ME r198b1_resello
+    """Avisos H-R198b-1: diferencias sin stage en archivos de producción.
+
+    La huella cambio_hash se calcula sobre blobs del INDEX (`:{ruta}`):
+    un sello sin `git add` previo ata contenido NO integrado y el add
+    posterior lo invalida (lección R188 / precedente d948cab). Aviso, no
+    bloqueo (el modo diagnóstico legítimo existe).
+    """
+    if not prod:
+        return []
+    fuera, _rc = _run(["git", "diff", "--name-only", "--"] + list(prod))
+    unstaged = [f for f in fuera.splitlines() if f.strip()]
+    if not unstaged:
+        return []
+    return [
+        f"cambio_hash se calcula sobre blobs del INDEX: {len(unstaged)} "
+        f"archivo(s) de producción con diferencias sin stage "
+        f"({', '.join(unstaged[:5])}) — sellá SIEMPRE tras git add",
+    ]
+
+
 def leer_expediente(path, desde_commit=False):
     """Lee el expediente desde el árbol o desde HEAD (modo CI)."""
     if desde_commit:
@@ -459,8 +518,9 @@ def verificar(archivos, desde=None, me=None, modo="block", con_oraculos=True,
         # evidencia quedaba desanclada del código real.
         errores.append(
             f"cambio_hash del expediente ({exp['cambio_hash']}) no coincide "
-            f"con el actual ({ch}) — re-ejecutá --verificar para re-sellar "
-            f"(la evidencia debe estar atada al contenido que se integra)")
+            f"con el actual ({ch}) — re-ejecutá --verificar (el re-sello es "
+            "auto-sanante desde H-R198b-1: la evidencia debe estar atada al "
+            "contenido que se integra)")
 
     # (2) sello de lectura previa. Bloqueante SOLO en los gates reales
     # (pre-commit pasa --exigir-sello); en modo diagnóstico queda como aviso
@@ -908,6 +968,30 @@ def cmd_verificar(args):
         archivos, desde=args.desde, me=args.me, modo=args.modo,
         con_oraculos=not args.sin_oraculos, ci=args.ci,
         exigir_sello=args.exigir_sello)
+    # H-R198b-1 (re-sello auto-sanante): si la ÚNICA brecha es el
+    # cambio_hash stale del expediente, el gate era un círculo (el re-sello
+    # solo corría tras pasar y el mismatch retornaba antes). Resane
+    # in-proceso: re-sello + re-verificación de UNA pasada (converge: la
+    # huella no cubre el expediente) para atar la evidencia al contenido
+    # real sin edición manual y sin enmascarar otros errores.
+    if _solo_brecha_hash_stale(errores):
+        if resellar_hash_expediente(args.me, detalle.get("cambio_hash")):
+            ruta_re = ruta_expediente(args.me)
+            print(f"[resane] cambio_hash re-sellado en "
+                  f"{ruta_re.relative_to(RAIZ).as_posix()}: "
+                  f"{detalle['cambio_hash']} (H-R198b-1)")
+            errores, avisos_r, detalle = verificar(
+                archivos, desde=args.desde, me=args.me, modo=args.modo,
+                con_oraculos=not args.sin_oraculos, ci=args.ci,
+                exigir_sello=args.exigir_sello)
+            avisos = avisos_r + avisos
+    # H-R198b-1 (amplificador, aviso no bloqueante): la huella se calcula
+    # sobre blobs del INDEX (`:{ruta}`); si hay diferencias sin stage el
+    # sello ataría contenido NO integrado y el add posterior invalidaría
+    # la evidencia. Lección R188/d948cab: sellar SIEMPRE tras git add.
+    if not args.desde:
+        avisos.extend(_avisos_sin_stage(
+            detalle.get("archivos_produccion") or []))
     for a in avisos:
         print(f"[aviso] {a}")
     if not detalle.get("archivos_produccion"):
@@ -943,13 +1027,7 @@ def cmd_verificar(args):
         "modo": args.modo,
     }, ensure_ascii=False, indent=1), encoding="utf-8")
     # El expediente se re-sella para que su huella quede atada al contenido
-    if args.me:
-        ruta = ruta_expediente(args.me)
-        if ruta.exists():
-            texto = ruta.read_text(encoding="utf-8", errors="replace")
-            texto = re.sub(r"^cambio_hash:.*$", f"cambio_hash: {detalle['cambio_hash']}",
-                           texto, count=1, flags=re.M)
-            ruta.write_text(texto, encoding="utf-8")
+    resellar_hash_expediente(args.me, detalle.get("cambio_hash"))
     print(f"[OK] alineación verificada: {len(detalle['archivos_produccion'])} "
           f"archivo(s), citas textuales verificadas, "
           f"oráculos={len(detalle.get('oraculos', {}))} ejecutados")
