@@ -198,7 +198,7 @@
                 "tipo": "ExpresionArit",
                 "izquierda": {
                   "tipo": "Identificador",
-                  "nombre": "resultado"
+                  "nombre": "_resultado_"
                 },
                 "operador": "==",
                 "derecha": {
@@ -215,7 +215,7 @@
                   "argumentos": [
                     {
                       "tipo": "Identificador",
-                      "nombre": "resultado"
+                      "nombre": "_resultado_"
                     },
                     {
                       "tipo": "LiteralNumero",
@@ -223,7 +223,7 @@
                     },
                     {
                       "tipo": "LiteralNumero",
-                      "valor": 2
+                      "valor": 1
                     }
                   ]
                 },
@@ -243,7 +243,7 @@
                 "argumentos": [
                   {
                     "tipo": "Identificador",
-                    "nombre": "resultado"
+                    "nombre": "_resultado_"
                   },
                   {
                     "tipo": "LiteralNumero",
@@ -312,7 +312,7 @@
                       },
                       {
                         "tipo": "LiteralNumero",
-                        "valor": 2
+                        "valor": 1
                       }
                     ]
                   },
@@ -962,13 +962,37 @@
           {
             "tipo": "ExpresionArit",
             "izquierda": {
-              "tipo": "Identificador",
-              "nombre": "resultado"
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "ExprAccesoCampo",
+                "objeto": {
+                  "tipo": "Identificador",
+                  "nombre": "_resultado_"
+                },
+                "nombre_campo": "es_valido"
+              },
+              "operador": "==",
+              "derecha": {
+                "tipo": "LiteralNumero",
+                "valor": 0
+              }
             },
-            "operador": ">=",
+            "operador": "||",
             "derecha": {
-              "tipo": "LiteralNumero",
-              "valor": 0
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "ExprAccesoCampo",
+                "objeto": {
+                  "tipo": "Identificador",
+                  "nombre": "_resultado_"
+                },
+                "nombre_campo": "es_valido"
+              },
+              "operador": "==",
+              "derecha": {
+                "tipo": "LiteralNumero",
+                "valor": 1
+              }
             }
           }
         ]
@@ -1052,13 +1076,17 @@
           {
             "tipo": "ExpresionArit",
             "izquierda": {
-              "tipo": "Identificador",
-              "nombre": "c"
+              "tipo": "ExprAccesoCampo",
+              "objeto": {
+                "tipo": "Identificador",
+                "nombre": "c"
+              },
+              "nombre_campo": "es_valido"
             },
-            "operador": ">=",
+            "operador": "==",
             "derecha": {
               "tipo": "LiteralNumero",
-              "valor": 0
+              "valor": 1
             }
           }
         ],
@@ -1071,7 +1099,7 @@
               "argumentos": [
                 {
                   "tipo": "Identificador",
-                  "nombre": "resultado"
+                  "nombre": "_resultado_"
                 }
               ]
             },
@@ -1238,7 +1266,7 @@
               "argumentos": [
                 {
                   "tipo": "Identificador",
-                  "nombre": "resultado"
+                  "nombre": "_resultado_"
                 }
               ]
             },
@@ -1279,7 +1307,7 @@
               "tipo": "ExpresionArit",
               "izquierda": {
                 "tipo": "Identificador",
-                "nombre": "resultado"
+                "nombre": "_resultado_"
               },
               "operador": "==",
               "derecha": {
@@ -1292,7 +1320,7 @@
               "tipo": "ExpresionArit",
               "izquierda": {
                 "tipo": "Identificador",
-                "nombre": "resultado"
+                "nombre": "_resultado_"
               },
               "operador": "==",
               "derecha": {
@@ -1353,7 +1381,7 @@
               "argumentos": [
                 {
                   "tipo": "Identificador",
-                  "nombre": "resultado"
+                  "nombre": "_resultado_"
                 }
               ]
             },
@@ -4274,26 +4302,7 @@
       ],
       "tipo_retorno": "entero",
       "contratos": {
-        "requiere": [
-          {
-            "tipo": "ExpresionArit",
-            "izquierda": {
-              "tipo": "LlamadaFuncion",
-              "nombre": "longitud",
-              "argumentos": [
-                {
-                  "tipo": "Identificador",
-                  "nombre": "subcadena"
-                }
-              ]
-            },
-            "operador": ">",
-            "derecha": {
-              "tipo": "LiteralNumero",
-              "valor": 0
-            }
-          }
-        ],
+        "requiere": [],
         "garantiza": [
           {
             "tipo": "ExpresionArit",
@@ -4301,7 +4310,7 @@
               "tipo": "ExpresionArit",
               "izquierda": {
                 "tipo": "Identificador",
-                "nombre": "resultado"
+                "nombre": "_resultado_"
               },
               "operador": "==",
               "derecha": {
@@ -4314,7 +4323,7 @@
               "tipo": "ExpresionArit",
               "izquierda": {
                 "tipo": "Identificador",
-                "nombre": "resultado"
+                "nombre": "_resultado_"
               },
               "operador": "==",
               "derecha": {
@@ -4366,32 +4375,13 @@
       ],
       "tipo_retorno": "entero",
       "contratos": {
-        "requiere": [
-          {
-            "tipo": "ExpresionArit",
-            "izquierda": {
-              "tipo": "LlamadaFuncion",
-              "nombre": "longitud",
-              "argumentos": [
-                {
-                  "tipo": "Identificador",
-                  "nombre": "subcadena"
-                }
-              ]
-            },
-            "operador": ">",
-            "derecha": {
-              "tipo": "LiteralNumero",
-              "valor": 0
-            }
-          }
-        ],
+        "requiere": [],
         "garantiza": [
           {
             "tipo": "ExpresionArit",
             "izquierda": {
               "tipo": "Identificador",
-              "nombre": "resultado"
+              "nombre": "_resultado_"
             },
             "operador": ">=",
             "derecha": {
@@ -4480,7 +4470,7 @@
               "argumentos": [
                 {
                   "tipo": "Identificador",
-                  "nombre": "resultado"
+                  "nombre": "_resultado_"
                 }
               ]
             },
@@ -4564,7 +4554,7 @@
               "tipo": "ExpresionArit",
               "izquierda": {
                 "tipo": "Identificador",
-                "nombre": "resultado"
+                "nombre": "_resultado_"
               },
               "operador": "==",
               "derecha": {
@@ -4577,7 +4567,7 @@
               "tipo": "ExpresionArit",
               "izquierda": {
                 "tipo": "Identificador",
-                "nombre": "resultado"
+                "nombre": "_resultado_"
               },
               "operador": "==",
               "derecha": {
@@ -4634,7 +4624,7 @@
               "argumentos": [
                 {
                   "tipo": "Identificador",
-                  "nombre": "resultado"
+                  "nombre": "_resultado_"
                 }
               ]
             },
@@ -4694,7 +4684,7 @@
               "argumentos": [
                 {
                   "tipo": "Identificador",
-                  "nombre": "resultado"
+                  "nombre": "_resultado_"
                 }
               ]
             },
@@ -4754,7 +4744,7 @@
               "argumentos": [
                 {
                   "tipo": "Identificador",
-                  "nombre": "resultado"
+                  "nombre": "_resultado_"
                 }
               ]
             },
@@ -4814,7 +4804,7 @@
               "argumentos": [
                 {
                   "tipo": "Identificador",
-                  "nombre": "resultado"
+                  "nombre": "_resultado_"
                 }
               ]
             },
@@ -4874,7 +4864,7 @@
               "argumentos": [
                 {
                   "tipo": "Identificador",
-                  "nombre": "resultado"
+                  "nombre": "_resultado_"
                 }
               ]
             },
@@ -4928,7 +4918,7 @@
               "argumentos": [
                 {
                   "tipo": "Identificador",
-                  "nombre": "resultado"
+                  "nombre": "_resultado_"
                 }
               ]
             },
@@ -5142,7 +5132,7 @@
                 "tipo": "ExpresionArit",
                 "izquierda": {
                   "tipo": "Identificador",
-                  "nombre": "resultado"
+                  "nombre": "_resultado_"
                 },
                 "operador": "==",
                 "derecha": {
@@ -5155,7 +5145,7 @@
                 "tipo": "ExpresionArit",
                 "izquierda": {
                   "tipo": "Identificador",
-                  "nombre": "resultado"
+                  "nombre": "_resultado_"
                 },
                 "operador": "<",
                 "derecha": {
@@ -5169,7 +5159,7 @@
               "tipo": "ExpresionArit",
               "izquierda": {
                 "tipo": "Identificador",
-                "nombre": "resultado"
+                "nombre": "_resultado_"
               },
               "operador": ">",
               "derecha": {
@@ -5222,7 +5212,7 @@
             "tipo": "ExpresionArit",
             "izquierda": {
               "tipo": "Identificador",
-              "nombre": "resultado"
+              "nombre": "_resultado_"
             },
             "operador": ">=",
             "derecha": {
@@ -5294,7 +5284,7 @@
             "tipo": "ExpresionArit",
             "izquierda": {
               "tipo": "Identificador",
-              "nombre": "resultado"
+              "nombre": "_resultado_"
             },
             "operador": ">=",
             "derecha": {
@@ -5368,7 +5358,7 @@
             "tipo": "ExpresionArit",
             "izquierda": {
               "tipo": "Identificador",
-              "nombre": "resultado"
+              "nombre": "_resultado_"
             },
             "operador": ">=",
             "derecha": {
@@ -5482,7 +5472,7 @@
               "argumentos": [
                 {
                   "tipo": "Identificador",
-                  "nombre": "resultado"
+                  "nombre": "_resultado_"
                 }
               ]
             },
@@ -5560,7 +5550,7 @@
               "argumentos": [
                 {
                   "tipo": "Identificador",
-                  "nombre": "resultado"
+                  "nombre": "_resultado_"
                 }
               ]
             },
@@ -9810,7 +9800,7 @@
               "argumentos": [
                 {
                   "tipo": "Identificador",
-                  "nombre": "resultado"
+                  "nombre": "_resultado_"
                 }
               ]
             },
@@ -10676,8 +10666,9 @@
             }
           },
           {
-            "tipo": "entero",
+            "tipo": "DeclaracionVariable",
             "nombre": "intentos_menu",
+            "tipo_annot": "entero",
             "expresion": {
               "tipo": "LiteralNumero",
               "valor": 0
@@ -19630,14 +19621,8 @@
           {
             "tipo": "ExpresionArit",
             "izquierda": {
-              "tipo": "LlamadaFuncion",
-              "nombre": "longitud",
-              "argumentos": [
-                {
-                  "tipo": "Identificador",
-                  "nombre": "_resultado_"
-                }
-              ]
+              "tipo": "Identificador",
+              "nombre": "_resultado_"
             },
             "operador": ">=",
             "derecha": {
@@ -20856,8 +20841,9 @@
         "tipo": "Bloque",
         "sentencias": [
           {
-            "tipo": "entero",
+            "tipo": "DeclaracionVariable",
             "nombre": "tipo_clasif",
+            "tipo_annot": "entero",
             "expresion": {
               "tipo": "LlamadaFuncion",
               "nombre": "clasificar_tarea_local",
@@ -24412,8 +24398,9 @@
             }
           },
           {
-            "tipo": "entero",
+            "tipo": "DeclaracionVariable",
             "nombre": "ultimo_tipo_tarea",
+            "tipo_annot": "entero",
             "expresion": {
               "tipo": "LiteralNumero",
               "valor": 0
@@ -25744,8 +25731,9 @@
         "tipo": "Bloque",
         "sentencias": [
           {
-            "tipo": "entero",
+            "tipo": "DeclaracionVariable",
             "nombre": "eof_consecutivos",
+            "tipo_annot": "entero",
             "expresion": {
               "tipo": "LiteralNumero",
               "valor": 0
@@ -26005,8 +25993,9 @@
                 }
               },
               {
-                "tipo": "entero",
+                "tipo": "DeclaracionVariable",
                 "nombre": "ultimo_tipo_tarea",
+                "tipo_annot": "entero",
                 "expresion": {
                   "tipo": "LiteralNumero",
                   "valor": 0

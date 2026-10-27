@@ -26,10 +26,14 @@ funcion _validar_ruta_segura(ruta: texto) -> texto:
     requiere:
         longitud(ruta) > 0
     garantiza:
-        _resultado_ == "" o subcadena(_resultado_, 1, 2) == ":" o subcadena(_resultado_, 0, 1) == "/"
+        // cumple Manual 2 §5.1; ME r198b: subcadena(t, inicio, largo) usa SEMÁNTICA (inicio, largo) —
+        // runtime _syn_texto_subcadena fin EXCLUSIVO (runtime/core/texto.c); el patrón canónico del
+        // detección de absoluta Windows es 1 char en posición 1 == ":" (subcadena(_resultado_, 1, 1)).
+        _resultado_ == "" o subcadena(_resultado_, 1, 1) == ":" o subcadena(_resultado_, 0, 1) == "/"
     cwd = _syn_normalizar_ruta(_syn_obtener_cwd())
     absoluta = ruta
-    si subcadena(ruta, 1, 2) != ":" y subcadena(ruta, 0, 1) != "/" y subcadena(ruta, 0, 2) != "\\\\":
+    // ME r198b: mismas 3 comparaciones alineadas a la semántica (inicio, largo).
+    si subcadena(ruta, 1, 1) != ":" y subcadena(ruta, 0, 1) != "/" y subcadena(ruta, 0, 2) != "\\\\":
         // Ruta relativa: resolver contra el cwd ("/" lo absorbe el normalizador
         // y emite el separador de plataforma en Windows y POSIX)
         absoluta = concat(concat(cwd, "/"), ruta)

@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "ca4229aa1e9364ab",
+ "expediente": "docs/alineacion/r198b_contratos.md",
+ "fecha": "2026-10-27",
+ "archivos": [
+  "std/sistema.syn",
+  "opensyn/principal.syn"
+ ],
+ "oraculos": {
+  "auditoria/oraculos/oraculo_r198b_contratos.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

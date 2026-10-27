@@ -210,7 +210,7 @@ funcion ruta_config_absoluta() -> texto:
     requiere:
         longitud(ARCHIVO_CONFIG) > 0
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1; ME r198b (alias _resultado_)
     cwd = _syn_obtener_cwd()
     si cwd == "":
         retornar ARCHIVO_CONFIG
@@ -1062,7 +1062,7 @@ funcion pct_contexto(sys: texto) -> entero:
     requiere:
         verdadero
     garantiza:
-        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+        _resultado_ >= 0 // cumple Manual 2 §5.1; ME r198b
     bytes = _syn_texto_longitud(sys)
     si bytes > 3500:
         bytes = 3500
