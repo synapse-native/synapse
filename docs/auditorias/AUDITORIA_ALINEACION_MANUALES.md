@@ -757,3 +757,38 @@ EXISTENCIA pero lo freshens al contenido ACTUAL (el sello .antes creado
 post-código queda funcional, no probatorio-antes).
 Reporte: docs/reportes/R198b.md | f10401f |
 Manual 2 §5.1, Manual 2 §12, Manual 7 §2.1, Manual 7 §4.2 | 0 brechas |
+### R198b1 — ME r198b1_resello (2026-10-27, b657bb8)
+Cierre de H-R198b-1 (hallazgo del cierre R198b, ME equipa el PROPIO gate);
+auditoria/** no es producción para el mapa — expediente NO APLICA, anclas
+MTS disciplinarias `# cumple Manual 6 §5; ME r198b1_resello`. Fix:
+cmd_verificar DEJÓ de ser un círculo — ante la ÚNICA brecha "cambio_hash
+del expediente no coincide con el actual" (todas las demás verificaciones
+verdes), el gate re-sella in-proceso (helper resellar_hash_expediente común
+con el re-sello de éxito + predicado _solo_brecha_hash_stale que impide
+enmascarar errores reales) y re-verifica UNA pasada con oráculos incluidos
+(converge: la huella cubre blobs de producción, nunca el expediente).
+Además, aviso NO bloqueante _avisos_sin_stage cuando producción tiene
+diferencias sin stage (la huella se calcula sobre blobs del INDEX `:{ruta}`:
+sellar sin add ataría contenido NO integrado; lección R188/d948cab) y
+mensaje de brecha coherente con el comportamiento nuevo. Verificación:
+oráculo NUEVO tests/auditoria/test_oraculos_r198b1_resello.py 4/4 (A1
+unidad de helper + idempotencia; A2 END-TO-END: expediente r198b_contratos
+con hash ANULADO → --verificar rc=0, [resane] emitido y expediente
+byte-a-byte restaurado con la huella canónica ca4229aa1e9364ab — el caso
+que antes exigía edición manual, 48,5 s; A3 no enmascara errores reales;
+A4 aviso sin stage con monkeypatch de _run). Regresión familia del gate:
+18 passed (test_gate_mts_oraculos + test_paridad_nodos) con UN failed
+PREEXISTENTE en HEAD — verificado por aislamiento con stash.
+Deuda NUEVA (H-R198b1-2, resolución a la cola maestro ):
+test_paridad_nodos::test_emision_s1_cita_los_nodos_canonicos exige la
+ancla MTS `cumple Manual 2 §12` en el desugar de PARA_EN de
+compilador/puente_canonico.py — ME futuro: añadir el comentario de cita
+(tests inmutables). Gates: contrastar RC=0 (oráculo release +
+verificacion_ME_r198b1_resello validada), verificar_alineacion SIN
+BRECHAS, gate de lectura sin producción → no aplica.
+Lecciones: al equipar el PROPIO gate hay que testear END-TO-END en el repo
+real (el expediente anula-→restaura exacto en finally); factorizar el
+re-sello/aviso en helpers testeables permitió unidad + integración sin
+duplicar lógica.
+Reporte: docs/reportes/R198b1.md | b657bb8 |
+Manual 6 §5, Manual 7 §2.3 | deuda nueva H-R198b1-2 a cola |

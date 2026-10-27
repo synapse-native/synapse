@@ -10,6 +10,46 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
 
 ## Cola de MEs (prioridad por radio/costo, actualizable)
 
+- **R198b1/ME r198b1_resello (CERRADA 2026-10-27, commit b657bb8):**
+  cierre H-R198b-1 — re-sello auto-sanante de `cambio_hash` en
+  `auditoria/alineacion.py`: `cmd_verificar` era un círculo (el re-sello
+  solo corría tras pasar y el mismatch retornaba antes; el mensaje pedía
+  re-ejecutar lo que no podía sanar). Fix: helper
+  `resellar_hash_expediente(me, ch)` + predicado `_solo_brecha_hash_stale`
+  (no enmascara otros errores) + re-verificación de una pasada in-proceso
+  (converge: la huella cubre blobs de producción, nunca el expediente);
+  aviso no bloqueante de sello sin stage (huella sobre blobs del INDEX,
+  lección R188/d948cab). Oráculo tests/auditoria/test_oraculos_r198b1_resello.py
+  4/4 (A2 END-TO-END: expediente con hash anulado → rc=0 y expediente
+  byte-a-byte restaurado — el caso que antes exigía edición manual).
+  Gates: contrastar RC=0, verificacion_ME validada, verificar_alineacion
+  SIN BRECHAS. **Deuda NUEVA a cola:** H-R198b1-2 (test inmutable
+  tests/auditoria/test_paridad_nodos.py::test_emision_s1_cita_los_nodos_canonicos
+  FALLA PREEXISTENTE en HEAD — verificado por aislamiento con stash —,
+  exige la ancla MTS `cumple Manual 2 §12` en el desugar de PARA_EN de
+  `compilador/puente_canonico.py`; ME futuro: añadir el comentario de cita
+  al archivo de producción, sin tocar el test).
+- **R198b/ME r198b_contratos (CERRADA 2026-10-27, commit f10401f):**
+  cierre H-R196-3 — veredicto CONTRA la hipótesis de R198: el emisor de
+  contratos NO estaba roto (emitía fielmente el AST, M2 §5.1 en CADA
+  `retornar` con `_resultado_` del tipo REAL, emit_declarations.py
+  L781-816); las cláusulas de std/opensyn estaban bajo semánticas no
+  canónicas y se corrigieron hacia el manual (precedente H-R196-1):
+  std/sistema.syn subcadena (1,2)→(1,1) fin EXCLUSIVO (r196) en
+  `garantiza` de `_validar_ruta_segura` + patrón de resolución relativa;
+  opensyn/principal.syn L213 alias bare `resultado`→`_resultado_`
+  (ruta_config_absoluta; la compilación S1 fallaba con robo del
+  `_resultado_` int64 de otra función) y L1065 `longitud(_resultado_)
+  >= 0`→`_resultado_ >= 0` (pct_contexto — el C inventado NO compilaba;
+  cláusula del recorrido de validación M7 §4.2). Oráculo NUEVO
+  auditoria/oraculos/oraculo_r198b_contratos.py 3/3 (compilación
+  principal.syn rc=0; sandbox contratos 5/5 antes 3✓/1✗/1E
+  rc=0xC0000009; regresión r198 3/3); contratos/sandbox 44 passed +
+  borrowing 17. Gates: plan MTS contrastar RC=0; expediente r198b_contratos
+  0 brechas (3 CUMPLE, evidencia ca4229aa1e9364ab); sello
+  r198b_contratos.antes.json (base 3aa5b6c). Reporte
+  docs/reportes/R198b.md. Hallazgo NUEVO H-R198b-1 (círculo del re-sello;
+  CERRADA por r198b1, arriba).
 - **R198/ME r198_cesion_struct (CERRADA 2026-10-26, commit 18ee4ee):**
   cierre H-R197-1 — cesión de `texto` a campo de struct transfiere la
   propiedad al CAMPO y el ORIGEN queda CONSUMIDO (move semantics M4 §3.3,

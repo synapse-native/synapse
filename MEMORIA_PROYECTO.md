@@ -123,8 +123,32 @@
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-10-27 sesión:** R198b
-                   COMPLETADO (f10401f): ME r198b_contratos — cierre
+Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-10-27 sesión:** R198b1
+                   COMPLETADO (b657bb8): ME r198b1_resello — cierre
+                   H-R198b-1: re-sello auto-sanante de `cambio_hash` en
+                   auditoria/alineacion.py (cmd_verificar: helper
+                   resellar_hash_expediente + predicado
+                   _solo_brecha_hash_stale que NO enmascara otros errores
+                   + re-verificación de una pasada in-proceso — converge
+                   porque la huella cubre blobs de producción, nunca el
+                   expediente); aviso no bloqueante de sello sin stage
+                   (huella sobre blobs del INDEX, lección
+                   R188/d948cab). Oráculo NUEVO
+                   test_oraculos_r198b1_resello.py 4/4 (A1 helper +
+                   idempotencia; A2 END-TO-END: expediente r198b con hash
+                   anulado → --verificar rc=0 y expediente byte-a-byte
+                   restaurado — el caso que antes exigía edición manual;
+                   A3 no enmascara; A4 aviso sin stage). Regresión
+                   familia del gate 18 passed; gates: contrastar RC=0,
+                   verificacion_ME validada, verificar_alineacion SIN
+                   BRECHAS. Deuda NUEVA a cola H-R198b1-2:
+                   test_paridad_nodos::test_emision_s1_cita_los_nodos_canonicos
+                   FALLA PREEXISTENTE en HEAD (verificado con stash),
+                   exige ancla MTS `cumple Manual 2 §12` en el desugar de
+                   PARA_EN de compilador/puente_canonico.py — ME futuro
+                   añade el comentario de cita (test inmutable). Reporte
+                   docs/reportes/R198b1.md
+                   Antes (2026-10-27): R198b COMPLETADO (f10401f): ME r198b_contratos — cierre
                    H-R196-3 con veredicto CONTRA la hipótesis: el emisor
                    de contratos NO estaba roto (emitía fielmente el AST,
                    M2 §5.1 en CADA retornar con _resultado_ del tipo REAL,
