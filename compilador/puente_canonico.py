@@ -611,6 +611,10 @@ class _Puente:
         # la condicion (evaluada antes de declarar la variable) → errores
         # espurios de semantica S1 (Variable '' no declarada) y falsos RED en
         # tests de Result (test_operador_propagacion).
+        # cumple Manual 2 §12: el desugar de PARA_EN(57) alimenta el pipeline
+        # de pruebas obligatorias de la etapa (contratos requiere/garantiza,
+        # OBL-PAR-R1d) — producida por test_paridad_nodos.py
+        # (test_emision_s1_cita_los_nodos_canonicos).
         nodo_para = SentenciaPara(
             variable=var_loop,
             iterable=iterable,
