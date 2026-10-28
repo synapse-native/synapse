@@ -123,8 +123,25 @@
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-10-27 sesión:** R198b1
-                   COMPLETADO (b657bb8): ME r198b1_resello — cierre
+Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-10-28 sesión:** R198b2
+                   COMPLETADO (dd20276): ME r198b2_ancla — cierre
+                   H-R198b1-2: ancla MTS `cumple Manual 2 §12` NUEVA en el
+                   desugar REAL de NODO_PARA_EN(57)
+                   (compilador/puente_canonico.py::_nodo_para_en, L614,
+                   junto al `cumple Manual 3 §3 (H-R153-1)` preexistente),
+                   según la dirección del Arquitecto: TDD RED→GREEN sobre
+                   el archivo de producción (test inmutable NUNCA tocado);
+                   comentario de documentación, cero diff en la emisión.
+                   test_paridad_nodos.py 4/4 GREEN (el failed preexistente
+                   verificado con stash en R198b1 ya no existe) + familia
+                   del gate 19 passed. Gates: plan MTS
+                   docs/plan_ME_r198b2_ancla.md con bloque estricto,
+                   contrastar RC=0 (oráculo release en el hook),
+                   expediente docs/alineacion/r198b2_ancla.md 0 brechas
+                   (3 CUMPLE, evidencia 8881708525cba028),
+                   verificar_alineacion SIN BRECHAS, MTO 55 OBL. Reporte
+                   docs/reportes/R198b2.md
+                   Antes (2026-10-27): R198b1 COMPLETADO (b657bb8): ME r198b1_resello — cierre
                    H-R198b-1: re-sello auto-sanante de `cambio_hash` en
                    auditoria/alineacion.py (cmd_verificar: helper
                    resellar_hash_expediente + predicado
@@ -141,12 +158,13 @@ Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-10-27 sesión:** R198b1
                    A3 no enmascara; A4 aviso sin stage). Regresión
                    familia del gate 18 passed; gates: contrastar RC=0,
                    verificacion_ME validada, verificar_alineacion SIN
-                   BRECHAS. Deuda NUEVA a cola H-R198b1-2:
+                   BRECHAS. Deuda NUEVA a cola H-R198b1-2
                    test_paridad_nodos::test_emision_s1_cita_los_nodos_canonicos
                    FALLA PREEXISTENTE en HEAD (verificado con stash),
                    exige ancla MTS `cumple Manual 2 §12` en el desugar de
                    PARA_EN de compilador/puente_canonico.py — ME futuro
-                   añade el comentario de cita (test inmutable). Reporte
+                   añade el comentario de cita (test inmutable) — CERRADA
+                   en R198b2 (dd20276, ver entrada 2026-10-28). Reporte
                    docs/reportes/R198b1.md
                    Antes (2026-10-27): R198b COMPLETADO (f10401f): ME r198b_contratos — cierre
                    H-R196-3 con veredicto CONTRA la hipótesis: el emisor

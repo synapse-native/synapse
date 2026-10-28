@@ -792,3 +792,32 @@ re-sello/aviso en helpers testeables permitió unidad + integración sin
 duplicar lógica.
 Reporte: docs/reportes/R198b1.md | b657bb8 |
 Manual 6 §5, Manual 7 §2.3 | deuda nueva H-R198b1-2 a cola |
+### R198b2 — ME r198b2_ancla (2026-10-28, dd20276)
+Cierre de H-R198b1-2 (deuda de R198b1): test_paridad_nodos::
+test_emision_s1_cita_los_nodos_canonicos (OBL-PAR-R1d, test INMUTABLE)
+fallaba PREEXISTENTE en HEAD — exigía la ancla MTS `cumple Manual 2 §12`
+en el desugar de PARA_EN de compilador/puente_canonico.py. Fix según
+la dirección del Arquitecto (plan maestro): TDD RED→GREEN sobre el
+ARCHIVO DE PRODUCCIÓN — comentario ancla NUEVO en _nodo_para_en (L614,
+el desugar REAL del nodo canonico 57, junto al `cumple Manual 3 §3
+(H-R153-1)` preexistente); cero diff en la emisión (comentario doc).
+Verificación: test_paridad_nodos.py 4/4 GREEN (RED→GREEN) + familia del
+gate 19 passed (test_gate_mts_oraculos + test_paridad_nodos; antes
+18 passed, 1 failed). Gates: plan MTS docs/plan_ME_r198b2_ancla.md con
+bloque estricto (requisito Manual 2 §12, cita literal del mapa de §12,
+implementacion, oraculo) — contrastar RC=0 (1 requisito evaluado, oráculo
+release ejecutado en el hook, verificacion_ME_r198b2_ancla validada);
+expediente docs/alineacion/r198b2_ancla.md 0 brechas (3 CUMPLE: mapa
+3 §11.1 + 6 §5.1 preexistentes + ancla 2 §12 nueva; evidencia
+auditoria/evidencia/8881708525cba028.json); verificar_alineacion SIN
+BRECHAS; MTO 55 OBL; pre-commit íntegro (gate de lectura: Manual 1 §1
++ Manual 2 §12 para puente_canonico.py).
+Lecciones: el test paridad lee el ARCHIVO entero pero el re-sello MTS va
+en el sitio del cambio (desugar) — cita en el sitio cubre ambasstakes;
+la familia del gate (test_gate_mts_oraculos + test_paridad_nodos) es la
+unidad de regresión correcta para MEs de auditoría/compilador (la suite
+tests/auditoria completa excede 600 s);
+el bloque estricto MTS del plan elimina la advertencia del parser de
+contrastar y ejecuta el oráculo release dentro del hook.
+Reporte: docs/reportes/R198b2.md | dd20276 |
+Manual 2 §12 | deuda cerrada H-R198b1-2 |

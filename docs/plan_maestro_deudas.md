@@ -23,12 +23,24 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   4/4 (A2 END-TO-END: expediente con hash anulado → rc=0 y expediente
   byte-a-byte restaurado — el caso que antes exigía edición manual).
   Gates: contrastar RC=0, verificacion_ME validada, verificar_alineacion
-  SIN BRECHAS. **Deuda NUEVA a cola:** H-R198b1-2 (test inmutable
-  tests/auditoria/test_paridad_nodos.py::test_emision_s1_cita_los_nodos_canonicos
-  FALLA PREEXISTENTE en HEAD — verificado por aislamiento con stash —,
-  exige la ancla MTS `cumple Manual 2 §12` en el desugar de PARA_EN de
-  `compilador/puente_canonico.py`; ME futuro: añadir el comentario de cita
-  al archivo de producción, sin tocar el test).
+  SIN BRECHAS. **Deuda H-R198b1-2 CERRADA en R198b2 (dd20276, 2026-10-28):**
+  el test inmutable requería la ancla MTS en el desugar y se satisfizo
+  con TDD RED→GREEN añadiendo el comentario de cita al archivo de
+  producción (ver entrada R198b2).
+- **R198b2/ME r198b2_ancla (CERRADA 2026-10-28, commit dd20276):**
+  cierre H-R198b1-2 — ancla MTS `# cumple Manual 2 §12` NUEVA en el desugar
+  REAL de NODO_PARA_EN(57) (`compilador/puente_canonico.py::_nodo_para_en`,
+  L614, junto al `cumple Manual 3 §3 (H-R153-1)` preexistente);
+  comentario de documentación, cero diff en la emisión.
+  test_paridad_nodos 4/4 GREEN (RED→GREEN: el failed preexistente
+  verificado con stash en R198b1 ya no existe) + familia del gate
+  19 passed (test_gate_mts_oraculos + test_paridad_nodos).
+  Gates: plan MTS docs/plan_ME_r198b2_ancla.md con bloque estricto,
+  contrastar RC=0 (oráculo release, verificacion_ME_r198b2_ancla
+  validada), expediente docs/alineacion/r198b2_ancla.md 0 brechas
+  (3 CUMPLE: 3 §11.1 + 6 §5.1 de mapa y 2 §12 nuevo, evidencia
+  8881708525cba028), verificar_alineacion SIN BRECHAS. Reporte:
+  docs/reportes/R198b2.md.
 - **R198b/ME r198b_contratos (CERRADA 2026-10-27, commit f10401f):**
   cierre H-R196-3 — veredicto CONTRA la hipótesis de R198: el emisor de
   contratos NO estaba roto (emitía fielmente el AST, M2 §5.1 en CADA
