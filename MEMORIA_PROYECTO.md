@@ -155,6 +155,14 @@ Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-10-28 sesión:** R198b2
                    oráculo R198b1 (resane rota al cambiar el día;
                    sellar .antes.json con fecha de HOY). Reporte
                    docs/reportes/R198b2_barrido.md
+                   **2026-10-29 cierre ambiental (H-R198b2-1 CERRADA):**
+                   regenerados synapse_stage2.exe + copia synapse.exe (el
+                   test r3 solo refresca la copia si NO existe — copia
+                   vieja 2026-10-11) + dist/bin/opensyn.exe → check_cli r3
+                   + guard H-AUD-OP-2 2/2 GREEN. H-R198b2-2 confirmada como
+                   COMPORTAMIENTO: los 3 de fmt/lint fallan igual con exes
+                   frescos → ME de fmt/lint a cola (lección: regenerar la
+                   COPIA del CLI también, no solo el stage2).
                    Antes (2026-10-27): R198b1 COMPLETADO (b657bb8): ME r198b1_resello — cierre
                    H-R198b-1: re-sello auto-sanante de `cambio_hash` en
                    auditoria/alineacion.py (cmd_verificar: helper

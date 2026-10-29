@@ -27,11 +27,20 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   el test inmutable requería la ancla MTS en el desugar y se satisfizo
   con TDD RED→GREEN añadiendo el comentario de cita al archivo de
   producción (ver entrada R198b2).
-  **Barrido de cierre R198b2 (2026-10-28, reporte R198b2_barrido.md):**
+  **Barrido de cierre R198b2 (2026-10-28, reporte R198b2_barrido.md)**
+  **— H-R198b2-1 CERRADA 2026-10-29 (cierre ambiental verificado):**
+  regenerados synapse_stage2.exe (main.py nucleo/principal.syn -o,
+  rc=0, sintia 08:46) + copia byte-idéntica synapse.exe (el test r3 solo la
+  refresca si NO existe: la copia vieja quería 2026-10-11) +
+  dist/bin/opensyn.exe (main.py, rc=0, 08:39) → test_r3_binario_synapse_check
+  + test_guard_frescura_exe_vs_ultimo_commit_fuente 2/2 GREEN (0,64 s).
   pytest tests/auditoria COMPLETO fuera de timeout — 222 tests, 214 passed,
   7 failed, 1 skipped (49:51); 7/7 failed reproducen deterministas en
   aislamiento (153 s): 0 regresiones de R198b2 (paridad_nodos 4/4 con el
-  cierre H-R198b1-2 confirmado). Hallazgos agrupados en 4 deudas NUEVAS:
+  cierre H-R198b1-2 confirmado). Hallazgos agrupados en 4 deudas NUEVAS
+  (H-R198b2-2 re-estadificada tras regenerar exes: fallan igual con exes
+  frescos → defectos de COMPORTAMIENTO del dispatcher nativo, ME de
+  fmt/lint propio):
   H-R198b2-1 exes stale ambientales (check_cli r3: synapse_stage2.exe
   anterior a coverage.syn; guard H-AUD-OP-2: dist/bin/opensyn.exe
   2026-09-26 anterior a principal.syn 2026-10-27 — regenerar exes, ME
