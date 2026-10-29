@@ -141,6 +141,20 @@ Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-10-28 sesión:** R198b2
                    (3 CUMPLE, evidencia 8881708525cba028),
                    verificar_alineacion SIN BRECHAS, MTO 55 OBL. Reporte
                    docs/reportes/R198b2.md
+                   Cierre del barrido (0efd126 base): pytest tests/auditoria
+                   COMPLETO sin timeout — 222 tests, 214 passed, 7 failed
+                   deterministas en aislamiento (0 regresiones de R198b2,
+                   paridad_nodos 4/4 bajo barrido completo). 4 deudas NUEVAS
+                   a cola (cerrada en plan maestro): H-R198b2-1 exes stale
+                   (stage2 vs coverage.syn; opensyn.exe vs principal.syn),
+                   H-R198b2-2 fmt/lint de stage2 (rc fmt --check, timeout
+                   generator.syn, lint Temp), H-R198b2-3 contrato-test
+                   desalineado (io.syn `_resultado_` vs test `resultado` —
+                   alinear test al manual SOLO con aprobación del
+                   Arquitecto), H-R198b2-4 fixture de fecha literal del
+                   oráculo R198b1 (resane rota al cambiar el día;
+                   sellar .antes.json con fecha de HOY). Reporte
+                   docs/reportes/R198b2_barrido.md
                    Antes (2026-10-27): R198b1 COMPLETADO (b657bb8): ME r198b1_resello — cierre
                    H-R198b-1: re-sello auto-sanante de `cambio_hash` en
                    auditoria/alineacion.py (cmd_verificar: helper

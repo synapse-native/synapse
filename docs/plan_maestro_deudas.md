@@ -27,6 +27,23 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   el test inmutable requería la ancla MTS en el desugar y se satisfizo
   con TDD RED→GREEN añadiendo el comentario de cita al archivo de
   producción (ver entrada R198b2).
+  **Barrido de cierre R198b2 (2026-10-28, reporte R198b2_barrido.md):**
+  pytest tests/auditoria COMPLETO fuera de timeout — 222 tests, 214 passed,
+  7 failed, 1 skipped (49:51); 7/7 failed reproducen deterministas en
+  aislamiento (153 s): 0 regresiones de R198b2 (paridad_nodos 4/4 con el
+  cierre H-R198b1-2 confirmado). Hallazgos agrupados en 4 deudas NUEVAS:
+  H-R198b2-1 exes stale ambientales (check_cli r3: synapse_stage2.exe
+  anterior a coverage.syn; guard H-AUD-OP-2: dist/bin/opensyn.exe
+  2026-09-26 anterior a principal.syn 2026-10-27 — regenerar exes, ME
+  futuro corto); H-R198b2-2 familia fmt/lint de stage2 (fmt --check rc=0
+  esperado 1; timeout generator.syn; lint no lee Temp), H-R198b2-3
+  contrato-test desalineado (test_r2_binding_std_io_syn espera `resultado`
+  y std/io.syn lleva `_resultado_` canónico de f10401f — dirección: alinear
+  el test al manual por TDD CON aprobación previa del Arquitecto, tests
+  inmutables), H-R198b2-4 oráculo R198b1 con fixture de FECHA literal
+  2026-10-27 (test_resane_end_to_end rota al cambiar el día: el .antes.json
+  del caso debe sellarse con fecha de HOY, no la del ME). Todo a cola sin
+  bloquear la integración.
 - **R198b2/ME r198b2_ancla (CERRADA 2026-10-28, commit dd20276):**
   cierre H-R198b1-2 — ancla MTS `# cumple Manual 2 §12` NUEVA en el desugar
   REAL de NODO_PARA_EN(57) (`compilador/puente_canonico.py::_nodo_para_en`,
