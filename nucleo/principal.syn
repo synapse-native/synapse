@@ -762,6 +762,11 @@ funcion cli_lint(ruta: texto, con_fix: booleano) -> entero:
         ruta.longitud > 0
     garantiza:
         _resultado_ >= 0
+    // cumple Manual 7 §7.3 (ME r198b3_fmt_lint, H-R198b2-2): el compilador lee
+    // la ruta NOMBRADA por el usuario en argv — toma el modo CLI del sandbox
+    // (M8 §4.1: el código usuario corre como subproceso, nunca en este proceso).
+    inseguro:
+        asm("extern void _syn_sandbox_set(int64_t); _syn_sandbox_set(0);")
     // Delega en nucleo/lint.syn (backend canonico R4)
     si con_fix:
         let corregido = lint_fix(ruta)
@@ -792,6 +797,11 @@ funcion cli_fmt(ruta: texto, check: booleano) -> entero:
         ruta.longitud > 0
     garantiza:
         _resultado_ >= 0
+    // cumple Manual 7 §7.3 (ME r198b3_fmt_lint, H-R198b2-2): modo CLI del
+    // sandbox — el compilador lee las rutas NOMBRADAS por el usuario en argv
+    // (M8 §4.1; código usuario siempre en subproceso con su propio sandbox).
+    inseguro:
+        asm("extern void _syn_sandbox_set(int64_t); _syn_sandbox_set(0);")
     // Delega en nucleo/formatter.syn (backend canonico R4)
     si check:
         let ok = verificar_formato(ruta)
@@ -816,6 +826,10 @@ funcion cli_check(ruta: cadena) -> entero:
         ruta.longitud > 0
     garantiza:
         _resultado_ >= 0
+    // cumple Manual 7 §7.3 (ME r198b3_fmt_lint, H-R198b2-2): modo CLI del
+    // sandbox — la validación lee el fuente NOMBRADO por el usuario (M8 §4.1).
+    inseguro:
+        asm("extern void _syn_sandbox_set(int64_t); _syn_sandbox_set(0);")
     let re = generar_etapa(ruta, ruta, 1)
     si re.tag != 0:
         _cli_err("[Check] ERROR de validacion")
@@ -830,6 +844,11 @@ funcion cli_test(ruta: texto, formato: entero) -> entero:
         ruta.longitud > 0
     garantiza:
         _resultado_ >= 0
+    // cumple Manual 7 §7.3 (ME r198b3_fmt_lint, H-R198b2-2): modo CLI del
+    // sandbox — el compilador lee el fuente argv del usuario (M8 §4.1); el
+    // probe compilado corre como SUBPROCESO con su sandbox estricto default.
+    inseguro:
+        asm("extern void _syn_sandbox_set(int64_t); _syn_sandbox_set(0);")
     // Ejecuta la suite: compila el archivo con la pipeline del compilador y
     // ejecuta el exe (bloque C de r152 conservado SOLO aqui: medición de
     // tiempo e invocación del proceso — capacidades del compilador, R4) y

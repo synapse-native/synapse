@@ -74,15 +74,30 @@ funcion formatear_archivo(ruta: texto) -> texto:
 
 // --- Formateo de texto completo ---
 
+// Externos del builder runtime (O(1) amortizado por anexión)
+// cumple Manual 6 §3.1: declaración externo de las funciones C del runtime
+// (runtime/core/texto.c §12.2, ME r198b3_fmt_lint) — elimina el O(n²) de
+// concatenar `resultado = resultado + linea` línea a línea (timeout de
+// `fmt --check nucleo/generator.syn`, H-R198b2-2).
+externo funcion _syn_texto_builder_crear() -> entero
+externo funcion _syn_texto_builder_anexar(id: entero, frag: texto) -> nulo
+externo funcion _syn_texto_builder_construir(id: entero) -> texto
+externo funcion _syn_texto_builder_liberar(id: entero) -> nulo
+
 funcion formatear_texto(texto: texto) -> texto:
     requiere:
         verdadero
     garantiza:
         longitud(_resultado_) >= 0
-    let resultado = ""
-    let linea_actual = ""
+    // cumple Manual 2 §5.1 (ME r198b3_fmt_lint): `_resultado_` contiene el
+    // valor a retornar — el resultado es la COPIA transferida por
+    // _syn_texto_builder_construir, anexando DONE cada línea formateada
+    // (slicing por ÍNDICE de fin de línea: un solo subcadena por línea, sin
+    // construir `linea_actual` carácter a carácter).
+    let acc = _syn_texto_builder_crear()
+    si acc < 0:
+        retornar ""
     let largo = longitud(texto)
-    let i = 0
     // r153: preserva el newline final (estabilidad de ida-y-vuelta: sin esto,
     // un fuente bien formateado CON newline final nunca pasaria --check).
     let termina_nl = falso
@@ -94,25 +109,32 @@ funcion formatear_texto(texto: texto) -> texto:
     // vacías: Entre funciones, entre secciones de módulo") — sin esto el
     // formateador ELIMINABA todos los separadores y dejaba el fuente ilegible.
     let prev_vacia = falso
-    mientras i <= largo:
-        si i == largo o subcadena(texto, i, 1) == "\n":
-            let linea_formateada = formatear_linea(linea_actual)
-            si longitud(linea_formateada) > 0:
-                si longitud(resultado) > 0:
-                    resultado = resultado + "\n"
-                    si prev_vacia:
-                        resultado = resultado + "\n"
-                resultado = resultado + linea_formateada
-                prev_vacia = falso
-            sino:
-                prev_vacia = verdadero
-            linea_actual = ""
-            i = i + 1
+    let primero = verdadero
+    let inicio = 0
+    mientras inicio <= largo:
+        // Encuentra el fin de la línea (índice del \n o del largo)
+        let fin = inicio
+        mientras fin < largo:
+            si subcadena(texto, fin, 1) == "\n":
+                romper
+            fin = fin + 1
+        let linea = subcadena(texto, inicio, fin - inicio)
+        let linea_formateada = formatear_linea(linea)
+        si longitud(linea_formateada) > 0:
+            si no primero:
+                _syn_texto_builder_anexar(acc, "\n")
+                si prev_vacia:
+                    _syn_texto_builder_anexar(acc, "\n")
+            _syn_texto_builder_anexar(acc, linea_formateada)
+            primero = falso
+            prev_vacia = falso
         sino:
-            linea_actual = linea_actual + subcadena(texto, i, 1)
-            i = i + 1
-    si termina_nl y longitud(resultado) > 0:
-        resultado = resultado + "\n"
+            prev_vacia = verdadero
+        inicio = fin + 1
+    si termina_nl y no primero:
+        _syn_texto_builder_anexar(acc, "\n")
+    let resultado = _syn_texto_builder_construir(acc)
+    _syn_texto_builder_liberar(acc)
     retornar resultado
 
 // --- Formateo de una linea individual ---
@@ -161,17 +183,23 @@ funcion normalizar_espacios(linea: texto) -> texto:
         verdadero
     garantiza:
         longitud(_resultado_) >= 0
-    let resultado = ""
+    // cumple Manual 6 §3.1 (ME r198b3_fmt_lint): el resultado interno se
+    // acumula en el builder runtime (O(1) amortizado por carácter) en vez de
+    // `resultado = resultado + c` (O(L²) por línea; H-R198b2-2 timeout).
+    let acc = _syn_texto_builder_crear()
+    si acc < 0:
+        // Fallback seguro: sin builder disponible, línea sin cambios
+        retornar linea
     let largo = longitud(linea)
     let i = 0
     let en_literal = falso
     mientras i < largo:
         let c = subcadena(linea, i, 1)
         si en_literal:
-            resultado = resultado + c
+            _syn_texto_builder_anexar(acc, c)
             si c == "\\":
                 si i + 1 < largo:
-                    resultado = resultado + subcadena(linea, i + 1, 1)
+                    _syn_texto_builder_anexar(acc, subcadena(linea, i + 1, 1))
                 i = i + 2
             sino:
                 si c == "\"":
@@ -180,25 +208,30 @@ funcion normalizar_espacios(linea: texto) -> texto:
         sino:
             si c == "\"":
                 en_literal = verdadero
-                resultado = resultado + c
+                _syn_texto_builder_anexar(acc, c)
                 i = i + 1
             sino si c == " ":
                 mientras i < largo y subcadena(linea, i, 1) == " ":
                     i = i + 1
-                resultado = resultado + " "
+                _syn_texto_builder_anexar(acc, " ")
             sino si c == ",":
-                // Un espacio tras coma SOLO si queda contenido después: una
-                // coma al final de línea no debe ganar un espacio final
-                // (M1 §7.1, WARN_LINT_TRAILING_WS).
-                resultado = resultado + ","
+                // Un espacio tras coma SOLO si queda contenido despues: una
+                // coma al final de linea no debe ganar un espacio final
+                // (M1 A7.1, WARN_LINT_TRAILING_WS).
+                _syn_texto_builder_anexar(acc, ",")
                 i = i + 1
                 mientras i < largo y subcadena(linea, i, 1) == " ":
                     i = i + 1
                 si i < largo:
-                    resultado = resultado + " "
+                    _syn_texto_builder_anexar(acc, " ")
             sino:
-                resultado = resultado + c
+                _syn_texto_builder_anexar(acc, c)
                 i = i + 1
+    // ME r198b3_fmt_lint: el resultado es la copia transferida por el
+    // builder (Manual 2 U5.1: `_resultado_` contiene el valor a retornar) y
+    // el buffer del builder queda liberado/reutilizable.
+    let resultado = _syn_texto_builder_construir(acc)
+    _syn_texto_builder_liberar(acc)
     retornar resultado
 
 // --- Recorta espacios al inicio y final ---

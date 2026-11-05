@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "a86383cf07b5e14e",
+ "expediente": "docs/alineacion/r199_opensyn_install.md",
+ "fecha": "2026-11-05",
+ "archivos": [
+  "opensyn/principal.syn"
+ ],
+ "oraculos": {
+  "auditoria/oraculos/oraculo_r199_opensyn_install.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

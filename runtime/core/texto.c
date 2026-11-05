@@ -367,3 +367,109 @@ CadenaSegura _syn_texto_invertir(CadenaSegura t) {
     buf[t.longitud] = '\0';
     return (CadenaSegura){.longitud = t.longitud, .datos = buf};
 }
+
+// ============================================================
+// §12.2 — Builder de texto (anexión O(1) amortizada)
+// cumple Manual 6 §3.1 (ME r198b3_fmt_lint, H-R198b2-2): implementación C de
+// las funciones que formatter.syn/lint.syn declaran con la palabra clave
+// `externo`. Patrón id-store de §12.1 dividir: buffer creciente por id
+// (realloc duplicando); construir() transfiere UNA copia malloc del contenido
+// y el buffer interno queda vivo; liberar() libera el buffer del builder.
+// Elimina el O(n²) de concatenar strings Synapse línea a línea
+// (formatear_texto/lint_fix acumulaban `resultado = resultado + linea`).
+// Contratos (Manual 2 §12, en C la spec es el comentario+primitivos):
+//   crear:     garantiza id en [0, BUILDER_MAX) o -1
+//   anexar:    requiere id válido y longitud(frag) >= 0; garantiza los bytes
+//              de frag en el buffer (OOM: no-op seguro, sin crash)
+//   construir: garantiza CadenaSegura memcpy NUL-terminada con TODO lo
+//              anexado (vacío si id inválido o OOM)
+//   liberar:   garantiza id reutilizable y buffer liberado
+// cumple Manual 5 §3: estado estático protegido por mutex (M5 §3) — misma
+// regla del bloque _split_ de §12.1 (primitivos线程 puros/thread-safe).
+// ============================================================
+
+#define BUILDER_MAX 32
+
+static struct {
+    char* datos;
+    int64_t len;
+    int64_t cap;
+    int vivo;
+} _builders[BUILDER_MAX];
+
+static pthread_mutex_t _builder_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+int64_t _syn_texto_builder_crear(void) {
+    pthread_mutex_lock(&_builder_mutex);
+    for (int i = 0; i < BUILDER_MAX; i++) {
+        if (!_builders[i].vivo) {
+            _builders[i].datos = NULL;
+            _builders[i].len = 0;
+            _builders[i].cap = 0;
+            _builders[i].vivo = 1;
+            pthread_mutex_unlock(&_builder_mutex);
+            return (int64_t)i;
+        }
+    }
+    pthread_mutex_unlock(&_builder_mutex);
+    return -1;
+}
+
+void _syn_texto_builder_anexar(int64_t id, CadenaSegura frag) {
+    if (id < 0 || id >= BUILDER_MAX || frag.datos == NULL || frag.longitud <= 0) return;
+    pthread_mutex_lock(&_builder_mutex);
+    if (!_builders[id].vivo) {
+        pthread_mutex_unlock(&_builder_mutex);
+        return;
+    }
+    int64_t nueva_len = _builders[id].len + (int64_t)frag.longitud;
+    if (nueva_len + 1 > _builders[id].cap) {
+        int64_t nueva_cap = _builders[id].cap > 0 ? _builders[id].cap : 256;
+        while (nueva_cap < nueva_len + 1) nueva_cap *= 2;
+        char* nb = (char*)realloc(_builders[id].datos, (size_t)nueva_cap);
+        if (!nb) {
+            pthread_mutex_unlock(&_builder_mutex);
+            return; /* OOM: no-op seguro (Manual 5 §3: sin estado roto) */
+        }
+        _builders[id].datos = nb;
+        _builders[id].cap = nueva_cap;
+    }
+    memcpy(_builders[id].datos + _builders[id].len, frag.datos, (size_t)frag.longitud);
+    _builders[id].len = nueva_len;
+    _builders[id].datos[_builders[id].len] = '\0';
+    pthread_mutex_unlock(&_builder_mutex);
+}
+
+CadenaSegura _syn_texto_builder_construir(int64_t id) {
+    if (id < 0 || id >= BUILDER_MAX) return (CadenaSegura){0, ""};
+    pthread_mutex_lock(&_builder_mutex);
+    if (!_builders[id].vivo) {
+        pthread_mutex_unlock(&_builder_mutex);
+        return (CadenaSegura){0, ""};
+    }
+    int64_t len = _builders[id].len;
+    char* copia = (char*)malloc((size_t)len + 1);
+    if (!copia) {
+        pthread_mutex_unlock(&_builder_mutex);
+        return (CadenaSegura){0, ""};
+    }
+    if (len > 0 && _builders[id].datos) {
+        memcpy(copia, _builders[id].datos, (size_t)len);
+    }
+    copia[len] = '\0';
+    pthread_mutex_unlock(&_builder_mutex);
+    return (CadenaSegura){.longitud = (int)len, .datos = copia};
+}
+
+void _syn_texto_builder_liberar(int64_t id) {
+    if (id < 0 || id >= BUILDER_MAX) return;
+    pthread_mutex_lock(&_builder_mutex);
+    if (_builders[id].vivo) {
+        free(_builders[id].datos);
+        _builders[id].datos = NULL;
+        _builders[id].len = 0;
+        _builders[id].cap = 0;
+        _builders[id].vivo = 0;
+    }
+    pthread_mutex_unlock(&_builder_mutex);
+}

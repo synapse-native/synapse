@@ -4,7 +4,7 @@
 // lib/runtime_bindings.syq — Bindings automáticos del runtime C
 // Generado por opensyn/generate_runtime_bindings.py
 // cumple Manual 6 §3.1: declaraciones externo de funciones C
-// Total: 93 funciones externas
+// Total: 97 funciones externas
 // =====================================================================
 
 // ---------------------------------------------------------------------
@@ -25,7 +25,7 @@ externo funcion _syn_floor(x: decimal) -> entero
 externo funcion _syn_log(x: decimal) -> decimal
 
 // ---------------------------------------------------------------------
-// Manual 3 §12.2 — Manipulación de cadenas (17 funciones)
+// Manual 3 §12.2 — Manipulación de cadenas (21 funciones)
 // ---------------------------------------------------------------------
 
 // Bindings generados automáticamente desde runtime/core/texto.h
@@ -40,6 +40,10 @@ externo funcion _syn_texto_dividir_longitud(lista_id: entero) -> entero
 externo funcion _syn_texto_dividir_obtener(lista_id: entero, indice: entero) -> entero
 externo funcion _syn_texto_dividir_liberar(lista_id: entero)
 externo funcion _syn_texto_unir(lista_id: entero, separador: entero) -> entero
+externo funcion _syn_texto_builder_crear() -> entero
+externo funcion _syn_texto_builder_anexar(id: entero, frag: entero)
+externo funcion _syn_texto_builder_construir(id: entero) -> entero
+externo funcion _syn_texto_builder_liberar(id: entero)
 externo funcion _syn_texto_recortar(t: entero) -> entero
 externo funcion _syn_texto_mayusculas(t: entero) -> entero
 externo funcion _syn_texto_minusculas(t: entero) -> entero

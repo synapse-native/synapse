@@ -163,8 +163,11 @@ Source: "{#SourcePath}\..\..\LICENSE.es"; DestDir: "{tmp}"; Flags: dontcopy
 [Icons]
 Name: "{group}\Synapse Language"; Filename: "{app}\bin\{#MyAppExeName}"; WorkingDir: "{app}"; Components: synapse
 Name: "{group}\Synapse - Terminal"; Filename: "cmd.exe"; Parameters: "/k ""{app}\bin\synapse.exe"""; WorkingDir: "{app}"; Components: synapse
+; cumple Manual 9 §2.5 + Manual 7 §2.1: OpenSyn arranca con WorkingDir={app} y resuelve {app}\opensyn\ia|models
+Name: "{group}\OpenSyn (IA local)"; Filename: "{app}\bin\opensyn.exe"; WorkingDir: "{app}"; Components: opensyn
 Name: "{group}\Desinstalar Synapse"; Filename: "{uninstallexe}"; Components: synapse
 Name: "{autodesktop}\Synapse Language"; Filename: "{app}\bin\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon; Components: synapse
+Name: "{autodesktop}\OpenSyn (IA local)"; Filename: "{app}\bin\opensyn.exe"; WorkingDir: "{app}"; Tasks: desktopicon; Components: opensyn
 
 [Run]
 ; cumple Manual 9 §2.5: post-install hooks
@@ -883,9 +886,12 @@ begin
   else
     DestModel := ExpandConstant('{app}\opensyn\models\') + SelectedModelName;
 
-  if not UseExisting then begin
-    ForceDirectories(ExtractFileDir(DestModel));
-    ForceDirectories(ExtractFileDir(DestServer));
+  ForceDirectories(ExtractFileDir(DestModel));
+  ForceDirectories(ExtractFileDir(DestServer));
+
+  // cumple Manual 7 §2.1: el servidor debe existir aunque se reutilice un GGUF
+  // del perfil; si no está en {app}\opensyn\ia, se descarga igualmente.
+  if not FileExists(DestServer) then begin
     StatusLabel.Caption := 'Descargando llama-server...';
     ProgressBar.Position := 10;
     WizardForm.Repaint;
@@ -918,7 +924,9 @@ begin
     Log('llama-server.exe SHA256 verificado correctamente');
     
     if FileExists(ZipPath) then DeleteFile(ZipPath);
-    
+  end;
+
+  if not UseExisting then begin
     ProgressBar.Position := 50;
     StatusLabel.Caption := 'Descargando ' + SelectedModelName + '...';
     WizardForm.Repaint;

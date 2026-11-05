@@ -1,41 +1,31 @@
 #lang: es
-// cumple Manual 2 §5.1 (ME r192_deuda_barrido): cláusulas de contratos booleanas alineadas.
-# cumple Manual 2 12: biblioteca estandar con contratos en toda funcion publica
+
 // std.texto — Manipulación de cadenas
 // Manual 8 §1.7.3: contiene, indice_de, reemplazar (builtins existentes)
 // Manual 8 §1.7.1-2: leer_bytes, escapar_json, a_texto (nuevos externos)
-// Cumple Manual 2 §12: contratos requiere/garantiza en todas las funciones públicas.
+// Cumple Manual 2 §12: contratos requiere/garantiza en todas las funciones p�blicas.
+// PIEDRA: esta biblioteca sin CRLF.
 
 // ============================================================
-// §1.7.3 — Contiene (builtin existente en texto.c)
+// §1.7.1 — Contiene
 // ============================================================
 
-// cumple Manual 8 §1.7.3 (ME r196): binding sin precondición — el manual
-// declara `externo funcion contiene(...)` sin requiere; runtime maneja vacía.
-// cumple Manual 2 §5.1 (ME r196): cláusulas booleanas alineadas.
 funcion contiene(texto: texto, subcadena: texto) -> entero:
     garantiza:
         _resultado_ == 0 o _resultado_ == 1
-    // No hay liberación de recursos en esta función
     retornar _syn_texto_contiene(texto, subcadena)
 
-
 // ============================================================
-// §1.7.3 — Índice de (builtin existente en texto.c)
+// §1.7.2 — Índice de
 // ============================================================
 
-// cumple Manual 8 §1.7.3 (ME r196): binding sin precondición — misma
-// naturaleza que contiene (subcadena vacía válida, indice_de → 0).
-// cumple Manual 2 §5.1 (ME r196): cláusulas booleanas alineadas.
 funcion indice_de(texto: texto, subcadena: texto) -> entero:
     garantiza:
         _resultado_ >= -1
-    // No hay liberación de recursos en esta función
     retornar _syn_texto_indice_de(texto, subcadena)
 
-
 // ============================================================
-// §1.7.3 — Reemplazar (builtin existente en texto.c)
+// §1.7.3 — Reemplazar
 // ============================================================
 
 funcion reemplazar(texto: texto, buscar: texto, reemplazar: texto) -> texto:
@@ -43,12 +33,10 @@ funcion reemplazar(texto: texto, buscar: texto, reemplazar: texto) -> texto:
         longitud(buscar) > 0
     garantiza:
         longitud(_resultado_) >= 0
-    // No hay liberación de recursos en esta función
     retornar _syn_texto_reemplazar(texto, buscar, reemplazar)
 
-
 // ============================================================
-// §1.7.3 — Termina con (builtin existente en texto.c)
+// §1.7.3 — Termina con
 // ============================================================
 
 funcion termina_con(texto: texto, sufijo: texto) -> entero:
@@ -56,12 +44,10 @@ funcion termina_con(texto: texto, sufijo: texto) -> entero:
         longitud(sufijo) > 0
     garantiza:
         _resultado_ == 0 o _resultado_ == 1
-    // No hay liberación de recursos en esta función
     retornar _syn_texto_termina_con(texto, sufijo)
 
-
 // ============================================================
-// §1.7.3 — Recortar (builtin existente en texto.c)
+// §1.7.3 — Recortar
 // ============================================================
 
 funcion recortar(texto: texto) -> texto:
@@ -69,9 +55,8 @@ funcion recortar(texto: texto) -> texto:
         longitud(_resultado_) <= longitud(texto)
     retornar _syn_texto_recortar(texto)
 
-
 // ============================================================
-// §1.7.3 — Mayúsculas / Minúsculas (builtin existente en texto.c)
+// §1.7.3 — May�sculas / Min�sculas
 // ============================================================
 
 funcion mayusculas(texto: texto) -> texto:
@@ -79,15 +64,13 @@ funcion mayusculas(texto: texto) -> texto:
         longitud(_resultado_) == longitud(texto)
     retornar _syn_texto_mayusculas(texto)
 
-
 funcion minusculas(texto: texto) -> texto:
     garantiza:
         longitud(_resultado_) == longitud(texto)
     retornar _syn_texto_minusculas(texto)
 
-
 // ============================================================
-// §1.7.2 — Escapar JSON (nuevo en string_utils.c)
+// §1.7.2 — Escapar JSON
 // ============================================================
 
 funcion escapar_json(texto: texto) -> texto:
@@ -95,16 +78,14 @@ funcion escapar_json(texto: texto) -> texto:
         longitud(_resultado_) >= longitud(texto)
     retornar _syn_escapar_json(texto)
 
-
 // ============================================================
-// §1.7.2 — A texto (entero / decimal) (nuevo en string_utils.c)
+// §1.7.2 — A texto (entero / decimal)
 // ============================================================
 
 funcion a_texto(valor: entero) -> texto:
     garantiza:
         longitud(_resultado_) > 0
     retornar _syn_a_texto_entero(valor)
-
 
 funcion a_texto_decimal(valor: decimal) -> texto:
     garantiza:
@@ -114,31 +95,25 @@ funcion a_texto_decimal(valor: decimal) -> texto:
 importar std.sistema
 
 // ============================================================
-// §1.7.3 — Contiene (builtin existente en texto.c)
+// §1.7.3 — Contiene (otra vez, en std.sistema)
 // ============================================================
 
-// cumple Manual 8 §1.7.3 (ME r196): binding sin precondición — el manual
-// declara `externo funcion contiene(...)` sin requiere; runtime maneja vacía.
-// cumple Manual 2 §5.1 (ME r196): cláusulas booleanas alineadas.
 funcion contiene(texto: texto, subcadena: texto) -> entero:
     garantiza:
         _resultado_ == 0 o _resultado_ == 1
     retornar _syn_texto_contiene(texto, subcadena)
 
 // ============================================================
-// §1.7.3 — Índice de (builtin existente en texto.c)
+// §1.7.3 — Índice de
 // ============================================================
 
-// cumple Manual 8 §1.7.3 (ME r196): binding sin precondición — misma
-// naturaleza que contiene (subcadena vacía válida, indice_de → 0).
-// cumple Manual 2 §5.1 (ME r196): cláusulas booleanas alineadas.
 funcion indice_de(texto: texto, subcadena: texto) -> entero:
     garantiza:
         _resultado_ >= -1
     retornar _syn_texto_indice_de(texto, subcadena)
 
 // ============================================================
-// §1.7.3 — Reemplazar (builtin existente en texto.c)
+// §1.7.3 — Reemplazar
 // ============================================================
 
 funcion reemplazar(texto: texto, buscar: texto, reemplazar: texto) -> texto:
@@ -149,7 +124,7 @@ funcion reemplazar(texto: texto, buscar: texto, reemplazar: texto) -> texto:
     retornar _syn_texto_reemplazar(texto, buscar, reemplazar)
 
 // ============================================================
-// §1.7.3 — Termina con (builtin existente en texto.c)
+// §1.7.3 — Termina con
 // ============================================================
 
 funcion termina_con(texto: texto, sufijo: texto) -> entero:
@@ -160,7 +135,7 @@ funcion termina_con(texto: texto, sufijo: texto) -> entero:
     retornar _syn_texto_termina_con(texto, sufijo)
 
 // ============================================================
-// §1.7.3 — Recortar (builtin existente en texto.c)
+// §1.7.3 — Recortar
 // ============================================================
 
 funcion recortar(texto: texto) -> texto:
@@ -169,7 +144,7 @@ funcion recortar(texto: texto) -> texto:
     retornar _syn_texto_recortar(texto)
 
 // ============================================================
-// §1.7.3 — Mayúsculas / Minúsculas (builtin existente en texto.c)
+// §1.7.3 — May�sculas / Min�sculas
 // ============================================================
 
 funcion mayusculas(texto: texto) -> texto:
@@ -183,7 +158,7 @@ funcion minusculas(texto: texto) -> texto:
     retornar _syn_texto_minusculas(texto)
 
 // ============================================================
-// §1.7.2 — Escapar JSON (nuevo en string_utils.c)
+// §1.7.2 — Escapar JSON
 // ============================================================
 
 funcion escapar_json(texto: texto) -> texto:
@@ -192,7 +167,7 @@ funcion escapar_json(texto: texto) -> texto:
     retornar _syn_escapar_json(texto)
 
 // ============================================================
-// §1.7.2 — A texto (entero / decimal) (nuevo en string_utils.c)
+// §1.7.2 — A texto (entero / decimal)
 // ============================================================
 
 funcion a_texto(valor: entero) -> texto:
@@ -206,9 +181,22 @@ funcion a_texto_decimal(valor: decimal) -> texto:
     retornar _syn_a_texto_decimal(valor)
 
 // ============================================================
-// Externos C — texto.c (builtins existentes)
+// §1.7.4 — Longitud
 // ============================================================
 
+// cumple Manual 2 §5.1: contrato de longitud usa _resultado_ en garantiza
+funcion longitud(texto: texto) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0
+    retornar _syn_texto_longitud(texto)
+
+// ============================================================
+// Externos C — funciones string de bajo nivel
+// ============================================================
+
+// cumple Manual 6 §3.1: declaraciones externo de las implementaciones C de texto.c
 externo funcion _syn_texto_contiene(texto: texto, subcadena: texto) -> entero
 externo funcion _syn_texto_indice_de(texto: texto, subcadena: texto) -> entero
 externo funcion _syn_texto_reemplazar(texto: texto, buscar: texto, reemplazar: texto) -> texto
@@ -216,71 +204,7 @@ externo funcion _syn_texto_termina_con(texto: texto, sufijo: texto) -> entero
 externo funcion _syn_texto_recortar(texto: texto) -> texto
 externo funcion _syn_texto_mayusculas(texto: texto) -> texto
 externo funcion _syn_texto_minusculas(texto: texto) -> texto
-
-// ============================================================
-// Externos C — string_utils.c (nuevos)
-// ============================================================
-
-externo funcion _syn_escapar_json(texto: texto) -> texto
-externo funcion _syn_a_texto_entero(valor: entero) -> texto
-externo funcion _syn_a_texto_decimal(valor: decimal) -> texto
-
-// ============================================================
-// §1.7 — Funciones string de bajo nivel para LSP
-// ============================================================
-
-// Compara dos strings: 0 si son iguales, <0 si a<b, >0 si a>b
-funcion cmp_texto(a: texto, b: texto) -> entero:
-    garantiza:
-        _resultado_ == 0 o _resultado_ < 0 o _resultado_ > 0
-    retornar _syn_strcmp(a, b)
-
-// Longitud de un string en bytes
-funcion strlen_s(a: texto) -> entero:
-    garantiza:
-        _resultado_ >= 0
-    retornar _syn_strlen(a)
-
-// Busca subcadena dentro de string, retorna posición o -1
-funcion strstr_f(texto: texto, patron: texto) -> entero:
-    requiere:
-        longitud(patron) > 0
-    garantiza:
-        _resultado_ >= -1
-    retornar _syn_strstr(texto, patron)
-
-// Busca carácter dentro de string, retorna posición o -1
-funcion strchr_f(texto: texto, caracter: entero) -> entero:
-    requiere:
-        caracter >= 0
-    garantiza:
-        _resultado_ >= -1
-    retornar _syn_strchr(texto, caracter)
-
-// Convierte string a entero
-funcion atoi_f(texto: texto) -> entero:
-    requiere:
-        longitud(texto) > 0
-    retornar _syn_atoi(texto)
-
-// Copia string (retorna nuevo string con memoria asignada)
-funcion strcpy_f(texto: texto) -> texto:
-    garantiza:
-        longitud(_resultado_) == longitud(texto)
-    retornar _syn_strcpy(texto)
-
-// Copia a buffer con límite máximo
-funcion strncpy_f(texto: texto, max_len: entero) -> texto:
-    requiere:
-        max_len > 0
-    garantiza:
-        longitud(_resultado_) <= max_len
-    retornar _syn_strncpy(texto, max_len)
-
-// ============================================================
-// Externos C — funciones string de bajo nivel
-// ============================================================
-
+externo funcion _syn_texto_longitud(texto: texto) -> entero
 externo funcion _syn_strcmp(a: texto, b: texto) -> entero
 externo funcion _syn_strlen(a: texto) -> entero
 externo funcion _syn_strstr(texto: texto, patron: texto) -> entero
@@ -288,3 +212,7 @@ externo funcion _syn_strchr(texto: texto, caracter: entero) -> entero
 externo funcion _syn_atoi(texto: texto) -> entero
 externo funcion _syn_strcpy(texto: texto) -> texto
 externo funcion _syn_strncpy(texto: texto, max_len: entero) -> texto
+
+externo funcion _syn_escapar_json(texto: texto) -> texto
+externo funcion _syn_a_texto_entero(valor: entero) -> texto
+externo funcion _syn_a_texto_decimal(valor: decimal) -> texto

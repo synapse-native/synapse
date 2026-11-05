@@ -21,9 +21,14 @@ externo funcion _syn_ollama_consultar(modelo: texto, prompt: texto, host: texto,
 // cumple Manual 7 §2.1: lista los modelos instalados en Ollama (GET /api/tags)
 externo funcion _syn_ollama_modelos(host: texto, puerto: entero) -> texto
 // --- Herramientas del agente (Manual 7 §2.3: contexto del codigo local) ---
+// cumple Manual 7 §2.3: std.texto ya exporta _syn_texto_longitud.
 externo funcion _syn_listar_directorio(ruta: texto) -> texto
-externo funcion _syn_texto_longitud(t: texto) -> entero
 externo funcion _syn_capturar_comando(cmd: texto) -> texto
+// cumple Manual 2 §12: builder incremental (evita el aliasing de concat en comandos largos)
+externo funcion _syn_texto_builder_crear() -> entero
+externo funcion _syn_texto_builder_anexar(id: entero, frag: texto) -> nulo
+externo funcion _syn_texto_builder_construir(id: entero) -> texto
+externo funcion _syn_texto_builder_liberar(id: entero) -> nulo
 // --- Consola real + ANSI (Manual 9 §2.5: banner/prompt estilo OpenCode) ---
 externo funcion _syn_es_consola() -> entero
 externo funcion _syn_ansi(sgr: entero) -> texto
@@ -54,12 +59,7 @@ externo funcion _syn_ollama_stream_cerrar(sesion: puntero) -> nulo
 // R149-R9: longitud es el predicado canonico de los contratos (Manual 2 §5.1:
 // las expresiones de requiere/garantiza deben ser booleanas); puente al runtime.
 // cumple Manual 7 §2.3: contexto estático inyectado al prompt del agente (longitud acotada).
-funcion longitud(t: texto) -> entero:
-    requiere:
-        verdadero
-    garantiza:
-        _resultado_ >= 0 // cumple Manual 2 §5.1
-    retornar _syn_texto_longitud(t)
+
 // --- Banner ASCII retro "OpenSyn" (estilo OpenCode/Freebuff) ---
 // cumple Manual 7 1.1: identidad visual de OpenSyn como asistente local; el
 // color (cian 36) se emite SOLO en consola real (pipes quedan sin escapes).
@@ -84,118 +84,190 @@ constante SKILL_REVIEW_PROMPT = "Eres un revisor de codigo senior. Revisa el sig
 constante SKILL_PLAN_PROMPT = "Eres un arquitecto de software senior. Desglosa la siguiente caracteristica en tareas incrementales para Synapse (.syn). Usa formato: 1. [Tamano: pequeno/mediano/grande] Descripcion -> entregable. Prioriza tareas verticales (end-to-end) primero. Identifica riesgos y dependencias. Numero las tareas 1-N. Sean conciso."
 
 // --- Auto-inicio de llama-server (cumple Manual 7 §2.1) ---
-// Si el usuario ejecuta opensyn.exe directamente (no via opensyn.bat),
-// llama-server no esta corriendo. Detectamos y lo iniciamos automaticamente.
-// Usa solo funciones del runtime (no Windows API directa).
+// El binario instalado vive en {app}\bin y los recursos IA en {app}\opensyn.
+// Se resuelve el directorio real del exe (GetModuleFileNameA) y se buscan
+// llama-server.exe / *.gguf en el layout instalado, junto al exe y en HOME.
 
 funcion obtener_dir_exe() -> texto:
     requiere:
         verdadero
     garantiza:
         longitud(_resultado_) > 0 // cumple Manual 2 §5.1
-    // Usar PowerShell para obtener el directorio del exe actual
-    dir = _syn_capturar_comando("powershell -NoProfile -Command \"Split-Path -Parent $MyInvocation.MyCommand.Path\"")
+    // cumple Manual 7 §2.1: directorio real del binario (no el cwd del usuario)
+    dir = ""
+    inseguro:
+        asm("char _oe_dir[1024]; _oe_dir[0] = 0;")
+        asm("#ifdef _WIN32")
+        asm("extern unsigned long __stdcall GetModuleFileNameA(void*, char*, unsigned long);")
+        asm("unsigned long _oe_n = GetModuleFileNameA(0, _oe_dir, 1024);")
+        asm("if (_oe_n > 0) { char* _oe_sl = strrchr(_oe_dir, '\\\\'); if (_oe_sl) *_oe_sl = 0; }")
+        asm("#endif")
+        asm("CadenaSegura _oe_c = {.longitud = (int)strlen(_oe_dir), .datos = strdup(_oe_dir)}; dir = _oe_c;")
     si dir == "":
         dir = _syn_obtener_cwd()
     retornar dir
+
+funcion dir_opensyn(dir_exe: texto) -> texto:
+    requiere:
+        longitud(dir_exe) > 0
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    // cumple Manual 7 §2.1: layout {app}\bin\opensyn.exe -> {app}\opensyn
+    total = longitud(dir_exe)
+    si total >= 4:
+        sep = subcadena(dir_exe, total - 4, 1)
+        nom = subcadena(dir_exe, total - 3, 3)
+        si (sep == "\\" o sep == "/") y (nom == "bin" o nom == "Bin" o nom == "BIN"):
+            retornar concat(subcadena(dir_exe, 0, total - 4), "\\opensyn")
+    retornar dir_exe
+
+funcion existe_ruta(ruta: texto) -> entero:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
+    res = 0
+    inseguro:
+        asm("CadenaSegura _er = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; if (_syn_existe_archivo(_er) == 1) res = 1;")
+    retornar res
+
+funcion primera_ruta_existente(lista: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    total = longitud(lista)
+    inicio = 0
+    i = 0
+    mientras i <= total:
+        si i == total o subcadena(lista, i, 1) == "\n":
+            ruta = subcadena(lista, inicio, i - inicio)
+            si longitud(ruta) > 0 y existe_ruta(ruta) == 1:
+                retornar ruta
+            inicio = i + 1
+        i = i + 1
+    retornar ""
+
+funcion buscar_gguf_en_dir(dir: texto) -> texto:
+    requiere:
+        longitud(dir) > 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    listado = _syn_listar_directorio(dir)
+    si listado == "":
+        retornar ""
+    total = longitud(listado)
+    i = 0
+    mientras i < total - 4:
+        si subcadena(listado, i, 5) == ".gguf":
+            inicio = i
+            mientras inicio > 0:
+                c_anterior = subcadena(listado, inicio - 1, 1)
+                si c_anterior == "\n" o c_anterior == "\r" o c_anterior == " ":
+                    romper
+                inicio = inicio - 1
+            largo = i + 5 - inicio
+            ruta = concat(concat(dir, "\\"), subcadena(listado, inicio, largo))
+            si existe_ruta(ruta) == 1:
+                retornar ruta
+        i = i + 1
+    retornar ""
+
+funcion buscar_llama_server(dir_exe: texto, dir_app: texto, cwd_act: texto) -> texto:
+    requiere:
+        longitud(dir_exe) > 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    lista = concat(concat(dir_app, "\\ia\\llama-server.exe"), "\n")
+    lista = concat(lista, concat(concat(dir_exe, "\\ia\\llama-server.exe"), "\n"))
+    lista = concat(lista, concat(concat(dir_exe, "\\llama-server.exe"), "\n"))
+    lista = concat(lista, concat(concat(dir_app, "\\llama-server.exe"), "\n"))
+    si cwd_act != "":
+        lista = concat(lista, concat(concat(cwd_act, "\\ia\\llama-server.exe"), "\n"))
+        lista = concat(lista, concat(concat(cwd_act, "\\llama-server.exe"), "\n"))
+    retornar primera_ruta_existente(lista)
+
+funcion buscar_modelo_instalado(dir_exe: texto, dir_app: texto, cwd_act: texto) -> texto:
+    requiere:
+        longitud(dir_exe) > 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    home = obtener_env("USERPROFILE")
+    dirs = concat(concat(dir_app, "\\models"), "\n")
+    dirs = concat(dirs, concat(concat(dir_app, "\\ia"), "\n"))
+    dirs = concat(dirs, concat(concat(dir_exe, "\\models"), "\n"))
+    dirs = concat(dirs, concat(concat(dir_exe, "\\ia"), "\n"))
+    si home != "":
+        dirs = concat(dirs, concat(concat(home, "\\.opensyn\\models"), "\n"))
+    si cwd_act != "":
+        dirs = concat(dirs, concat(concat(cwd_act, "\\models"), "\n"))
+        dirs = concat(dirs, concat(concat(cwd_act, "\\ia"), "\n"))
+    total = longitud(dirs)
+    inicio = 0
+    i = 0
+    mientras i <= total:
+        si i == total o subcadena(dirs, i, 1) == "\n":
+            dir = subcadena(dirs, inicio, i - inicio)
+            si longitud(dir) > 0:
+                ruta = buscar_gguf_en_dir(dir)
+                si ruta != "":
+                    retornar ruta
+            inicio = i + 1
+        i = i + 1
+    retornar ""
 
 funcion llama_server_corriendo() -> entero:
     requiere:
         verdadero
     garantiza:
         _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
-    // Verificar si el puerto 8088 esta escuchando
-    salida = _syn_capturar_comando("netstat -an")
-    si salida == "":
-        retornar 0
-    // Buscar patrones de LISTENING en puerto 8088
-    total = longitud(salida)
-    i = 0
-    mientras i < total - 14:
-        caracter = subcadena(salida, i, 1)
-        si caracter == ":":
-            sig = subcadena(salida, i + 1, 4)
-            si sig == "8088":
-                resto = subcadena(salida, i + 5, 10)
-                si subcadena(resto, 0, 8) == "LISTENIN":
-                    retornar 1
-        i = i + 1
+    // cumple Manual 7 §2.1: readiness real via API OpenAI, no parser de netstat
+    modelos = _syn_ollama_modelos("127.0.0.1", 8088)
+    si longitud(modelos) > 0:
+        retornar 1
     retornar 0
 
 funcion iniciar_llama_server() -> nulo:
     requiere:
         verdadero
+    garantiza:
+        verdadero
+    // cumple Manual 7 §2.1: inicia el servidor solo si no esta escuchando
     si llama_server_corriendo() == 1:
         retornar
-    dir = obtener_dir_exe()
-    si dir == "":
+    dir_exe = obtener_dir_exe()
+    dir_app = dir_opensyn(dir_exe)
+    cwd_act = _syn_obtener_cwd()
+    ruta_server = buscar_llama_server(dir_exe, dir_app, cwd_act)
+    si ruta_server == "":
+        escribir_linea("  [!] No se encontro llama-server.exe (revisa {app}\\opensyn\\ia).")
         retornar
-    // Verificar que llama-server.exe existe
-    ruta_server = concat(dir, "\\ia\\llama-server.exe")
-    existe = existe_archivo(ruta_server)
-    si no existe:
-        ruta_server2 = concat(dir, "ia\\llama-server.exe")
-        existe = existe_archivo(ruta_server2)
-        si no existe:
+    modelo_ruta = buscar_modelo_instalado(dir_exe, dir_app, cwd_act)
+    si modelo_ruta == "":
+        escribir_linea("  [!] No se encontro modelo .gguf (.opensyn\\models).")
+        retornar
+    // cumple Manual 7 §7.3: el servidor escucha solo en loopback
+    // cumple Manual 7 §2.1: proceso independiente y oculto (sobrevive al orquestador)
+    acc = _syn_texto_builder_crear()
+    _syn_texto_builder_anexar(acc, "powershell -NoProfile -Command \"Start-Process -FilePath '")
+    _syn_texto_builder_anexar(acc, ruta_server)
+    _syn_texto_builder_anexar(acc, "' -ArgumentList @('--model','")
+    _syn_texto_builder_anexar(acc, modelo_ruta)
+    _syn_texto_builder_anexar(acc, "','--port','8088','--host','127.0.0.1','--ctx-size','2048','--n-gpu-layers','0') -WindowStyle Hidden\"")
+    cmd_start = _syn_texto_builder_construir(acc)
+    _syn_texto_builder_liberar(acc)
+    rc_start = ejecutar_comando(cmd_start)
+    si rc_start != 0:
+        escribir_linea("  [!] No se pudo lanzar llama-server (powershell).")
+        retornar
+    // Esperar readiness (max ~20 s); ping se usa solo como delay portable
+    intentos = 0
+    mientras intentos < 20:
+        si llama_server_corriendo() == 1:
             retornar
-        ruta_server = ruta_server2
-    // Buscar modelo GGUF en models/ o ia/
-    modelo_ruta = ""
-    dir_models = concat(dir, "\\models")
-    listado = _syn_listar_directorio(dir_models)
-    si listado == "":
-        dir_models = concat(dir, "models")
-        listado = _syn_listar_directorio(dir_models)
-    si listado != "":
-        total = longitud(listado)
-        i = 0
-        mientras i < total - 4:
-            caracter = subcadena(listado, i, 1)
-            si caracter == ".":
-                sufijo = subcadena(listado, i, 4)
-                si sufijo == ".gguf":
-                    // Encontrar inicio del nombre del archivo
-                    inicio = i
-                    mientras inicio > 0:
-                        c_anterior = subcadena(listado, inicio - 1, 1)
-                        si c_anterior == "\n" o c_anterior == "\r" o c_anterior == " ":
-                            romper
-                        inicio = inicio - 1
-                    largo = i + 4 - inicio
-                    modelo_ruta = concat(concat(dir_models, "\\"), subcadena(listado, inicio, largo))
-                    romper
-            i = i + 1
-    si modelo_ruta == "":
-        dir_ia = concat(dir, "\\ia")
-        listado2 = _syn_listar_directorio(dir_ia)
-        si listado2 == "":
-            dir_ia = concat(dir, "ia")
-            listado2 = _syn_listar_directorio(dir_ia)
-        si listado2 != "":
-            total2 = longitud(listado2)
-            i2 = 0
-            mientras i2 < total2 - 4:
-                caracter2 = subcadena(listado2, i2, 1)
-                si caracter2 == ".":
-                    sufijo2 = subcadena(listado2, i2, 4)
-                    si sufijo2 == ".gguf":
-                        inicio2 = i2
-                        mientras inicio2 > 0:
-                            c_ant2 = subcadena(listado2, inicio2 - 1, 1)
-                            si c_ant2 == "\n" o c_ant2 == "\r" o c_ant2 == " ":
-                                romper
-                            inicio2 = inicio2 - 1
-                        largo2 = i2 + 4 - inicio2
-                        modelo_ruta = concat(concat(dir_ia, "\\"), subcadena(listado2, inicio2, largo2))
-                        romper
-                i2 = i2 + 1
-    si modelo_ruta == "":
-        retornar
-    // Iniciar llama-server en background usando start
-    cmd_start = concat(concat(concat(concat("start \"llama-server\" /B \"", ruta_server), "\" --model \""), modelo_ruta), "\" --port 8088 --host 127.0.0.1 --ctx-size 2048 --n-gpu-layers 0")
-    _syn_capturar_comando(cmd_start)
-    // Esperar usando ping como delay (3 segundos)
-    _syn_capturar_comando("ping -n 4 127.0.0.1 >nul 2>&1")
+        _syn_capturar_comando("ping -n 2 127.0.0.1 >nul 2>&1")
+        intentos = intentos + 1
+    escribir_linea("  [!] llama-server no respondio en el puerto 8088.")
 
 // --- Funciones auxiliares de configuracion ---
 
@@ -221,7 +293,8 @@ funcion ruta_config_absoluta() -> texto:
     retornar concat(concat(cwd, "\\"), ARCHIVO_CONFIG)
 
 funcion leer_modo_config() -> texto:
-    // cumple Manual 7 §2.1: buscar config en cwd, luego en HOME y en app (instalador pre-configura)
+    // cumple Manual 7 §2.1: buscar config en cwd, luego en HOME y en {app}\opensyn
+    dir_app = dir_opensyn(obtener_dir_exe())
     contenido = leer_archivo(ruta_config_absoluta())
     si contenido == "":
         // Fallback via _syn_leer_archivo directo (bypass _validar_ruta_segura cwd-only) — cumple Manual 7 §2.1
@@ -230,16 +303,15 @@ funcion leer_modo_config() -> texto:
         inseguro:
             asm("CadenaSegura _rh = {.datos = (char*)ruta_home.datos, .longitud = ruta_home.longitud}; CadenaSegura _ch = _syn_leer_archivo(_rh); contenido = _ch;")
         si contenido == "":
+            ruta_app = concat(dir_app, "\\.synapse_config")
             inseguro:
-                asm("CadenaSegura _rp = {.datos = (char*)\"C:\\\\Program Files\\\\Synapse\\\\.synapse_config\", .longitud = 38}; CadenaSegura _cp = _syn_leer_archivo(_rp); if(_cp.longitud>0) contenido = _cp;")
-        si contenido == "":
-            inseguro:
-                asm("CadenaSegura _rp2 = {.datos = (char*)\"C:\\\\Program Files\\\\Synapse\\\\opensyn\\\\.synapse_config\", .longitud = 45}; CadenaSegura _cp2 = _syn_leer_archivo(_rp2); if(_cp2.longitud>0) contenido = _cp2;")
+                asm("CadenaSegura _rp = {.datos = (char*)ruta_app.datos, .longitud = ruta_app.longitud}; CadenaSegura _cp = _syn_leer_archivo(_rp); if(_cp.longitud>0) contenido = _cp;")
     // Ollama config creado por instalador implica modo oraculo aunque no haya .synapse_config aun
     si contenido == "":
         es_ollama = 0
+        ruta_app_ollama = concat(dir_app, "\\config_ollama.txt")
         inseguro:
-            asm("CadenaSegura _ro = {.datos = (char*)\"C:\\\\Program Files\\\\Synapse\\\\opensyn\\\\config_ollama.txt\", .longitud = 46}; if(_syn_existe_archivo(_ro)==1) es_ollama=1;")
+            asm("CadenaSegura _ro = {.datos = (char*)ruta_app_ollama.datos, .longitud = ruta_app_ollama.longitud}; if(_syn_existe_archivo(_ro)==1) es_ollama=1;")
         si es_ollama == 1:
             retornar "oraculo"
         home2 = obtener_env("USERPROFILE")
@@ -419,7 +491,7 @@ funcion leer_config_ollama() -> texto:
         ruta_home = concat(home, "\\.opensyn\\config_ollama.txt")
         contenido = leer_archivo_sin_validar(ruta_home)
     si contenido == "":
-        ruta_app = "C:\\Program Files\\Synapse\\opensyn\\config_ollama.txt"
+        ruta_app = concat(dir_opensyn(obtener_dir_exe()), "\\config_ollama.txt")
         contenido = leer_archivo_sin_validar(ruta_app)
     retornar contenido
 
@@ -430,7 +502,7 @@ funcion obtener_modelo_config(config: texto) -> texto:
         longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     si config == "":
         retornar ""
-    idx = strstr_f(config, "model=")
+    idx = _syn_strstr(config, "model=")
     si idx < 0:
         retornar ""
     inicio = idx + 6
@@ -556,6 +628,10 @@ funcion ruta_config_ollama_existente() -> texto:
     contenido_home = leer_archivo_sin_validar(ruta_home)
     si contenido_home != "":
         retornar ruta_home
+    ruta_app = concat(dir_opensyn(obtener_dir_exe()), "\\config_ollama.txt")
+    contenido_app = leer_archivo_sin_validar(ruta_app)
+    si contenido_app != "":
+        retornar ruta_app
     retornar ""
 
 funcion escribir_archivo_sin_validar(ruta: texto, contenido: texto) -> entero:
@@ -581,6 +657,34 @@ funcion guardar_modelo_config(modelo: texto) -> entero:
     contenido = concat(concat(contenido, "model="), modelo)
     retornar escribir_archivo_sin_validar(ruta, contenido)
 
+funcion nombre_base_ruta(ruta: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    // cumple Manual 7 §4.2: el id de llama-server puede ser una ruta absoluta
+    total = longitud(ruta)
+    i = total - 1
+    mientras i >= 0:
+        c = subcadena(ruta, i, 1)
+        si c == "\\" o c == "/":
+            retornar subcadena(ruta, i + 1, total - i - 1)
+        i = i - 1
+    retornar subcadena(ruta, 0, total)
+
+funcion sin_extension_gguf(nombre: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    // cumple Manual 7 §4.2: config puede nombrar el modelo con o sin .gguf
+    total = longitud(nombre)
+    si total > 5:
+        suf = subcadena(nombre, total - 5, 5)
+        si suf == ".gguf" o suf == ".GGUF":
+            retornar subcadena(nombre, 0, total - 5)
+    retornar subcadena(nombre, 0, total)
+
 // Elige el modelo activo: el configurado si está instalado; si no, el primero
 // instalado (auto-detección del modelo real descargado por el usuario).
 funcion normalizar_modelo_activo(modelo_config: texto, modelos: texto) -> texto:
@@ -601,6 +705,7 @@ funcion normalizar_modelo_activo(modelo_config: texto, modelos: texto) -> texto:
         base = subcadena(modelo_config, 0, longitud(modelo_config))
     si base == "":
         base = subcadena("qwen-coder", 0, 10)
+    base_norm = sin_extension_gguf(nombre_base_ruta(base))
     total = longitud(modelos)
     primero = ""
     presente = 0
@@ -613,7 +718,8 @@ funcion normalizar_modelo_activo(modelo_config: texto, modelos: texto) -> texto:
             nombre = subcadena(modelos, inicio, i - inicio)
             si num == 0:
                 primero = subcadena(nombre, 0, longitud(nombre))
-            si nombre == base:
+            nombre_norm = sin_extension_gguf(nombre_base_ruta(nombre))
+            si nombre_norm == base_norm:
                 presente = 1
             num = num + 1
             inicio = i + 1
@@ -623,7 +729,8 @@ funcion normalizar_modelo_activo(modelo_config: texto, modelos: texto) -> texto:
         si presente == 0:
             si primero != "":
                 escribir_linea(concat(concat(concat("  [*] Modelo configurado '", base), "' no instalado; usando el primero disponible: "), primero))
-                guardar_modelo_config(subcadena(primero, 0, longitud(primero)))
+                primero_base = nombre_base_ruta(primero)
+                guardar_modelo_config(subcadena(primero_base, 0, longitud(primero_base)))
                 elegido = subcadena(primero, 0, longitud(primero))
     retornar subcadena(elegido, 0, longitud(elegido))
 funcion manejar_modelo(prompt: texto, modelos: texto) -> texto:
@@ -645,7 +752,7 @@ funcion manejar_modelo(prompt: texto, modelos: texto) -> texto:
     sino:
         arg = recortar(subcadena(prompt, 7, longitud(prompt) - 7))
     si arg != "":
-        numero = atoi_f(arg)
+        numero = _syn_atoi(arg)
         pedido = ""
         si numero <= 0:
             pedido = subcadena(arg, 0, longitud(arg))
@@ -690,7 +797,7 @@ funcion mostrar_ayuda() -> nulo:
     escribir_linea("    /orchestrator      - modo delegación (descompone tareas)")
     escribir_linea("")
     escribir_linea("  Comandos del chat:")
-    escribir_linea("    /modelos           - lista los modelos instalados en Ollama")
+    escribir_linea("    /modelos           - lista los modelos instalados")
     escribir_linea("    /model <nombre|n>  - cambia de modelo (por nombre o numero)")
     escribir_linea("    <pregunta>         - el agente lee el repo y responde con contexto")
     escribir_linea("    /tdd <tarea>       - genera tests TDD para una funcion")
@@ -861,7 +968,7 @@ funcion pintar_linea(texto: texto, sgr: entero) -> nulo:
     si _syn_es_consola() == 1:
         escribir_linea(concat(concat(_syn_ansi(sgr), texto), _syn_ansi(0)))
     sino:
-        escribir_linea(strcpy_f(texto))
+        escribir_linea(texto)
 
 // ============================================================
 // Agente con contexto del repositorio (Manual 7 2.3: RAG local)
@@ -955,7 +1062,7 @@ funcion ejecutar_tool(linea: texto, cwd_act: texto, modo: entero) -> texto:
             ruta = arg
             si ruta == "":
                 ruta = cwd_act
-            si strstr_f(ruta, "..") >= 0 o strstr_f(ruta, ":") >= 0:
+            si _syn_strstr(ruta, "..") >= 0 o _syn_strstr(ruta, ":") >= 0:
                 // H-R146-2: nunca FAILED la herramienta de listado — un modelo
                 // pequeño puede pedir rutas raras; se degrada a la raíz del
                 // repo para que SIEMPRE llegue contexto real (Manual 7 §2.3).
@@ -971,7 +1078,7 @@ funcion ejecutar_tool(linea: texto, cwd_act: texto, modo: entero) -> texto:
             si arg == "":
                 res = "[TOOL_ERROR] falta la ruta: TOOL leer <ruta>"
             sino:
-                si strstr_f(arg, "..") >= 0 o strstr_f(arg, ":") >= 0 o subcadena(arg, 0, 1) == "~":
+                si _syn_strstr(arg, "..") >= 0 o _syn_strstr(arg, ":") >= 0 o subcadena(arg, 0, 1) == "~":
                     res = "[TOOL_ERROR] ruta no permitida (usa rutas dentro del repo)"
                 sino:
                     ruta = concat(cwd_act, "/")
@@ -1001,8 +1108,8 @@ funcion consultar_agente(modelo: texto, prompt_usuario: texto, modo: entero) -> 
     garantiza:
         longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     cwd_act = _syn_obtener_cwd()
-    ctx = construir_contexto(strcpy_f(cwd_act))
-    sys = strcpy_f(AGENTE_SYS_BASE)
+    ctx = construir_contexto(cwd_act)
+    sys = AGENTE_SYS_BASE
     sys = concat(sys, ctx)
     sys = concat(sys, "\n\n[USUARIO]\n")
     sys = concat(sys, prompt_usuario)
@@ -1013,15 +1120,15 @@ funcion consultar_agente(modelo: texto, prompt_usuario: texto, modo: entero) -> 
         si respuesta == "":
             respuesta_final = ""
             romper
-        limpia = recortar(strcpy_f(respuesta))
-        si strstr_f(limpia, "TOOL ") == 0:
-            salida = ejecutar_tool(strcpy_f(limpia), strcpy_f(cwd_act), modo)
+        limpia = recortar(respuesta)
+        si _syn_strstr(limpia, "TOOL ") == 0:
+            salida = ejecutar_tool(limpia, cwd_act, modo)
             sys = concat(sys, "\n")
             sys = concat(sys, salida)
             sys = concat(sys, "\n[Continua: usa otra linea TOOL si necesitas mas contexto, o responde directamente.]")
             iteracion = iteracion + 1
         sino:
-            respuesta_final = strcpy_f(limpia)
+            respuesta_final = limpia
             romper
     retornar respuesta_final
 
@@ -1053,8 +1160,8 @@ funcion tui_acotar(t: texto, n: entero) -> texto:
         longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     largo = longitud(t)
     si largo <= n:
-        retornar strcpy_f(t)
-    retornar concat(subcadena(strcpy_f(t), 0, n), "…")
+        retornar t
+    retornar concat(subcadena(t, 0, n), "…")
 
 // % del presupuesto de system prompt usado (ollama.c trunca a los últimos
 // 3500 bytes, lección R144c): indicador "ctx" de la barra inferior.
@@ -1079,27 +1186,27 @@ funcion consulta_stream(modelo: texto, prompt: texto) -> texto:
     _syn_tui_pensando(1, "Consultando")
     sesion = _syn_ollama_stream_iniciar(modelo, prompt, "127.0.0.1", 8088, 2048)
     si sesion == nulo:
-        _syn_tui_mensaje(3, "No se pudo conectar con Ollama. Verifica: ollama serve")
-        _syn_tui_repintar(strcpy_f(modelo))
+        _syn_tui_mensaje(3, "No se pudo conectar con el servidor IA local. Reintenta en unos segundos.")
+        _syn_tui_repintar(modelo)
         retornar ""
     mientras verdadero:
         ch = _syn_ollama_stream_leer(sesion)
         si ch == "":
             romper
-        texto_acum = concat(texto_acum, strcpy_f(ch))
-        _syn_tui_asistente_continuar(strcpy_f(ch))
-        _syn_tui_repintar(strcpy_f(modelo))
+        texto_acum = concat(texto_acum, ch)
+        _syn_tui_asistente_continuar(ch)
+        _syn_tui_repintar(modelo)
     _syn_tui_pensando(0, "")
     ctx_tokens = _syn_texto_longitud(texto_acum) / 4
-    _syn_tui_contexto(pct_contexto(strcpy_f(prompt)), ctx_tokens)
+    _syn_tui_contexto(pct_contexto(prompt), ctx_tokens)
     si _syn_ollama_stream_estado(sesion) == 1:
         _syn_tui_mensaje_pop()
         detalle = _syn_ollama_stream_error(sesion)
         si detalle == "":
-            _syn_tui_mensaje(3, "Ollama no respondio (error de streaming).")
+            _syn_tui_mensaje(3, "El servidor IA local no respondio (error de streaming).")
         sino:
-            _syn_tui_mensaje(3, strcpy_f(detalle))
-        _syn_tui_repintar(strcpy_f(modelo))
+            _syn_tui_mensaje(3, detalle)
+        _syn_tui_repintar(modelo)
         _syn_ollama_stream_cerrar(sesion)
         retornar ""
     _syn_ollama_stream_cerrar(sesion)
@@ -1111,17 +1218,17 @@ funcion tui_listar_modelos(modelos: texto, modelo: texto) -> nulo:
         verdadero
     garantiza:
         verdadero
-    total = contar_modelos(strcpy_f(modelos))
+    total = contar_modelos(modelos)
     si total == 0:
-        _syn_tui_mensaje(2, "Sin modelos detectados. Ejecuta: ollama serve")
+        _syn_tui_mensaje(2, "Sin modelos detectados. Verifica {app}\\opensyn\\models")
         retornar
     _syn_tui_mensaje(2, "Modelos instalados:")
     n = 1
     mientras n <= total:
-        nombre = modelo_en_posicion(strcpy_f(modelos), n)
-        _syn_tui_mensaje(2, concat(concat(concat("  ", entero_a_texto(n)), ". "), strcpy_f(nombre)))
+        nombre = modelo_en_posicion(modelos, n)
+        _syn_tui_mensaje(2, concat(concat(concat("  ", entero_a_texto(n)), ". "), nombre))
         n = n + 1
-    _syn_tui_mensaje(2, concat("Activo: ", strcpy_f(modelo)))
+    _syn_tui_mensaje(2, concat("Activo: ", modelo))
 
 // Ejecuta una skill (/tdd /revisar /plan) con streaming en el panel.
 // cumple Manual 7 §1.1: verifica permisos del modo actual antes de ejecutar.
@@ -1133,15 +1240,15 @@ funcion tui_ejecutar_skill(modelo: texto, prompt_skill: texto, etiqueta: texto, 
     // /plan genera plan → requiere modo PLAN o superior
     herramienta_skill = etiqueta
     si herramienta_permitida(modo, herramienta_skill) == 0:
-        _syn_tui_mensaje(3, concat(concat("[!] Skill '", strcpy_f(etiqueta)), "' no permitida en este modo. Cambia con /code o /plan."))
-        _syn_tui_repintar(strcpy_f(modelo))
+        _syn_tui_mensaje(3, concat(concat("[!] Skill '", etiqueta), "' no permitida en este modo. Cambia con /code o /plan."))
+        _syn_tui_repintar(modelo)
         retornar
-    _syn_tui_mensaje(2, concat(concat("Ejecutando ", strcpy_f(etiqueta)), "…"))
-    _syn_tui_repintar(strcpy_f(modelo))
-    r = consulta_stream(strcpy_f(modelo), strcpy_f(prompt_skill))
+    _syn_tui_mensaje(2, concat(concat("Ejecutando ", etiqueta), "…"))
+    _syn_tui_repintar(modelo)
+    r = consulta_stream(modelo, prompt_skill)
     si r == "":
-        _syn_tui_mensaje(2, "Sin respuesta de la skill (revisa Ollama).")
-        _syn_tui_repintar(strcpy_f(modelo))
+        _syn_tui_mensaje(2, "Sin respuesta de la skill (revisa el servidor IA).")
+        _syn_tui_repintar(modelo)
 
 // Agente con contexto del repositorio: bucle [TOOL] + streaming en vivo.
 // ME-1 (R1): recibe modo para verificar permisos de herramientas.
@@ -1153,40 +1260,40 @@ funcion tui_agente(modelo: texto, pregunta: texto, cwd_act: texto, modo: entero)
         _resultado_ >= 0 y _resultado_ <= 4 // cumple Manual 2 §5.1
     // ME-3 (R5): clasificar tarea para siguientes pasos contextuales; el
     // resultado se RETORNA al llamador (no hay globales mutables, Manual 2 §2).
-    let tipo_clasif: entero = clasificar_tarea_local(strcpy_f(pregunta))
-    _syn_tui_mensaje(0, concat("❯ ", strcpy_f(pregunta)))
-    sys = concat(strcpy_f(AGENTE_SYS_BASE), construir_contexto(strcpy_f(cwd_act)))
+    let tipo_clasif: entero = clasificar_tarea_local(pregunta)
+    _syn_tui_mensaje(0, concat("❯ ", pregunta))
+    sys = concat(AGENTE_SYS_BASE, construir_contexto(cwd_act))
     sys = concat(sys, "\n\n[USUARIO]\n")
-    sys = concat(sys, strcpy_f(pregunta))
+    sys = concat(sys, pregunta)
     iteracion = 0
     mientras iteracion < 6:
         _syn_tui_mensaje(2, "Consultando…")
-        _syn_tui_repintar(strcpy_f(modelo))
-        resp = consulta_stream(strcpy_f(modelo), strcpy_f(sys))
+        _syn_tui_repintar(modelo)
+        resp = consulta_stream(modelo, sys)
         si resp == "":
             _syn_tui_pensando(0, "")
             retornar tipo_clasif
-        limpia = recortar(strcpy_f(resp))
-        si strstr_f(limpia, "TOOL ") == 0:
+        limpia = recortar(resp)
+        si _syn_strstr(limpia, "TOOL ") == 0:
             // El modelo pide una herramienta: su texto era la petición, no
             // la respuesta final; se quita y se muestra como evento.
             _syn_tui_mensaje_pop()
-            pedido = tui_acotar(strcpy_f(limpia), 90)
-            _syn_tui_mensaje(2, concat("· ", strcpy_f(pedido)))
-            _syn_tui_repintar(strcpy_f(modelo))
-            salida = ejecutar_tool(strcpy_f(limpia), strcpy_f(cwd_act), modo)
-            resumen = tui_acotar(strcpy_f(salida), 1200)
-            _syn_tui_mensaje(2, strcpy_f(resumen))
-            _syn_tui_repintar(strcpy_f(modelo))
+            pedido = tui_acotar(limpia, 90)
+            _syn_tui_mensaje(2, concat("· ", pedido))
+            _syn_tui_repintar(modelo)
+            salida = ejecutar_tool(limpia, cwd_act, modo)
+            resumen = tui_acotar(salida, 1200)
+            _syn_tui_mensaje(2, resumen)
+            _syn_tui_repintar(modelo)
             sys = concat(sys, "\n\n[TOOL_RESULT — contexto REAL del repo; respondé al usuario con esto, citando carpetas/archivos de la lista]\n")
-            sys = concat(sys, strcpy_f(resumen))
+            sys = concat(sys, resumen)
             sys = concat(sys, "\n[Continua: otra linea TOOL o responde directamente.]")
             iteracion = iteracion + 1
         sino:
-            _syn_tui_repintar(strcpy_f(modelo))
+            _syn_tui_repintar(modelo)
             retornar tipo_clasif
     _syn_tui_mensaje(3, "Limite de iteraciones de herramienta alcanzado.")
-    _syn_tui_repintar(strcpy_f(modelo))
+    _syn_tui_repintar(modelo)
     retornar tipo_clasif
 
 // Despacha un comando (tecleado o elegido en el menu "/").
@@ -1203,27 +1310,27 @@ funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero,
     si entrada == "/ask":
         _syn_tui_mensaje(2, "Modo: ASK (solo lectura)")
         _syn_tui_mensaje(2, "  Herramientas: listar, leer, git")
-        _syn_tui_repintar(strcpy_f(modelo))
+        _syn_tui_repintar(modelo)
         retornar "!modo:0"
     si entrada == "/plan":
         _syn_tui_mensaje(2, "Modo: PLAN (diseño)")
         _syn_tui_mensaje(2, "  Herramientas: listar, leer, git, plan")
-        _syn_tui_repintar(strcpy_f(modelo))
+        _syn_tui_repintar(modelo)
         retornar "!modo:1"
     si entrada == "/code":
         _syn_tui_mensaje(2, "Modo: CODE (edición)")
         _syn_tui_mensaje(2, "  Herramientas: listar, leer, git, plan, editar, compilar")
-        _syn_tui_repintar(strcpy_f(modelo))
+        _syn_tui_repintar(modelo)
         retornar "!modo:2"
     si entrada == "/debug":
         _syn_tui_mensaje(2, "Modo: DEBUG (diagnóstico)")
         _syn_tui_mensaje(2, "  Herramientas: listar, leer, git, diagnosticar")
-        _syn_tui_repintar(strcpy_f(modelo))
+        _syn_tui_repintar(modelo)
         retornar "!modo:3"
     si entrada == "/orchestrator":
         _syn_tui_mensaje(2, "Modo: ORCHESTRATOR (delegación)")
         _syn_tui_mensaje(2, "  Herramientas: delegar (no ejecuta directamente)")
-        _syn_tui_repintar(strcpy_f(modelo))
+        _syn_tui_repintar(modelo)
         retornar "!modo:4"
     si entrada == "/ayuda":
         _syn_tui_mensaje(2, "Comandos:")
@@ -1239,53 +1346,53 @@ funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero,
         _syn_tui_mensaje(2, "  /skills      — habilidades disponibles")
         _syn_tui_mensaje(2, "  /ayuda       — esta ayuda")
         _syn_tui_mensaje(2, "  salir        — termina la sesión")
-        _syn_tui_repintar(strcpy_f(modelo))
+        _syn_tui_repintar(modelo)
         retornar "!ok"
     si entrada == "/skills":
         _syn_tui_mensaje(2, "Habilidades: /tdd · /revisar · /plan  (usa / para el menu)")
-        _syn_tui_repintar(strcpy_f(modelo))
+        _syn_tui_repintar(modelo)
         retornar "!ok"
     si entrada == "/modelos":
-        tui_listar_modelos(strcpy_f(modelos), strcpy_f(modelo))
-        _syn_tui_repintar(strcpy_f(modelo))
+        tui_listar_modelos(modelos, modelo)
+        _syn_tui_repintar(modelo)
         retornar "!ok"
-    si entrada == "/model" o strstr_f(entrada, "/model ") == 0:
+    si entrada == "/model" o _syn_strstr(entrada, "/model ") == 0:
         _syn_tui_mensaje(2, "Modelos instalados (elige con ↑↓ y Enter):")
-        _syn_tui_repintar(strcpy_f(modelo))
-        elegido = _syn_tui_menu("Modelos instalados", strcpy_f(modelos))
+        _syn_tui_repintar(modelo)
+        elegido = _syn_tui_menu("Modelos instalados", modelos)
         si elegido == "":
             _syn_tui_mensaje(2, "Cambio de modelo cancelado.")
-            _syn_tui_repintar(strcpy_f(modelo))
+            _syn_tui_repintar(modelo)
             retornar "!ok"
-        guardar_modelo_config(strcpy_f(elegido))
-        _syn_tui_mensaje(2, concat("Modelo activo: ", strcpy_f(elegido)))
-        _syn_tui_repintar(strcpy_f(elegido))
-        retornar strcpy_f(elegido)
-    si entrada == "/tdd" o strstr_f(entrada, "/tdd ") == 0:
+        guardar_modelo_config(elegido)
+        _syn_tui_mensaje(2, concat("Modelo activo: ", elegido))
+        _syn_tui_repintar(elegido)
+        retornar elegido
+    si entrada == "/tdd" o _syn_strstr(entrada, "/tdd ") == 0:
         tarea = ""
-        si strstr_f(entrada, "/tdd ") == 0:
-            tarea = subcadena(strcpy_f(entrada), 5, longitud(entrada) - 5)
+        si _syn_strstr(entrada, "/tdd ") == 0:
+            tarea = subcadena(entrada, 5, longitud(entrada) - 5)
         si tarea == "":
             _syn_tui_entrada_poner("/tdd ")
             _syn_tui_mensaje(2, "Escribe la funcion a testear tras /tdd y pulsa Enter")
-            _syn_tui_repintar(strcpy_f(modelo))
+            _syn_tui_repintar(modelo)
             retornar "!ok"
         prompt_skill = concat(SKILL_TDD_PROMPT, "\n\nFuncion a testear:\n")
-        prompt_skill = concat(prompt_skill, strcpy_f(tarea))
-        tui_ejecutar_skill(strcpy_f(modelo), strcpy_f(prompt_skill), "/tdd", modo)
+        prompt_skill = concat(prompt_skill, tarea)
+        tui_ejecutar_skill(modelo, prompt_skill, "/tdd", modo)
         retornar "!ok"
-    si entrada == "/revisar" o strstr_f(entrada, "/revisar ") == 0:
+    si entrada == "/revisar" o _syn_strstr(entrada, "/revisar ") == 0:
         codigo_r = ""
-        si strstr_f(entrada, "/revisar ") == 0:
-            codigo_r = subcadena(strcpy_f(entrada), 9, longitud(entrada) - 9)
+        si _syn_strstr(entrada, "/revisar ") == 0:
+            codigo_r = subcadena(entrada, 9, longitud(entrada) - 9)
         si codigo_r == "":
             _syn_tui_entrada_poner("/revisar ")
             _syn_tui_mensaje(2, "Escribe el codigo a revisar tras /revisar y pulsa Enter")
-            _syn_tui_repintar(strcpy_f(modelo))
+            _syn_tui_repintar(modelo)
             retornar "!ok"
         prompt_skill = concat(SKILL_REVIEW_PROMPT, "\n\nCodigo a revisar:\n")
-        prompt_skill = concat(prompt_skill, strcpy_f(codigo_r))
-        tui_ejecutar_skill(strcpy_f(modelo), strcpy_f(prompt_skill), "/revisar", modo)
+        prompt_skill = concat(prompt_skill, codigo_r)
+        tui_ejecutar_skill(modelo, prompt_skill, "/revisar", modo)
         retornar "!ok"
     // ME-3 (R7): /next — muestra los 3 siguientes pasos sugeridos (contextual)
     si entrada == "/next":
@@ -1318,7 +1425,7 @@ funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero,
                         _syn_tui_mensaje(2, "  1) Implementa las correcciones sugeridas")
                         _syn_tui_mensaje(2, "  2) Ejecuta los tests")
                         _syn_tui_mensaje(2, "  3) Refactoriza el codigo revisado")
-        _syn_tui_repintar(strcpy_f(modelo))
+        _syn_tui_repintar(modelo)
         retornar "!ok"
     // ME-3 (R7): /fork — crea una rama de la sesion actual
     si entrada == "/fork":
@@ -1329,28 +1436,28 @@ funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero,
         _syn_tui_mensaje(2, concat("Fork creado: ", fork_id))
         _syn_tui_mensaje(2, "  La sesion actual se ha ramificado.")
         _syn_tui_mensaje(2, concat("  Historial: ", ruta_forks))
-        _syn_tui_repintar(strcpy_f(modelo))
+        _syn_tui_repintar(modelo)
         retornar "!ok"
-    si entrada == "/plan" o strstr_f(entrada, "/plan ") == 0:
+    si entrada == "/plan" o _syn_strstr(entrada, "/plan ") == 0:
         feat = ""
-        si strstr_f(entrada, "/plan ") == 0:
-            feat = subcadena(strcpy_f(entrada), 6, longitud(entrada) - 6)
+        si _syn_strstr(entrada, "/plan ") == 0:
+            feat = subcadena(entrada, 6, longitud(entrada) - 6)
         si feat == "":
             _syn_tui_entrada_poner("/plan ")
             _syn_tui_mensaje(2, "Escribe la caracteristica a desglosar tras /plan y pulsa Enter")
-            _syn_tui_repintar(strcpy_f(modelo))
+            _syn_tui_repintar(modelo)
             retornar "!ok"
         prompt_skill = concat(SKILL_PLAN_PROMPT, "\n\nCaracteristica: ")
-        prompt_skill = concat(prompt_skill, strcpy_f(feat))
-        tui_ejecutar_skill(strcpy_f(modelo), strcpy_f(prompt_skill), "/plan", modo)
+        prompt_skill = concat(prompt_skill, feat)
+        tui_ejecutar_skill(modelo, prompt_skill, "/plan", modo)
         retornar "!ok"
     // Comando desconocido: abre el menu de comandos.
-    r = _syn_tui_menu("Comandos (filtra escribiendo)", strcpy_f(MENU_COMANDOS))
+    r = _syn_tui_menu("Comandos (filtra escribiendo)", MENU_COMANDOS)
     si r == "":
         _syn_tui_mensaje(2, "Comando cancelado. Escribe / para el menu de comandos.")
-        _syn_tui_repintar(strcpy_f(modelo))
+        _syn_tui_repintar(modelo)
         retornar "!ok"
-    retornar tui_comando(strcpy_f(r), strcpy_f(modelo), strcpy_f(modelos), modo, ultimo_tipo_tarea)
+    retornar tui_comando(r, modelo, modelos, modo, ultimo_tipo_tarea)
 
 // Bucle principal de la TUI (estilo OpenCode/Freebuff).
 // ME-1 (R1): variable de estado del modo (inicial: ASK, solo lectura).
@@ -1362,8 +1469,8 @@ funcion chat_tui() -> entero:
     config = leer_config_ollama()
     modelos = _syn_ollama_modelos("127.0.0.1", 8088)
     modelo_base = obtener_modelo_config(config)
-    modelo = normalizar_modelo_activo(strcpy_f(modelo_base), strcpy_f(modelos))
-    total_mod = contar_modelos(strcpy_f(modelos))
+    modelo = normalizar_modelo_activo(modelo_base, modelos)
+    total_mod = contar_modelos(modelos)
     cwd_act = _syn_obtener_cwd()
     modo = MODO_DEFAULT
     // ME-3 (R5): estado de clasificación local al bucle TUI (Manual 2 §2).
@@ -1375,14 +1482,14 @@ funcion chat_tui() -> entero:
     _syn_tui_mensaje(4, BANNER_L4)
     _syn_tui_mensaje(4, BANNER_L5)
     _syn_tui_mensaje(4, BANNER_L6)
-    _syn_tui_mensaje(2, "Chat local con Ollama en http://localhost:8088")
+    _syn_tui_mensaje(2, "Chat local con llama-server en http://127.0.0.1:8088")
     si total_mod > 0:
-        _syn_tui_mensaje(2, concat("Modelo activo: ", strcpy_f(modelo)))
+        _syn_tui_mensaje(2, concat("Modelo activo: ", modelo))
     sino:
-        _syn_tui_mensaje(3, "Sin modelos instalados. Ejecuta: ollama pull <modelo>")
+        _syn_tui_mensaje(3, "Sin modelos instalados. Verifica {app}\\opensyn\\models")
     _syn_tui_mensaje(2, concat("Modo: ", nombre_modo(modo)))
     _syn_tui_mensaje(2, "Escribe tu consulta · / abre el menu de comandos · Ctrl+C sale")
-    _syn_tui_repintar(strcpy_f(modelo))
+    _syn_tui_repintar(modelo)
     mientras verdadero:
         evento = _syn_tui_evento()
         si evento == 1:
@@ -1391,35 +1498,35 @@ funcion chat_tui() -> entero:
             si entrada == "":
                 siguiente
             // Añadir al historial persistente
-            _syn_tui_historial_anadir(strcpy_f(entrada))
-            si strstr_f(entrada, "/") == 0 o entrada == "salir" o entrada == "exit":
-                res = tui_comando(strcpy_f(entrada), strcpy_f(modelo), strcpy_f(modelos), modo, ultimo_tipo_tarea)
+            _syn_tui_historial_anadir(entrada)
+            si _syn_strstr(entrada, "/") == 0 o entrada == "salir" o entrada == "exit":
+                res = tui_comando(entrada, modelo, modelos, modo, ultimo_tipo_tarea)
                 si res == "!salir":
                     _syn_tui_finalizar()
                     retornar 0
                 // ME-1 (R1): detectar cambio de modo
-                si strstr_f(res, "!modo:") == 0:
+                si _syn_strstr(res, "!modo:") == 0:
                     // Extraer el número de modo después de "!modo:"
                     num_texto = subcadena(res, 6, longitud(res) - 6)
-                    nuevo_modo = atoi_f(num_texto)
+                    nuevo_modo = _syn_atoi(num_texto)
                     si nuevo_modo >= MODO_ASK y nuevo_modo <= MODO_ORCHESTRATOR:
                         modo = nuevo_modo
                         _syn_tui_mensaje(2, concat("Modo activo: ", nombre_modo(modo)))
-                        _syn_tui_repintar(strcpy_f(modelo))
+                        _syn_tui_repintar(modelo)
                     siguiente
                 si res != "!ok" y res != "":
                     modelo = res
-                    _syn_tui_repintar(strcpy_f(modelo))
+                    _syn_tui_repintar(modelo)
                 siguiente
             // Repintar solo si NO es comando de salida (evita flash antes de salir)
-            _syn_tui_repintar(strcpy_f(modelo))
-            ultimo_tipo_tarea = tui_agente(strcpy_f(modelo), strcpy_f(entrada), strcpy_f(cwd_act), modo)
-            _syn_tui_repintar(strcpy_f(modelo))
+            _syn_tui_repintar(modelo)
+            ultimo_tipo_tarea = tui_agente(modelo, entrada, cwd_act, modo)
+            _syn_tui_repintar(modelo)
             siguiente
         si evento == 2:
             // Esc: limpiar la caja
             _syn_tui_entrada_borrar()
-            _syn_tui_repintar(strcpy_f(modelo))
+            _syn_tui_repintar(modelo)
             siguiente
         si evento == 10:
             // Ctrl+C: terminar
@@ -1429,28 +1536,28 @@ funcion chat_tui() -> entero:
         // en la siguiente iteración o al procesar Enter/Esc). Evita flickering.
         // Solo repintar si hay alertas pendientes (_syn_tui_dirty).
         si _syn_tui_dirty() == 1:
-            _syn_tui_repintar(strcpy_f(modelo))
+            _syn_tui_repintar(modelo)
         // Detectar "/" solo en la entrada para abrir menú de comandos (estilo OpenCode)
         t = _syn_tui_entrada_texto()
         si t == "/":
             _syn_tui_entrada_borrar()
-            _syn_tui_repintar(strcpy_f(modelo))
-            r = _syn_tui_menu("Comandos (filtra escribiendo)", strcpy_f(MENU_COMANDOS))
+            _syn_tui_repintar(modelo)
+            r = _syn_tui_menu("Comandos (filtra escribiendo)", MENU_COMANDOS)
             si r != "":
-                res2 = tui_comando(strcpy_f(r), strcpy_f(modelo), strcpy_f(modelos), modo, ultimo_tipo_tarea)
+                res2 = tui_comando(r, modelo, modelos, modo, ultimo_tipo_tarea)
                 si res2 == "!salir":
                     _syn_tui_finalizar()
                     retornar 0
                 // ME-1 (R1): detectar cambio de modo desde menú
-                si strstr_f(res2, "!modo:") == 0:
+                si _syn_strstr(res2, "!modo:") == 0:
                     num_texto2 = subcadena(res2, 6, longitud(res2) - 6)
-                    nuevo_modo2 = atoi_f(num_texto2)
+                    nuevo_modo2 = _syn_atoi(num_texto2)
                     si nuevo_modo2 >= MODO_ASK y nuevo_modo2 <= MODO_ORCHESTRATOR:
                         modo = nuevo_modo2
                         _syn_tui_mensaje(2, concat("Modo activo: ", nombre_modo(modo)))
                 si res2 != "!ok" y res2 != "":
                     modelo = res2
-            _syn_tui_repintar(strcpy_f(modelo))
+            _syn_tui_repintar(modelo)
 
 // --- Modo Oraculo (IA Local) ---
 
@@ -1478,24 +1585,24 @@ funcion modo_oraculo() -> entero:
         // Chat interactivo real con Ollama, estilo OpenCode/Freebuff:
         // auto-detección del modelo instalado + comandos /model /modelos /ayuda
         // + skills (/tdd /revisar /plan). cumple Manual 7 §2.3 + Manual 9 §5.
-        escribir_linea("  [OK] Conectando a Ollama… http://localhost:8088")
+        escribir_linea("  [OK] Conectando al servidor IA local… http://127.0.0.1:8088")
         modelos = _syn_ollama_modelos("127.0.0.1", 8088)
         si modelos == "":
-            escribir_linea("  [*] No se pudo listar modelos (Ollama apagado?).")
-            escribir_linea("  [*] Verifica: ollama serve  — o usa /modelos mas tarde.")
+            escribir_linea("  [*] No se pudo listar modelos (llama-server no responde).")
+            escribir_linea("  [*] Verifica {app}\\opensyn\\ia y {app}\\opensyn\\models, o usa /modelos mas tarde.")
             escribir_linea("")
         modelo_base = obtener_modelo_config(config)
-        modelo = normalizar_modelo_activo(strcpy_f(modelo_base), strcpy_f(modelos))
+        modelo = normalizar_modelo_activo(modelo_base, modelos)
         // ME-1 (R1): inicializar modo en modo línea
         modo = MODO_DEFAULT
         // ME-3 (R5): clasificación local al bucle de consola (Manual 2 §2);
         // este flujo no clasifica (solo TUI lo hace), se inicia en 0.
         let ultimo_tipo_tarea: entero = 0
         escribir_linea(concat("  [OK] Modelo activo: ", modelo))
-        total_mod = contar_modelos(strcpy_f(modelos))
+        total_mod = contar_modelos(modelos)
         si total_mod > 0:
             escribir_linea(concat(concat("  [OK] Modelos instalados (", entero_a_texto(total_mod)), "):"))
-            mostrar_modelos(strcpy_f(modelos))
+            mostrar_modelos(modelos)
         escribir_linea(concat("  [OK] Modo: ", nombre_modo(modo)))
         escribir_linea("")
         escribir_linea("  [Chat] Escribe tu prompt (ayuda: /ayuda · salir para terminar):")
@@ -1558,16 +1665,16 @@ funcion modo_oraculo() -> entero:
                 mostrar_ayuda()
                 siguiente
             si prompt == "/modelos" o prompt == "modelos":
-                total_act = contar_modelos(strcpy_f(modelos))
+                total_act = contar_modelos(modelos)
                 si total_act == 0:
-                    escribir_linea("  [!] Sin modelos detectados. Ejecuta: ollama serve")
+                    escribir_linea("  [!] Sin modelos detectados. Verifica {app}\\opensyn\\models")
                 sino:
                     escribir_linea("  Modelos instalados:")
-                    mostrar_modelos(strcpy_f(modelos))
+                    mostrar_modelos(modelos)
                     escribir_linea(concat("  Activo: ", modelo))
                 siguiente
-            si prompt == "/model" o strstr_f(prompt, "/model ") == 0:
-                nuevo_modelo = manejar_modelo(strcpy_f(prompt), strcpy_f(modelos))
+            si prompt == "/model" o _syn_strstr(prompt, "/model ") == 0:
+                nuevo_modelo = manejar_modelo(prompt, modelos)
                 si nuevo_modelo == "":
                     escribir_linea("  [!] Modelo no disponible. Usa /modelos para ver los instalados.")
                 sino:
@@ -1583,7 +1690,7 @@ funcion modo_oraculo() -> entero:
                 escribir_linea("    /ayuda            - todos los comandos")
                 siguiente
             // ME-1 (R1): skills verifican permisos del modo actual
-            si prompt == "/tdd" o strstr_f(prompt, "/tdd ") == 0:
+            si prompt == "/tdd" o _syn_strstr(prompt, "/tdd ") == 0:
                 si herramienta_permitida(modo, "editar") == 0:
                     escribir_linea("  [!] /tdd requiere modo CODE. Cambia con /code")
                     siguiente
@@ -1596,12 +1703,12 @@ funcion modo_oraculo() -> entero:
                     escribir_linea(concat("  [*] Consultando a ", modelo))
                     respuesta_skill = _syn_ollama_consultar(modelo, prompt_skill, "127.0.0.1", 8088, 2048)
                     si respuesta_skill == "":
-                        escribir_linea("  [Error] No hubo respuesta de Ollama.")
+                        escribir_linea("  [Error] No hubo respuesta del servidor IA local.")
                     sino:
                         escribir_linea("")
                         escribir_linea(concat("  OpenSyn> ", respuesta_skill))
                 siguiente
-            si prompt == "/revisar" o strstr_f(prompt, "/revisar ") == 0:
+            si prompt == "/revisar" o _syn_strstr(prompt, "/revisar ") == 0:
                 // /revisar solo lee código → permitido en cualquier modo
                 codigo_a_revisar = subcadena(prompt, 9, longitud(prompt) - 9)
                 si codigo_a_revisar == "":
@@ -1612,12 +1719,12 @@ funcion modo_oraculo() -> entero:
                     escribir_linea(concat("  [*] Consultando a ", modelo))
                     respuesta_skill = _syn_ollama_consultar(modelo, prompt_skill, "127.0.0.1", 8088, 2048)
                     si respuesta_skill == "":
-                        escribir_linea("  [Error] No hubo respuesta de Ollama.")
+                        escribir_linea("  [Error] No hubo respuesta del servidor IA local.")
                     sino:
                         escribir_linea("")
                         escribir_linea(concat("  OpenSyn> ", respuesta_skill))
                 siguiente
-            si prompt == "/plan" o strstr_f(prompt, "/plan ") == 0:
+            si prompt == "/plan" o _syn_strstr(prompt, "/plan ") == 0:
                 si herramienta_permitida(modo, "plan") == 0:
                     escribir_linea("  [!] /plan requiere modo PLAN o superior. Cambia con /plan")
                     siguiente
@@ -1630,7 +1737,7 @@ funcion modo_oraculo() -> entero:
                     escribir_linea(concat("  [*] Consultando a ", modelo))
                     respuesta_skill = _syn_ollama_consultar(modelo, prompt_skill, "127.0.0.1", 8088, 2048)
                     si respuesta_skill == "":
-                        escribir_linea("  [Error] No hubo respuesta de Ollama.")
+                        escribir_linea("  [Error] No hubo respuesta del servidor IA local.")
                     sino:
                         escribir_linea("")
                         escribir_linea(concat("  OpenSyn> ", respuesta_skill))
@@ -1673,10 +1780,10 @@ funcion modo_oraculo() -> entero:
             // cumple Manual 7 2.3: inyecta contexto estatico y permite herramientas TOOL
             // ME-1 (R1): pasar modo actual a consultar_agente
             escribir_linea(concat("  [*] Consultando a ", modelo))
-            respuesta = consultar_agente(strcpy_f(modelo), strcpy_f(prompt), modo)
+            respuesta = consultar_agente(modelo, prompt, modo)
             si respuesta == "":
-                escribir_linea("  [Error] No hubo respuesta de Ollama. Verifica que este activo:")
-                escribir_linea("    ollama serve")
+                escribir_linea("  [Error] No hubo respuesta del servidor IA local. Verifica que este activo:")
+                escribir_linea("    opensyn status")
             sino:
                 escribir_linea("")
                 si _syn_es_consola() == 1:
@@ -1684,26 +1791,24 @@ funcion modo_oraculo() -> entero:
                 escribir("  OpenSyn> ")
                 si _syn_es_consola() == 1:
                     escribir(_syn_ansi(0))
-                escribir_linea(strcpy_f(respuesta))
+                escribir_linea(respuesta)
             escribir_linea("")
         retornar 0
 
     // --- Sin configuracion Ollama: buscar modelo GGUF local ---
-    escribir_linea("  [*] Ollama no detectado; buscando modelo GGUF local...")
+    escribir_linea("  [*] Servidor IA no detectado; buscando modelo GGUF local...")
     escribir_linea("")
-    ruta_modelo = "modelo_synapse.gguf"
+    ruta_modelo = buscar_modelo_instalado(obtener_dir_exe(), dir_opensyn(obtener_dir_exe()), _syn_obtener_cwd())
+    si ruta_modelo == "":
+        ruta_modelo = "modelo_synapse.gguf"
     ctx = _syn_modelo_cargar(ruta_modelo)
     si ctx == nulo:
-        ctx = _syn_modelo_cargar("C:\\Program Files\\Synapse\\opensyn\\models\\deepseek-coder-1.3b-Q4_K_M.gguf")
-    si ctx == nulo:
-        ctx = _syn_modelo_cargar("C:\\Program Files\\Synapse\\opensyn\\models\\codellama-7b-Q4_K_M.gguf")
-    si ctx == nulo:
         escribir_linea("  [!] No se encontro 'modelo_synapse.gguf' ni en {app}\\opensyn\\models")
-        escribir_linea("  [!] El modo Oraculo requiere un modelo GGUF o Ollama.")
+        escribir_linea("  [!] El modo Oraculo requiere un modelo GGUF y llama-server.")
         escribir_linea("")
         escribir_linea("  Descarga un modelo compatible (ej. Qwen2.5-Coder-0.5B)")
         escribir_linea("  y colocalo como 'modelo_synapse.gguf' en la raiz.")
-        escribir_linea("  O usa Ollama: ollama run qwen-coder")
+        escribir_linea("  O ejecuta el instalador de Synapse para descargar el modelo.")
         escribir_linea("")
         escribir_linea("  Luego ejecuta: opensyn")
         escribir_linea("")
@@ -1749,24 +1854,34 @@ funcion cmd_status() -> entero:
         verdadero
     garantiza:
         _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
+    dir_exe = obtener_dir_exe()
+    dir_app = dir_opensyn(dir_exe)
     escribir_linea("=== OpenSyn: Estado del Sistema ===")
     escribir_linea("")
+    escribir_linea("  OpenSyn: 1.1.0")
+    escribir_linea(concat("  Binario: ", dir_exe))
+    escribir_linea(concat("  Recursos IA: ", dir_app))
 
     // Verificar configuracion
-    si existe_archivo(".synapse_config"):
-        config = leer_archivo(".synapse_config")
-        escribir_linea(concat("  Config: ", config))
-    sino:
+    modo = leer_modo_config()
+    si modo == "":
         escribir_linea("  Config: No configurado (primera ejecucion)")
-
-    // Verificar runtime Synapse
-    escribir_linea("  Synapse runtime: OK (compilado y ejecutandose)")
-
-    // Verificar modelo IA (opcional)
-    si existe_archivo("modelo_synapse.gguf"):
-        escribir_linea("  Modelo IA: modelo_synapse.gguf [OK]")
     sino:
-        escribir_linea("  Modelo IA: No encontrado (modo IA deshabilitado)")
+        escribir_linea(concat("  Config: modo_", modo))
+
+    // Verificar servidor IA (llama-server) y modelo real
+    modelos = _syn_ollama_modelos("127.0.0.1", 8088)
+    si longitud(modelos) > 0:
+        escribir_linea("  Servidor IA: activo en http://127.0.0.1:8088")
+        escribir_linea(concat(concat("  Modelos instalados (", entero_a_texto(contar_modelos(modelos))), "):"))
+        mostrar_modelos(modelos)
+    sino:
+        escribir_linea("  Servidor IA: inactivo (se inicia al abrir el chat)")
+    modelo_ruta = buscar_modelo_instalado(dir_exe, dir_app, _syn_obtener_cwd())
+    si modelo_ruta != "":
+        escribir_linea(concat("  Modelo IA: ", modelo_ruta))
+    sino:
+        escribir_linea("  Modelo IA: No encontrado")
 
     // Verificar directorio de trabajo
     cwd = _syn_obtener_cwd()
@@ -1777,12 +1892,40 @@ funcion cmd_status() -> entero:
     escribir_linea("    opensyn <archivo.syn>   - Compilar archivo Synapse")
     escribir_linea("    opensyn                 - Iniciar orquestador IA local (TUI)")
     escribir_linea("    opensyn status          - Mostrar este estado")
+    escribir_linea("    opensyn --version       - Mostrar version")
+    escribir_linea("    opensyn --help          - Mostrar ayuda")
     escribir_linea("")
     retornar 0
 
 // --- Punto de entrada principal ---
 
+funcion mostrar_ayuda_cli() -> nulo:
+    // cumple Manual 7 §2.1: ayuda del orquestador sin abrir la TUI
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    escribir_linea("OpenSyn 1.1.0 - asistente IA local de Synapse")
+    escribir_linea("")
+    escribir_linea("Uso:")
+    escribir_linea("  opensyn                 Inicia el orquestador IA local (TUI)")
+    escribir_linea("  opensyn <archivo.syn>   Compila un archivo Synapse")
+    escribir_linea("  opensyn status          Muestra el estado del entorno")
+    escribir_linea("  opensyn --version       Muestra la version")
+    escribir_linea("  opensyn --help          Muestra esta ayuda")
+
 funcion principal() -> entero:
+    // cumple Manual 7 §2.1: CLI de arranque/estado antes de abrir la TUI
+    si _argc() >= 2:
+        a1 = _argv(1)
+        si a1 == "--version" o a1 == "-v" o a1 == "version":
+            escribir_linea("OpenSyn 1.1.0")
+            retornar 0
+        si a1 == "--help" o a1 == "-h" o a1 == "help" o a1 == "ayuda":
+            mostrar_ayuda_cli()
+            retornar 0
+        si a1 == "status":
+            retornar cmd_status()
     // Leer configuracion existente
     modo = leer_modo_config()
 

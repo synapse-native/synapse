@@ -28,6 +28,16 @@ void _syn_texto_dividir_liberar(int64_t lista_id);
 // §12.1 — Unir (join)
 CadenaSegura _syn_texto_unir(int64_t lista_id, CadenaSegura separador);
 
+// §12.2 — Builder O(1) amortizado (ME r198b3_fmt_lint, H-R198b2-2)
+// cumple Manual 6 §3.1: implementación C declarada con `externo` en
+// nucleo/formatter.syn y nucleo/lint.syn — anexión O(1) amortizada que
+// elimina el O(n²) de acumular `resultado = resultado + linea` en el
+// formateador/linter (timeout de fmt sobre nucleo/generator.syn).
+int64_t _syn_texto_builder_crear(void);
+void _syn_texto_builder_anexar(int64_t id, CadenaSegura frag);
+CadenaSegura _syn_texto_builder_construir(int64_t id);
+void _syn_texto_builder_liberar(int64_t id);
+
 // §12.1 — Recortar (trim)
 CadenaSegura _syn_texto_recortar(CadenaSegura t);
 

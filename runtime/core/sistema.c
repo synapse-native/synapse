@@ -153,6 +153,19 @@ int _syn_ruta_en_directorio(CadenaSegura ruta, CadenaSegura dir) {
     return nx == '/' || nx == '\\';
 }
 
+// cumple Manual 7 §7.3 (ME r198b3_fmt_lint, H-R198b2-2): modo del sandbox
+// de lecturas. ESTRICTO (1) es el DEFAULT: todo binario de usuario conserva
+// la contención del cwd de H-CFG-2 (r194) sin llamar al setter. El dispatcher
+// CLI del compilador (cli_lint/cli_fmt/cli_check/cli_test en
+// nucleo/principal.syn — Manual 8 §4.1) se auto-desactiva la contención con
+// _syn_sandbox_set(0): es una herramienta de desarrollo que lee las rutas
+// NOMBRADAS por el usuario en argv (M8 §4.1), y el código usuario NUNCA corre
+// en su proceso (cli_test ejecuta el exe compilado como SUBPROCESO) — el
+// escape no amplia la superficie de H-CFG-2.
+static int _syn_sandbox_modo = 1;
+
+void _syn_sandbox_set(int64_t modo) { _syn_sandbox_modo = modo != 0 ? 1 : 0; }
+
 // cumple Manual 7 §7.3 (H-CFG-2, ME r194_deuda_gobernanza): validador del
 // sandbox para las builtins de LECTURA (leer_archivo/existe_archivo llamadas
 // SIN `importar std.sistema` — el emisor enraiza la llamada aquí antes de
@@ -160,7 +173,9 @@ int _syn_ruta_en_directorio(CadenaSegura ruta, CadenaSegura dir) {
 // (H-EOF-3a/b, una sola taxonomía: _syn_normalizar_ruta + _syn_ruta_en_directorio):
 // resuelve la relativa contra el cwd normalizado (igual que std.sistema
 // _validar_ruta_segura — Manual 7 §2.1), normaliza, y EXIGE contención del cwd
-// (borde de componente). Evasión del cwd → CadenaSegura vacía (""), que los
+// (borde de componente) MIENTRAS el modo sea estricto (_syn_sandbox_modo==1,
+// ME r198b3_fmt_lint: el dispatcher CLI del compilador se la desactiva —
+// ver el setter arriba). Evasión del cwd → CadenaSegura vacía (""), que los
 // consumidores tratan como lectura/exitencia fallida; los guards de
 // _syn_leer_archivo (io.c: longitud<=0) y _syn_existe_archivo (modelo.c: fopen
 // falla con "") la convierten en ''/falso SIN abrir NADA.
@@ -195,7 +210,11 @@ CadenaSegura _syn_ruta_validar(CadenaSegura ruta) {
     }
     CadenaSegura norm = _syn_normalizar_ruta(absoluta);
     if (norm.datos == NULL || norm.longitud <= 0) return (CadenaSegura){0, ""};
-    if (!_syn_ruta_en_directorio(norm, cwd)) return (CadenaSegura){0, ""};
+    // El modo CLI (_syn_sandbox_modo==0) normaliza pero EXIGE contención NO:
+    // es el dispatcher del compilador leyendo las rutas argv del usuario
+    // (ME r198b3_fmt_lint, Manual 8 §4.1).
+    if (_syn_sandbox_modo && !_syn_ruta_en_directorio(norm, cwd))
+        return (CadenaSegura){0, ""};
     return norm;
 }
 

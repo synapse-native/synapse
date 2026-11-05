@@ -5,6 +5,14 @@
 // normalizar_espacios cuya versión de 2 ramas ensombrece (first-wins del
 // aplanador, pipeline.py) a la de formatter.syn y causó H-33.5-3.
 importar formatter
+// ME r198b3_fmt_lint (H-R198b2-2): builder runtime de anexión O(1)
+// amortizada — el acumulador de lint_fix era O(n²) sobre archivos grandes.
+// cumple Manual 6 §3.1: declaración externo de funciones C del runtime
+// (runtime/core/texto.c §12.2).
+externo funcion _syn_texto_builder_crear() -> entero
+externo funcion _syn_texto_builder_anexar(id: entero, frag: texto) -> nulo
+externo funcion _syn_texto_builder_construir(id: entero) -> texto
+externo funcion _syn_texto_builder_liberar(id: entero) -> nulo
 // nucleo/lint.syn — Linter nativo sobre AST unificado
 // cumple Manual 3 §12: biblioteca estándar de Syquex
 // cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas
@@ -258,7 +266,6 @@ funcion lint_fix(ruta: texto) -> texto:
     let contenido = leer_archivo(ruta)
     si longitud(contenido) == 0:
         retornar ""
-    let resultado = ""
     let num_linea = 1
     let inicio_linea = 0
     let largo = longitud(contenido)
@@ -267,6 +274,16 @@ funcion lint_fix(ruta: texto) -> texto:
     si largo > 0:
         si subcadena(contenido, largo - 1, 1) == "\n":
             termina_nl = verdadero
+    // ME r198b3_fmt_lint (H-R198b2-2): el acumulador pasa al builder runtime
+    // (O(1) amortizado) — cumple Manual 6 §3.1: anexión de líneas vía las
+    // funciones C declaradas externo arriba; la copia final única ha sido
+    // transferida por _syn_texto_builder_construir (Manual 2 §5.1):
+    // `_resultado_` contiene el valor a retornar.
+    let acc = _syn_texto_builder_crear()
+    si acc < 0:
+        // sin builder disponible: sin cambios (paridad con "ilegible")
+        retornar ""
+    let primero = verdadero
     mientras inicio_linea < largo:
         let fin_linea = inicio_linea
         mientras fin_linea < largo:
@@ -276,12 +293,15 @@ funcion lint_fix(ruta: texto) -> texto:
         let linea = subcadena(contenido, inicio_linea, fin_linea - inicio_linea)
         let linea_fix = fix_linea(linea)
         si num_linea > 1:
-            resultado = resultado + "\n"
-        resultado = resultado + linea_fix
+            _syn_texto_builder_anexar(acc, "\n")
+        _syn_texto_builder_anexar(acc, linea_fix)
+        primero = falso
         num_linea = num_linea + 1
         inicio_linea = fin_linea + 1
-    si termina_nl y longitud(resultado) > 0:
-        resultado = resultado + "\n"
+    si termina_nl y no primero:
+        _syn_texto_builder_anexar(acc, "\n")
+    let resultado = _syn_texto_builder_construir(acc)
+    _syn_texto_builder_liberar(acc)
     // Escribir archivo corregido
     inseguro:
         asm("FILE* _f = fopen(ruta.datos, \"wb\"); if(_f){ fwrite(resultado.datos, 1, resultado.longitud, _f); fclose(_f); }")
