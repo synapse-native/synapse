@@ -821,3 +821,28 @@ el bloque estricto MTS del plan elimina la advertencia del parser de
 contrastar y ejecuta el oráculo release dentro del hook.
 Reporte: docs/reportes/R198b2.md | dd20276 |
 Manual 2 §12 | deuda cerrada H-R198b1-2 |
+
+### R199 - ME r199_opensyn_install + cierre r198b3 (2026-11-05, a2d0ca3)
+OpenSyn arranca `llama-server` sin Ollama en instalación limpia: búsqueda de
+servidor/modelo en `{app}\opensyn`, auto-arranque con PowerShell
+`Start-Process -WindowStyle Hidden` (se descartó `start /B`), readiness por
+`/v1/models`, builder incremental `_syn_texto_builder_*` (fix del aliasing de
+`concat`), `.bat` delegando en `bin\opensyn.exe` e instalador que descarga el
+servidor aunque reutilice un GGUF del perfil.
+E2E: instalador Inno compilado, instalación silenciosa en
+`D:\OpenSynTest_Install` rc=0, puerto 8088 LISTENING y respuesta
+`OpenSyn> cerrar`; 8 tests verdes. Evidencia r199 `a86383cf07b5e14e`.
+Se completó el expediente r198b3 (10 archivos, evidencia
+`f6b961b78da460a1`): citas literales, `tipo` válido y anclas en
+`sistema.c/.h`, `texto.c/.h`, `formatter/lint/principal`,
+`runtime_bindings.syq` y `opensyn/principal.syn`.
+Gates del hook: `verificar_alineacion` 0 brechas, `contrastar` 2 planes OK,
+MTO 55 OBL, lectura previa 11 archivos/4 registros.
+Fuera del commit: `nucleo/lsp_v3.syn` (unstaged, sin plan MTS que cubra
+M8 §1.1/1.4/2.3) y `nucleo/embedded_libs.h` (generado).
+Lección: `contrastar` toma solo la primera sección del `requisito:` combinado;
+cada archivo necesita cita de una sección realmente listada y
+`tipo: comportamiento|contrato` (no `implementacion`).
+Reporte: pendiente `docs/reportes/R199.md` | a2d0ca3 |
+Manual 7 §2.1/§4.2/§7.3, Manual 2 §5.1, Manual 6 §3.1 |
+E2E instalación limpia + r198b3 |

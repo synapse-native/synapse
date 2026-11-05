@@ -7,7 +7,7 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-10-23** (R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
+Última actualización: **2026-11-05** (R199 a2d0ca3 + r198b3, ver dashboard; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
  cierre de los 2 fallos DETERMINISTAS del barrido r195 (1569✓/25skip/6✗;
  los 5 del grupo A pasaban aislados, infra del barrido):
  (R1/H-R196-1 decisión Arquitecto ratificada "corregir contrato al manual")
@@ -123,7 +123,32 @@
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-10-28 sesión:** R198b2
+Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-11-05 sesión:** R199
+                   COMPLETADO (a2d0ca3): ME r199_opensyn_install — OpenSyn
+                   arranca llama-server sin Ollama en instalación limpia.
+                   principal.syn: búsqueda de llama-server/.gguf, auto-arranque
+                   con PowerShell `Start-Process -WindowStyle Hidden` (sin
+                   `start /B`), readiness por /v1/models y builder incremental
+                   `_syn_texto_builder_*` (fix del aliasing de `concat` en
+                   comandos largos); .bat delega en bin/opensyn.exe; installer
+                   descarga el servidor aunque reutilice GGUF del perfil.
+                   E2E: instalador Inno compilado, instalación silenciosa
+                   D:\OpenSynTest_Install rc=0, puerto 8088 LISTENING y
+                   respuesta `OpenSyn> cerrar`; 8 tests verdes. Evidencia
+                   r199 a86383cf07b5e14e. Incluye r198b3_fmt_lint con
+                   expediente completado (10 archivos, evidencia
+                   f6b961b78da460a1): citas literales, `tipo` válido y anclas
+                   en sistema.c/.h, texto.c/.h, formatter/lint/principal,
+                   runtime_bindings y opensyn/principal. Gates del hook:
+                   verificar_alineacion 0 brechas, contrastar 2 planes OK,
+                   MTO 55 OBL y lectura previa 11 archivos/4 registros.
+                   Queda FUERA del commit `nucleo/lsp_v3.syn` (unstaged, sin
+                   plan MTS que cubra M8 §1.1/1.4/2.3) y
+                   `nucleo/embedded_libs.h` (generado). Lección: `contrastar`
+                   toma solo la primera sección del `requisito:` combinado;
+                   cada archivo necesita cita de una sección realmente listada
+                   y `tipo: comportamiento|contrato` (no `implementacion`).
+                   **2026-10-28 sesión:** R198b2
                    COMPLETADO (dd20276): ME r198b2_ancla — cierre
                    H-R198b1-2: ancla MTS `cumple Manual 2 §12` NUEVA en el
                    desugar REAL de NODO_PARA_EN(57)
