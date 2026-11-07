@@ -7,7 +7,7 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-11-05** (R199 a2d0ca3 + r198b3, ver dashboard; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
+Última actualización: **2026-11-06** (R202 f1a4a02 + R201 c653fff + R200 f3b7268, ver dashboard; antes R199 a2d0ca3 + r198b3; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
  cierre de los 2 fallos DETERMINISTAS del barrido r195 (1569✓/25skip/6✗;
  los 5 del grupo A pasaban aislados, infra del barrido):
  (R1/H-R196-1 decisión Arquitecto ratificada "corregir contrato al manual")
@@ -123,7 +123,26 @@
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-11-05 sesión:** R199
+Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-11-06 sesión:** R202
+                   COMPLETADO (f1a4a02): ME r202_release_signing — release
+                   firmado de punta a punta. distribuir.py firma cada artefacto
+                   y MANIFEST.sha256 (.sig/.sha256/SBOM/SLSA); verificar_firma.py
+                   acepta PEM/hex/raw y su CLI falla cerrado (fix: no .strip()
+                   sobre firma raw de 64 bytes); workflow matrix 4 plataformas
+                   firma y verifica antes de publicar solo en tags; instaladores
+                   Linux/macOS exigen firma salvo SYNAPSE_SKIP_SIGNATURE=1;
+                   release_keys/public.pem versionada, privada ignorada.
+                   87 tests verdes; 19 artefactos/7 firmas SIGNATURE_VALID=YES;
+                   contrastar 5/5, verificar_alineacion 0 brechas; evidencia
+                   a48ecf5a77bedfc0. R201 COMPLETADO (c653fff): actualizador
+                   real fail-closed con semver, SHA-256, backup/rollback y repo
+                   canónico; 15 tests, evidencia a55d59bec59045c2. R200
+                   COMPLETADO (f3b7268): OpenSyn doctor real, 4 tests y oráculo
+                   13/13, evidencia e13f4308e5c35e65. Pendiente externo:
+                   ED25519_PRIVATE_KEY en GitHub Actions, validación en runner
+                   limpio y `synapse update` nativo. No se tocó
+                   nucleo/lsp_v3.syn (ajeno) ni nucleo/embedded_libs.h.
+                   **2026-11-05 sesión:** R199
                    COMPLETADO (a2d0ca3): ME r199_opensyn_install — OpenSyn
                    arranca llama-server sin Ollama en instalación limpia.
                    principal.syn: búsqueda de llama-server/.gguf, auto-arranque

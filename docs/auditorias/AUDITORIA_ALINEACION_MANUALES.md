@@ -843,6 +843,37 @@ M8 §1.1/1.4/2.3) y `nucleo/embedded_libs.h` (generado).
 Lección: `contrastar` toma solo la primera sección del `requisito:` combinado;
 cada archivo necesita cita de una sección realmente listada y
 `tipo: comportamiento|contrato` (no `implementacion`).
-Reporte: pendiente `docs/reportes/R199.md` | a2d0ca3 |
+Reporte: `docs/reportes/R199.md` | a2d0ca3 |
 Manual 7 §2.1/§4.2/§7.3, Manual 2 §5.1, Manual 6 §3.1 |
 E2E instalación limpia + r198b3 |
+
+### R200 - ME r200_opensyn_doctor (2026-11-06, f3b7268)
+`opensyn doctor` pasa de stub a diagnóstico real de configuración, modelo y
+servidor, con alias `diagnostico` y flags `--help`/`--status`; falla cerrado con
+salida accionable. 4 tests de integración y oráculo r200 13/13.
+Evidencia r200 `e13f4308e5c35e65`; `contrastar` PASS y `verificar_alineacion`
+0 brechas.
+Reporte: `docs/reportes/R200.md` | f3b7268 |
+Manual 7 §2.1/§4.2/§6.1 |
+
+### R201 - ME r201_distribucion_real (2026-11-06, c653fff)
+Actualizador real fail-closed: asset por plataforma, semver, SHA-256,
+backup/rollback y verificación de firma Ed25519; repo canónico
+`https://github.com/synapse-native/synapse.git`. 15 tests focales.
+Evidencia r201 `a55d59bec59045c2`; `contrastar` PASS y
+`verificar_alineacion` 0 brechas.
+Reporte: `docs/reportes/R201.md` | c653fff |
+Manual 7 §6.1/§4.2/§2.1 |
+
+### R202 - ME r202_release_signing (2026-11-06, f1a4a02)
+Release firmado de punta a punta: `distribuir.py` firma cada artefacto y
+`MANIFEST.sha256`; `verificar_firma.py` acepta PEM/hex/raw y falla cerrado (fix
+del `.strip()` sobre firmas raw de 64 bytes); workflow matrix de 4 plataformas
+firma/verifica y publica solo en tags; instaladores Linux/macOS exigen firma;
+clave pública versionada y privada ignorada. 87 tests verdes, 19 artefactos/7
+firmas `SIGNATURE_VALID=YES`. Evidencia r202 `a48ecf5a77bedfc0`; `contrastar`
+5/5 y `verificar_alineacion` 0 brechas.
+Pendiente externo: `ED25519_PRIVATE_KEY` en GitHub Actions y validación en
+runner limpio.
+Reporte: `docs/reportes/R202.md` | f1a4a02 |
+Manual 9 §6.3/§4.1/§2.1 |
