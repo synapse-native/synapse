@@ -31,7 +31,7 @@
 
 ```bash
 # Opción 1: Instalación interactiva
-curl -fsSL https://raw.githubusercontent.com/anomalyco/opencode/main/instaladores/linux/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/synapse-native/synapse/main/instaladores/linux/install.sh | bash
 
 # Opción 2: Instalación con opciones
 ./install.sh --opensyn    # Solo OpenSyn
@@ -120,5 +120,5 @@ Para agregar un nuevo instalador:
 
 ## Soporte
 
-- Issues: https://github.com/anomalyco/opencode/issues
-- Docs: https://opencode.ai/docs
+- Issues: https://github.com/synapse-native/synapse/issues
+- Docs: https://github.com/synapse-native/synapse/tree/main/docs

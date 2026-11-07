@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "a55d59bec59045c2",
+ "expediente": "docs/alineacion/r201_distribucion_real.md",
+ "fecha": "2026-11-06",
+ "archivos": [
+  "instaladores/common/auto_actualizar.py"
+ ],
+ "oraculos": {
+  "tests/installers/test_auto_actualizar_producto.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

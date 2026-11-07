@@ -7,7 +7,7 @@
 #define MyAppName "Synapse Ecosystem"
 #define MyAppVersion "8.1.0-industrial"
 #define MyAppPublisher "Synapse Language Team"
-#define MyAppURL "https://github.com/synapse-lang/synapse"
+#define MyAppURL "https://github.com/synapse-native/synapse"
 #define MyAppExeName "synapse.exe"
 #define MyAppLspExeName "synapse_lsp.exe"
 
@@ -1119,5 +1119,3 @@ begin
   if RegQueryStringValue(HKLM, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path', S) then
     Result := not SynapsePathContieneAppBin(S);
 end;
-
-

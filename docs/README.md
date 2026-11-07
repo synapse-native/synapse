@@ -125,7 +125,7 @@ synapse-setup.exe
 
 ### Linux
 ```bash
-curl -fsSL https://raw.githubusercontent.com/anomalyco/opencode/main/instaladores/linux/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/synapse-native/synapse/main/instaladores/linux/install.sh | bash
 ```
 
 ### macOS
@@ -139,9 +139,9 @@ Para más detalles, consultar la [Guía de Usuario de Instaladores](guia_usuario
 
 ## Recursos Externos
 
-- [GitHub Repository](https://github.com/anomalyco/opencode)
-- [Releases](https://github.com/anomalyco/opencode/releases)
-- [Issues](https://github.com/anomalyco/opencode/issues)
+- [GitHub Repository](https://github.com/synapse-native/synapse)
+- [Releases](https://github.com/synapse-native/synapse/releases)
+- [Issues](https://github.com/synapse-native/synapse/issues)
 
 ---
 

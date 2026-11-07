@@ -11,7 +11,7 @@
 ### Instalación
 
 #### Opción 1: Instalador con asistente
-1. Descargar `synapse-setup.exe` desde [GitHub Releases](https://github.com/anomalyco/opencode/releases)
+1. Descargar `synapse-setup.exe` desde [GitHub Releases](https://github.com/synapse-native/synapse/releases)
 2. Ejecutar el instalador
 3. Seguir el asistente:
    - **Selección de componentes**: Elegir "Solo Synapse" o "Ecosistema completo"
@@ -54,7 +54,7 @@ El instalador verifica la integridad de los binarios usando firmas Ed25519. Si l
 #### Opción 1: Instalación interactiva
 ```bash
 # Descargar el instalador
-curl -fsSL https://raw.githubusercontent.com/anomalyco/opencode/main/instaladores/linux/install.sh -o install.sh
+curl -fsSL https://raw.githubusercontent.com/synapse-native/synapse/main/instaladores/linux/install.sh -o install.sh
 
 # Hacer ejecutable
 chmod +x install.sh
@@ -97,7 +97,7 @@ El instalador verifica la firma Ed25519 de todos los archivos antes de instalar.
 
 ```bash
 # Descargar script de desinstalación
-curl -fsSL https://raw.githubusercontent.com/anomalyco/opencode/main/instaladores/linux/uninstall.sh -o uninstall.sh
+curl -fsSL https://raw.githubusercontent.com/synapse-native/synapse/main/instaladores/linux/uninstall.sh -o uninstall.sh
 
 # Hacer ejecutable
 chmod +x uninstall.sh
@@ -123,7 +123,7 @@ Los logs de instalación se guardan en `/var/log/synapse-install.log`.
 ### Instalación
 
 #### Opción 1: DMG
-1. Descargar `synapse-macos.dmg` desde [GitHub Releases](https://github.com/anomalyco/opencode/releases)
+1. Descargar `synapse-macos.dmg` desde [GitHub Releases](https://github.com/synapse-native/synapse/releases)
 2. Abrir el archivo `.dmg`
 3. Arrastrar `Synapse.app` a la carpeta `Applications`
 4. Abrir `Synapse.app` desde `Applications`
@@ -188,27 +188,33 @@ El instalador verifica la firma Ed25519 de los binarios antes de crear el DMG.
 
 ## Verificación de Integridad
 
-Todos los instaladores incluyen verificación de integridad usando firmas Ed25519:
-
-```bash
-# Verificar manualmente
-python3 instaladores/common/verificar_firma.py
-```
+El actualizador exige el checksum SHA-256 publicado en el release y no deja
+artefacto en disco si el hash no coincide. La verificación Ed25519 (`.sig`) se
+activará cuando el release publique una clave pública válida y la clave privada
+se custodie fuera del repositorio.
 
 ## Auto-actualización
 
-El sistema de auto-actualización verifica nuevas versiones automáticamente:
+El actualizador consulta el repo canónico, selecciona el artefacto de la
+plataforma, compara versiones sin degradar y exige `--destino` para descargar:
 
-```python
-from instaladores.common.auto_actualizar import verificar_version
+```bash
+# Solo comprobar
+python instaladores/common/auto_actualizar.py --version 8.1.0 --check
 
-resultado = verificar_version("8.1.0")
-if resultado['nueva_disponible']:
-    print(f"Nueva versión disponible: {resultado['version_remota']}")
+# Descargar el asset del release y verificar su SHA-256
+python instaladores/common/auto_actualizar.py --version 8.1.0 \
+  --destino Synapse-Setup.exe
+
+# Instalar solo después de verificar el hash
+python instaladores/common/auto_actualizar.py --version 8.1.0 \
+  --destino Synapse-Setup.exe --install
 ```
+
+Si el release no publica `.sha256`, el comando falla cerrado y no descarga.
 
 ## Soporte
 
-- **Issues**: https://github.com/anomalyco/opencode/issues
-- **Documentación**: https://opencode.ai/docs
+- **Issues**: https://github.com/synapse-native/synapse/issues
+- **Documentación**: https://github.com/synapse-native/synapse/tree/main/docs
 - **Comunidad**: https://discord.gg/synapse

@@ -34,7 +34,7 @@ synapse-setup.exe
 ### Linux
 ```bash
 # Instalación interactiva
-curl -fsSL https://raw.githubusercontent.com/anomalyco/opencode/main/instaladores/linux/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/synapse-native/synapse/main/instaladores/linux/install.sh | bash
 
 # O con opciones
 ./install.sh --opensyn    # Solo OpenSyn
