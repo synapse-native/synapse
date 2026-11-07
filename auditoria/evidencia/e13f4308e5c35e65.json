@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "e13f4308e5c35e65",
+ "expediente": "docs/alineacion/r200_opensyn_doctor.md",
+ "fecha": "2026-11-06",
+ "archivos": [
+  "opensyn/principal.syn"
+ ],
+ "oraculos": {
+  "auditoria/oraculos/oraculo_r200_opensyn_doctor.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

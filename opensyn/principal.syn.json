@@ -8869,24 +8869,56 @@
                   },
                   {
                     "tipo": "AsignacionVariable",
-                    "nombre": "ruta",
+                    "nombre": "acc_ruta",
                     "expresion": {
                       "tipo": "LlamadaFuncion",
-                      "nombre": "concat",
+                      "nombre": "_syn_texto_builder_crear",
+                      "argumentos": []
+                    }
+                  },
+                  {
+                    "tipo": "SentenciaExpr",
+                    "expr": {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "_syn_texto_builder_anexar",
                       "argumentos": [
                         {
-                          "tipo": "LlamadaFuncion",
-                          "nombre": "concat",
-                          "argumentos": [
-                            {
-                              "tipo": "Identificador",
-                              "nombre": "dir"
-                            },
-                            {
-                              "tipo": "LiteralCadena",
-                              "valor": "\\"
-                            }
-                          ]
+                          "tipo": "Identificador",
+                          "nombre": "acc_ruta"
+                        },
+                        {
+                          "tipo": "Identificador",
+                          "nombre": "dir"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "tipo": "SentenciaExpr",
+                    "expr": {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "_syn_texto_builder_anexar",
+                      "argumentos": [
+                        {
+                          "tipo": "Identificador",
+                          "nombre": "acc_ruta"
+                        },
+                        {
+                          "tipo": "LiteralCadena",
+                          "valor": "\\"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "tipo": "SentenciaExpr",
+                    "expr": {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "_syn_texto_builder_anexar",
+                      "argumentos": [
+                        {
+                          "tipo": "Identificador",
+                          "nombre": "acc_ruta"
                         },
                         {
                           "tipo": "LlamadaFuncion",
@@ -8905,6 +8937,33 @@
                               "nombre": "largo"
                             }
                           ]
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "tipo": "AsignacionVariable",
+                    "nombre": "ruta",
+                    "expresion": {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "_syn_texto_builder_construir",
+                      "argumentos": [
+                        {
+                          "tipo": "Identificador",
+                          "nombre": "acc_ruta"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "tipo": "SentenciaExpr",
+                    "expr": {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "_syn_texto_builder_liberar",
+                      "argumentos": [
+                        {
+                          "tipo": "Identificador",
+                          "nombre": "acc_ruta"
                         }
                       ]
                     }
@@ -9039,11 +9098,23 @@
         "sentencias": [
           {
             "tipo": "AsignacionVariable",
-            "nombre": "lista",
+            "nombre": "acc_lista",
             "expresion": {
               "tipo": "LlamadaFuncion",
-              "nombre": "concat",
+              "nombre": "_syn_texto_builder_crear",
+              "argumentos": []
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "_syn_texto_builder_anexar",
               "argumentos": [
+                {
+                  "tipo": "Identificador",
+                  "nombre": "acc_lista"
+                },
                 {
                   "tipo": "LlamadaFuncion",
                   "nombre": "concat",
@@ -9057,6 +9128,19 @@
                       "valor": "\\ia\\llama-server.exe"
                     }
                   ]
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "_syn_texto_builder_anexar",
+              "argumentos": [
+                {
+                  "tipo": "Identificador",
+                  "nombre": "acc_lista"
                 },
                 {
                   "tipo": "LiteralCadena",
@@ -9066,37 +9150,26 @@
             }
           },
           {
-            "tipo": "AsignacionVariable",
-            "nombre": "lista",
-            "expresion": {
+            "tipo": "SentenciaExpr",
+            "expr": {
               "tipo": "LlamadaFuncion",
-              "nombre": "concat",
+              "nombre": "_syn_texto_builder_anexar",
               "argumentos": [
                 {
                   "tipo": "Identificador",
-                  "nombre": "lista"
+                  "nombre": "acc_lista"
                 },
                 {
                   "tipo": "LlamadaFuncion",
                   "nombre": "concat",
                   "argumentos": [
                     {
-                      "tipo": "LlamadaFuncion",
-                      "nombre": "concat",
-                      "argumentos": [
-                        {
-                          "tipo": "Identificador",
-                          "nombre": "dir_exe"
-                        },
-                        {
-                          "tipo": "LiteralCadena",
-                          "valor": "\\ia\\llama-server.exe"
-                        }
-                      ]
+                      "tipo": "Identificador",
+                      "nombre": "dir_exe"
                     },
                     {
                       "tipo": "LiteralCadena",
-                      "valor": "\n"
+                      "valor": "\\ia\\llama-server.exe"
                     }
                   ]
                 }
@@ -9104,37 +9177,43 @@
             }
           },
           {
-            "tipo": "AsignacionVariable",
-            "nombre": "lista",
-            "expresion": {
+            "tipo": "SentenciaExpr",
+            "expr": {
               "tipo": "LlamadaFuncion",
-              "nombre": "concat",
+              "nombre": "_syn_texto_builder_anexar",
               "argumentos": [
                 {
                   "tipo": "Identificador",
-                  "nombre": "lista"
+                  "nombre": "acc_lista"
+                },
+                {
+                  "tipo": "LiteralCadena",
+                  "valor": "\n"
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "_syn_texto_builder_anexar",
+              "argumentos": [
+                {
+                  "tipo": "Identificador",
+                  "nombre": "acc_lista"
                 },
                 {
                   "tipo": "LlamadaFuncion",
                   "nombre": "concat",
                   "argumentos": [
                     {
-                      "tipo": "LlamadaFuncion",
-                      "nombre": "concat",
-                      "argumentos": [
-                        {
-                          "tipo": "Identificador",
-                          "nombre": "dir_exe"
-                        },
-                        {
-                          "tipo": "LiteralCadena",
-                          "valor": "\\llama-server.exe"
-                        }
-                      ]
+                      "tipo": "Identificador",
+                      "nombre": "dir_exe"
                     },
                     {
                       "tipo": "LiteralCadena",
-                      "valor": "\n"
+                      "valor": "\\llama-server.exe"
                     }
                   ]
                 }
@@ -9142,39 +9221,62 @@
             }
           },
           {
-            "tipo": "AsignacionVariable",
-            "nombre": "lista",
-            "expresion": {
+            "tipo": "SentenciaExpr",
+            "expr": {
               "tipo": "LlamadaFuncion",
-              "nombre": "concat",
+              "nombre": "_syn_texto_builder_anexar",
               "argumentos": [
                 {
                   "tipo": "Identificador",
-                  "nombre": "lista"
+                  "nombre": "acc_lista"
+                },
+                {
+                  "tipo": "LiteralCadena",
+                  "valor": "\n"
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "_syn_texto_builder_anexar",
+              "argumentos": [
+                {
+                  "tipo": "Identificador",
+                  "nombre": "acc_lista"
                 },
                 {
                   "tipo": "LlamadaFuncion",
                   "nombre": "concat",
                   "argumentos": [
                     {
-                      "tipo": "LlamadaFuncion",
-                      "nombre": "concat",
-                      "argumentos": [
-                        {
-                          "tipo": "Identificador",
-                          "nombre": "dir_app"
-                        },
-                        {
-                          "tipo": "LiteralCadena",
-                          "valor": "\\llama-server.exe"
-                        }
-                      ]
+                      "tipo": "Identificador",
+                      "nombre": "dir_app"
                     },
                     {
                       "tipo": "LiteralCadena",
-                      "valor": "\n"
+                      "valor": "\\llama-server.exe"
                     }
                   ]
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "_syn_texto_builder_anexar",
+              "argumentos": [
+                {
+                  "tipo": "Identificador",
+                  "nombre": "acc_lista"
+                },
+                {
+                  "tipo": "LiteralCadena",
+                  "valor": "\n"
                 }
               ]
             }
@@ -9195,37 +9297,26 @@
             },
             "cuerpo": [
               {
-                "tipo": "AsignacionVariable",
-                "nombre": "lista",
-                "expresion": {
+                "tipo": "SentenciaExpr",
+                "expr": {
                   "tipo": "LlamadaFuncion",
-                  "nombre": "concat",
+                  "nombre": "_syn_texto_builder_anexar",
                   "argumentos": [
                     {
                       "tipo": "Identificador",
-                      "nombre": "lista"
+                      "nombre": "acc_lista"
                     },
                     {
                       "tipo": "LlamadaFuncion",
                       "nombre": "concat",
                       "argumentos": [
                         {
-                          "tipo": "LlamadaFuncion",
-                          "nombre": "concat",
-                          "argumentos": [
-                            {
-                              "tipo": "Identificador",
-                              "nombre": "cwd_act"
-                            },
-                            {
-                              "tipo": "LiteralCadena",
-                              "valor": "\\ia\\llama-server.exe"
-                            }
-                          ]
+                          "tipo": "Identificador",
+                          "nombre": "cwd_act"
                         },
                         {
                           "tipo": "LiteralCadena",
-                          "valor": "\n"
+                          "valor": "\\ia\\llama-server.exe"
                         }
                       ]
                     }
@@ -9233,44 +9324,94 @@
                 }
               },
               {
-                "tipo": "AsignacionVariable",
-                "nombre": "lista",
-                "expresion": {
+                "tipo": "SentenciaExpr",
+                "expr": {
                   "tipo": "LlamadaFuncion",
-                  "nombre": "concat",
+                  "nombre": "_syn_texto_builder_anexar",
                   "argumentos": [
                     {
                       "tipo": "Identificador",
-                      "nombre": "lista"
+                      "nombre": "acc_lista"
+                    },
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "\n"
+                    }
+                  ]
+                }
+              },
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "_syn_texto_builder_anexar",
+                  "argumentos": [
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "acc_lista"
                     },
                     {
                       "tipo": "LlamadaFuncion",
                       "nombre": "concat",
                       "argumentos": [
                         {
-                          "tipo": "LlamadaFuncion",
-                          "nombre": "concat",
-                          "argumentos": [
-                            {
-                              "tipo": "Identificador",
-                              "nombre": "cwd_act"
-                            },
-                            {
-                              "tipo": "LiteralCadena",
-                              "valor": "\\llama-server.exe"
-                            }
-                          ]
+                          "tipo": "Identificador",
+                          "nombre": "cwd_act"
                         },
                         {
                           "tipo": "LiteralCadena",
-                          "valor": "\n"
+                          "valor": "\\llama-server.exe"
                         }
                       ]
                     }
                   ]
                 }
+              },
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "_syn_texto_builder_anexar",
+                  "argumentos": [
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "acc_lista"
+                    },
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "\n"
+                    }
+                  ]
+                }
               }
             ]
+          },
+          {
+            "tipo": "AsignacionVariable",
+            "nombre": "lista",
+            "expresion": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "_syn_texto_builder_construir",
+              "argumentos": [
+                {
+                  "tipo": "Identificador",
+                  "nombre": "acc_lista"
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "_syn_texto_builder_liberar",
+              "argumentos": [
+                {
+                  "tipo": "Identificador",
+                  "nombre": "acc_lista"
+                }
+              ]
+            }
           },
           {
             "tipo": "SentenciaRetornar",
@@ -9371,11 +9512,23 @@
           },
           {
             "tipo": "AsignacionVariable",
-            "nombre": "dirs",
+            "nombre": "acc_dirs",
             "expresion": {
               "tipo": "LlamadaFuncion",
-              "nombre": "concat",
+              "nombre": "_syn_texto_builder_crear",
+              "argumentos": []
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "_syn_texto_builder_anexar",
               "argumentos": [
+                {
+                  "tipo": "Identificador",
+                  "nombre": "acc_dirs"
+                },
                 {
                   "tipo": "LlamadaFuncion",
                   "nombre": "concat",
@@ -9389,6 +9542,19 @@
                       "valor": "\\models"
                     }
                   ]
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "_syn_texto_builder_anexar",
+              "argumentos": [
+                {
+                  "tipo": "Identificador",
+                  "nombre": "acc_dirs"
                 },
                 {
                   "tipo": "LiteralCadena",
@@ -9398,37 +9564,26 @@
             }
           },
           {
-            "tipo": "AsignacionVariable",
-            "nombre": "dirs",
-            "expresion": {
+            "tipo": "SentenciaExpr",
+            "expr": {
               "tipo": "LlamadaFuncion",
-              "nombre": "concat",
+              "nombre": "_syn_texto_builder_anexar",
               "argumentos": [
                 {
                   "tipo": "Identificador",
-                  "nombre": "dirs"
+                  "nombre": "acc_dirs"
                 },
                 {
                   "tipo": "LlamadaFuncion",
                   "nombre": "concat",
                   "argumentos": [
                     {
-                      "tipo": "LlamadaFuncion",
-                      "nombre": "concat",
-                      "argumentos": [
-                        {
-                          "tipo": "Identificador",
-                          "nombre": "dir_app"
-                        },
-                        {
-                          "tipo": "LiteralCadena",
-                          "valor": "\\ia"
-                        }
-                      ]
+                      "tipo": "Identificador",
+                      "nombre": "dir_app"
                     },
                     {
                       "tipo": "LiteralCadena",
-                      "valor": "\n"
+                      "valor": "\\ia"
                     }
                   ]
                 }
@@ -9436,37 +9591,43 @@
             }
           },
           {
-            "tipo": "AsignacionVariable",
-            "nombre": "dirs",
-            "expresion": {
+            "tipo": "SentenciaExpr",
+            "expr": {
               "tipo": "LlamadaFuncion",
-              "nombre": "concat",
+              "nombre": "_syn_texto_builder_anexar",
               "argumentos": [
                 {
                   "tipo": "Identificador",
-                  "nombre": "dirs"
+                  "nombre": "acc_dirs"
+                },
+                {
+                  "tipo": "LiteralCadena",
+                  "valor": "\n"
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "_syn_texto_builder_anexar",
+              "argumentos": [
+                {
+                  "tipo": "Identificador",
+                  "nombre": "acc_dirs"
                 },
                 {
                   "tipo": "LlamadaFuncion",
                   "nombre": "concat",
                   "argumentos": [
                     {
-                      "tipo": "LlamadaFuncion",
-                      "nombre": "concat",
-                      "argumentos": [
-                        {
-                          "tipo": "Identificador",
-                          "nombre": "dir_exe"
-                        },
-                        {
-                          "tipo": "LiteralCadena",
-                          "valor": "\\models"
-                        }
-                      ]
+                      "tipo": "Identificador",
+                      "nombre": "dir_exe"
                     },
                     {
                       "tipo": "LiteralCadena",
-                      "valor": "\n"
+                      "valor": "\\models"
                     }
                   ]
                 }
@@ -9474,39 +9635,62 @@
             }
           },
           {
-            "tipo": "AsignacionVariable",
-            "nombre": "dirs",
-            "expresion": {
+            "tipo": "SentenciaExpr",
+            "expr": {
               "tipo": "LlamadaFuncion",
-              "nombre": "concat",
+              "nombre": "_syn_texto_builder_anexar",
               "argumentos": [
                 {
                   "tipo": "Identificador",
-                  "nombre": "dirs"
+                  "nombre": "acc_dirs"
+                },
+                {
+                  "tipo": "LiteralCadena",
+                  "valor": "\n"
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "_syn_texto_builder_anexar",
+              "argumentos": [
+                {
+                  "tipo": "Identificador",
+                  "nombre": "acc_dirs"
                 },
                 {
                   "tipo": "LlamadaFuncion",
                   "nombre": "concat",
                   "argumentos": [
                     {
-                      "tipo": "LlamadaFuncion",
-                      "nombre": "concat",
-                      "argumentos": [
-                        {
-                          "tipo": "Identificador",
-                          "nombre": "dir_exe"
-                        },
-                        {
-                          "tipo": "LiteralCadena",
-                          "valor": "\\ia"
-                        }
-                      ]
+                      "tipo": "Identificador",
+                      "nombre": "dir_exe"
                     },
                     {
                       "tipo": "LiteralCadena",
-                      "valor": "\n"
+                      "valor": "\\ia"
                     }
                   ]
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "_syn_texto_builder_anexar",
+              "argumentos": [
+                {
+                  "tipo": "Identificador",
+                  "nombre": "acc_dirs"
+                },
+                {
+                  "tipo": "LiteralCadena",
+                  "valor": "\n"
                 }
               ]
             }
@@ -9527,39 +9711,45 @@
             },
             "cuerpo": [
               {
-                "tipo": "AsignacionVariable",
-                "nombre": "dirs",
-                "expresion": {
+                "tipo": "SentenciaExpr",
+                "expr": {
                   "tipo": "LlamadaFuncion",
-                  "nombre": "concat",
+                  "nombre": "_syn_texto_builder_anexar",
                   "argumentos": [
                     {
                       "tipo": "Identificador",
-                      "nombre": "dirs"
+                      "nombre": "acc_dirs"
                     },
                     {
                       "tipo": "LlamadaFuncion",
                       "nombre": "concat",
                       "argumentos": [
                         {
-                          "tipo": "LlamadaFuncion",
-                          "nombre": "concat",
-                          "argumentos": [
-                            {
-                              "tipo": "Identificador",
-                              "nombre": "home"
-                            },
-                            {
-                              "tipo": "LiteralCadena",
-                              "valor": "\\.opensyn\\models"
-                            }
-                          ]
+                          "tipo": "Identificador",
+                          "nombre": "home"
                         },
                         {
                           "tipo": "LiteralCadena",
-                          "valor": "\n"
+                          "valor": "\\.opensyn\\models"
                         }
                       ]
+                    }
+                  ]
+                }
+              },
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "_syn_texto_builder_anexar",
+                  "argumentos": [
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "acc_dirs"
+                    },
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "\n"
                     }
                   ]
                 }
@@ -9582,37 +9772,26 @@
             },
             "cuerpo": [
               {
-                "tipo": "AsignacionVariable",
-                "nombre": "dirs",
-                "expresion": {
+                "tipo": "SentenciaExpr",
+                "expr": {
                   "tipo": "LlamadaFuncion",
-                  "nombre": "concat",
+                  "nombre": "_syn_texto_builder_anexar",
                   "argumentos": [
                     {
                       "tipo": "Identificador",
-                      "nombre": "dirs"
+                      "nombre": "acc_dirs"
                     },
                     {
                       "tipo": "LlamadaFuncion",
                       "nombre": "concat",
                       "argumentos": [
                         {
-                          "tipo": "LlamadaFuncion",
-                          "nombre": "concat",
-                          "argumentos": [
-                            {
-                              "tipo": "Identificador",
-                              "nombre": "cwd_act"
-                            },
-                            {
-                              "tipo": "LiteralCadena",
-                              "valor": "\\models"
-                            }
-                          ]
+                          "tipo": "Identificador",
+                          "nombre": "cwd_act"
                         },
                         {
                           "tipo": "LiteralCadena",
-                          "valor": "\n"
+                          "valor": "\\models"
                         }
                       ]
                     }
@@ -9620,44 +9799,94 @@
                 }
               },
               {
-                "tipo": "AsignacionVariable",
-                "nombre": "dirs",
-                "expresion": {
+                "tipo": "SentenciaExpr",
+                "expr": {
                   "tipo": "LlamadaFuncion",
-                  "nombre": "concat",
+                  "nombre": "_syn_texto_builder_anexar",
                   "argumentos": [
                     {
                       "tipo": "Identificador",
-                      "nombre": "dirs"
+                      "nombre": "acc_dirs"
+                    },
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "\n"
+                    }
+                  ]
+                }
+              },
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "_syn_texto_builder_anexar",
+                  "argumentos": [
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "acc_dirs"
                     },
                     {
                       "tipo": "LlamadaFuncion",
                       "nombre": "concat",
                       "argumentos": [
                         {
-                          "tipo": "LlamadaFuncion",
-                          "nombre": "concat",
-                          "argumentos": [
-                            {
-                              "tipo": "Identificador",
-                              "nombre": "cwd_act"
-                            },
-                            {
-                              "tipo": "LiteralCadena",
-                              "valor": "\\ia"
-                            }
-                          ]
+                          "tipo": "Identificador",
+                          "nombre": "cwd_act"
                         },
                         {
                           "tipo": "LiteralCadena",
-                          "valor": "\n"
+                          "valor": "\\ia"
                         }
                       ]
                     }
                   ]
                 }
+              },
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "_syn_texto_builder_anexar",
+                  "argumentos": [
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "acc_dirs"
+                    },
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "\n"
+                    }
+                  ]
+                }
               }
             ]
+          },
+          {
+            "tipo": "AsignacionVariable",
+            "nombre": "dirs",
+            "expresion": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "_syn_texto_builder_construir",
+              "argumentos": [
+                {
+                  "tipo": "Identificador",
+                  "nombre": "acc_dirs"
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "_syn_texto_builder_liberar",
+              "argumentos": [
+                {
+                  "tipo": "Identificador",
+                  "nombre": "acc_dirs"
+                }
+              ]
+            }
           },
           {
             "tipo": "AsignacionVariable",
@@ -10040,54 +10269,31 @@
           },
           {
             "tipo": "AsignacionVariable",
-            "nombre": "dir_exe",
-            "expresion": {
-              "tipo": "LlamadaFuncion",
-              "nombre": "obtener_dir_exe",
-              "argumentos": []
-            }
-          },
-          {
-            "tipo": "AsignacionVariable",
-            "nombre": "dir_app",
-            "expresion": {
-              "tipo": "LlamadaFuncion",
-              "nombre": "dir_opensyn",
-              "argumentos": [
-                {
-                  "tipo": "Identificador",
-                  "nombre": "dir_exe"
-                }
-              ]
-            }
-          },
-          {
-            "tipo": "AsignacionVariable",
-            "nombre": "cwd_act",
-            "expresion": {
-              "tipo": "LlamadaFuncion",
-              "nombre": "_syn_obtener_cwd",
-              "argumentos": []
-            }
-          },
-          {
-            "tipo": "AsignacionVariable",
             "nombre": "ruta_server",
             "expresion": {
               "tipo": "LlamadaFuncion",
               "nombre": "buscar_llama_server",
               "argumentos": [
                 {
-                  "tipo": "Identificador",
-                  "nombre": "dir_exe"
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "obtener_dir_exe",
+                  "argumentos": []
                 },
                 {
-                  "tipo": "Identificador",
-                  "nombre": "dir_app"
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "dir_opensyn",
+                  "argumentos": [
+                    {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "obtener_dir_exe",
+                      "argumentos": []
+                    }
+                  ]
                 },
                 {
-                  "tipo": "Identificador",
-                  "nombre": "cwd_act"
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "_syn_obtener_cwd",
+                  "argumentos": []
                 }
               ]
             }
@@ -10134,16 +10340,25 @@
               "nombre": "buscar_modelo_instalado",
               "argumentos": [
                 {
-                  "tipo": "Identificador",
-                  "nombre": "dir_exe"
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "obtener_dir_exe",
+                  "argumentos": []
                 },
                 {
-                  "tipo": "Identificador",
-                  "nombre": "dir_app"
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "dir_opensyn",
+                  "argumentos": [
+                    {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "obtener_dir_exe",
+                      "argumentos": []
+                    }
+                  ]
                 },
                 {
-                  "tipo": "Identificador",
-                  "nombre": "cwd_act"
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "_syn_obtener_cwd",
+                  "argumentos": []
                 }
               ]
             }
@@ -29083,7 +29298,7 @@
                           "argumentos": [
                             {
                               "tipo": "LiteralCadena",
-                              "valor": "  [Error] No hubo respuesta del servidor IA local. Verifica que este activo:"
+                              "valor": "  [Error] No hubo respuesta del servidor IA local. Ejecuta el diagnostico:"
                             }
                           ]
                         }
@@ -29096,7 +29311,7 @@
                           "argumentos": [
                             {
                               "tipo": "LiteralCadena",
-                              "valor": "    opensyn status"
+                              "valor": "    opensyn doctor"
                             }
                           ]
                         }
@@ -29910,8 +30125,9 @@
               "nombre": "dir_opensyn",
               "argumentos": [
                 {
-                  "tipo": "Identificador",
-                  "nombre": "dir_exe"
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "obtener_dir_exe",
+                  "argumentos": []
                 }
               ]
             }
@@ -30200,12 +30416,20 @@
               "nombre": "buscar_modelo_instalado",
               "argumentos": [
                 {
-                  "tipo": "Identificador",
-                  "nombre": "dir_exe"
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "obtener_dir_exe",
+                  "argumentos": []
                 },
                 {
-                  "tipo": "Identificador",
-                  "nombre": "dir_app"
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "dir_opensyn",
+                  "argumentos": [
+                    {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "obtener_dir_exe",
+                      "argumentos": []
+                    }
+                  ]
                 },
                 {
                   "tipo": "LlamadaFuncion",
@@ -30375,6 +30599,19 @@
               "argumentos": [
                 {
                   "tipo": "LiteralCadena",
+                  "valor": "    opensyn doctor          - Diagnosticar instalacion y entorno"
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "tipo": "LiteralCadena",
                   "valor": "    opensyn --version       - Mostrar version"
                 }
               ]
@@ -30411,6 +30648,875 @@
             "valor": {
               "tipo": "LiteralNumero",
               "valor": 0
+            },
+            "es_transferencia": false
+          }
+        ]
+      }
+    },
+    {
+      "tipo": "FuncionDef",
+      "nombre": "cmd_doctor",
+      "parametros": [],
+      "tipo_retorno": "entero",
+      "contratos": {
+        "requiere": [
+          {
+            "tipo": "LiteralBooleano",
+            "valor": true
+          }
+        ],
+        "garantiza": [
+          {
+            "tipo": "ExpresionArit",
+            "izquierda": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "_resultado_"
+              },
+              "operador": "==",
+              "derecha": {
+                "tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "operador": "||",
+            "derecha": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "_resultado_"
+              },
+              "operador": "==",
+              "derecha": {
+                "tipo": "LiteralNumero",
+                "valor": 1
+              }
+            }
+          }
+        ]
+      },
+      "cuerpo": {
+        "tipo": "Bloque",
+        "sentencias": [
+          {
+            "tipo": "AsignacionVariable",
+            "nombre": "dir_exe",
+            "expresion": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "obtener_dir_exe",
+              "argumentos": []
+            }
+          },
+          {
+            "tipo": "AsignacionVariable",
+            "nombre": "dir_app",
+            "expresion": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "dir_opensyn",
+              "argumentos": [
+                {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "obtener_dir_exe",
+                  "argumentos": []
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "tipo": "LiteralCadena",
+                  "valor": "=== OpenSyn: Diagnostico ==="
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaSi",
+            "condicion": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "LlamadaFuncion",
+                "nombre": "longitud",
+                "argumentos": [
+                  {
+                    "tipo": "Identificador",
+                    "nombre": "dir_exe"
+                  }
+                ]
+              },
+              "operador": ">",
+              "derecha": {
+                "tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "concat",
+                      "argumentos": [
+                        {
+                          "tipo": "LiteralCadena",
+                          "valor": "  [OK] Binario: "
+                        },
+                        {
+                          "tipo": "Identificador",
+                          "nombre": "dir_exe"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ],
+            "sino": [
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "  [FAIL] No se pudo resolver el directorio del binario."
+                    }
+                  ]
+                }
+              },
+              {
+                "tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "tipo": "ExpresionArit",
+                  "izquierda": {
+                    "tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecha": {
+                    "tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "tipo": "SentenciaSi",
+            "condicion": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "LlamadaFuncion",
+                "nombre": "longitud",
+                "argumentos": [
+                  {
+                    "tipo": "Identificador",
+                    "nombre": "dir_app"
+                  }
+                ]
+              },
+              "operador": ">",
+              "derecha": {
+                "tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "concat",
+                      "argumentos": [
+                        {
+                          "tipo": "LiteralCadena",
+                          "valor": "  [OK] Recursos IA: "
+                        },
+                        {
+                          "tipo": "Identificador",
+                          "nombre": "dir_app"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ],
+            "sino": [
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "  [FAIL] No se pudo resolver {app}\\opensyn."
+                    }
+                  ]
+                }
+              },
+              {
+                "tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "tipo": "ExpresionArit",
+                  "izquierda": {
+                    "tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecha": {
+                    "tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "tipo": "AsignacionVariable",
+            "nombre": "modo",
+            "expresion": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "leer_modo_config",
+              "argumentos": []
+            }
+          },
+          {
+            "tipo": "SentenciaSi",
+            "condicion": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "modo"
+              },
+              "operador": "!=",
+              "derecha": {
+                "tipo": "LiteralCadena",
+                "valor": ""
+              }
+            },
+            "cuerpo": [
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "concat",
+                      "argumentos": [
+                        {
+                          "tipo": "LiteralCadena",
+                          "valor": "  [OK] Config: modo_"
+                        },
+                        {
+                          "tipo": "Identificador",
+                          "nombre": "modo"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ],
+            "sino": [
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "  [i] Config: primera ejecucion (se pide al abrir el chat)."
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "tipo": "AsignacionVariable",
+            "nombre": "ruta_server",
+            "expresion": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "buscar_llama_server",
+              "argumentos": [
+                {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "obtener_dir_exe",
+                  "argumentos": []
+                },
+                {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "dir_opensyn",
+                  "argumentos": [
+                    {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "obtener_dir_exe",
+                      "argumentos": []
+                    }
+                  ]
+                },
+                {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "_syn_obtener_cwd",
+                  "argumentos": []
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaSi",
+            "condicion": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "ruta_server"
+              },
+              "operador": "!=",
+              "derecha": {
+                "tipo": "LiteralCadena",
+                "valor": ""
+              }
+            },
+            "cuerpo": [
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "concat",
+                      "argumentos": [
+                        {
+                          "tipo": "LiteralCadena",
+                          "valor": "  [OK] llama-server: "
+                        },
+                        {
+                          "tipo": "Identificador",
+                          "nombre": "ruta_server"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ],
+            "sino": [
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "  [FAIL] llama-server.exe no encontrado. Reinstala OpenSyn o revisa {app}\\opensyn\\ia."
+                    }
+                  ]
+                }
+              },
+              {
+                "tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "tipo": "ExpresionArit",
+                  "izquierda": {
+                    "tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecha": {
+                    "tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "tipo": "AsignacionVariable",
+            "nombre": "modelo",
+            "expresion": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "buscar_modelo_instalado",
+              "argumentos": [
+                {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "obtener_dir_exe",
+                  "argumentos": []
+                },
+                {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "dir_opensyn",
+                  "argumentos": [
+                    {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "obtener_dir_exe",
+                      "argumentos": []
+                    }
+                  ]
+                },
+                {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "_syn_obtener_cwd",
+                  "argumentos": []
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaSi",
+            "condicion": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "modelo"
+              },
+              "operador": "!=",
+              "derecha": {
+                "tipo": "LiteralCadena",
+                "valor": ""
+              }
+            },
+            "cuerpo": [
+              {
+                "tipo": "AsignacionVariable",
+                "nombre": "acc_modelo",
+                "expresion": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "_syn_texto_builder_crear",
+                  "argumentos": []
+                }
+              },
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "_syn_texto_builder_anexar",
+                  "argumentos": [
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "acc_modelo"
+                    },
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "  [OK] Modelo GGUF: "
+                    }
+                  ]
+                }
+              },
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "_syn_texto_builder_anexar",
+                  "argumentos": [
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "acc_modelo"
+                    },
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "modelo"
+                    }
+                  ]
+                }
+              },
+              {
+                "tipo": "AsignacionVariable",
+                "nombre": "linea_modelo",
+                "expresion": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "_syn_texto_builder_construir",
+                  "argumentos": [
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "acc_modelo"
+                    }
+                  ]
+                }
+              },
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "_syn_texto_builder_liberar",
+                  "argumentos": [
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "acc_modelo"
+                    }
+                  ]
+                }
+              },
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "linea_modelo"
+                    }
+                  ]
+                }
+              }
+            ],
+            "sino": [
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "  [FAIL] No hay modelo .gguf. Abre OpenSyn para descargarlo o colocalo en %USERPROFILE%\\.opensyn\\models."
+                    }
+                  ]
+                }
+              },
+              {
+                "tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "tipo": "ExpresionArit",
+                  "izquierda": {
+                    "tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecha": {
+                    "tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "tipo": "AsignacionVariable",
+            "nombre": "home",
+            "expresion": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "obtener_env",
+              "argumentos": [
+                {
+                  "tipo": "LiteralCadena",
+                  "valor": "USERPROFILE"
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaSi",
+            "condicion": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "home"
+              },
+              "operador": "!=",
+              "derecha": {
+                "tipo": "LiteralCadena",
+                "valor": ""
+              }
+            },
+            "cuerpo": [
+              {
+                "tipo": "AsignacionVariable",
+                "nombre": "perfil",
+                "expresion": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "concat",
+                  "argumentos": [
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "home"
+                    },
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "\\.opensyn"
+                    }
+                  ]
+                }
+              },
+              {
+                "tipo": "SentenciaSi",
+                "condicion": {
+                  "tipo": "ExpresionArit",
+                  "izquierda": {
+                    "tipo": "LlamadaFuncion",
+                    "nombre": "longitud",
+                    "argumentos": [
+                      {
+                        "tipo": "LlamadaFuncion",
+                        "nombre": "_syn_listar_directorio",
+                        "argumentos": [
+                          {
+                            "tipo": "Identificador",
+                            "nombre": "perfil"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "operador": ">",
+                  "derecha": {
+                    "tipo": "LiteralNumero",
+                    "valor": 0
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "tipo": "SentenciaExpr",
+                    "expr": {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "escribir_linea",
+                      "argumentos": [
+                        {
+                          "tipo": "LlamadaFuncion",
+                          "nombre": "concat",
+                          "argumentos": [
+                            {
+                              "tipo": "LiteralCadena",
+                              "valor": "  [OK] Perfil OpenSyn: "
+                            },
+                            {
+                              "tipo": "Identificador",
+                              "nombre": "perfil"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "sino": [
+                  {
+                    "tipo": "SentenciaExpr",
+                    "expr": {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "escribir_linea",
+                      "argumentos": [
+                        {
+                          "tipo": "LlamadaFuncion",
+                          "nombre": "concat",
+                          "argumentos": [
+                            {
+                              "tipo": "LiteralCadena",
+                              "valor": "  [i] Perfil OpenSyn: "
+                            },
+                            {
+                              "tipo": "LlamadaFuncion",
+                              "nombre": "concat",
+                              "argumentos": [
+                                {
+                                  "tipo": "Identificador",
+                                  "nombre": "perfil"
+                                },
+                                {
+                                  "tipo": "LiteralCadena",
+                                  "valor": " (se crea al guardar config/modelos)"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tipo": "SentenciaSi",
+            "condicion": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "LlamadaFuncion",
+                "nombre": "llama_server_corriendo",
+                "argumentos": []
+              },
+              "operador": "==",
+              "derecha": {
+                "tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "  [OK] Servidor IA: activo en http://127.0.0.1:8088"
+                    }
+                  ]
+                }
+              }
+            ],
+            "sino": [
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "  [i] Servidor IA: inactivo (se inicia al abrir el chat)."
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaSi",
+            "condicion": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "==",
+              "derecha": {
+                "tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "  Resultado: OK. OpenSyn puede arrancar el servidor y abrir el chat."
+                    }
+                  ]
+                }
+              },
+              {
+                "tipo": "SentenciaRetornar",
+                "valor": {
+                  "tipo": "LiteralNumero",
+                  "valor": 0
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "concat",
+                  "argumentos": [
+                    {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "concat",
+                      "argumentos": [
+                        {
+                          "tipo": "LiteralCadena",
+                          "valor": "  Resultado: "
+                        },
+                        {
+                          "tipo": "LlamadaFuncion",
+                          "nombre": "entero_a_texto",
+                          "argumentos": [
+                            {
+                              "tipo": "Identificador",
+                              "nombre": "fallos"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": " problema(s) critico(s). Corrige los [FAIL] antes de abrir el chat."
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaRetornar",
+            "valor": {
+              "tipo": "LiteralNumero",
+              "valor": 1
             },
             "es_transferencia": false
           }
@@ -30513,6 +31619,19 @@
                 {
                   "tipo": "LiteralCadena",
                   "valor": "  opensyn status          Muestra el estado del entorno"
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "tipo": "LiteralCadena",
+                  "valor": "  opensyn doctor          Diagnostica instalacion, modelo y servidor"
                 }
               ]
             }
@@ -30756,6 +31875,48 @@
                     "valor": {
                       "tipo": "LlamadaFuncion",
                       "nombre": "cmd_status",
+                      "argumentos": []
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "tipo": "SentenciaSi",
+                "condicion": {
+                  "tipo": "ExpresionArit",
+                  "izquierda": {
+                    "tipo": "ExpresionArit",
+                    "izquierda": {
+                      "tipo": "Identificador",
+                      "nombre": "a1"
+                    },
+                    "operador": "==",
+                    "derecha": {
+                      "tipo": "LiteralCadena",
+                      "valor": "doctor"
+                    }
+                  },
+                  "operador": "||",
+                  "derecha": {
+                    "tipo": "ExpresionArit",
+                    "izquierda": {
+                      "tipo": "Identificador",
+                      "nombre": "a1"
+                    },
+                    "operador": "==",
+                    "derecha": {
+                      "tipo": "LiteralCadena",
+                      "valor": "diagnostico"
+                    }
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "tipo": "SentenciaRetornar",
+                    "valor": {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "cmd_doctor",
                       "argumentos": []
                     },
                     "es_transferencia": false

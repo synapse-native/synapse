@@ -153,6 +153,7 @@ funcion buscar_gguf_en_dir(dir: texto) -> texto:
         longitud(dir) > 0
     garantiza:
         longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    // cumple Manual 7 §2.1: construye la ruta con copia estable (sin aliasing)
     listado = _syn_listar_directorio(dir)
     si listado == "":
         retornar ""
@@ -167,7 +168,12 @@ funcion buscar_gguf_en_dir(dir: texto) -> texto:
                     romper
                 inicio = inicio - 1
             largo = i + 5 - inicio
-            ruta = concat(concat(dir, "\\"), subcadena(listado, inicio, largo))
+            acc_ruta = _syn_texto_builder_crear()
+            _syn_texto_builder_anexar(acc_ruta, dir)
+            _syn_texto_builder_anexar(acc_ruta, "\\")
+            _syn_texto_builder_anexar(acc_ruta, subcadena(listado, inicio, largo))
+            ruta = _syn_texto_builder_construir(acc_ruta)
+            _syn_texto_builder_liberar(acc_ruta)
             si existe_ruta(ruta) == 1:
                 retornar ruta
         i = i + 1
@@ -178,13 +184,23 @@ funcion buscar_llama_server(dir_exe: texto, dir_app: texto, cwd_act: texto) -> t
         longitud(dir_exe) > 0
     garantiza:
         longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
-    lista = concat(concat(dir_app, "\\ia\\llama-server.exe"), "\n")
-    lista = concat(lista, concat(concat(dir_exe, "\\ia\\llama-server.exe"), "\n"))
-    lista = concat(lista, concat(concat(dir_exe, "\\llama-server.exe"), "\n"))
-    lista = concat(lista, concat(concat(dir_app, "\\llama-server.exe"), "\n"))
+    // cumple Manual 7 §2.1: lista de rutas con copia estable (sin aliasing)
+    acc_lista = _syn_texto_builder_crear()
+    _syn_texto_builder_anexar(acc_lista, concat(dir_app, "\\ia\\llama-server.exe"))
+    _syn_texto_builder_anexar(acc_lista, "\n")
+    _syn_texto_builder_anexar(acc_lista, concat(dir_exe, "\\ia\\llama-server.exe"))
+    _syn_texto_builder_anexar(acc_lista, "\n")
+    _syn_texto_builder_anexar(acc_lista, concat(dir_exe, "\\llama-server.exe"))
+    _syn_texto_builder_anexar(acc_lista, "\n")
+    _syn_texto_builder_anexar(acc_lista, concat(dir_app, "\\llama-server.exe"))
+    _syn_texto_builder_anexar(acc_lista, "\n")
     si cwd_act != "":
-        lista = concat(lista, concat(concat(cwd_act, "\\ia\\llama-server.exe"), "\n"))
-        lista = concat(lista, concat(concat(cwd_act, "\\llama-server.exe"), "\n"))
+        _syn_texto_builder_anexar(acc_lista, concat(cwd_act, "\\ia\\llama-server.exe"))
+        _syn_texto_builder_anexar(acc_lista, "\n")
+        _syn_texto_builder_anexar(acc_lista, concat(cwd_act, "\\llama-server.exe"))
+        _syn_texto_builder_anexar(acc_lista, "\n")
+    lista = _syn_texto_builder_construir(acc_lista)
+    _syn_texto_builder_liberar(acc_lista)
     retornar primera_ruta_existente(lista)
 
 funcion buscar_modelo_instalado(dir_exe: texto, dir_app: texto, cwd_act: texto) -> texto:
@@ -192,16 +208,27 @@ funcion buscar_modelo_instalado(dir_exe: texto, dir_app: texto, cwd_act: texto) 
         longitud(dir_exe) > 0
     garantiza:
         longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    // cumple Manual 7 §2.1: directorios con copia estable (sin aliasing)
     home = obtener_env("USERPROFILE")
-    dirs = concat(concat(dir_app, "\\models"), "\n")
-    dirs = concat(dirs, concat(concat(dir_app, "\\ia"), "\n"))
-    dirs = concat(dirs, concat(concat(dir_exe, "\\models"), "\n"))
-    dirs = concat(dirs, concat(concat(dir_exe, "\\ia"), "\n"))
+    acc_dirs = _syn_texto_builder_crear()
+    _syn_texto_builder_anexar(acc_dirs, concat(dir_app, "\\models"))
+    _syn_texto_builder_anexar(acc_dirs, "\n")
+    _syn_texto_builder_anexar(acc_dirs, concat(dir_app, "\\ia"))
+    _syn_texto_builder_anexar(acc_dirs, "\n")
+    _syn_texto_builder_anexar(acc_dirs, concat(dir_exe, "\\models"))
+    _syn_texto_builder_anexar(acc_dirs, "\n")
+    _syn_texto_builder_anexar(acc_dirs, concat(dir_exe, "\\ia"))
+    _syn_texto_builder_anexar(acc_dirs, "\n")
     si home != "":
-        dirs = concat(dirs, concat(concat(home, "\\.opensyn\\models"), "\n"))
+        _syn_texto_builder_anexar(acc_dirs, concat(home, "\\.opensyn\\models"))
+        _syn_texto_builder_anexar(acc_dirs, "\n")
     si cwd_act != "":
-        dirs = concat(dirs, concat(concat(cwd_act, "\\models"), "\n"))
-        dirs = concat(dirs, concat(concat(cwd_act, "\\ia"), "\n"))
+        _syn_texto_builder_anexar(acc_dirs, concat(cwd_act, "\\models"))
+        _syn_texto_builder_anexar(acc_dirs, "\n")
+        _syn_texto_builder_anexar(acc_dirs, concat(cwd_act, "\\ia"))
+        _syn_texto_builder_anexar(acc_dirs, "\n")
+    dirs = _syn_texto_builder_construir(acc_dirs)
+    _syn_texto_builder_liberar(acc_dirs)
     total = longitud(dirs)
     inicio = 0
     i = 0
@@ -235,14 +262,11 @@ funcion iniciar_llama_server() -> nulo:
     // cumple Manual 7 §2.1: inicia el servidor solo si no esta escuchando
     si llama_server_corriendo() == 1:
         retornar
-    dir_exe = obtener_dir_exe()
-    dir_app = dir_opensyn(dir_exe)
-    cwd_act = _syn_obtener_cwd()
-    ruta_server = buscar_llama_server(dir_exe, dir_app, cwd_act)
+    ruta_server = buscar_llama_server(obtener_dir_exe(), dir_opensyn(obtener_dir_exe()), _syn_obtener_cwd())
     si ruta_server == "":
         escribir_linea("  [!] No se encontro llama-server.exe (revisa {app}\\opensyn\\ia).")
         retornar
-    modelo_ruta = buscar_modelo_instalado(dir_exe, dir_app, cwd_act)
+    modelo_ruta = buscar_modelo_instalado(obtener_dir_exe(), dir_opensyn(obtener_dir_exe()), _syn_obtener_cwd())
     si modelo_ruta == "":
         escribir_linea("  [!] No se encontro modelo .gguf (.opensyn\\models).")
         retornar
@@ -1782,8 +1806,8 @@ funcion modo_oraculo() -> entero:
             escribir_linea(concat("  [*] Consultando a ", modelo))
             respuesta = consultar_agente(modelo, prompt, modo)
             si respuesta == "":
-                escribir_linea("  [Error] No hubo respuesta del servidor IA local. Verifica que este activo:")
-                escribir_linea("    opensyn status")
+                escribir_linea("  [Error] No hubo respuesta del servidor IA local. Ejecuta el diagnostico:")
+                escribir_linea("    opensyn doctor")
             sino:
                 escribir_linea("")
                 si _syn_es_consola() == 1:
@@ -1855,7 +1879,7 @@ funcion cmd_status() -> entero:
     garantiza:
         _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
     dir_exe = obtener_dir_exe()
-    dir_app = dir_opensyn(dir_exe)
+    dir_app = dir_opensyn(obtener_dir_exe())
     escribir_linea("=== OpenSyn: Estado del Sistema ===")
     escribir_linea("")
     escribir_linea("  OpenSyn: 1.1.0")
@@ -1877,7 +1901,7 @@ funcion cmd_status() -> entero:
         mostrar_modelos(modelos)
     sino:
         escribir_linea("  Servidor IA: inactivo (se inicia al abrir el chat)")
-    modelo_ruta = buscar_modelo_instalado(dir_exe, dir_app, _syn_obtener_cwd())
+    modelo_ruta = buscar_modelo_instalado(obtener_dir_exe(), dir_opensyn(obtener_dir_exe()), _syn_obtener_cwd())
     si modelo_ruta != "":
         escribir_linea(concat("  Modelo IA: ", modelo_ruta))
     sino:
@@ -1892,10 +1916,74 @@ funcion cmd_status() -> entero:
     escribir_linea("    opensyn <archivo.syn>   - Compilar archivo Synapse")
     escribir_linea("    opensyn                 - Iniciar orquestador IA local (TUI)")
     escribir_linea("    opensyn status          - Mostrar este estado")
+    escribir_linea("    opensyn doctor          - Diagnosticar instalacion y entorno")
     escribir_linea("    opensyn --version       - Mostrar version")
     escribir_linea("    opensyn --help          - Mostrar ayuda")
     escribir_linea("")
     retornar 0
+
+// cumple Manual 7 §2.1: diagnostico de instalacion/entorno antes de abrir la TUI
+// cumple Manual 7 §6.1: prueba de humo posterior a la instalacion
+// cumple Manual 2 §5.1: contrato booleano de exito/fallo del diagnostico
+funcion cmd_doctor() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
+    dir_exe = obtener_dir_exe()
+    dir_app = dir_opensyn(obtener_dir_exe())
+    fallos = 0
+    escribir_linea("=== OpenSyn: Diagnostico ===")
+    escribir_linea("")
+    si longitud(dir_exe) > 0:
+        escribir_linea(concat("  [OK] Binario: ", dir_exe))
+    sino:
+        escribir_linea("  [FAIL] No se pudo resolver el directorio del binario.")
+        fallos = fallos + 1
+    si longitud(dir_app) > 0:
+        escribir_linea(concat("  [OK] Recursos IA: ", dir_app))
+    sino:
+        escribir_linea("  [FAIL] No se pudo resolver {app}\\opensyn.")
+        fallos = fallos + 1
+    modo = leer_modo_config()
+    si modo != "":
+        escribir_linea(concat("  [OK] Config: modo_", modo))
+    sino:
+        escribir_linea("  [i] Config: primera ejecucion (se pide al abrir el chat).")
+    ruta_server = buscar_llama_server(obtener_dir_exe(), dir_opensyn(obtener_dir_exe()), _syn_obtener_cwd())
+    si ruta_server != "":
+        escribir_linea(concat("  [OK] llama-server: ", ruta_server))
+    sino:
+        escribir_linea("  [FAIL] llama-server.exe no encontrado. Reinstala OpenSyn o revisa {app}\\opensyn\\ia.")
+        fallos = fallos + 1
+    modelo = buscar_modelo_instalado(obtener_dir_exe(), dir_opensyn(obtener_dir_exe()), _syn_obtener_cwd())
+    si modelo != "":
+        acc_modelo = _syn_texto_builder_crear()
+        _syn_texto_builder_anexar(acc_modelo, "  [OK] Modelo GGUF: ")
+        _syn_texto_builder_anexar(acc_modelo, modelo)
+        linea_modelo = _syn_texto_builder_construir(acc_modelo)
+        _syn_texto_builder_liberar(acc_modelo)
+        escribir_linea(linea_modelo)
+    sino:
+        escribir_linea("  [FAIL] No hay modelo .gguf. Abre OpenSyn para descargarlo o colocalo en %USERPROFILE%\\.opensyn\\models.")
+        fallos = fallos + 1
+    home = obtener_env("USERPROFILE")
+    si home != "":
+        perfil = concat(home, "\\.opensyn")
+        si longitud(_syn_listar_directorio(perfil)) > 0:
+            escribir_linea(concat("  [OK] Perfil OpenSyn: ", perfil))
+        sino:
+            escribir_linea(concat("  [i] Perfil OpenSyn: ", concat(perfil, " (se crea al guardar config/modelos)")))
+    si llama_server_corriendo() == 1:
+        escribir_linea("  [OK] Servidor IA: activo en http://127.0.0.1:8088")
+    sino:
+        escribir_linea("  [i] Servidor IA: inactivo (se inicia al abrir el chat).")
+    escribir_linea("")
+    si fallos == 0:
+        escribir_linea("  Resultado: OK. OpenSyn puede arrancar el servidor y abrir el chat.")
+        retornar 0
+    escribir_linea(concat(concat("  Resultado: ", entero_a_texto(fallos)), " problema(s) critico(s). Corrige los [FAIL] antes de abrir el chat."))
+    retornar 1
 
 // --- Punto de entrada principal ---
 
@@ -1911,6 +1999,7 @@ funcion mostrar_ayuda_cli() -> nulo:
     escribir_linea("  opensyn                 Inicia el orquestador IA local (TUI)")
     escribir_linea("  opensyn <archivo.syn>   Compila un archivo Synapse")
     escribir_linea("  opensyn status          Muestra el estado del entorno")
+    escribir_linea("  opensyn doctor          Diagnostica instalacion, modelo y servidor")
     escribir_linea("  opensyn --version       Muestra la version")
     escribir_linea("  opensyn --help          Muestra esta ayuda")
 
@@ -1926,6 +2015,8 @@ funcion principal() -> entero:
             retornar 0
         si a1 == "status":
             retornar cmd_status()
+        si a1 == "doctor" o a1 == "diagnostico":
+            retornar cmd_doctor()
     // Leer configuracion existente
     modo = leer_modo_config()
 
