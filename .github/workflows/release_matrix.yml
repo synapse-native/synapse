@@ -1,8 +1,6 @@
-# cumple Manual 9 §4/§6.3: matrix de release multi-plataforma (workflow GH Actions real)
-# 4 plataformas obligatorias, SHA-256 por binario, SBOM SPDX, firma Ed25519 (.sig,
-# .pub, sha256.sig, attestation SLSA), validación de artefactos, disparadores
-# push/tags v*/dispatch manual, permisos mínimos (contents: read, packages: write).
-# Spec ejecutable: tests/integration/test_release_matrix.py y test_artifact_signing.py
+# cumple Manual 9 §4/§6.3: matrix de release multi-plataforma y sellado real.
+# Genera binario + .sha256 + .sig por artefacto, SBOM SPDX, attestation SLSA,
+# verifica cada firma y solo publica en GitHub Releases para tags v*.
 name: Release Matrix
 
 on:
@@ -18,20 +16,21 @@ permissions:
 jobs:
   release_matrix:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             plataforma: linux_x64
-            binario: synapse-linux-amd64
+            binario: synapse-linux_x64
           - os: ubuntu-24.04-arm
             plataforma: linux_arm64
-            binario: synapse-linux-arm64
+            binario: synapse-linux_arm64
           - os: macos-latest
             plataforma: darwin_arm64
-            binario: synapse-darwin-arm64
+            binario: synapse-darwin_arm64
           - os: windows-latest
             plataforma: win_x64
-            binario: synapse-windows-amd64
+            binario: synapse-win_x64.exe
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
@@ -46,71 +45,87 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Bootstrap compiler (critical path)
-        run: python main.py nucleo/principal.syn
+        run: python build.py
 
-      - name: Validate platform targets
-        run: python -c "print('targets validados: ${{ matrix.plataforma }}')"
+      - name: Validate platform target
+        run: python -c "print('target validado: ${{ matrix.plataforma }}')"
 
-      - name: Check SHA-256 checksums (Manual 9 §6.3)
-        shell: bash
-        run: |
-          mkdir -p dist
-          for f in synapse_stage1.exe synapse_stage2.exe synapse_stage3.exe; do
-            [ -f "$f" ] || continue
-            sha256sum "$f" | awk '{print $1}' > "$f.sha256"
-            cp "$f" "$f.sha256.sig" 2>/dev/null || true
-          done
-
-      - name: Sign binary with Ed25519 (Manual 9 §6.3: Sellado Criptográfico Definitivo)
+      # La firma la ejecuta distribuir.py con nucleo.ed25519_signer (firmar_archivo).
+      - name: Package and Sign binary with Ed25519 (Manual 9 §6.3)
         shell: bash
         env:
           ED25519_PRIVATE_KEY: ${{ secrets.ED25519_PRIVATE_KEY }}
-        run: python -m nucleo.ed25519_signer firmar --salida dist/firma.bin
+          SYNAPSE_BINARY_NAME: ${{ matrix.binario }}
+        run: |
+          if [ -z "$ED25519_PRIVATE_KEY" ]; then
+            echo "::error::ED25519_PRIVATE_KEY no configurada; un release sin firma no es válido"
+            exit 1
+          fi
+          python distribuir.py --requerir-firma
 
       - name: Verify signature with public key (SIGNATURE_VALID)
         shell: bash
-        run: python -m nucleo.ed25519_signer verificar_archivo --clave nucleo.ed25519_signer.pub
-
-      - name: Generate SPDX SBOM + SLSA attestation (Manual 9 §6.3)
-        shell: bash
         run: |
-          mkdir -p dist
-          python - <<'PYEOF'
-          import json, hashlib, os
-          sbom = {"spdxVersion": "SPDX-2.3", "dataLicense": "CC0-1.0",
-                  "SPDXID": "SPDXRef-DOCUMENT", "name": "synapse-release",
-                  "documentDescribes": ["SPDXRef-Package-synapse"]}
-          with open("dist/synapse.spdx.json", "w") as f:
-              json.dump(sbom, f)
-          att = {"_type": "https://slsa.dev/provenance/v0.2",
-                 "provenance": {"buildDefinition": {"builder": {"id": "synapse-release-matrix"}}}}
-          with open("dist/synapse.attestation.json", "w") as f:
-              json.dump(att, f)
-          # clave pública del firmante (ed25519 .pub)
-          pub = os.environ.get("ED25519_PUBLIC_KEY", "synapse.pub")
-          with open(f"dist/{pub}", "w") as f:
-              f.write(os.environ.get("ED25519_PUBLIC_KEY_MATERIAL", "PLACEHOLDER_PUB"))
-          PYEOF
+          python scripts/ci_sign.py verify \
+            "instaladores/dist/distribucion/${{ matrix.binario }}" \
+            "instaladores/dist/distribucion/${{ matrix.binario }}.sig" \
+            "instaladores/dist/distribucion/synapse.pub" | tee verify.txt
+          grep -q 'SIGNATURE_VALID=YES' verify.txt
 
       - name: Validate artifacts
         shell: bash
-        run: ls dist/
+        run: |
+          set -e
+          DIST=instaladores/dist/distribucion
+          test -f "$DIST/${{ matrix.binario }}"
+          test -f "$DIST/${{ matrix.binario }}.sha256"
+          test -f "$DIST/${{ matrix.binario }}.sig"
+          test -f "$DIST/synapse.spdx.json"
+          test -f "$DIST/synapse.attestation.json"
+          test -f "$DIST/MANIFEST.sha256"
+          test -f "$DIST/MANIFEST.sha256.sig"
+          test -f "$DIST/synapse.pub"
+          test -f "$DIST/synapse.iss"
+          test -f "$DIST/install.sh"
+          ls -la "$DIST"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.binario }}
-          path: |
-            dist/
-            *.sig
-            *.sha256
-            synapse.pub
+          path: instaladores/dist/distribucion/
+          if-no-files-found: error
 
   create_release:
     needs: release_matrix
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Validate release bundle
+        shell: bash
+        run: |
+          set -e
+          test -f artifacts/synapse.pub
+          test -f artifacts/synapse.spdx.json
+          test -f artifacts/synapse.attestation.json
+          test -f artifacts/MANIFEST.sha256
+          test -f artifacts/MANIFEST.sha256.sig
+          for sig in artifacts/*.sig; do
+            test -s "$sig"
+          done
+          ls -la artifacts
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          draft: true
+          files: artifacts/**
+          generate_release_notes: true
+          draft: false

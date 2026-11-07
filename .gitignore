@@ -4,6 +4,8 @@
 *.pem
 *.hex
 *.key
+# La clave PÚBLICA de release sí es un artefacto de confianza del producto.
+!release_keys/public.pem
 
 # CLASE B: Binarios
 *.exe

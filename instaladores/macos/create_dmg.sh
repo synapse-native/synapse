@@ -39,12 +39,24 @@ done
 log "=== Creando instalador macOS para Synapse v${SYNAPSE_VERSION} ==="
 log "Componente: ${COMPONENTE}"
 
-# Verificar firma Ed25519
+# Verificar firma Ed25519 (Manual 9 §4.1). Falla cerrado salvo modo dev explícito.
 verificar_firma() {
-    log "Verificando integridad de archivos..."
-    if [ -f "../../instaladores/common/verificar_firma.py" ]; then
-        python3 ../../instaladores/common/verificar_firma.py || true
+    local artefacto="${1:-../../build/bin/synapse}"
+    local firma="${artefacto}.sig"
+    local clave="${SYNAPSE_PUBLIC_KEY:-../../release_keys/public.pem}"
+    log "Verificando firma Ed25519 de ${artefacto}..."
+    if [ "${SYNAPSE_SKIP_SIGNATURE:-0}" = "1" ]; then
+        log "ADVERTENCIA: verificación de firma omitida por SYNAPSE_SKIP_SIGNATURE=1"
+        return 0
     fi
+    if [ ! -f "${artefacto}" ] || [ ! -f "${firma}" ] || [ ! -f "${clave}" ]; then
+        log "ERROR: falta artefacto, firma o clave pública; build abortado"
+        exit 1
+    fi
+    python3 ../../instaladores/common/verificar_firma.py \
+        --verificar "${artefacto}" --firma "${firma}" --clave "${clave}" \
+        || { log "ERROR: firma Ed25519 inválida"; exit 1; }
+    log "Firma Ed25519 verificada"
 }
 
 # Crear estructura .app

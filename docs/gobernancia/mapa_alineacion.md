@@ -55,6 +55,8 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "runtime/core/ollama.c": ["Manual 7 §2.2"],
   "runtime/core/tui.c": ["Manual 5 §1"],
   "runtime/core/lsp.c": ["Manual 8 §1"],
+  "instaladores/common/auto_actualizar.py": ["Manual 9 §3.2", "Manual 9 §4.1", "Manual 1 §3.1"],
+  "instaladores/common/verificar_firma.py": ["Manual 9 §6.3", "Manual 9 §4.1"],
   "instaladores/windows/synapse.iss": ["Manual 9 §2.5"],
   "build.py": ["Manual 9 §6.2", "Manual 9 §2.3"],
   "distribuir.py": ["Manual 9 §6.3", "Manual 9 §2.1"],

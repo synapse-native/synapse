@@ -76,12 +76,32 @@ seleccionar_componentes() {
     esac
 }
 
-# Verificar firma Ed25519
+# Verificar firma Ed25519 (Manual 9 §4.1). Falla cerrado salvo modo dev explícito.
 verificar_firma() {
-    log "Verificando integridad de archivos..."
-    if [ -f "../../instaladores/common/verificar_firma.py" ]; then
-        python3 ../../instaladores/common/verificar_firma.py || true
+    local artefacto="${1:-../../build/bin/synapse}"
+    local firma="${artefacto}.sig"
+    local clave="${SYNAPSE_PUBLIC_KEY:-../../release_keys/public.pem}"
+    log "Verificando firma Ed25519 de ${artefacto}..."
+    if [ "${SYNAPSE_SKIP_SIGNATURE:-0}" = "1" ]; then
+        log "ADVERTENCIA: verificación de firma omitida por SYNAPSE_SKIP_SIGNATURE=1"
+        return 0
     fi
+    if [ ! -f "${artefacto}" ]; then
+        log "ERROR: no existe el artefacto ${artefacto}"
+        exit 1
+    fi
+    if [ ! -f "${firma}" ] || [ ! -f "${clave}" ]; then
+        log "ERROR: falta ${firma} o ${clave}; instalación abortada"
+        exit 1
+    fi
+    if ! command -v python3 &> /dev/null; then
+        log "ERROR: python3 es necesario para verificar la firma Ed25519"
+        exit 1
+    fi
+    python3 ../../instaladores/common/verificar_firma.py \
+        --verificar "${artefacto}" --firma "${firma}" --clave "${clave}" \
+        || { log "ERROR: firma Ed25519 inválida"; exit 1; }
+    log "Firma Ed25519 verificada"
 }
 
 # Crear directorio de instalacion
@@ -147,5 +167,5 @@ verificar_instalacion
 
 log ""
 log "=== Instalación completada ==="
-log "Documentación: https://github.com/synapse-lang/synapse"
+log "Documentación: https://github.com/synapse-native/synapse"
 log "Log de instalación: ${LOG_FILE}"
