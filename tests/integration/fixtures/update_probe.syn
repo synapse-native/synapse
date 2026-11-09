@@ -1,0 +1,16 @@
+#lang: es
+// Fixture de integracion r203: ejercita el actualizador sin red real.
+importar std.texto
+importar nucleo.actualizador
+
+funcion principal() -> entero:
+    modo = _syn_obtener_env("UPDATE_PROBE_MODO")
+    si modo == "cmp":
+        escribir_linea(entero_a_texto(_syn_actualizador_comparar_versiones("9.2.0", "8.1.0")))
+        escribir_linea(entero_a_texto(_syn_actualizador_comparar_versiones("9.2.0", "9.2.0")))
+        escribir_linea(entero_a_texto(_syn_actualizador_comparar_versiones("8.1.0", "9.2.0")))
+        escribir_linea(entero_a_texto(_syn_actualizador_version_mayor("v9.2.0-industrial")))
+        retornar 0
+    objetivo = _syn_obtener_env("UPDATE_PROBE_VERSION")
+    check = _syn_obtener_env("UPDATE_PROBE_CHECK")
+    retornar cli_update(objetivo, check == "1")
