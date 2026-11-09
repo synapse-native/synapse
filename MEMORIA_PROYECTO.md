@@ -7,7 +7,7 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-11-06** (R202 f1a4a02 + R201 c653fff + R200 f3b7268, ver dashboard; antes R199 a2d0ca3 + r198b3; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
+Última actualización: **2026-11-08** (R203 d865ab9 + R202 f1a4a02 + R201 c653fff + R200 f3b7268, ver dashboard; antes R199 a2d0ca3 + r198b3; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
  cierre de los 2 fallos DETERMINISTAS del barrido r195 (1569✓/25skip/6✗;
  los 5 del grupo A pasaban aislados, infra del barrido):
  (R1/H-R196-1 decisión Arquitecto ratificada "corregir contrato al manual")
@@ -123,7 +123,23 @@
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-11-06 sesión:** R202
+Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-11-08 sesión:** R203
+                   COMPLETADO (d865ab9): ME r203_update_nativo — `synapse
+                   update` nativo (sin args, `--version <v>`, `--check`) con
+                   consulta a GitHub Releases, descarga TLS vía curl,
+                   checksum SHA-256, firma Ed25519, backup en
+                   `~/.synapse/backup/` e instalación silenciosa; fallo
+                   cerrado ante asset/checksum/firma inválidos. Fix ABI
+                   `int64_t` en helpers C (un `int` devolvía 4294967295 por
+                   -1), quoting robusto Windows (`cmd /S /C` cuando el
+                   comando empieza por comilla) y override
+                   `SYNAPSE_PUBLIC_KEY` (par efímero en tests, sin SKIP).
+                   10 tests del oráculo + 33 de regresión; contraste 10/10,
+                   alineación 4 archivos, verificar_alineacion 0 brechas;
+                   evidencia 7d62c4c4b9752ec9. `nucleo/principal.syn` quedó en
+                   1200 líneas exactas (D-9 si crece). No se tocó
+                   nucleo/lsp_v3.syn (ajeno) ni nucleo/embedded_libs.h.
+                   **2026-11-06 sesión:** R202
                    COMPLETADO (f1a4a02): ME r202_release_signing — release
                    firmado de punta a punta. distribuir.py firma cada artefacto
                    y MANIFEST.sha256 (.sig/.sha256/SBOM/SLSA); verificar_firma.py

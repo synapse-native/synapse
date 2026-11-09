@@ -877,3 +877,16 @@ Pendiente externo: `ED25519_PRIVATE_KEY` en GitHub Actions y validación en
 runner limpio.
 Reporte: `docs/reportes/R202.md` | f1a4a02 |
 Manual 9 §6.3/§4.1/§2.1 |
+
+### R203 - ME r203_update_nativo (2026-11-08, d865ab9)
+`synapse update` nativo en el compilador autoalojado: sin argumentos,
+`--version <v>` y `--check`; consulta a GitHub Releases, selección de asset
+por plataforma, descarga TLS vía `curl`, verificación SHA-256 y firma Ed25519,
+backup en `~/.synapse/backup/` e instalación silenciosa; fallo cerrado si
+falta `.sig`/`.sha256` o la firma no valida. Fix ABI `int64_t` en helpers C,
+quoting robusto Windows (`cmd /S /C`), override `SYNAPSE_PUBLIC_KEY` y oráculo
+hermético con par Ed25519 efímero (10 passed, sin SKIP). Evidencia
+`7d62c4c4b9752ec9`; `contrastar` 10/10, `alineacion` 4 archivos y
+`verificar_alineacion` 0 brechas.
+Reporte: `docs/reportes/R203.md` | d865ab9 |
+Manual 9 §3.1/§3.2/§4.1/§6.2, Manual 2 §5.1, Manual 8 §4.1/§4.2 |
