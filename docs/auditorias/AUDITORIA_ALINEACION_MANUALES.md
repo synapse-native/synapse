@@ -906,3 +906,18 @@ módulos. Tests: oráculo E2E 3/3, gate 2/2, regresión 103 + 18. Evidencia
 archivos, `verificar_alineacion` 0 brechas.
 Reporte: `docs/reportes/R204.md` | f018957 |
 Manual 7 §1.1/§2.1/§2.3/§7.3, Manual 2 §5.1, Manual 9 §6.2 |
+
+### R205 - ME r205_grafo_conocimiento (2026-11-10, b1e9959)
+Grafo de conocimiento real desde el AST canónico: seis pasadas deterministas
+en `nucleo/grafo_conocimiento.syn`, IDs canónicos, aristas de llamada,
+importación y uso de tipo, dependientes/dependencias, riesgo, Tarjan y
+métricas; persistencia JSON y round-trip. Se corrigió el ownership de textos
+para eliminar dobles liberaciones y se calculó el hash SHA-256 inline para
+conservar la memoria del hash fuera del scope local. Oráculo E2E nuevo
+`tests/opensyn/test_grafo_comportamiento.py` (IDs, ciclos, riesgo,
+determinismo, save/load); grafo retirado del baseline de Fase 32. Tests:
+grafo 14/14, suite OpenSyn 123 passed/1 skipped, gate Fase 32 2/2. Evidencia
+`b09dd7fb5f82ba7f`; `contrastar` 7 requisitos/1 oráculo, `alineacion` 1
+archivo, `verificar_alineacion` 0 brechas.
+Reporte: `docs/reportes/R205.md` | b1e9959 |
+Manual 32 §2.1/§2.4/§2.5/§2.6, Manual 6 §1.1, Manual 2 §5.1/§7.3 |

@@ -7,7 +7,7 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-11-09** (R204 f018957 COMPLETADO — ME r204_tools_escritura: TOOL escribir/editar con sandbox y aprobación, gate de compilación Fase 32; antes R203 d865ab9 + R202 f1a4a02 + R201 c653fff + R200 f3b7268, ver dashboard; antes R199 a2d0ca3 + r198b3; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
+Última actualización: **2026-11-10** (R205 b1e9959 COMPLETADO — ME r205_grafo_conocimiento: grafo de conocimiento real desde AST canónico, determinista, con persistencia JSON y oráculo E2E; antes R204 f018957 COMPLETADO — ME r204_tools_escritura: TOOL escribir/editar con sandbox y aprobación, gate de compilación Fase 32; antes R203 d865ab9 + R202 f1a4a02 + R201 c653fff + R200 f3b7268, ver dashboard; antes R199 a2d0ca3 + r198b3; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
  cierre de los 2 fallos DETERMINISTAS del barrido r195 (1569✓/25skip/6✗;
  los 5 del grupo A pasaban aislados, infra del barrido):
  (R1/H-R196-1 decisión Arquitecto ratificada "corregir contrato al manual")
@@ -784,6 +784,26 @@ Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc d
 - Plan maestro redactado en `docs/gobernancia/PLAN_MAESTRO_INDUSTRIAL.md`
   (2026-11-09, pendiente de ratificación del Arquitecto); siguiente ME
   propuesto: `r205_grafo_conocimiento`.
+
+### ME r205_grafo_conocimiento (2026-11-10, b1e9959)
+- Hallazgo H-R205-1 (RESUELTO): `g.hash_ast` quedaba corrupto tras construir
+  un segundo grafo porque el duplicado del hash se calculaba en un local y el
+  scope liberaba la memoria del pool. Resolución: calcular `calcular_hash_ast`
+  inline en el constructor; el hash SHA-256 vive en malloc y permanece estable.
+- Hallazgo H-R205-2 (RESUELTO): `nucleo/grafo_conocimiento.syn` tenía UTF-8
+  doblemente codificado (`Â§`, `Ã³`, `crÃ­tico`); reparado a UTF-8 real y
+  recompilado. Las citas `Manual 32` no son indexables por `indice_manual.py`
+  (solo indexa `MANUAL N.md`); se anclaron las citas de producción a Manual 6
+  §1.1 y Manual 2 §5.1/§7.3, manteniendo Manual 32 en plan/verificación.
+- Lección: en S1 el ownership de `texto` exige duplicar en cada frontera;
+  liberar un hash local después de duplicarlo puede dejar el duplicado en una
+  ventana de reutilización del pool.
+- Lección: el gate de lectura previa ve archivos ajenos sin commitear; se
+  registró la lectura de `nucleo/lsp_v3.syn` (Manual 8 §1.7.4) sin modificar
+  ni incluir ese archivo.
+- Verificación: grafo 14/14, suite OpenSyn 123 passed/1 skipped, gate Fase 32
+  2/2, `contrastar` 7 requisitos/1 oráculo, `alineacion` 1 archivo,
+  `verificar_alineacion` 0 brechas; evidencia `b09dd7fb5f82ba7f`.
 
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
