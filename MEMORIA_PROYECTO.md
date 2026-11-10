@@ -781,9 +781,9 @@ Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc d
   rechaza como denegación de sandbox (Manual 7 §7.3), no como error de escritura.
 - Lección: helpers con retorno único a profundidad 0 liberan params/local de
   forma consistente; retornos anidados no.
-- Pendiente: plan maestro de manuales usando
-  `docs/reportes/EVALUACION_AVANCE_2026-11-08.md`; siguiente ME de compilación
-  de los 10 módulos del baseline de Fase 32.
+- Plan maestro redactado en `docs/gobernancia/PLAN_MAESTRO_INDUSTRIAL.md`
+  (2026-11-09, pendiente de ratificación del Arquitecto); siguiente ME
+  propuesto: `r205_grafo_conocimiento`.
 
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
