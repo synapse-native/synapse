@@ -7,7 +7,7 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-11-08** (R203 d865ab9 + R202 f1a4a02 + R201 c653fff + R200 f3b7268, ver dashboard; antes R199 a2d0ca3 + r198b3; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
+Última actualización: **2026-11-09** (R204 f018957 COMPLETADO — ME r204_tools_escritura: TOOL escribir/editar con sandbox y aprobación, gate de compilación Fase 32; antes R203 d865ab9 + R202 f1a4a02 + R201 c653fff + R200 f3b7268, ver dashboard; antes R199 a2d0ca3 + r198b3; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
  cierre de los 2 fallos DETERMINISTAS del barrido r195 (1569✓/25skip/6✗;
  los 5 del grupo A pasaban aislados, infra del barrido):
  (R1/H-R196-1 decisión Arquitecto ratificada "corregir contrato al manual")
@@ -123,7 +123,24 @@
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-11-08 sesión:** R203
+Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-11-09 sesión:** R204
+                   COMPLETADO (f018957): ME r204_tools_escritura — TOOL
+                   escribir/editar en OpenSyn con sandbox de workspace y
+                   aprobación explícita; `opensyn/herramientas.syn` nuevo
+                   (`herramienta_escribir`/`herramienta_editar`,
+                   `herr_ruta_permitida`); `principal.syn` despacha
+                   `ruta :: contenido` y `ruta :: buscar :: reemplazo`,
+                   normaliza la ruta absoluta antes de
+                   `verificar_permiso_completo`, aliasa `escribir` a `editar`
+                   y pide aprobación en pipe/consola/TUI; `permisos.syn` solo
+                   corrige ownership (`_syn_strcpy`) para eliminar un doble
+                   free preexistente (constantes y comportamiento intactos).
+                   Gate de compilación Fase 32 con baseline de 10 módulos.
+                   Oráculo E2E 3/3 + gate 2/2 + regresión 103/18; contraste
+                   7 requisitos/2 oráculos, alineación 3 archivos,
+                   verificar_alineacion 0 brechas; evidencia
+                   24a7c2c76d9873d2. No se tocó nucleo/lsp_v3.syn (ajeno) ni
+                   nucleo/embedded_libs.h. **2026-11-08 sesión:** R203
                    COMPLETADO (d865ab9): ME r203_update_nativo — `synapse
                    update` nativo (sin args, `--version <v>`, `--check`) con
                    consulta a GitHub Releases, descarga TLS vía curl,
@@ -752,6 +769,21 @@ Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc d
                     de7107c (feat(opensyn): Fase 32.2 — explorer_det + architect_det deterministas)
                     fa34825 (feat(nucleo): Fase 32.1 — grafo de conocimiento)
 ```
+
+### ME r204_tools_escritura (2026-11-09, f018957)
+- Hallazgo H-R204-1 (RESUELTO): doble free en `opensyn/permisos.syn` por pasar
+  `texto` sin copia a funciones que consumen el parámetro (RAII); corrompía el
+  pool TLS y producía contenido truncado/aliasado. Resolución: `_syn_strcpy`
+  en los call sites; constantes y comportamiento intactos.
+- Hallazgo H-R204-2 (RESUELTO): `strcpy_f` no existe para `main.py`; la copia
+  canónica es `_syn_strcpy(var)` (`std/texto.syn`, `runtime/core/string_utils.c`).
+- Lección: el sandbox se valida antes de la herramienta; `../malo.txt` se
+  rechaza como denegación de sandbox (Manual 7 §7.3), no como error de escritura.
+- Lección: helpers con retorno único a profundidad 0 liberan params/local de
+  forma consistente; retornos anidados no.
+- Pendiente: plan maestro de manuales usando
+  `docs/reportes/EVALUACION_AVANCE_2026-11-08.md`; siguiente ME de compilación
+  de los 10 módulos del baseline de Fase 32.
 
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |

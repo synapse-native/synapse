@@ -890,3 +890,19 @@ hermético con par Ed25519 efímero (10 passed, sin SKIP). Evidencia
 `verificar_alineacion` 0 brechas.
 Reporte: `docs/reportes/R203.md` | d865ab9 |
 Manual 9 §3.1/§3.2/§4.1/§6.2, Manual 2 §5.1, Manual 8 §4.1/§4.2 |
+
+### R204 - ME r204_tools_escritura (2026-11-09, f018957)
+Herramientas `TOOL escribir`/`TOOL editar` de OpenSyn con sandbox de workspace
+y aprobación explícita: `opensyn/herramientas.syn` nuevo con
+`herramienta_escribir`/`herramienta_editar` y validación de ruta
+(`herr_ruta_permitida`); `opensyn/principal.syn` despacha el parseo
+`ruta :: contenido` / `ruta :: buscar :: reemplazo`, normaliza la ruta
+absoluta antes de `verificar_permiso_completo`, aliasa `escribir` a `editar`
+y pide aprobación en pipe/consola/TUI. `opensyn/permisos.syn` corrige solo
+ownership (`_syn_strcpy`) para eliminar un doble free preexistente; constantes
+y comportamiento intactos. Gate de compilación Fase 32 con baseline de 10
+módulos. Tests: oráculo E2E 3/3, gate 2/2, regresión 103 + 18. Evidencia
+`24a7c2c76d9873d2`; `contrastar` 7 requisitos/2 oráculos, `alineacion` 3
+archivos, `verificar_alineacion` 0 brechas.
+Reporte: `docs/reportes/R204.md` | f018957 |
+Manual 7 §1.1/§2.1/§2.3/§7.3, Manual 2 §5.1, Manual 9 §6.2 |
