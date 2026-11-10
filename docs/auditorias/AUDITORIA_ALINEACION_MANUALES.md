@@ -931,3 +931,17 @@ Reparación de `nucleo/lsp_v3.syn`: eliminada la `longitud` duplicada,
 oráculos, `alineacion` 1 archivo, `verificar_alineacion` 0 brechas.
 Reporte: `docs/reportes/R205b.md` | 5935a5d |
 Manual 8 §1.2/§1.3/§1.7.3, Manual 2 §5.1 |
+
+### R206 - ME r206_validation_loop (2026-11-10, 7f17dec)
+Bucle de validación y corrección automática con compilador real:
+`opensyn/validation_loop.syn` repara la compilación, valida por rc con
+`synapse check --no-emit` y redirección de stdout/stderr, parsea
+`archivo:línea:columna - mensaje`, conserva el último código y los errores,
+ejecuta hasta 3 intentos, compone el mensaje de fallo definitivo y separa el
+feedback humano (`registrar_correccion_manual`) del fallo automático. Se
+corrigió el ownership con `_syn_strcpy`/`_syn_strlen`. Oráculo E2E nuevo con
+LLM falso 4/4; regresión 85/85; gate Fase 32 2/2 (módulo retirado del
+baseline). Evidencia `dc81f3f85c2e19f4`; `contrastar` 11 requisitos/1 oráculo,
+`alineacion` 1 archivo, `verificar_alineacion` 0 brechas.
+Reporte: `docs/reportes/R206.md` | 7f17dec |
+Manual 7 §4.2/§6.3, Manual 2 §5.1 |
