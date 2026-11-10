@@ -921,3 +921,13 @@ grafo 14/14, suite OpenSyn 123 passed/1 skipped, gate Fase 32 2/2. Evidencia
 archivo, `verificar_alineacion` 0 brechas.
 Reporte: `docs/reportes/R205.md` | b1e9959 |
 Manual 32 §2.1/§2.4/§2.5/§2.6, Manual 6 §1.1, Manual 2 §5.1/§7.3 |
+
+### R205b - ME r205b_lsp_v3 (2026-11-10, 5935a5d)
+Reparación de `nucleo/lsp_v3.syn`: eliminada la `longitud` duplicada,
+`cmp_texto` sobre `_syn_strcmp`, `strstr_f`/`strlen_s` reemplazados por
+`indice_de`/`_syn_strlen`, doble free corregido en `enviar_respuesta` con
+`_syn_strcpy`, y `handle_shutdown` tolera la notificación sin `id`. Build OK,
+13 tests LSP verdes, evidencia `c01c7e55ec8d56b9`; `contrastar` 3 requisitos/3
+oráculos, `alineacion` 1 archivo, `verificar_alineacion` 0 brechas.
+Reporte: `docs/reportes/R205b.md` | 5935a5d |
+Manual 8 §1.2/§1.3/§1.7.3, Manual 2 §5.1 |

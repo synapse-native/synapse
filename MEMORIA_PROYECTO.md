@@ -7,7 +7,7 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-11-10** (R205 b1e9959 COMPLETADO — ME r205_grafo_conocimiento: grafo de conocimiento real desde AST canónico, determinista, con persistencia JSON y oráculo E2E; antes R204 f018957 COMPLETADO — ME r204_tools_escritura: TOOL escribir/editar con sandbox y aprobación, gate de compilación Fase 32; antes R203 d865ab9 + R202 f1a4a02 + R201 c653fff + R200 f3b7268, ver dashboard; antes R199 a2d0ca3 + r198b3; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
+Última actualización: **2026-11-10** (R205b 5935a5d COMPLETADO — ME r205b_lsp_v3: reparación de compilación, ownership y protocolo del LSP nativo, 13 tests verdes; antes R205 b1e9959 COMPLETADO — ME r205_grafo_conocimiento: grafo de conocimiento real desde AST canónico, determinista, con persistencia JSON y oráculo E2E; antes R204 f018957 COMPLETADO — ME r204_tools_escritura: TOOL escribir/editar con sandbox y aprobación, gate de compilación Fase 32; antes R203 d865ab9 + R202 f1a4a02 + R201 c653fff + R200 f3b7268, ver dashboard; antes R199 a2d0ca3 + r198b3; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
  cierre de los 2 fallos DETERMINISTAS del barrido r195 (1569✓/25skip/6✗;
  los 5 del grupo A pasaban aislados, infra del barrido):
  (R1/H-R196-1 decisión Arquitecto ratificada "corregir contrato al manual")
@@ -804,6 +804,28 @@ Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc d
 - Verificación: grafo 14/14, suite OpenSyn 123 passed/1 skipped, gate Fase 32
   2/2, `contrastar` 7 requisitos/1 oráculo, `alineacion` 1 archivo,
   `verificar_alineacion` 0 brechas; evidencia `b09dd7fb5f82ba7f`.
+
+### ME r205b_lsp_v3 (2026-11-10, 5935a5d)
+- Hallazgo H-R205b-1 (RESUELTO): `nucleo/lsp_v3.syn` tenía una `funcion
+  longitud` duplicada y `cmp_texto` restaba textos. Resolución: eliminar el
+  duplicado y usar `_syn_strcmp` en `cmp_texto`; `strstr_f`/`strlen_s` se
+  reemplazan por `indice_de`/`_syn_strlen`.
+- Hallazgo H-R205b-2 (RESUELTO): `enviar_respuesta` liberaba `header` y
+  `respuesta` dos veces porque `escribir` consume su argumento; el pool se
+  corrompía y sólo se procesaba el primer mensaje. Resolución: pasar
+  `_syn_strcpy(header)` y `_syn_strcpy(respuesta)`.
+- Hallazgo H-R205b-3 (RESUELTO): `shutdown` como notificación sin `id`
+  rompía el contrato `id >= 0`. Resolución: contrato `id >= -1` y respuesta
+  sólo si `id >= 0`.
+- Autorización explícita del Arquitecto para reparar `nucleo/lsp_v3.syn`
+  (trabajo ajeno) pese a la regla del plan maestro; se dejaron fuera
+  `docs/gobernancia/GUIA_DE_GOBERNANZA.md` y los artefactos no rastreados.
+- Lección: `longitud` libera su parámetro; para medir sin transferir ownership
+  se usa `_syn_strlen`. `escribir` también consume; en cada frontera hay que
+  duplicar con `_syn_strcpy`.
+- Verificación: build OK, 13 tests LSP verdes, `contrastar` 3 requisitos/3
+  oráculos, `alineacion` 1 archivo, `verificar_alineacion` 0 brechas;
+  evidencia `c01c7e55ec8d56b9`.
 
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
