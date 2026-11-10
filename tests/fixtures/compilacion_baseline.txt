@@ -13,5 +13,4 @@ opensyn/memoria_persistente_cifrada.syn
 opensyn/pipeline_multiagente.syn
 opensyn/router.syn
 opensyn/run_manager.syn
-opensyn/validation_loop.syn
 opensyn/verificacion_aot.syn

@@ -7,6 +7,7 @@
 importar std.io
 importar std.texto
 importar std.sistema
+importar std.tiempo
 
 // --- Cliente Ollama (runtime/core/ollama.c) ---
 // cumple Manual 7 §8: consultar oraculo local via HTTP (8088)
@@ -35,6 +36,18 @@ estructura ResultadoValidacion:
     errores: texto
     intentos_realizados: entero
 
+// Resultado estructurado del bucle: conserva el ultimo codigo y el error exacto.
+// cumple Manual 7 §6.3: "devuelve el ultimo codigo generado y los errores"
+estructura ResultadoBucle:
+    exito: booleano
+    codigo: texto
+    errores: texto
+    intentos: entero
+    error_linea: entero
+    error_columna: entero
+    error_mensaje: texto
+    error_archivo: texto
+
 estructura RevisionInline:
     archivo: texto
     linea: entero
@@ -48,24 +61,101 @@ estructura RevisionInline:
 
 // Ejecuta `synapse check --no-emit` sobre código y retorna si compila.
 // cumple Manual 7 §6.3: "El LSP pasa el código al compilador en modo --check"
+// cumple Manual 7 §4.2: "ejecuta el compilador ... en modo --check"
+// Usa el codigo de salida del compilador (no la mera presencia de stderr) para
+// distinguir warnings de errores. El temporal es unico por invocacion.
 funcion validar_con_check(codigo: texto, idioma: texto) -> ResultadoValidacion:
     requiere:
         longitud(codigo) > 0
     garantiza:
         _resultado_.intentos_realizados == 0 // cumple Manual 2 §5.1
     resultado = ResultadoValidacion()
-    resultado.es_valido = verdadero
+    resultado.es_valido = falso
     resultado.errores = ""
     resultado.intentos_realizados = 0
-    ruta_temp = concat(_syn_obtener_cwd(), "\\opensyn_validacion.tmp")
-    escribir_archivo_local(ruta_temp, codigo)
-    comando = concat("synapse check --no-emit ", ruta_temp)
-    salida = _syn_capturar_comando(comando)
+    base = _syn_obtener_env("TEMP")
+    si _syn_strlen(base) == 0:
+        base = _syn_obtener_cwd()
+    ruta_temp = concat(base, "/opensyn_validacion_")
+    ruta_temp = concat(ruta_temp, entero_a_texto(ahora_ms()))
+    ruta_temp = concat(ruta_temp, "_")
+    ruta_temp = concat(ruta_temp, entero_a_texto(_syn_strlen(codigo)))
+    si idioma == "syquex" o idioma == "syq":
+        ruta_temp = concat(ruta_temp, ".syq")
+    sino:
+        ruta_temp = concat(ruta_temp, ".syn")
+    escrito = escribir_archivo_local(ruta_temp, codigo)
+    si escrito != 0:
+        resultado.errores = "No se pudo escribir el archivo temporal de validación."
+        retornar resultado
+    ruta_salida = concat(_syn_strcpy(ruta_temp), ".out")
+    comando = concat("synapse check --no-emit \"", _syn_strcpy(ruta_temp))
+    comando = concat(comando, "\" > \"")
+    comando = concat(comando, _syn_strcpy(ruta_salida))
+    comando = concat(comando, "\" 2>&1")
+    rc = ejecutar_comando(comando)
+    salida = leer_archivo_local(ruta_salida)
     eliminar_archivo_local(ruta_temp)
-    si salida != "":
+    eliminar_archivo_local(ruta_salida)
+    si rc == 0:
+        resultado.es_valido = verdadero
+    sino:
         resultado.es_valido = falso
-        resultado.errores = salida
+        si salida == "":
+            resultado.errores = "El compilador falló sin salida de error."
+        sino:
+            resultado.errores = salida
     retornar resultado
+
+// Extrae archivo:linea:columna - mensaje del primer diagnostico [Synapse].
+// cumple Manual 7 §6.3: "El compilador devuelve el error exacto (linea, columna, mensaje)"
+funcion parsear_error_compilacion(salida: texto, archivo: texto) -> ErrorCompilacion:
+    requiere:
+        _syn_strlen(salida) >= 0
+    garantiza:
+        _resultado_.linea >= 0 y _resultado_.columna >= 0 // cumple Manual 2 §5.1
+    error = ErrorCompilacion()
+    error.linea = 0
+    error.columna = 0
+    error.mensaje = ""
+    error.archivo = archivo
+    si _syn_strlen(salida) == 0:
+        retornar error
+    pos = indice_de(salida, "[Synapse] ")
+    si pos < 0:
+        error.mensaje = salida
+        retornar error
+    inicio = pos + 10
+    sep = indice_de(salida, " - ")
+    si sep <= inicio:
+        error.mensaje = salida
+        retornar error
+    ubicacion = subcadena(salida, inicio, sep - inicio)
+    largo_ubic = _syn_strlen(ubicacion)
+    ultimo = -1
+    penultimo = -1
+    i = 0
+    mientras i < largo_ubic:
+        si subcadena(ubicacion, i, 1) == ":":
+            penultimo = ultimo
+            ultimo = i
+        i = i + 1
+    si ultimo > 0:
+        si penultimo >= 0:
+            texto_linea = subcadena(ubicacion, penultimo + 1, ultimo - penultimo - 1)
+            texto_columna = subcadena(ubicacion, ultimo + 1, largo_ubic - ultimo - 1)
+            error.linea = _syn_atoi(texto_linea)
+            error.columna = _syn_atoi(texto_columna)
+            error.archivo = subcadena(ubicacion, 0, penultimo)
+    largo_salida = _syn_strlen(salida)
+    fin_msg = sep + 3
+    mientras fin_msg < largo_salida:
+        c = subcadena(salida, fin_msg, 1)
+        si c == "\n" o c == "\r":
+            romper
+        fin_msg = fin_msg + 1
+    error.mensaje = subcadena(salida, sep + 3, fin_msg - (sep + 3))
+    retornar error
 
 // ============================================================
 // R4: Reconstruir prompt con error (M7 §6.3)
@@ -97,6 +187,23 @@ funcion reconstruir_prompt_con_error(prompt_original: texto, error: ErrorCompila
 // R4: Guardar feedback humano (M7 §6.3)
 // ============================================================
 
+// Resuelve ~/.opensyn/feedback.jsonl sin depender del shell.
+// cumple Manual 7 §6.3: "en ~/.opensyn/feedback.jsonl"
+funcion ruta_feedback() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        _syn_strlen(_resultado_) > 0 // cumple Manual 2 §5.1
+    ruta = _syn_obtener_env("OPENSYN_FEEDBACK_PATH")
+    si _syn_strlen(ruta) > 0:
+        retornar ruta
+    home = _syn_obtener_env("USERPROFILE")
+    si _syn_strlen(home) == 0:
+        home = _syn_obtener_env("HOME")
+    si _syn_strlen(home) > 0:
+        retornar concat(home, "/.opensyn/feedback.jsonl")
+    retornar RUTA_FEEDBACK
+
 // Guarda pares (instrucción, código_corregido) en feedback.jsonl.
 // cumple Manual 7 §6.3: "OpenSyn guarda el par (instrucción, código_corregido) en ~/.opensyn/feedback.jsonl"
 funcion guardar_feedback(instruccion: texto, codigo_corregido: texto) -> entero:
@@ -104,16 +211,25 @@ funcion guardar_feedback(instruccion: texto, codigo_corregido: texto) -> entero:
         longitud(instruccion) > 0
     garantiza:
         _resultado_ == 0 o _resultado_ == -1 // cumple Manual 2 §5.1
-    ruta = RUTA_FEEDBACK
+    ruta = ruta_feedback()
     linea_json = "{\"instruction\": \""
     linea_json = concat(linea_json, escape_json_local(instruccion))
     linea_json = concat(linea_json, "\", \"output\": \"")
     linea_json = concat(linea_json, escape_json_local(codigo_corregido))
     linea_json = concat(linea_json, "\"}")
     exito = agregar_a_archivo_local(ruta, linea_json)
-    si exito == 1:
+    si exito == 0:
         retornar 0
     retornar -1
+
+// Punto de entrada para la correccion manual del usuario tras un fallo.
+// cumple Manual 7 §6.3: "Cuando el usuario corrige el codigo manualmente ... guarda el par"
+funcion registrar_correccion_manual(instruccion: texto, codigo_corregido: texto) -> entero:
+    requiere:
+        longitud(instruccion) > 0
+    garantiza:
+        _resultado_ == 0 o _resultado_ == -1 // cumple Manual 2 §5.1
+    retornar guardar_feedback(instruccion, codigo_corregido)
 
 // ============================================================
 // R10: Review de alta señal (M7 §8)
@@ -164,48 +280,89 @@ funcion bucle_validacion(prompt_inicial: texto, idioma: texto) -> texto:
         longitud(prompt_inicial) > 0
     garantiza:
         longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
-    codigo_actual = ""
-    error_msj = ""
-    intentos = 0
-    codigo_generado = generar_codigo_ia(prompt_inicial)
-    codigo_actual = codigo_generado
-    validacion = validar_con_check(codigo_generado, idioma)
-    si validacion.es_valido:
-        retornar codigo_actual
-    error_msj = validacion.errores
-    intentos = 1
-    mientras intentos < MAX_INTENTOS:
-        error = ErrorCompilacion()
-        error.linea = 0
-        error.columna = 0
-        error.mensaje = error_msj
-        error.archivo = ""
-        prompt_correccion = reconstruir_prompt_con_error(prompt_inicial, error)
-        nuevo_codigo = generar_codigo_ia(prompt_correccion)
-        codigo_actual = nuevo_codigo
-        nueva_validacion = validar_con_check(nuevo_codigo, idioma)
-        si nueva_validacion.es_valido:
-            retornar codigo_actual
-        error_msj = nueva_validacion.errores
-        intentos = intentos + 1
-    guardar_feedback(prompt_inicial, codigo_actual)
+    detalle = bucle_validacion_detallado(prompt_inicial, idioma)
+    si detalle.exito:
+        retornar detalle.codigo
     mensaje_fallo = "No se pudo generar código válido automáticamente. "
     mensaje_fallo = concat(mensaje_fallo, "Intenta ajustar la instrucción o corrige manualmente. ")
     mensaje_fallo = concat(mensaje_fallo, "Errores: ")
-    mensaje_fallo = concat(mensaje_fallo, error_msj)
+    mensaje_fallo = concat(mensaje_fallo, detalle.errores)
     retornar mensaje_fallo
+
+// Bucle estructurado: intento 1 + hasta 2 correcciones (3 intentos max).
+// cumple Manual 7 §6.3: "Se repiten ... intento 2. Si vuelve a fallar, se hace un intento 3"
+// cumple Manual 7 §6.3: "Si el tercer intento falla ... muestra el ultimo codigo ... y los errores"
+funcion bucle_validacion_detallado(prompt_inicial: texto, idioma: texto) -> ResultadoBucle:
+    requiere:
+        longitud(prompt_inicial) > 0
+    garantiza:
+        _resultado_.intentos >= 1 y _resultado_.intentos <= MAX_INTENTOS // cumple Manual 2 §5.1
+    resultado = ResultadoBucle()
+    resultado.exito = falso
+    resultado.codigo = ""
+    resultado.errores = ""
+    resultado.intentos = 1
+    resultado.error_linea = 0
+    resultado.error_columna = 0
+    resultado.error_mensaje = ""
+    resultado.error_archivo = ""
+    codigo_actual = generar_codigo_ia(_syn_strcpy(prompt_inicial))
+    validacion = validar_con_check(_syn_strcpy(codigo_actual), idioma)
+    si validacion.es_valido:
+        resultado.exito = verdadero
+        resultado.codigo = codigo_actual
+        resultado.intentos = 1
+        retornar resultado
+    error = parsear_error_compilacion(_syn_strcpy(validacion.errores), "")
+    resultado.error_linea = error.linea
+    resultado.error_columna = error.columna
+    resultado.error_mensaje = _syn_strcpy(error.mensaje)
+    resultado.error_archivo = error.archivo
+    intentos = 1
+    mientras intentos < MAX_INTENTOS:
+        prompt_correccion = reconstruir_prompt_con_error(_syn_strcpy(prompt_inicial), error)
+        codigo_actual = generar_codigo_ia(prompt_correccion)
+        validacion = validar_con_check(_syn_strcpy(codigo_actual), idioma)
+        intentos = intentos + 1
+        si validacion.es_valido:
+            resultado.exito = verdadero
+            resultado.codigo = codigo_actual
+            resultado.errores = ""
+            resultado.intentos = intentos
+            retornar resultado
+        error = parsear_error_compilacion(_syn_strcpy(validacion.errores), "")
+        resultado.error_linea = error.linea
+        resultado.error_columna = error.columna
+        resultado.error_mensaje = _syn_strcpy(error.mensaje)
+        resultado.error_archivo = error.archivo
+    resultado.codigo = codigo_actual
+    resultado.errores = validacion.errores
+    resultado.intentos = intentos
+    retornar resultado
 
 // ============================================================
 // Funciones auxiliares (puentes al runtime)
 // ============================================================
 
-funcion escribir_archivo_local(ruta: texto, contenido: texto) -> nulo:
+funcion escribir_archivo_local(ruta: texto, contenido: texto) -> entero:
     requiere:
         longitud(ruta) > 0
     garantiza:
-        verdadero
+        _resultado_ == 0 o _resultado_ == -1 // cumple Manual 2 §5.1
+    escrito = -1
     inseguro:
-        asm("CadenaSegura _esr = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _esc = {.datos = (char*)contenido.datos, .longitud = contenido.longitud}; _syn_escribir_archivo(_esr, _esc);")
+        asm("CadenaSegura _esr = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _esc = {.datos = (char*)contenido.datos, .longitud = contenido.longitud}; escrito = _syn_escribir_archivo(_esr, _esc);")
+    retornar escrito
+
+funcion leer_archivo_local(ruta: texto) -> texto:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        _syn_strlen(_resultado_) >= 0 // cumple Manual 2 §5.1
+    contenido = ""
+    inseguro:
+        asm("CadenaSegura _lr = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _lc = _syn_leer_archivo(_lr); if(_lc.longitud>0) contenido = _lc;")
+    retornar contenido
 
 funcion eliminar_archivo_local(ruta: texto) -> nulo:
     requiere:
@@ -226,18 +383,19 @@ funcion agregar_a_archivo_local(ruta: texto, contenido: texto) -> entero:
         asm("CadenaSegura _aer = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _aec = _syn_leer_archivo(_aer); if(_aec.longitud>0) existente = _aec;")
     nueva_linea = concat(contenido, "\n")
     completo = concat(existente, nueva_linea)
+    escrito = -1
     inseguro:
-        asm("CadenaSegura _aew = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _aewc = {.datos = (char*)completo.datos, .longitud = completo.longitud}; _syn_escribir_archivo(_aew, _aewc);")
-    retornar 0
+        asm("CadenaSegura _aew = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _aewc = {.datos = (char*)completo.datos, .longitud = completo.longitud}; escrito = _syn_escribir_archivo(_aew, _aewc);")
+    retornar escrito
 
 funcion escape_json_local(t: texto) -> texto:
     requiere:
         verdadero
     garantiza:
-        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
-    // Escapar comillas dobles para JSON seguro
+        _syn_strlen(_resultado_) >= 0 // cumple Manual 2 §5.1
+    // Escapar comillas dobles para JSON seguro. _syn_strlen no libera t.
     resultado = ""
-    total = longitud(t)
+    total = _syn_strlen(t)
     i = 0
     mientras i < total:
         c = subcadena(t, i, 1)
@@ -266,6 +424,13 @@ funcion generar_codigo_ia(prompt: texto) -> texto:
     host = "127.0.0.1"
     puerto = 8088
     max_tokens = 2048
+    // Overrides para despliegue y oraculo E2E con LLM falso.
+    host_env = _syn_obtener_env("OPENSYN_OLLAMA_HOST")
+    si _syn_strlen(host_env) > 0:
+        host = host_env
+    puerto_env = _syn_obtener_env("OPENSYN_OLLAMA_PORT")
+    si _syn_strlen(puerto_env) > 0:
+        puerto = _syn_atoi(puerto_env)
     // Intentar leer modelo de config_ollama.txt
     config_ruta = ""
     cwd = _syn_obtener_cwd()
@@ -277,7 +442,7 @@ funcion generar_codigo_ia(prompt: texto) -> texto:
     si config_contenido != "":
         // Buscar linea "model=..."
         i = 0
-        largo = longitud(config_contenido)
+        largo = _syn_strlen(config_contenido)
         mientras i < largo:
             si subcadena(config_contenido, i, 6) == "model=":
                 inicio = i + 6
