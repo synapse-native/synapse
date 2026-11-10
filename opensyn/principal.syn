@@ -12,6 +12,8 @@ importar std.texto
 importar std.tiempo
 // R149-R9: modulo local del agente (matriz de permisos + sandbox, Manual 7 §7.3)
 importar permisos
+// ME r204: herramientas de escritura/edicion del agente (Manual 7 §1.1/§7.3).
+importar herramientas
 
 constante ARCHIVO_CONFIG = ".synapse_config"
 
@@ -427,7 +429,7 @@ funcion modo_compilador() -> entero:
         sino si arg == "--json":
             json_flag = 1
         sino si ruta == "":
-            ruta = arg
+            ruta = _syn_strcpy(arg)
         i = i + 1
 
     si ruta == "":
@@ -748,7 +750,7 @@ funcion normalizar_modelo_activo(modelo_config: texto, modelos: texto) -> texto:
             num = num + 1
             inicio = i + 1
         i = i + 1
-    elegido = base
+    elegido = _syn_strcpy(base)
     si total > 0:
         si presente == 0:
             si primero != "":
@@ -801,9 +803,9 @@ funcion manejar_modelo(prompt: texto, modelos: texto) -> texto:
             i = i + 1
         nuevo = ""
         si numero > 0:
-            nuevo = nombre_pos
+            nuevo = _syn_strcpy(nombre_pos)
         sino:
-            nuevo = nombre_match
+            nuevo = _syn_strcpy(nombre_match)
         si nuevo != "":
             guardar_modelo_config(subcadena(nuevo, 0, longitud(nuevo)))
             res = subcadena(nuevo, 0, longitud(nuevo))
@@ -1047,16 +1049,28 @@ funcion construir_contexto(cwd_act: texto) -> texto:
         parte = concat(parte, filtrar_listado(lista))
     retornar parte
 
-// Parsea "TOOL <nombre> <argumento>" y ejecuta la herramienta (solo lectura).
-// listar [ruta] (cwd si vacia) | leer <ruta> | git status|log.
+// Parsea "TOOL <nombre> <argumento>" y ejecuta la herramienta.
+// listar [ruta] (cwd si vacia) | leer <ruta> | git status|log |
+// escribir <ruta> :: <contenido> | editar <ruta> :: <buscar> :: <reemplazo>.
 // R113: un unico retornar al final (depth 0); todas las ramas asignan 'res'.
 // ME-1 (R1): verifica permisos del modo actual antes de ejecutar.
+// cumple Manual 7 §1.1: despacho de las herramientas del agente local.
 funcion ejecutar_tool(linea: texto, cwd_act: texto, modo: entero) -> texto:
     requiere:
         verdadero
     garantiza:
         longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
-    res = "[TOOL_ERROR] herramienta desconocida. Usa: TOOL listar|leer|git <arg>"
+    retornar ejecutar_tool_aprobado(_syn_strcpy(linea), _syn_strcpy(cwd_act), modo, 0)
+
+// Nucleo del despacho. 'aprobado' == 1 salta la confirmacion ASK: solo se
+// usa tras una aprobacion explicita del usuario.
+// cumple Manual 7 §7.3: permisos minimos + sandbox antes de tocar el disco.
+funcion ejecutar_tool_aprobado(linea: texto, cwd_act: texto, modo: entero, aprobado: entero) -> texto:
+    requiere:
+        aprobado == 0 o aprobado == 1
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    res = "[TOOL_ERROR] herramienta desconocida. Usa: TOOL listar|leer|git|escribir|editar <arg>"
     total = longitud(linea)
     inicio = 5
     fin = inicio
@@ -1069,28 +1083,42 @@ funcion ejecutar_tool(linea: texto, cwd_act: texto, modo: entero) -> texto:
         nombre = subcadena(linea, inicio, fin - inicio)
         arg = subcadena(linea, fin, total - fin)
         // El modelo suele pegar espacio inicial/comillas/residuos: normalizar.
-        arg = recortar(arg)
+        arg = recortar(_syn_strcpy(arg))
+        // 'escribir' se aliasa a 'editar' en la matriz de permisos: MAX_HERRAMIENTAS
+        // es contrato inmutable de tests/integration/test_permisos_opensyn.py.
+        nombre_perm = _syn_strcpy(nombre)
+        si nombre == "escribir":
+            nombre_perm = "editar"
         // ME-1 (R1): verificar permisos del modo actual
-        si herramienta_permitida(modo, nombre) == 0:
+        si herramienta_permitida(modo, _syn_strcpy(nombre_perm)) == 0:
             retornar concat("[TOOL_ERROR] herramienta '", nombre, "' no permitida en modo ", nombre_modo(modo))
+        // cumple Manual 7 §7.3: la ruta de escritura se normaliza a absoluta
+        // ANTES de verificar el confinamiento al workspace.
+        ruta_perm = _syn_strcpy(arg)
+        si nombre == "escribir" o nombre == "editar":
+            sep_ini = indice_de(arg, "::")
+            si sep_ini >= 0:
+                ruta_rel = recortar(subcadena(arg, 0, sep_ini))
+                cwd_norm = herr_normalizar_cwd(_syn_strcpy(cwd_act))
+                ruta_perm = _syn_normalizar_ruta(concat(concat(cwd_norm, "/"), ruta_rel))
+            sino:
+                ruta_perm = _syn_strcpy(cwd_act)
         // ME-5 (R6): verificar matriz de permisos + sandbox (M7 §7.3)
         matriz_perm = matriz_permisos_crear()
-        nivel_perm = verificar_permiso_completo(matriz_perm, nombre, arg)
+        nivel_perm = verificar_permiso_completo(matriz_perm, _syn_strcpy(nombre_perm), _syn_strcpy(ruta_perm))
         si nivel_perm == 2:
             retornar concat("[TOOL_ERROR] herramienta '", nombre, "' denegada por sandbox (M7 §7.3)")
-        si nivel_perm == 1:
-            res_pregunta = concat("[TOOL_ASK] Se requiere confirmación para '", nombre, "'. ¿Permitir? (s/n)")
-            // En modo non-interactive, denegar por seguridad
-            retornar res_pregunta
+        si nivel_perm == 1 y aprobado == 0:
+            retornar concat("[TOOL_ASK] Se requiere confirmación para '", nombre, "'. ¿Permitir? (s/n)")
         si nombre == "listar":
-            ruta = arg
+            ruta = _syn_strcpy(arg)
             si ruta == "":
-                ruta = cwd_act
+                ruta = _syn_strcpy(cwd_act)
             si _syn_strstr(ruta, "..") >= 0 o _syn_strstr(ruta, ":") >= 0:
                 // H-R146-2: nunca FAILED la herramienta de listado — un modelo
                 // pequeño puede pedir rutas raras; se degrada a la raíz del
                 // repo para que SIEMPRE llegue contexto real (Manual 7 §2.3).
-                ruta = cwd_act
+                ruta = _syn_strcpy(cwd_act)
             listado = filtrar_listado(_syn_listar_directorio(ruta))
             si listado == "":
                 res = "[TOOL_RESULT] (directorio vacio, sin acceso o solo artefactos de build)"
@@ -1120,6 +1148,68 @@ funcion ejecutar_tool(linea: texto, cwd_act: texto, modo: entero) -> texto:
                     res = concat("[TOOL_RESULT] ", _syn_capturar_comando("git log --oneline -8"))
                 sino:
                     res = "[TOOL_ERROR] comando git no permitido (usa: git status|git log)"
+        // cumple Manual 7 §1.1: escritura/edicion asistida del agente.
+        si nombre == "escribir":
+            sep = indice_de(arg, "::")
+            si sep < 0:
+                res = "[TOOL_ERROR] formato: TOOL escribir <ruta> :: <contenido>"
+            sino:
+                ruta = recortar(subcadena(arg, 0, sep))
+                contenido = recortar(subcadena(arg, sep + 2, longitud(arg) - sep - 2))
+                contenido = herr_desescapar_saltos(_syn_strcpy(contenido))
+                res = herramienta_escribir(_syn_strcpy(ruta), _syn_strcpy(contenido), _syn_strcpy(cwd_act))
+        si nombre == "editar":
+            sep1 = indice_de(arg, "::")
+            si sep1 < 0:
+                res = "[TOOL_ERROR] formato: TOOL editar <ruta> :: <buscar> :: <reemplazo>"
+            sino:
+                ruta = recortar(subcadena(arg, 0, sep1))
+                resto = subcadena(arg, sep1 + 2, longitud(arg) - sep1 - 2)
+                sep2 = indice_de(resto, "::")
+                si sep2 < 0:
+                    res = "[TOOL_ERROR] formato: TOOL editar <ruta> :: <buscar> :: <reemplazo>"
+                sino:
+                    buscar = recortar(subcadena(resto, 0, sep2))
+                    reemplazo = recortar(subcadena(resto, sep2 + 2, longitud(resto) - sep2 - 2))
+                    buscar = herr_desescapar_saltos(_syn_strcpy(buscar))
+                    reemplazo = herr_desescapar_saltos(_syn_strcpy(reemplazo))
+                    res = herramienta_editar(_syn_strcpy(ruta), _syn_strcpy(buscar), _syn_strcpy(reemplazo), _syn_strcpy(cwd_act))
+    retornar res
+
+// Ejecuta una herramienta con confirmacion interactiva para el nivel ASK.
+// En stdin no interactivo (pipe/CI) deniega cerrado: sin aprobacion explicita
+// no se escribe nada.
+// cumple Manual 7 §7.3: ninguna escritura sin aprobacion del usuario.
+funcion ejecutar_tool_con_aprobacion(linea: texto, cwd_act: texto, modo: entero) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    res = ejecutar_tool_aprobado(_syn_strcpy(linea), _syn_strcpy(cwd_act), modo, 0)
+    si indice_de(res, "[TOOL_ASK]") == 0:
+        si _syn_es_consola() == 0:
+            retornar "[TOOL_ERROR] escritura denegada: se requiere confirmacion interactiva (sandbox M7 §7.3)"
+        escribir_linea(res)
+        escribir_linea("  Escribe 's' para permitir o 'n' para cancelar.")
+        respuesta = recortar(leer_linea())
+        si respuesta == "s" o respuesta == "si" o respuesta == "S" o respuesta == "SI":
+            retornar ejecutar_tool_aprobado(_syn_strcpy(linea), _syn_strcpy(cwd_act), modo, 1)
+        retornar "[TOOL_ERROR] operacion cancelada por el usuario"
+    retornar res
+
+// Variante TUI: la confirmacion usa el menu modal de teclado crudo.
+// cumple Manual 7 §7.3: sandbox y aprobacion explicita en pantalla completa.
+funcion tui_ejecutar_tool_con_aprobacion(linea: texto, cwd_act: texto, modo: entero) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    res = ejecutar_tool_aprobado(_syn_strcpy(linea), _syn_strcpy(cwd_act), modo, 0)
+    si indice_de(res, "[TOOL_ASK]") == 0:
+        eleccion = _syn_tui_menu(res, "Si\nNo")
+        si eleccion == "Si":
+            retornar ejecutar_tool_aprobado(_syn_strcpy(linea), _syn_strcpy(cwd_act), modo, 1)
+        retornar "[TOOL_ERROR] operacion cancelada por el usuario"
     retornar res
 
 // Bucle del agente: contexto estatico + hasta 5 iteraciones de herramientas.
@@ -1132,7 +1222,7 @@ funcion consultar_agente(modelo: texto, prompt_usuario: texto, modo: entero) -> 
     garantiza:
         longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     cwd_act = _syn_obtener_cwd()
-    ctx = construir_contexto(cwd_act)
+    ctx = construir_contexto(_syn_strcpy(cwd_act))
     sys = AGENTE_SYS_BASE
     sys = concat(sys, ctx)
     sys = concat(sys, "\n\n[USUARIO]\n")
@@ -1144,15 +1234,15 @@ funcion consultar_agente(modelo: texto, prompt_usuario: texto, modo: entero) -> 
         si respuesta == "":
             respuesta_final = ""
             romper
-        limpia = recortar(respuesta)
+        limpia = recortar(_syn_strcpy(respuesta))
         si _syn_strstr(limpia, "TOOL ") == 0:
-            salida = ejecutar_tool(limpia, cwd_act, modo)
+            salida = ejecutar_tool_con_aprobacion(_syn_strcpy(limpia), _syn_strcpy(cwd_act), modo)
             sys = concat(sys, "\n")
             sys = concat(sys, salida)
             sys = concat(sys, "\n[Continua: usa otra linea TOOL si necesitas mas contexto, o responde directamente.]")
             iteracion = iteracion + 1
         sino:
-            respuesta_final = limpia
+            respuesta_final = _syn_strcpy(limpia)
             romper
     retornar respuesta_final
 
@@ -1168,7 +1258,7 @@ funcion consultar_agente(modelo: texto, prompt_usuario: texto, modo: entero) -> 
 // (R147: la versión "ejemplo" lo hacía narrar en vez de actuar). Sin el
 // literal [USUARIO] dentro del texto (ollama.c parte system/user por esa
 // marca). Mantener bajo 3500 bytes: ollama.c trunca a los ÚLTIMOS 3500 (R144c).
-constante AGENTE_SYS_BASE = "Eres OpenSyn, asistente IA de Synapse (.syn). Syntax: 4 espacios, sin ;, funcion(name:type)->type, si/para/mientras, retornar. REGLA: si el usuario pregunta por archivos, carpetas, rutas o codigo REAL, tu respuesta debe ser UNA sola linea exacta: TOOL listar <ruta> (vacia = raiz del repo) o TOOL leer <ruta> o TOOL git status. No expliques nada antes. Ejemplo: usuario: 'que archivos hay en la raiz?' - tu respuesta: TOOL listar. Cuando ya recibas [TOOL_RESULT], responde en el idioma del usuario resumiendo (maximo 10), sin inventar archivos.\n\n[CONTEXTO]\n"
+constante AGENTE_SYS_BASE = "Eres OpenSyn, asistente IA de Synapse (.syn). Syntax: 4 espacios, sin ;, funcion(name:type)->type, si/para/mientras, retornar. REGLA: si el usuario pregunta por archivos, carpetas, rutas o codigo REAL, tu respuesta debe ser UNA sola linea exacta: TOOL listar <ruta> (vacia = raiz del repo) o TOOL leer <ruta> o TOOL git status. Para crear o sobrescribir un archivo: TOOL escribir <ruta> :: <contenido>. Para editar un fragmento unico: TOOL editar <ruta> :: <texto_viejo> :: <texto_nuevo>. Usa \\n para saltos de linea. Las herramientas de escritura piden confirmacion al usuario. No expliques nada antes. Ejemplo: usuario: 'que archivos hay en la raiz?' - tu respuesta: TOOL listar. Cuando ya recibas [TOOL_RESULT], responde en el idioma del usuario resumiendo (maximo 10), sin inventar archivos.\n\n[CONTEXTO]\n"
 
 // Elementos del menu de comandos (el menu filtra mientras se escribe).
 // ME-1 (R1): agregar comandos de modo ask/plan/code/debug/orchestrator
@@ -1262,8 +1352,8 @@ funcion tui_ejecutar_skill(modelo: texto, prompt_skill: texto, etiqueta: texto, 
     // /tdd genera código → requiere modo CODE o superior
     // /revisar solo lee → permitido en cualquier modo
     // /plan genera plan → requiere modo PLAN o superior
-    herramienta_skill = etiqueta
-    si herramienta_permitida(modo, herramienta_skill) == 0:
+    herramienta_skill = _syn_strcpy(etiqueta)
+    si herramienta_permitida(modo, _syn_strcpy(herramienta_skill)) == 0:
         _syn_tui_mensaje(3, concat(concat("[!] Skill '", etiqueta), "' no permitida en este modo. Cambia con /code o /plan."))
         _syn_tui_repintar(modelo)
         retornar
@@ -1286,7 +1376,7 @@ funcion tui_agente(modelo: texto, pregunta: texto, cwd_act: texto, modo: entero)
     // resultado se RETORNA al llamador (no hay globales mutables, Manual 2 §2).
     let tipo_clasif: entero = clasificar_tarea_local(pregunta)
     _syn_tui_mensaje(0, concat("❯ ", pregunta))
-    sys = concat(AGENTE_SYS_BASE, construir_contexto(cwd_act))
+    sys = concat(AGENTE_SYS_BASE, construir_contexto(_syn_strcpy(cwd_act)))
     sys = concat(sys, "\n\n[USUARIO]\n")
     sys = concat(sys, pregunta)
     iteracion = 0
@@ -1297,16 +1387,16 @@ funcion tui_agente(modelo: texto, pregunta: texto, cwd_act: texto, modo: entero)
         si resp == "":
             _syn_tui_pensando(0, "")
             retornar tipo_clasif
-        limpia = recortar(resp)
+        limpia = recortar(_syn_strcpy(resp))
         si _syn_strstr(limpia, "TOOL ") == 0:
             // El modelo pide una herramienta: su texto era la petición, no
             // la respuesta final; se quita y se muestra como evento.
             _syn_tui_mensaje_pop()
-            pedido = tui_acotar(limpia, 90)
+            pedido = tui_acotar(_syn_strcpy(limpia), 90)
             _syn_tui_mensaje(2, concat("· ", pedido))
             _syn_tui_repintar(modelo)
-            salida = ejecutar_tool(limpia, cwd_act, modo)
-            resumen = tui_acotar(salida, 1200)
+            salida = tui_ejecutar_tool_con_aprobacion(_syn_strcpy(limpia), _syn_strcpy(cwd_act), modo)
+            resumen = tui_acotar(_syn_strcpy(salida), 1200)
             _syn_tui_mensaje(2, resumen)
             _syn_tui_repintar(modelo)
             sys = concat(sys, "\n\n[TOOL_RESULT — contexto REAL del repo; respondé al usuario con esto, citando carpetas/archivos de la lista]\n")
@@ -1343,7 +1433,7 @@ funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero,
         retornar "!modo:1"
     si entrada == "/code":
         _syn_tui_mensaje(2, "Modo: CODE (edición)")
-        _syn_tui_mensaje(2, "  Herramientas: listar, leer, git, plan, editar, compilar")
+        _syn_tui_mensaje(2, "  Herramientas: listar, leer, git, plan, escribir, editar, compilar")
         _syn_tui_repintar(modelo)
         retornar "!modo:2"
     si entrada == "/debug":

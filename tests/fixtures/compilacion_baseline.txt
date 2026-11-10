@@ -1,0 +1,18 @@
+# Baseline de modulos de produccion de Fase 32 que HOY no compilan.
+#
+# El gate tests/integration/test_compilacion_fase32.py falla si:
+#   - un modulo de produccion FUERA de esta lista no compila, o
+#   - un modulo de esta lista YA compila (trinquete: hay que quitarlo).
+#
+# Cada linea es una ruta relativa a la raiz del repo. Los comentarios y las
+# lineas vacias se ignoran.
+opensyn/architect_det.syn
+opensyn/chat.syn
+opensyn/explorer_det.syn
+opensyn/memoria_persistente_cifrada.syn
+opensyn/pipeline_multiagente.syn
+opensyn/router.syn
+opensyn/run_manager.syn
+opensyn/validation_loop.syn
+opensyn/verificacion_aot.syn
+nucleo/grafo_conocimiento.syn

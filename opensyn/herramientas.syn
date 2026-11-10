@@ -1,0 +1,167 @@
+#lang: es
+// opensyn/herramientas.syn - Herramientas de escritura del agente OpenSyn.
+// cumple Manual 7 §1.1: OpenSyn es el asistente local equivalente a OpenCode/Copilot.
+// cumple Manual 7 §2.3: las herramientas se describen en el System Prompt (sin fine-tuning).
+// cumple Manual 7 §7.3: sandboxing — las escrituras quedan confinadas al workspace.
+// cumple Manual 2 §5.1: contratos requiere/garantiza booleanos en funciones publicas.
+//
+// R113: en Synapse todo parametro `texto` es CONSUMIDO por el callee (RAII del
+// parametro). El llamador que necesite conservar una cadena pasa `_syn_strcpy`.
+// Helpers de un solo retorno al final (depth 0) para que el RAII libere limpio.
+
+importar std.io
+importar std.texto
+importar std.sistema
+importar permisos
+
+constante HERR_MAX_CONTENIDO = 262144
+
+// Normaliza el cwd para comparar rutas con el mismo separador de plataforma.
+// Consume 'cwd': el llamador pasa una copia _syn_strcpy si la necesita despues.
+// cumple Manual 7 §7.3: una sola taxonomia de normalizacion para el sandbox.
+funcion herr_normalizar_cwd(cwd: texto) -> texto:
+    requiere:
+        longitud(cwd) > 0
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    retornar _syn_normalizar_ruta(cwd)
+
+// Verifica que la ruta relativa quede dentro del workspace.
+// Consume 'ruta' y 'cwd': el llamador pasa copias _syn_strcpy.
+// cumple Manual 7 §7.3: rechaza '..', unidades absolutas, '~' y escapes.
+funcion herr_ruta_permitida(ruta: texto, cwd: texto) -> booleano:
+    requiere:
+        longitud(cwd) > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso // cumple Manual 2 §5.1
+    permitida = verdadero
+    si ruta == "":
+        permitida = falso
+    sino:
+        si longitud(ruta) > 4096:
+            permitida = falso
+        sino:
+            si indice_de(ruta, "..") >= 0:
+                permitida = falso
+            sino:
+                si indice_de(ruta, ":") >= 0:
+                    permitida = falso
+                sino:
+                    si subcadena(ruta, 0, 1) == "~":
+                        permitida = falso
+                    sino:
+                        cwd_norm = herr_normalizar_cwd(_syn_strcpy(cwd))
+                        ruta_abs = _syn_normalizar_ruta(concat(concat(cwd_norm, "/"), ruta))
+                        si es_ruta_en_workspace(_syn_strcpy(ruta_abs), _syn_strcpy(cwd_norm)) == falso:
+                            permitida = falso
+    retornar permitida
+
+// Cuenta ocurrencias no solapadas de 'buscar' en 'texto'.
+// Consume 'texto' y 'buscar': el llamador pasa copias _syn_strcpy.
+// cumple Manual 7 §1.1: la edicion exige un fragmento unico y verificable.
+funcion herr_contar_ocurrencias(texto: texto, buscar: texto) -> entero:
+    requiere:
+        longitud(buscar) > 0
+    garantiza:
+        _resultado_ >= 0 // cumple Manual 2 §5.1
+    total = 0
+    i = 0
+    largo = longitud(texto)
+    mientras i < largo:
+        resto = subcadena(texto, i, largo - i)
+        pos = indice_de(resto, buscar)
+        si pos < 0:
+            romper
+        total = total + 1
+        i = i + pos + longitud(buscar)
+    retornar total
+
+// Convierte la secuencia literal '\n' en saltos de linea reales.
+// Consume 't': el llamador pasa una copia _syn_strcpy.
+// cumple Manual 7 §2.3: el contenido viaja en una linea del protocolo TOOL.
+funcion herr_desescapar_saltos(t: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    res = ""
+    i = 0
+    largo = longitud(t)
+    mientras i < largo:
+        c = subcadena(t, i, 1)
+        si c == "\\":
+            si i + 1 < largo:
+                sig = subcadena(t, i + 1, 1)
+                si sig == "n":
+                    res = concat(res, "\n")
+                    i = i + 2
+                sino:
+                    res = concat(res, c)
+                    i = i + 1
+            sino:
+                res = concat(res, c)
+                i = i + 1
+        sino:
+            res = concat(res, c)
+            i = i + 1
+    retornar res
+
+// Escribe un archivo relativo al workspace.
+// Consume 'ruta', 'contenido' y 'cwd': el llamador pasa copias _syn_strcpy.
+// cumple Manual 7 §1.1: escritura asistida equivalente a OpenCode/Copilot.
+// cumple Manual 7 §7.3: la ruta se valida antes de tocar el disco.
+funcion herramienta_escribir(ruta: texto, contenido: texto, cwd: texto) -> texto:
+    requiere:
+        longitud(cwd) > 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    msg = ""
+    si herr_ruta_permitida(_syn_strcpy(ruta), _syn_strcpy(cwd)) == falso:
+        msg = "[TOOL_ERROR] ruta no permitida (usa rutas relativas dentro del repo)"
+    sino:
+        si longitud(contenido) > HERR_MAX_CONTENIDO:
+            msg = "[TOOL_ERROR] contenido demasiado grande"
+        sino:
+            res = escribir_archivo(_syn_strcpy(ruta), _syn_strcpy(contenido))
+            si res != 0:
+                msg = concat("[TOOL_ERROR] no se pudo escribir ", ruta)
+            sino:
+                msg = concat("[TOOL_RESULT] escrito ", ruta)
+    retornar msg
+
+// Reemplaza un fragmento unico de un archivo del workspace.
+// Consume 'ruta', 'buscar', 'reemplazo' y 'cwd': el llamador pasa copias _syn_strcpy.
+// cumple Manual 7 §1.1: edicion asistida equivalente a OpenCode/Copilot.
+// cumple Manual 7 §7.3: misma validacion de ruta que la escritura.
+funcion herramienta_editar(ruta: texto, buscar: texto, reemplazo: texto, cwd: texto) -> texto:
+    requiere:
+        longitud(cwd) > 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    msg = ""
+    si herr_ruta_permitida(_syn_strcpy(ruta), _syn_strcpy(cwd)) == falso:
+        msg = "[TOOL_ERROR] ruta no permitida (usa rutas relativas dentro del repo)"
+    sino:
+        si buscar == "":
+            msg = "[TOOL_ERROR] el fragmento a buscar no puede ser vacio"
+        sino:
+            contenido = leer_archivo(_syn_strcpy(ruta))
+            si contenido == "":
+                msg = concat("[TOOL_ERROR] archivo vacio o no legible: ", ruta)
+            sino:
+                ocurrencias = herr_contar_ocurrencias(_syn_strcpy(contenido), _syn_strcpy(buscar))
+                si ocurrencias == 0:
+                    msg = concat("[TOOL_ERROR] fragmento no encontrado en ", ruta)
+                sino:
+                    si ocurrencias > 1:
+                        msg = concat("[TOOL_ERROR] fragmento ambiguo (", entero_a_texto(ocurrencias))
+                        msg = concat(msg, " ocurrencias); usa un fragmento unico en ")
+                        msg = concat(msg, ruta)
+                    sino:
+                        nuevo = reemplazar(_syn_strcpy(contenido), _syn_strcpy(buscar), _syn_strcpy(reemplazo))
+                        res = escribir_archivo(_syn_strcpy(ruta), _syn_strcpy(nuevo))
+                        si res != 0:
+                            msg = concat("[TOOL_ERROR] no se pudo editar ", ruta)
+                        sino:
+                            msg = concat("[TOOL_RESULT] editado ", ruta)
+    retornar msg
