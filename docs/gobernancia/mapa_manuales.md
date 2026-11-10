@@ -79,6 +79,7 @@ fallará con instrucción explícita si un archivo modificado no está mapeado.
   "nucleo/generador/*": ["Manual 2"],
   "nucleo/llvm_backend.syn": ["Manual 1"],
   "nucleo/wasm_backend.syn": ["Manual 1"],
+  "nucleo/grafo_conocimiento.syn": ["Manual 6 §1.1", "Manual 2 §5.1"],
   "runtime/core/debug.c": ["Manual 9 §1"],
   "runtime/core/quantum_runtime.h": ["Manual 9 §6"],
   "runtime/core/memory.c": ["Manual 4 §2"],

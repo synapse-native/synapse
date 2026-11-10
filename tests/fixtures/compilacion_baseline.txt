@@ -15,4 +15,3 @@ opensyn/router.syn
 opensyn/run_manager.syn
 opensyn/validation_loop.syn
 opensyn/verificacion_aot.syn
-nucleo/grafo_conocimiento.syn
