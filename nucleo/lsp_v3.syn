@@ -21,6 +21,8 @@ externo funcion lsp_build_completion_items() -> texto
 // §1.7.1 — Leer cabecera (Content-Length)
 // ============================================================
 
+// cumple Manual 8 §1.2: cabecera Content-Length y lectura de mensajes consecutivos
+// cumple Manual 8 §1.7.3: indice_de busca delimitadores sin exponer C de bajo nivel
 funcion leer_cabecera() -> entero:
     requiere:
         verdadero
@@ -33,21 +35,21 @@ funcion leer_cabecera() -> entero:
             romper
         si linea == "\r":
             romper
-        let idx = strstr_f(linea, "Content-Length:")
+        let idx = indice_de(linea, "Content-Length:")
         si idx == -1:
-            idx = strstr_f(linea, "content-length:")
+            idx = indice_de(linea, "content-length:")
         si idx >= 0:
             let despues = idx + 15
-            let len_total = strlen_s(linea)
+            let len_total = _syn_strlen(linea)
             let pos_num = despues
             mientras pos_num < len_total:
                 let c = subcadena(linea, pos_num, 1)
                 si cmp_texto(c, " ") != 0:
                     romper
                 pos_num = pos_num + 1
-            let fin_num = strlen_s(linea)
+            let fin_num = _syn_strlen(linea)
             let busqueda_resto = subcadena(linea, pos_num, fin_num - pos_num)
-            let cr_idx = strstr_f(busqueda_resto, "\r")
+            let cr_idx = indice_de(busqueda_resto, "\r")
             si cr_idx >= 0:
                 fin_num = pos_num + cr_idx
             let num_len = fin_num - pos_num
@@ -78,7 +80,7 @@ funcion extraer_entero(texto: texto) -> entero:
         verdadero
     garantiza:
         verdadero
-    let len = strlen_s(texto)
+    let len = _syn_strlen(texto)
     let resultado = 0
     let negativo = 0
     let i = 0
@@ -140,11 +142,11 @@ funcion extraer_id_body(body: texto) -> entero:
     garantiza:
         verdadero
     let patron = "\"id\":"
-    let idx = strstr_f(body, patron)
+    let idx = indice_de(body, patron)
     si idx == -1:
         retornar -1
     let inicio_num = idx + 5
-    let len_body = strlen_s(body)
+    let len_body = _syn_strlen(body)
     si inicio_num >= len_body:
         retornar -1
     // Saltar espacios
@@ -180,35 +182,36 @@ funcion extraer_id_body(body: texto) -> entero:
 // §1.7.2 — Responder JSON-RPC
 // ============================================================
 
+// cumple Manual 8 §1.2: respuesta JSON-RPC delimitada por Content-Length
 funcion enviar_respuesta(respuesta: texto) -> nulo:
     requiere:
-        strlen_s(respuesta) > 0
+        _syn_strlen(respuesta) > 0
     garantiza:
         verdadero
-    let len = strlen_s(respuesta)
+    let len = _syn_strlen(respuesta)
     let header = "Content-Length: " + a_texto(len) + "\r\n\r\n"
-    escribir(header)
-    escribir(respuesta)
+    escribir(_syn_strcpy(header))
+    escribir(_syn_strcpy(respuesta))
 
 funcion construir_respuesta(id: entero, resultado: texto) -> texto:
     requiere:
         id >= 0
     garantiza:
-        strlen_s(_resultado_) > 0
+        _syn_strlen(_resultado_) > 0
     retornar "{\"jsonrpc\":\"2.0\",\"id\":" + a_texto(id) + ",\"result\":" + resultado + "}"
 
 funcion construir_error(id: entero, codigo: entero, mensaje: texto) -> texto:
     requiere:
         id >= 0
     garantiza:
-        strlen_s(_resultado_) > 0
+        _syn_strlen(_resultado_) > 0
     retornar "{\"jsonrpc\":\"2.0\",\"id\":" + a_texto(id) + ",\"error\":{\"code\":" + a_texto(codigo) + ",\"message\":\"" + mensaje + "\"}}"
 
 funcion construir_notificacion(metodo: texto, params: texto) -> texto:
     requiere:
-        strlen_s(metodo) > 0
+        _syn_strlen(metodo) > 0
     garantiza:
-        strlen_s(_resultado_) > 0
+        _syn_strlen(_resultado_) > 0
     retornar "{\"jsonrpc\":\"2.0\",\"method\":\"" + metodo + "\",\"params\":" + params + "}"
 
 // ============================================================
@@ -219,7 +222,7 @@ funcion json_string(valor: texto) -> texto:
     requiere:
         verdadero
     garantiza:
-        strlen_s(_resultado_) >= 2
+        _syn_strlen(_resultado_) >= 2
     let escaped = escapar_json(valor)
     retornar "\"" + escaped + "\""
 
@@ -250,7 +253,7 @@ funcion palabra_en_posicion(linea: texto, pos: entero) -> texto:
         pos >= 0
     garantiza:
         verdadero
-    let len_lin = strlen_s(linea)
+    let len_lin = _syn_strlen(linea)
     si pos >= len_lin:
         retornar ""
 
@@ -307,7 +310,7 @@ funcion buscar_def_funcion(doc: texto, nombre: texto) -> entero:
     garantiza:
         _resultado_ >= -1
     let patron = "funcion " + nombre + "("
-    retornar strstr_f(doc, patron)
+    retornar indice_de(doc, patron)
 
 // ============================================================
 // Helper: buscar variable en documento
@@ -320,8 +323,8 @@ funcion buscar_def_variable(doc: texto, nombre: texto) -> entero:
         _resultado_ >= -1
     let patron1 = nombre + " = "
     let patron2 = "let " + nombre + " = "
-    let idx1 = strstr_f(doc, patron1)
-    let idx2 = strstr_f(doc, patron2)
+    let idx1 = indice_de(doc, patron1)
+    let idx2 = indice_de(doc, patron2)
     si idx1 >= 0:
         si idx2 >= 0:
             si idx1 < idx2:
@@ -350,12 +353,15 @@ funcion handle_initialize(id: entero) -> nulo:
 // §1.4 — Método: shutdown
 // ============================================================
 
+// cumple Manual 2 §5.1: el contrato requiere se evalúa antes del cuerpo
+// cumple Manual 8 §1.3: shutdown tolera notificación sin id y no rompe el ciclo
 funcion handle_shutdown(id: entero) -> nulo:
     requiere:
-        id >= 0
+        id >= -1
     garantiza:
         verdadero
-    enviar_respuesta("{\"jsonrpc\":\"2.0\",\"id\":" + a_texto(id) + ",\"result\":null}")
+    si id >= 0:
+        enviar_respuesta("{\"jsonrpc\":\"2.0\",\"id\":" + a_texto(id) + ",\"result\":null}")
 
 // ============================================================
 // §1.4 — Extraer URI desde params
@@ -366,16 +372,16 @@ funcion extraer_uri(params: texto) -> texto:
         verdadero
     garantiza:
         verdadero
-    let uri_idx = strstr_f(params, "\"uri\"")
+    let uri_idx = indice_de(params, "\"uri\"")
     si uri_idx == -1:
         retornar ""
     let despues = uri_idx + 5
-    let resto = subcadena(params, despues, strlen_s(params) - despues)
-    let comilla1 = strstr_f(resto, "\"")
+    let resto = subcadena(params, despues, _syn_strlen(params) - despues)
+    let comilla1 = indice_de(resto, "\"")
     si comilla1 == -1:
         retornar ""
-    let dentro = subcadena(resto, comilla1 + 1, strlen_s(resto) - comilla1 - 1)
-    let comilla2 = strstr_f(dentro, "\"")
+    let dentro = subcadena(resto, comilla1 + 1, _syn_strlen(resto) - comilla1 - 1)
+    let comilla2 = indice_de(dentro, "\"")
     si comilla2 == -1:
         retornar ""
     retornar subcadena(dentro, 0, comilla2)
@@ -391,7 +397,7 @@ funcion extraer_texto_doc(params: texto) -> texto:
         verdadero
     garantiza:
         verdadero
-    let len_params = strlen_s(params)
+    let len_params = _syn_strlen(params)
     // Pattern: , "text":" (9 characters)
     let patron = ",\"text\":\""
     let patron_len = 9
@@ -410,7 +416,7 @@ funcion extraer_texto_doc(params: texto) -> texto:
         retornar ""
     let valor_inicio = mejor_idx + patron_len
     let valor_resto = subcadena(params, valor_inicio, len_params - valor_inicio)
-    let cierre = strstr_f(valor_resto, "\"")
+    let cierre = indice_de(valor_resto, "\"")
     si cierre == -1:
         retornar ""
     retornar subcadena(valor_resto, 0, cierre)
@@ -424,23 +430,23 @@ funcion handle_hover(id: entero, doc: texto, params: texto) -> nulo:
         id >= 0
     garantiza:
         verdadero
-    let line_idx = strstr_f(params, "\"line\"")
+    let line_idx = indice_de(params, "\"line\"")
     si line_idx == -1:
         enviar_respuesta(construir_respuesta(id, "null"))
         retornar
-    let line_seg = subcadena(params, line_idx + 7, strlen_s(params) - line_idx - 7)
-    let comma_pos = strstr_f(line_seg, ",")
+    let line_seg = subcadena(params, line_idx + 7, _syn_strlen(params) - line_idx - 7)
+    let comma_pos = indice_de(line_seg, ",")
     let line_val = extraer_entero(subcadena(line_seg, 0, comma_pos))
 
-    let char_idx = strstr_f(params, "\"character\"")
+    let char_idx = indice_de(params, "\"character\"")
     si char_idx == -1:
         enviar_respuesta(construir_respuesta(id, "null"))
         retornar
-    let char_seg = subcadena(params, char_idx + 12, strlen_s(params) - char_idx - 12)
-    let brace_pos = strstr_f(char_seg, "}")
+    let char_seg = subcadena(params, char_idx + 12, _syn_strlen(params) - char_idx - 12)
+    let brace_pos = indice_de(char_seg, "}")
     let char_val = extraer_entero(subcadena(char_seg, 0, brace_pos))
 
-    let len_doc = strlen_s(doc)
+    let len_doc = _syn_strlen(doc)
     si len_doc == 0:
         enviar_respuesta(construir_respuesta(id, "null"))
         retornar
@@ -463,7 +469,7 @@ funcion handle_hover(id: entero, doc: texto, params: texto) -> nulo:
     let linea_fin = len_doc
     si linea_inicio < len_doc:
         let busqueda = subcadena(doc, linea_inicio, len_doc - linea_inicio)
-        let nl_idx = strstr_f(busqueda, "\n")
+        let nl_idx = indice_de(busqueda, "\n")
         si nl_idx >= 0:
             linea_fin = linea_inicio + nl_idx
 
@@ -472,19 +478,19 @@ funcion handle_hover(id: entero, doc: texto, params: texto) -> nulo:
         retornar
 
     let linea_texto = subcadena(doc, linea_inicio, linea_fin - linea_inicio)
-    let len_lin = strlen_s(linea_texto)
+    let len_lin = _syn_strlen(linea_texto)
     si char_val >= len_lin:
         enviar_respuesta(construir_respuesta(id, "null"))
         retornar
 
     let palabra = palabra_en_posicion(linea_texto, char_val)
-    si strlen_s(palabra) == 0:
+    si _syn_strlen(palabra) == 0:
         enviar_respuesta(construir_respuesta(id, "null"))
         retornar
 
     // Buscar función
     let patron_func = "funcion " + palabra + "("
-    let func_idx = strstr_f(doc, patron_func)
+    let func_idx = indice_de(doc, patron_func)
     si func_idx >= 0:
         let def_linea = linea_de_posicion(doc, func_idx)
         let def_lin_inicio = func_idx
@@ -493,7 +499,7 @@ funcion handle_hover(id: entero, doc: texto, params: texto) -> nulo:
             si cmp_texto(c, "\n") == 0:
                 romper
             def_lin_inicio = def_lin_inicio - 1
-        let def_lin_fin = func_idx + strlen_s(palabra) + 8
+        let def_lin_fin = func_idx + _syn_strlen(palabra) + 8
         mientras def_lin_fin < len_doc:
             let c = subcadena(doc, def_lin_fin, 1)
             si cmp_texto(c, "\n") == 0:
@@ -507,8 +513,8 @@ funcion handle_hover(id: entero, doc: texto, params: texto) -> nulo:
     // Buscar variable
     let patron_var1 = palabra + " = "
     let patron_var2 = "let " + palabra + " = "
-    let var_idx1 = strstr_f(doc, patron_var1)
-    let var_idx2 = strstr_f(doc, patron_var2)
+    let var_idx1 = indice_de(doc, patron_var1)
+    let var_idx2 = indice_de(doc, patron_var2)
     let var_idx = -1
     si var_idx1 >= 0:
         var_idx = var_idx1
@@ -520,7 +526,7 @@ funcion handle_hover(id: entero, doc: texto, params: texto) -> nulo:
                 var_idx = var_idx2
     si var_idx >= 0:
         let tipo = lsp_get_enclosing_return_type(palabra)
-        si strlen_s(tipo) > 0:
+        si _syn_strlen(tipo) > 0:
             let result = "{\"contents\":{\"kind\":\"markdown\",\"value\":\"**variable** `" + palabra + "` : `" + tipo + "`\"}}"
             enviar_respuesta(construir_respuesta(id, result))
             retornar
@@ -551,23 +557,23 @@ funcion handle_definition(id: entero, uri: texto, doc: texto, params: texto) -> 
         id >= 0
     garantiza:
         verdadero
-    let line_idx = strstr_f(params, "\"line\"")
+    let line_idx = indice_de(params, "\"line\"")
     si line_idx == -1:
         enviar_respuesta(construir_respuesta(id, "null"))
         retornar
-    let line_seg = subcadena(params, line_idx + 7, strlen_s(params) - line_idx - 7)
-    let comma_pos = strstr_f(line_seg, ",")
+    let line_seg = subcadena(params, line_idx + 7, _syn_strlen(params) - line_idx - 7)
+    let comma_pos = indice_de(line_seg, ",")
     let line_val = extraer_entero(subcadena(line_seg, 0, comma_pos))
 
-    let char_idx = strstr_f(params, "\"character\"")
+    let char_idx = indice_de(params, "\"character\"")
     si char_idx == -1:
         enviar_respuesta(construir_respuesta(id, "null"))
         retornar
-    let char_seg = subcadena(params, char_idx + 12, strlen_s(params) - char_idx - 12)
-    let brace_pos = strstr_f(char_seg, "}")
+    let char_seg = subcadena(params, char_idx + 12, _syn_strlen(params) - char_idx - 12)
+    let brace_pos = indice_de(char_seg, "}")
     let char_val = extraer_entero(subcadena(char_seg, 0, brace_pos))
 
-    let len_doc = strlen_s(doc)
+    let len_doc = _syn_strlen(doc)
     si len_doc == 0:
         enviar_respuesta(construir_respuesta(id, "null"))
         retornar
@@ -588,7 +594,7 @@ funcion handle_definition(id: entero, uri: texto, doc: texto, params: texto) -> 
     let linea_fin = len_doc
     si linea_inicio < len_doc:
         let busqueda = subcadena(doc, linea_inicio, len_doc - linea_inicio)
-        let nl_idx = strstr_f(busqueda, "\n")
+        let nl_idx = indice_de(busqueda, "\n")
         si nl_idx >= 0:
             linea_fin = linea_inicio + nl_idx
 
@@ -597,18 +603,18 @@ funcion handle_definition(id: entero, uri: texto, doc: texto, params: texto) -> 
         retornar
 
     let linea_texto = subcadena(doc, linea_inicio, linea_fin - linea_inicio)
-    let len_lin = strlen_s(linea_texto)
+    let len_lin = _syn_strlen(linea_texto)
     si char_val >= len_lin:
         enviar_respuesta(construir_respuesta(id, "null"))
         retornar
 
     let palabra = palabra_en_posicion(linea_texto, char_val)
-    si strlen_s(palabra) == 0:
+    si _syn_strlen(palabra) == 0:
         enviar_respuesta(construir_respuesta(id, "null"))
         retornar
 
     let patron_func = "funcion " + palabra + "("
-    let func_idx = strstr_f(doc, patron_func)
+    let func_idx = indice_de(doc, patron_func)
     si func_idx >= 0:
         let def_linea = linea_de_posicion(doc, func_idx)
         let result = "{\"uri\":" + json_string(uri) + ",\"range\":{\"start\":{\"line\":" + a_texto(def_linea) + ",\"character\":9},\"end\":{\"line\":" + a_texto(def_linea) + ",\"character\":9}}}"
@@ -617,8 +623,8 @@ funcion handle_definition(id: entero, uri: texto, doc: texto, params: texto) -> 
 
     let patron_var1 = palabra + " = "
     let patron_var2 = "let " + palabra + " = "
-    let var_idx1 = strstr_f(doc, patron_var1)
-    let var_idx2 = strstr_f(doc, patron_var2)
+    let var_idx1 = indice_de(doc, patron_var1)
+    let var_idx2 = indice_de(doc, patron_var2)
     let var_idx = -1
     si var_idx1 >= 0:
         var_idx = var_idx1
@@ -654,28 +660,28 @@ funcion handle_code_action(id: entero, doc: texto, params: texto) -> nulo:
     garantiza:
         verdadero
     // Extraer rango del params
-    let range_idx = strstr_f(params, "\"range\"")
+    let range_idx = indice_de(params, "\"range\"")
     si range_idx == -1:
         enviar_respuesta(construir_respuesta(id, "[]"))
         retornar
-    let len_params = strlen_s(params)
-    let start_idx = strstr_f(params, "\"start\"")
+    let len_params = _syn_strlen(params)
+    let start_idx = indice_de(params, "\"start\"")
     si start_idx == -1:
         enviar_respuesta(construir_respuesta(id, "[]"))
         retornar
     // Extraer line de start
-    let line_idx = strstr_f(subcadena(params, start_idx, len_params - start_idx), "\"line\"")
+    let line_idx = indice_de(subcadena(params, start_idx, len_params - start_idx), "\"line\"")
     si line_idx == -1:
         enviar_respuesta(construir_respuesta(id, "[]"))
         retornar
     let abs_line = start_idx + line_idx
     let line_seg = subcadena(params, abs_line + 7, len_params - abs_line - 7)
-    let comma_pos = strstr_f(line_seg, ",")
+    let comma_pos = indice_de(line_seg, ",")
     si comma_pos == -1:
-        comma_pos = strlen_s(line_seg)
+        comma_pos = _syn_strlen(line_seg)
     let line_val = extraer_entero(subcadena(line_seg, 0, comma_pos))
     // Buscar la función que contiene esa línea
-    let len_doc = strlen_s(doc)
+    let len_doc = _syn_strlen(doc)
     let scan = 0
     let func_inicio = -1
     let func_fin = -1
@@ -705,7 +711,7 @@ funcion handle_code_action(id: entero, doc: texto, params: texto) -> nulo:
         // Verificar si tiene retornar
         let tiene_retornar = 0
         let body = subcadena(doc, func_inicio, func_fin - func_inicio)
-        si strstr_f(body, "retornar") >= 0:
+        si indice_de(body, "retornar") >= 0:
             tiene_retornar = 1
         si tiene_retornar == 0:
             // Sugerir agregar retornar 0
@@ -720,7 +726,7 @@ funcion handle_formatting(id: entero, doc: texto, params: texto) -> nulo:
         id >= 0
     garantiza:
         verdadero
-    let len_doc = strlen_s(doc)
+    let len_doc = _syn_strlen(doc)
     si len_doc == 0:
         enviar_respuesta(construir_respuesta(id, "[]"))
         retornar
@@ -776,23 +782,23 @@ funcion handle_signature_help(id: entero, doc: texto, params: texto) -> nulo:
     garantiza:
         verdadero
     // Extraer posición del params
-    let pos_idx = strstr_f(params, "\"position\"")
+    let pos_idx = indice_de(params, "\"position\"")
     si pos_idx == -1:
         enviar_respuesta(construir_respuesta(id, "{\"signatures\":[]}"))
         retornar
-    let len_params = strlen_s(params)
-    let line_idx = strstr_f(subcadena(params, pos_idx, len_params - pos_idx), "\"line\"")
+    let len_params = _syn_strlen(params)
+    let line_idx = indice_de(subcadena(params, pos_idx, len_params - pos_idx), "\"line\"")
     si line_idx == -1:
         enviar_respuesta(construir_respuesta(id, "{\"signatures\":[]}"))
         retornar
     let abs_line = pos_idx + line_idx
     let line_seg = subcadena(params, abs_line + 7, len_params - abs_line - 7)
-    let comma_pos = strstr_f(line_seg, ",")
+    let comma_pos = indice_de(line_seg, ",")
     si comma_pos == -1:
-        comma_pos = strlen_s(line_seg)
+        comma_pos = _syn_strlen(line_seg)
     let line_val = extraer_entero(subcadena(line_seg, 0, comma_pos))
     // Encontrar la línea en el documento
-    let len_doc = strlen_s(doc)
+    let len_doc = _syn_strlen(doc)
     let linea_inicio = 0
     let num_linea = 0
     let scan = 0
@@ -809,7 +815,7 @@ funcion handle_signature_help(id: entero, doc: texto, params: texto) -> nulo:
     let linea_fin = len_doc
     si linea_inicio < len_doc:
         let busqueda = subcadena(doc, linea_inicio, len_doc - linea_inicio)
-        let nl_idx = strstr_f(busqueda, "\n")
+        let nl_idx = indice_de(busqueda, "\n")
         si nl_idx >= 0:
             linea_fin = linea_inicio + nl_idx
     si linea_inicio >= linea_fin:
@@ -818,15 +824,15 @@ funcion handle_signature_help(id: entero, doc: texto, params: texto) -> nulo:
     let linea_texto = subcadena(doc, linea_inicio, linea_fin - linea_inicio)
     // Buscar llamada a función: buscar '(' más reciente antes del cursor
     // Extraer character
-    let char_idx = strstr_f(subcadena(params, pos_idx, len_params - pos_idx), "\"character\"")
+    let char_idx = indice_de(subcadena(params, pos_idx, len_params - pos_idx), "\"character\"")
     si char_idx == -1:
         enviar_respuesta(construir_respuesta(id, "{\"signatures\":[]}"))
         retornar
     let abs_char = pos_idx + char_idx
     let char_seg = subcadena(params, abs_char + 12, len_params - abs_char - 12)
-    let brace_pos = strstr_f(char_seg, "}")
+    let brace_pos = indice_de(char_seg, "}")
     si brace_pos == -1:
-        brace_pos = strlen_s(char_seg)
+        brace_pos = _syn_strlen(char_seg)
     let char_val = extraer_entero(subcadena(char_seg, 0, brace_pos))
     // Buscar '(' antes de la posición
     let paren_pos = -1
@@ -860,18 +866,18 @@ funcion handle_signature_help(id: entero, doc: texto, params: texto) -> nulo:
         enviar_respuesta(construir_respuesta(id, "{\"signatures\":[]}"))
         retornar
     let nombre_func = subcadena(linea_texto, nombre_inicio, paren_pos - nombre_inicio)
-    si strlen_s(nombre_func) == 0:
+    si _syn_strlen(nombre_func) == 0:
         enviar_respuesta(construir_respuesta(id, "{\"signatures\":[]}"))
         retornar
     // Buscar definición de la función en el documento
     let patron = "funcion " + nombre_func + "("
-    let def_idx = strstr_f(doc, patron)
+    let def_idx = indice_de(doc, patron)
     si def_idx == -1:
         enviar_respuesta(construir_respuesta(id, "{\"signatures\":[]}"))
         retornar
     // Extraer firma completa hasta ')'
     let firma_inicio = def_idx
-    let firma_fin = def_idx + strlen_s(patron)
+    let firma_fin = def_idx + _syn_strlen(patron)
     mientras firma_fin < len_doc:
         let cc = subcadena(doc, firma_fin, 1)
         si cmp_texto(cc, ")") == 0:
@@ -947,7 +953,7 @@ funcion ia_modelo_activo() -> texto:
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) > 0
+        _syn_strlen(_resultado_) > 0
     // Modelo activo: config_ollama.txt del cwd, luego HOME\.opensyn (el
     // instalador lo escribe allí, Manual 9 §5). Si no hay, primer modelo de
     // /api/tags; si no hay backend, default conservador.
@@ -976,9 +982,9 @@ funcion ia_modelo_activo() -> texto:
 // rutas absolutas). Patron de opensyn/principal.syn leer_archivo_sin_validar.
 funcion leer_archivo_sin_validar(ruta: texto) -> texto:
     requiere:
-        longitud(ruta) > 0
+        _syn_strlen(ruta) > 0
     garantiza:
-        longitud(resultado) >= 0
+        _syn_strlen(_resultado_) >= 0
     let contenido = ""
     inseguro:
         asm("CadenaSegura _rl = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _cl = _syn_leer_archivo(_rl); if(_cl.longitud>0) contenido = _cl;")
@@ -989,8 +995,8 @@ funcion ia_modelo_de_config(config: texto) -> texto:
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) >= 0
-    let total = strlen_s(config)
+        _syn_strlen(_resultado_) >= 0
+    let total = _syn_strlen(config)
     let i = indice_de(config, "model=")
     si i < 0:
         retornar ""
@@ -1010,8 +1016,8 @@ funcion ia_primer_modelo(tags_json: texto) -> texto:
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) >= 0
-    let total = strlen_s(tags_json)
+        _syn_strlen(_resultado_) >= 0
+    let total = _syn_strlen(tags_json)
     let i = indice_de(tags_json, "\"name\":\"")
     si i < 0:
         i = indice_de(tags_json, "\"name\": \"")
@@ -1039,33 +1045,33 @@ funcion handle_ai_explain(id: entero, params: texto) -> nulo:
         enviar_respuesta(construir_respuesta(id, "{\"ai_available\":false,\"explanation\":\"\"}"))
     sino:
         let modelo = ia_modelo_activo()
-        let prompt = concat("[USUARIO]Explica brevemente este codigo Synapse (que hace, linea por linea si aplica). Responde en espanol, sin markdown:\n", strcpy_f(codigo))
-        let respuesta = _syn_ollama_consultar(strcpy_f(modelo), strcpy_f(prompt), "127.0.0.1", 8088, 512)
+        let prompt = concat("[USUARIO]Explica brevemente este codigo Synapse (que hace, linea por linea si aplica). Responde en espanol, sin markdown:\n", _syn_strcpy(codigo))
+        let respuesta = _syn_ollama_consultar(_syn_strcpy(modelo), _syn_strcpy(prompt), "127.0.0.1", 8088, 512)
         si respuesta == "":
             enviar_respuesta(construir_respuesta(id, "{\"ai_available\":false,\"explanation\":\"\"}"))
         sino:
             let json_resp = "{\"ai_available\":true,\"explanation\":\"" + escapar_json(respuesta) + "\"}"
-            enviar_respuesta(construir_respuesta(id, strcpy_f(json_resp)))
+            enviar_respuesta(construir_respuesta(id, _syn_strcpy(json_resp)))
 
 // Extrae el valor de cadena del campo "clave":"..." de un JSON plano.
 funcion ia_extraer_campo(json_txt: texto, clave: texto) -> texto:
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) >= 0
-    let marcador = concat("\"", strcpy_f(clave))
-    let marcador2 = concat(strcpy_f(marcador), "\":\"")
-    let i = indice_de(json_txt, strcpy_f(marcador2))
+        _syn_strlen(_resultado_) >= 0
+    let marcador = concat("\"", _syn_strcpy(clave))
+    let marcador2 = concat(_syn_strcpy(marcador), "\":\"")
+    let i = indice_de(json_txt, _syn_strcpy(marcador2))
     si i < 0:
-        let marcador3 = concat("\"", strcpy_f(clave))
-        let marcador4 = concat(strcpy_f(marcador3), "\": \"")
-        i = indice_de(json_txt, strcpy_f(marcador4))
+        let marcador3 = concat("\"", _syn_strcpy(clave))
+        let marcador4 = concat(_syn_strcpy(marcador3), "\": \"")
+        i = indice_de(json_txt, _syn_strcpy(marcador4))
         si i < 0:
             retornar ""
-        i = i + strlen_s(marcador4)
+        i = i + _syn_strlen(marcador4)
     sino:
-        i = i + strlen_s(marcador2)
-    let total = strlen_s(json_txt)
+        i = i + _syn_strlen(marcador2)
+    let total = _syn_strlen(json_txt)
     let fin = i
     mientras fin < total:
         let c = subcadena(json_txt, fin, 1)
@@ -1083,14 +1089,28 @@ funcion ia_extraer_campo(json_txt: texto, clave: texto) -> texto:
     let r = indice_de(crudo, "\\n")
     mientras r >= 0:
         let antes = subcadena(crudo, 0, r)
-        let despues = subcadena(crudo, r + 2, strlen_s(crudo) - r - 2)
-        let crudo = concat(antes, concat("\n", strcpy_f(despues)))
-        let r = indice_de(strcpy_f(crudo), "\\n")
+        let despues = subcadena(crudo, r + 2, _syn_strlen(crudo) - r - 2)
+        let crudo = concat(antes, concat("\n", _syn_strcpy(despues)))
+        let r = indice_de(_syn_strcpy(crudo), "\\n")
     retornar crudo
 
 // ============================================================
 // FUNCIÓN PRINCIPAL — Bucle del LSP
 // ============================================================
+
+
+// ============================================================
+// Helper: comparar dos strings
+// ============================================================
+
+// cumple Manual 6 §3.1: helper interno sobre el externo C _syn_strcmp de std.texto
+funcion cmp_texto(a: texto, b: texto) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == 0 o _resultado_ < 0 o _resultado_ > 0
+    retornar _syn_strcmp(a, b)
+
 
 funcion principal() -> entero:
     let ejecutando = 1
@@ -1101,7 +1121,7 @@ funcion principal() -> entero:
             romper
 
         let body = leer_mensaje(content_length)
-        si strlen_s(body) == 0:
+        si _syn_strlen(body) == 0:
             romper
 
         // Extract ID directly from raw body BEFORE desde_texto(body) frees it.
@@ -1110,8 +1130,8 @@ funcion principal() -> entero:
         let id_val = -1
         let patron_id = "\"id\":"
         let patron_len_id = 5
-        let body_len = strlen_s(body)
-        let idx_id = strstr_f(body, patron_id)
+        let body_len = _syn_strlen(body)
+        let idx_id = indice_de(body, patron_id)
         si idx_id >= 0:
             let id_start = idx_id + patron_len_id
             let id_pos = id_start
@@ -1143,7 +1163,7 @@ funcion principal() -> entero:
         // Tolerante a espacios: clientes JSON pueden emitir "method":"x" (VS Code)
         // o "method": "x" (python json.dumps); buscar clave, luego ':', espacios y '"'
         let method_name = ""
-        let method_idx = strstr_f(body, "\"method\"")
+        let method_idx = indice_de(body, "\"method\"")
         si method_idx >= 0:
             let value_pos = method_idx + 8
             // saltar hasta el separador ':'
@@ -1178,7 +1198,7 @@ funcion principal() -> entero:
 
         let msg = desde_texto(body)
         let params_nodo = obtener_campo(msg, "params")
-        let params_str = strcpy_f(_json_a_texto(params_nodo))
+        let params_str = _syn_strcpy(_json_a_texto(params_nodo))
 
         // cumple Manual 8 1.2: dispatch via extracted method name (no use-after-free)
         si cmp_texto(method_name, "initialize") == 0:
@@ -1192,7 +1212,7 @@ funcion principal() -> entero:
                         handle_unknown(id_val)
                 sino:
                     si cmp_texto(method_name, "textDocument/didOpen") == 0:
-                        uri_actual = strcpy_f(extraer_uri(params_str))
+                        uri_actual = _syn_strcpy(extraer_uri(params_str))
                         lsp_doc_store(extraer_texto_doc(params_str))
                         let diag = "{\"uri\":" + json_string(uri_actual) + ",\"diagnostics\":[]}"
                         enviar_respuesta(construir_notificacion("textDocument/publishDiagnostics", diag))
