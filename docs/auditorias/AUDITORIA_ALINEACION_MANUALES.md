@@ -979,3 +979,16 @@ regresión 75/75. Evidencia `d0a46a4e11076ea6`; `contrastar` 5 requisitos/1
 oráculo, `alineacion` 2 archivos, `verificar_alineacion` 0 brechas.
 Reporte: `docs/reportes/R209.md` | 3064d40 |
 Manual 7 §2.4/§4.2/§6.2/§8, Manual 2 §5.1 |
+
+### R210 - ME r210_explorer_det (2026-11-11, 990aedb)
+Explorer determinista compilable y verificable E2E: `opensyn/explorer_det.syn`
+reescrito sobre `GrafoProyecto`/`NodoGrafo`/`AristaGrafo`, con BFS por archivo,
+dependencias y dependientes, radio 0/1/2, deduplicación por archivo y distancia
+entre nodos. Se evitó `continuar` (no soportado por S1) con condiciones
+anidadas y se agregó `elemento_texto` para la indexación tipada de
+`Lista<texto>`. Oráculo E2E nuevo 1/1; explorer existente 6/6; gate Fase 32 2/2
+(módulo retirado del baseline); regresión combinada 102/102. Evidencia
+`8c52618300038933`; `contrastar` 3 requisitos/1 oráculo, `alineacion` 1 archivo,
+`verificar_alineacion` 0 brechas.
+Reporte: `docs/reportes/R210.md` | 990aedb |
+Manual 6 §1.1, Manual 2 §5.1, Manual 7 §2.3, Manual 32 §4.3/§4.6 (referencia funcional) |
