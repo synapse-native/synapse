@@ -21,6 +21,33 @@ importar std.modelo
 importar std.texto
 
 // ============================================================
+// Helpers de texto (wrappers de std.texto)
+// ============================================================
+// cumple Manual 7 §2.4: el router usa comparacion y busqueda de texto
+// deterministas para clasificar y localizar codigo.
+
+funcion cmp_texto(a: texto, b: texto) -> entero:
+    requiere:
+        longitud(a) >= 0 y longitud(b) >= 0
+    garantiza:
+        _resultado_ == 0 o _resultado_ < 0 o _resultado_ > 0
+    retornar _syn_strcmp(a, b)
+
+funcion strstr_f(texto: texto, patron: texto) -> entero:
+    requiere:
+        longitud(texto) >= 0 y longitud(patron) >= 0
+    garantiza:
+        _resultado_ >= -1
+    retornar indice_de(texto, patron)
+
+funcion atoi_f(valor: texto) -> entero:
+    requiere:
+        longitud(valor) >= 0
+    garantiza:
+        verdadero
+    retornar _syn_atoi(valor)
+
+// ============================================================
 // Constantes de enrutamiento
 // ============================================================
 
@@ -174,7 +201,7 @@ funcion file_finder(consulta: texto) -> texto:
                 romper
             fin_entry = fin_entry + 1
         entry = subcadena(mapa, k, fin_entry - k)
-        pos_dp = strstr_f(entry, ":")
+        let pos_dp = strstr_f(entry, ":")
         si pos_dp >= 0:
             kw = subcadena(entry, 0, pos_dp)
             archivo = subcadena(entry, pos_dp + 1, longitud(entry) - pos_dp - 1)
@@ -454,6 +481,33 @@ funcion construir_prompt(consulta: ConsultaRAG, ruta: entero, contexto_texto: te
 // Función principal de enrutamiento
 // ============================================================
 
+// Extrae el bloque de codigo de una respuesta del modelo.
+// cumple Manual 7 §2.4: "Extrae el código de la respuesta del modelo
+// (usando expresiones regulares o parseo de bloques)".
+funcion extraer_codigo_router(respuesta: texto) -> texto:
+    requiere:
+        longitud(respuesta) >= 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    let pos = indice_de(respuesta, "```synapse")
+    si pos == -1:
+        pos = indice_de(respuesta, "```syquex")
+    si pos == -1:
+        retornar respuesta
+    let largo = longitud(respuesta)
+    let i = pos + 3
+    mientras i < largo:
+        si subcadena(respuesta, i, 1) == "\n":
+            romper
+        i = i + 1
+    si i < largo:
+        i = i + 1
+    let resto = subcadena(respuesta, i, largo - i)
+    let fin_rel = indice_de(resto, "```")
+    si fin_rel == -1:
+        retornar resto
+    retornar subcadena(resto, 0, fin_rel)
+
 // Procesa una consulta RAG a través del pipeline completo:
 // 1. Determina ruta según tipo de nodo AST y consulta
 // 2. Construye prompt con contexto apropiado
@@ -482,25 +536,26 @@ funcion procesar_consulta(ctx: puntero, consulta: ConsultaRAG, contexto_texto: t
     // 2. Obtener configuración
     cfg = obtener_configuracion_ruta(ruta)
 
-    // 3. Construir prompt con contexto
-    prompt = construir_prompt(consulta, ruta, contexto_texto, tipo_nodo, diagnosticos)
+    // 3. Construir prompt con contexto (preservar contexto/tipo para la confianza)
+    prompt = construir_prompt(consulta, ruta, _syn_strcpy(contexto_texto), _syn_strcpy(tipo_nodo), diagnosticos)
 
-    // 4. Estimar tokens de contexto (~4 chars/token)
+    // 4. Estimar tokens de contexto (~4 chars/token) y truncar de forma segura.
+    let max_chars = cfg.max_tokens * 4
+    si longitud(prompt) > max_chars:
+        prompt = subcadena(prompt, 0, max_chars)
     inseguro:
         asm("respuesta.tokens_inyectados = prompt.longitud / 4;")
-        asm("if (respuesta.tokens_inyectados > cfg.max_tokens) {")
-        asm("    if (cfg.max_tokens * 4 < prompt.longitud) {")
-        asm("        prompt.datos[cfg.max_tokens * 4] = '\\0';")
-        asm("        prompt.longitud = cfg.max_tokens * 4;")
-        asm("    }")
-        asm("}")
 
     // 5. Generar respuesta con el modelo local (via wrapper público)
     texto_generado = generar_texto(ctx, prompt, cfg.max_tokens, cfg.temperatura, 40, 0.9)
 
-    respuesta.texto_respuesta = texto_generado
     inseguro:
         asm("respuesta.tokens_generados = texto_generado.longitud / 4;")
+    // cumple Manual 7 §2.4: formateo de respuesta con extraccion de bloque.
+    si consulta.tipo == CONSULTA_GENERAR:
+        respuesta.texto_respuesta = extraer_codigo_router(texto_generado)
+    sino:
+        respuesta.texto_respuesta = texto_generado
 
     // 6. Calcular confianza basada en nivel de contexto disponible
     si contexto_texto != "" y tipo_nodo != "":
@@ -673,10 +728,10 @@ funcion planificar_antes_de_actuar(tarea: texto, contexto: texto) -> texto:
         longitud(tarea) > 0
     garantiza:
         longitud(_resultado_) > 0 // cumple Manual 2 §5.1
-    complejidad = evaluar_complejidad_local(tarea)
     pasos = "1) Analizar contexto y localizar archivos 2) Generar código 3) Validar con synapse check 4) Ejecutar tests"
     resumen = "Plan: "
     resumen = concat(resumen, tarea)
+    let complejidad = evaluar_complejidad_local(tarea)
     resumen = concat(resumen, " (")
     resumen = concat(resumen, nombre_complejidad_local(complejidad))
     resumen = concat(resumen, ") — ")
@@ -716,11 +771,11 @@ funcion nombre_complejidad_local(complejidad: entero) -> texto:
 // cumple Manual 7 §6.4: "El LSP puede invocar synapse lint --check --fix"
 // synapse lint es una herramienta Fase 31; se integra vía ejecutar_comando.
 
-funcion ejecutar_lint(archivo: texto) -> texto:
+funcion ejecutar_lint(archivo: texto) -> entero:
     requiere:
         longitud(archivo) > 0
     garantiza:
-        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+        _resultado_ >= -1 // cumple Manual 2 §5.1
     comando = concat("synapse lint --check ", archivo)
     resultado = ejecutar_comando(comando)
     retornar resultado
@@ -731,11 +786,11 @@ funcion ejecutar_lint(archivo: texto) -> texto:
 // cumple Manual 8 §4.1: "synapse fmt formatea código según reglas de estilo"
 // synapse fmt es una herramienta Fase 31; se integra vía ejecutar_comando.
 
-funcion ejecutar_fmt(archivo: texto) -> texto:
+funcion ejecutar_fmt(archivo: texto) -> entero:
     requiere:
         longitud(archivo) > 0
     garantiza:
-        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+        _resultado_ >= -1 // cumple Manual 2 §5.1
     comando = concat("synapse fmt --check ", archivo)
     resultado = ejecutar_comando(comando)
     retornar resultado
@@ -746,24 +801,25 @@ funcion ejecutar_fmt(archivo: texto) -> texto:
 // cumple Manual 7 §2.1: "gestión del ciclo de vida del servidor de inferencia"
 // Lifecycle: iniciar → verificar → detener
 
+funcion orchestrator_verificar_estado() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
+    // Stub determinista: la implementacion C del orquestador aun no existe
+    // en el repo (opensyn/orchestrator.h solo declara la API).
+    retornar 0
+
 funcion orchestrator_iniciar_lifecycle() -> entero:
     requiere:
         verdadero
     garantiza:
         _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
     // Verificar si ya está corriendo
-    estado = orchestrator_verificar_estado()
+    let estado = orchestrator_verificar_estado()
     si estado == 1:
         retornar 1
-    // Iniciar llama-server
-    inseguro:
-        asm("extern int orquestrador_iniciar(void*);")
-        asm("OrchestratorConfig _cfg = {0};")
-        asm("_cfg.port = 8088;")
-        asm("_cfg.n_threads = 4;")
-        asm("_cfg.temperature = 0.3;")
-        asm("int _r = orquestrador_iniciar(&_cfg);")
-        asm("return _r;")
+    // Stub determinista: no hay binario/simbolo C de orquestador enlazable.
     retornar 0
 
 funcion orchestrator_detener_lifecycle() -> entero:
@@ -771,9 +827,7 @@ funcion orchestrator_detener_lifecycle() -> entero:
         verdadero
     garantiza:
         _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
-    inseguro:
-        asm("extern int orchestrator_apagar();")
-        asm("return orchestrator_apagar();")
+    // Stub determinista: no hay binario/simbolo C de orquestador enlazable.
     retornar 0
 // cumple Manual 7 §4.3: "Si el servidor no responde en 30 segundos, error"
 
@@ -831,9 +885,9 @@ funcion revisar_codigo_inline(codigo: texto, salida_error: texto) -> RevisionRes
     rev.mensaje_error = salida_error
     rev.sugerencia = "Revisa el código generado y corrige el error."
     // Parsear línea del error si viene en formato "linea:columna:mensaje"
-    pos_dp1 = strstr_f(salida_error, ":")
+    let pos_dp1 = strstr_f(salida_error, ":")
     si pos_dp1 > 0:
-        pos_dp2 = strstr_f(subcadena(salida_error, pos_dp1 + 1, longitud(salida_error) - pos_dp1 - 1), ":")
+        let pos_dp2 = strstr_f(subcadena(salida_error, pos_dp1 + 1, longitud(salida_error) - pos_dp1 - 1), ":")
         si pos_dp2 > 0:
             num_linea = subcadena(salida_error, 0, pos_dp1)
             rev.linea = atoi_f(num_linea)

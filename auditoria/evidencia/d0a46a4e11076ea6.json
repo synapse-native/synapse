@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "d0a46a4e11076ea6",
+ "expediente": "docs/alineacion/r209_router_chat.md",
+ "fecha": "2026-11-10",
+ "archivos": [
+  "opensyn/chat.syn",
+  "opensyn/router.syn"
+ ],
+ "oraculos": {
+  "tests/opensyn/test_router_chat_comportamiento.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}
