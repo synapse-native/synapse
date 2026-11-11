@@ -950,3 +950,18 @@ Manual 7 §4.2/§6.3, Manual 2 §5.1 |
 Pipeline multiagente compilable y cableado: imports canónicos a `nucleo.grafo_conocimiento` y `opensyn.validation_loop`, estructuras reales del grafo, fases Explorer/Architect deterministas locales, Coder/Reviewer/Fixer con LLM real vía `_syn_ollama_consultar`, límite de 3 inferencias y validación final con `validar_con_check`. Se corrigió la colisión `a_texto`/`_json_a_texto` en el grafo. Oráculo E2E nuevo 1/1; pipeline existente 15/15; grafo 1/1; gate Fase 32 2/2 (módulo retirado del baseline). Evidencia `15b96b3c8f8fe172`; `contrastar` 4 requisitos/1 oráculo, `alineacion` 2 archivos, `verificar_alineacion` 0 brechas.
 Reporte: `docs/reportes/R207.md` | a578e03 |
 Manual 6 §1.1, Manual 2 §5.1, Manual 32 §5.3-§5.5 |
+
+### R208 - ME r208_run_manager (2026-11-10, 95ea023)
+Run manager reanudable y límites de ejecución: `opensyn/run_manager.syn`
+compila y persiste checkpoints con `_syn_escribir_archivo` interpretado
+correctamente (`0` = éxito), ownership corregido con `_syn_strcpy`, propagación
+de errores de checkpoint, reconstrucción de `checkpoint_path`/`timestamp_inicio`
+al deserializar, override `OPENSYN_RUNS_DIR` y `run_id` único con secuencia
+estática. Helpers ASM locales (`ahora_ms`, `entero_a_texto`, `concatenar_texto`)
+restaurados porque los tests estructurales existentes los exigen; `entero_a_texto`
+usa `pool_alloc`. Oráculo E2E nuevo 1/1; test existente de runs reanudables
+70/70; gate Fase 32 2/2 (módulo retirado del baseline). Evidencia
+`10cc67173f42e68a`; `contrastar` 4 requisitos/1 oráculo, `alineacion` 1 archivo,
+`verificar_alineacion` 0 brechas.
+Reporte: `docs/reportes/R208.md` | 95ea023 |
+Manual 7 §4.3, Manual 2 §5.1, Manual 32 §3.2/§3.4 |

@@ -7,7 +7,7 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-11-10** (R207 a578e03 COMPLETADO - ME r207_pipeline_multiagente: pipeline compilable y E2E con LLM y compilador real, oráculo E2E 1/1, pipeline existente 15/15, gate Fase 32 2/2; antes R206 7f17dec COMPLETADO - ME r206_validation_loop: bucle de validación y corrección automática con compilador real, oráculo E2E 4/4, regresión 85/85; antes R205b 5935a5d COMPLETADO — ME r205b_lsp_v3: reparación de compilación, ownership y protocolo del LSP nativo, 13 tests verdes; antes R205 b1e9959 COMPLETADO — ME r205_grafo_conocimiento: grafo de conocimiento real desde AST canónico, determinista, con persistencia JSON y oráculo E2E; antes R204 f018957 COMPLETADO — ME r204_tools_escritura: TOOL escribir/editar con sandbox y aprobación, gate de compilación Fase 32; antes R203 d865ab9 + R202 f1a4a02 + R201 c653fff + R200 f3b7268, ver dashboard; antes R199 a2d0ca3 + r198b3; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
+Última actualización: **2026-11-10** (R208 95ea023 COMPLETADO - ME r208_run_manager: run manager reanudable con checkpoints, timeout y límites, oráculo E2E 1/1, regresión de runs 70/70, gate Fase 32 2/2; antes R207 a578e03 COMPLETADO - ME r207_pipeline_multiagente: pipeline compilable y E2E con LLM y compilador real, oráculo E2E 1/1, pipeline existente 15/15, gate Fase 32 2/2; antes R206 7f17dec COMPLETADO - ME r206_validation_loop: bucle de validación y corrección automática con compilador real, oráculo E2E 4/4, regresión 85/85; antes R205b 5935a5d COMPLETADO — ME r205b_lsp_v3: reparación de compilación, ownership y protocolo del LSP nativo, 13 tests verdes; antes R205 b1e9959 COMPLETADO — ME r205_grafo_conocimiento: grafo de conocimiento real desde AST canónico, determinista, con persistencia JSON y oráculo E2E; antes R204 f018957 COMPLETADO — ME r204_tools_escritura: TOOL escribir/editar con sandbox y aprobación, gate de compilación Fase 32; antes R203 d865ab9 + R202 f1a4a02 + R201 c653fff + R200 f3b7268, ver dashboard; antes R199 a2d0ca3 + r198b3; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
  cierre de los 2 fallos DETERMINISTAS del barrido r195 (1569✓/25skip/6✗;
  los 5 del grupo A pasaban aislados, infra del barrido):
  (R1/H-R196-1 decisión Arquitecto ratificada "corregir contrato al manual")
@@ -123,7 +123,18 @@
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-11-10 sesión:** R207
+Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-11-10 sesión:** R208
+                   COMPLETADO (95ea023): ME r208_run_manager — run manager
+                   reanudable. `opensyn/run_manager.syn` compila y persiste
+                   checkpoints (`_syn_escribir_archivo` 0=éxito), corrige
+                   ownership con `_syn_strcpy`, reconstruye
+                   `checkpoint_path`/`timestamp_inicio`, usa
+                   `OPENSYN_RUNS_DIR` y genera `run_id` único con secuencia
+                   estática. Helpers ASM locales (`ahora_ms`,
+                   `entero_a_texto`, `concatenar_texto`) restaurados por tests
+                   estructurales; `entero_a_texto` usa `pool_alloc`. Oráculo
+                   E2E nuevo 1/1, runs reanudables 70/70, gate Fase 32 2/2;
+                   evidencia 10cc67173f42e68a. Antes R207
                    COMPLETADO (a578e03): ME r207_pipeline_multiagente — pipeline
                    compilable y cableado E2E. `opensyn/pipeline_multiagente.syn`
                    usa imports canónicos, grafo real, fases Explorer/Architect
@@ -844,6 +855,33 @@ Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc d
 - Verificación: build OK, 13 tests LSP verdes, `contrastar` 3 requisitos/3
   oráculos, `alineacion` 1 archivo, `verificar_alineacion` 0 brechas;
   evidencia `c01c7e55ec8d56b9`.
+
+### ME r208_run_manager (2026-11-10, 95ea023)
+- `opensyn/run_manager.syn` compila y ejecuta E2E: checkpoints persistentes,
+  reanudación desde la última subtarea completada, timeout absoluto de 300 s,
+  fallo tras 3 intentos, límite de 20 subtareas y `run_id` único con secuencia
+  estática. `OPENSYN_RUNS_DIR` aísla los runs en pruebas.
+- Hallazgo H-R208-1 (RESUELTO): `_syn_escribir_archivo` devuelve `0` en éxito,
+  pero el módulo comparaba contra `1`; todo checkpoint se reportaba como
+  fallido. Resolución: `escribir_checkpoint_local` retorna `0/-1` y
+  `guardar_checkpoint` comprueba `exito == 0`.
+- Hallazgo H-R208-2 (RESUELTO): los parámetros `texto` se consumen en las
+  fronteras; reutilizar `run_id`/`checkpoint_path`/`contenido` causaba doble
+  free. Resolución: `_syn_strcpy` en cada llamada que conserva la cadena.
+- Hallazgo H-R208-3 (RESUELTO): dos runs creados en el mismo milisegundo
+  compartían `run_id`. Resolución: `siguiente_secuencia_run` con contador
+  estático ASM; IDs `run_<ms>_<seq>`.
+- Hallazgo H-R208-4 (RESUELTO): el expediente quedó doblemente codificado en
+  UTF-8 por `Get-Content`/`Set-Content` de PowerShell 5.1 y las citas con
+  acentos no resolvían. Resolución: reescribir el expediente como UTF-8 real y
+  re-verificar (evidencia `10cc67173f42e68a`).
+- Lección: los tests estructurales existentes exigen los símbolos ASM
+  `clock_gettime`, `snprintf` y `memcpy`; se restauran helpers locales
+  (`ahora_ms`, `entero_a_texto`, `concatenar_texto`) en lugar de editar tests.
+  `entero_a_texto` usa `pool_alloc` para no devolver un buffer de stack.
+- Verificación: build OK, oráculo E2E 1/1, runs reanudables 70/70, gate Fase 32
+  2/2, `contrastar` 4 requisitos/1 oráculo, `alineacion` 1 archivo,
+  `verificar_alineacion` 0 brechas; evidencia `10cc67173f42e68a`.
 
 ### ME r207_pipeline_multiagente (2026-11-10, a578e03)
 - `opensyn/pipeline_multiagente.syn` compila y ejecuta E2E: imports
