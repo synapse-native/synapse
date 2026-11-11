@@ -1,0 +1,16 @@
+{
+ "cambio_hash": "c5e70770a1514592",
+ "expediente": "docs/alineacion/r217_integracion_determinista.md",
+ "fecha": "2026-11-11",
+ "archivos": [
+  "opensyn/architect_det.syn",
+  "opensyn/pipeline_multiagente.syn"
+ ],
+ "oraculos": {
+  "tests/opensyn/test_architect_det_comportamiento.py": true,
+  "tests/opensyn/test_pipeline_multiagente.py": true,
+  "tests/opensyn/test_pipeline_multiagente_comportamiento.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

@@ -2,6 +2,7 @@
 // opensyn/pipeline_multiagente.syn - Pipeline multi-agente optimizado
 // cumple Manual 2 §5.1: contratos requiere/garantiza
 // cumple Manual 6 §1.1: AST canónico unificado (SemNodo[]) y grafo de conocimiento
+// cumple Manual 7 §2.3: contexto RAG desde explorer/architect hacia el prompt
 // Fase 32.4: Pipeline con 2-3 inferencias máximo
 
 importar std.io
@@ -10,6 +11,8 @@ importar std.texto
 importar std.sistema
 importar nucleo.grafo_conocimiento
 importar opensyn.validation_loop
+importar opensyn.explorer_det
+importar opensyn.architect_det
 
 // El cliente Ollama se importa de opensyn.validation_loop (r206).
 
@@ -21,33 +24,6 @@ estructura ModoOperacion:
     nombre: texto
     fases_activas: Lista<texto>
     herramientas_permitidas: Lista<texto>
-
-estructura ArchivoRelevante:
-    archivo: texto
-    razon: texto
-    distancia: entero
-    tipo_relacion: texto
-
-estructura NodoAfectado:
-    id: texto
-    archivo: texto
-    distancia: entero
-    tipo_relacion: texto
-
-estructura ContratoCritico:
-    nodo_id: texto
-    razon: texto
-    nivel_riesgo: texto
-
-estructura Ciclo:
-    nodos: Lista<texto>
-    longitud: entero
-
-estructura MetricasImpacto:
-    total_afectados: entero
-    profundidad_maxima: entero
-    contratos_criticos: entero
-    ciclos_potenciales: entero
 
 estructura ContextoPipeline:
     instruccion: texto
@@ -199,11 +175,11 @@ funcion ejecutar_con_modo(instruccion: texto, archivo: texto, modo: ModoOperacio
     // FASE 2: ARCHITECT (determinista, sin LLM)
     // ============================================================
     si tiene_fase(modo, "architect"):
-        let metricas_impacto = analizar_impacto_completo(archivo, grafo)
-        contexto.total_afectados = metricas_impacto.total_afectados
-        contexto.profundidad_maxima = metricas_impacto.profundidad_maxima
-        contexto.contratos_criticos = metricas_impacto.contratos_criticos
-        contexto.ciclos_potenciales = metricas_impacto.ciclos_potenciales
+        let impacto = analizar_impacto_completo(archivo, grafo)
+        contexto.total_afectados = impacto.metricas_total_afectados
+        contexto.profundidad_maxima = impacto.metricas_profundidad_maxima
+        contexto.contratos_criticos = impacto.metricas_contratos_criticos
+        contexto.ciclos_potenciales = impacto.metricas_ciclos_potenciales
 
     // ============================================================
     // FASE 3: CODER (LLM)
@@ -332,90 +308,7 @@ funcion construir_prompt_fixer(contexto: ContextoPipeline) -> texto:
     prompt = prompt + "Aplica SOLO las correcciones necesarias. No refactorices innecesariamente.\n"
     retornar prompt
 
-// ============================================================
-// FASES DETERMINISTAS (Manual 6 §1.1)
-// ============================================================
-
-funcion explorar_contexto(archivo_objetivo: texto, grafo: GrafoProyecto, radio: entero) -> Lista<ArchivoRelevante>:
-    requiere:
-        longitud(archivo_objetivo) > 0 y radio >= 0
-    garantiza:
-        longitud(_resultado_) >= 0
-    let resultados = Lista<ArchivoRelevante>()
-    si radio == 0:
-        retornar resultados
-
-    let visitados = Mapa<texto, booleano>()
-    visitados.poner(archivo_objetivo, verdadero)
-    para nodo en grafo.nodos:
-        si nodo.archivo == archivo_objetivo:
-            para arista en grafo.aristas:
-                si arista.origen_id == nodo.id:
-                    let destino_archivo = archivo_de_id(arista.destino_id)
-                    si longitud(destino_archivo) > 0 y destino_archivo != archivo_objetivo:
-                        si visitados.contiene(destino_archivo) == falso:
-                            visitados.poner(destino_archivo, verdadero)
-                            resultados.agregar(ArchivoRelevante(
-                                destino_archivo,
-                                "dependencia directa de " + archivo_objetivo,
-                                1,
-                                "dependencia"
-                            ))
-
-    retornar resultados
-
-funcion analizar_impacto_completo(archivo: texto, grafo: GrafoProyecto) -> MetricasImpacto:
-    requiere:
-        longitud(archivo) > 0
-    garantiza:
-        _resultado_.total_afectados >= 0
-    let nodos_afectados = Lista<NodoAfectado>()
-    let contratos_criticos = Lista<ContratoCritico>()
-    let ciclos = Lista<Ciclo>()
-    let visitados = Mapa<texto, booleano>()
-
-    para nodo en grafo.nodos:
-        si nodo.archivo == archivo:
-            si nodo.num_dependientes > 5:
-                contratos_criticos.agregar(ContratoCritico(
-                    nodo.id,
-                    "API pública usada por " + entero_a_texto(nodo.num_dependientes) + " módulos",
-                    nodo.nivel_riesgo
-                ))
-            para arista en grafo.aristas:
-                si arista.destino_id == nodo.id:
-                    si visitados.contiene(arista.origen_id) == falso:
-                        visitados.poner(arista.origen_id, verdadero)
-                        nodos_afectados.agregar(NodoAfectado(
-                            arista.origen_id,
-                            archivo_de_id(arista.origen_id),
-                            1,
-                            "dependiente"
-                        ))
-
-    let max_prof = 0
-    para afectado en nodos_afectados:
-        si afectado.distancia > max_prof:
-            max_prof = afectado.distancia
-
-    let metricas = MetricasImpacto(
-        longitud(nodos_afectados),
-        max_prof,
-        longitud(contratos_criticos),
-        longitud(ciclos)
-    )
-
-    retornar metricas
-
-funcion archivo_de_id(id_nodo: texto) -> texto:
-    requiere:
-        longitud(id_nodo) >= 0
-    garantiza:
-        longitud(_resultado_) >= 0
-    let pos = indice_de(id_nodo, "::")
-    si pos > 0:
-        retornar subcadena(id_nodo, 0, pos)
-    retornar id_nodo
+// Las fases deterministas se importan de explorer_det/architect_det (Manual 6 §1.1).
 
 funcion cargar_grafo_proyecto() -> GrafoProyecto:
     requiere:

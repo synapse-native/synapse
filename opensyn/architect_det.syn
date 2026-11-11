@@ -2,6 +2,7 @@
 // opensyn/architect_det.syn - Architect determinista: DFS invertido + ciclos
 // cumple Manual 6 §1.1: grafo construido desde el AST canonico SemNodo[]
 // cumple Manual 2 §5.1: contratos requiere/garantiza en funciones publicas
+// cumple Manual 7 §2.3: metricas de impacto para el contexto RAG del pipeline
 // Referencia funcional Manual FASE 32 §4.4: analisis de impacto sin LLM, DFS invertido + Tarjan
 // Referencia funcional Manual FASE 32 §4.6: impacto directo/indirecto y deteccion de ciclos O(V+E)
 
@@ -83,7 +84,7 @@ funcion analizar_impacto_completo(archivo: texto, grafo: GrafoProyecto) -> Anali
             si nodo.num_dependientes > 5:
                 contratos_criticos.agregar(ContratoCritico(
                     nodo.id,
-                    "API publica usada por " + a_texto(nodo.num_dependientes) + " modulos",
+                    "API publica usada por " + entero_a_texto(nodo.num_dependientes) + " modulos",
                     nodo.nivel_riesgo
                 ))
 
