@@ -852,3 +852,5 @@
 {"fecha": "2026-11-10", "archivos": ["opensyn/router.syn"], "cita": "Manual 7 §4.2", "puntos": "Validacion con el compilador en modo --check; bucle de validacion orquestado por el LSP"}
 {"fecha": "2026-11-10", "archivos": ["opensyn/chat.syn"], "cita": "Manual 7 §6.2", "puntos": "Seleccion de modelo desde config.toml [modelo] nombre/ruta"}
 {"fecha": "2026-11-10", "archivos": ["opensyn/chat.syn"], "cita": "Manual 7 §8", "puntos": "El LSP valida con synapse check --no-emit; flujo completo de IA con validacion"}
+{"fecha": "2026-11-11", "archivos": ["opensyn/explorer_det.syn"], "cita": "Manual 6 §1.1", "puntos": "SemNodo AST canonico unificado; el grafo de conocimiento se construye desde el AST y el Explorer lo consume sin LLM"}
+{"fecha": "2026-11-11", "archivos": ["opensyn/explorer_det.syn"], "cita": "Manual 7 §2.3", "puntos": "Pipeline RAG: obtener contexto del LSP, extraer informacion del AST (nombres de funciones/variables, tipos, estructura de control) y priorizar el nodo AST actual; el Explorer determinista extrae contexto del grafo canonico sin LLM"}
