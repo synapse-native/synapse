@@ -992,3 +992,17 @@ anidadas y se agregó `elemento_texto` para la indexación tipada de
 `verificar_alineacion` 0 brechas.
 Reporte: `docs/reportes/R210.md` | 990aedb |
 Manual 6 §1.1, Manual 2 §5.1, Manual 7 §2.3, Manual 32 §4.3/§4.6 (referencia funcional) |
+
+### R211 - ME r211_architect_det (2026-11-11, b3180ed)
+Architect determinista compilable y verificable E2E: `opensyn/architect_det.syn`
+reescrito sobre `GrafoProyecto`/`NodoGrafo`/`AristaGrafo`, con DFS invertido
+para dependientes directos e indirectos, contratos críticos por número de
+dependientes, detección de ciclo por nodo y métricas de impacto. Se aplanó
+`AnalisisImpacto` (H-R207-1) para evitar el campo ADT anidado emitido como
+puntero y el puntero colgante a una variable local; se conservó
+`MetricasImpacto` como tipo público. Oráculo E2E nuevo 1/1; architect existente
+11/11; gate Fase 32 2/2 (módulo retirado del baseline); regresión combinada
+114/114. Evidencia `6ac72a2f8744254a`; `contrastar` 3 requisitos/1 oráculo,
+`alineacion` 1 archivo, `verificar_alineacion` 0 brechas.
+Reporte: `docs/reportes/R211.md` | b3180ed |
+Manual 6 §1.1, Manual 2 §5.1, Manual 7 §2.3, Manual 32 §4.4/§4.6 (referencia funcional) |
