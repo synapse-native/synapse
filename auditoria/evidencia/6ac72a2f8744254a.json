@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "6ac72a2f8744254a",
+ "expediente": "docs/alineacion/r211_architect_det.md",
+ "fecha": "2026-11-11",
+ "archivos": [
+  "opensyn/architect_det.syn"
+ ],
+ "oraculos": {
+  "tests/opensyn/test_architect_det_comportamiento.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}
