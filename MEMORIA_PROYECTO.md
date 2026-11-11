@@ -7,7 +7,7 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-11-10** (R208 95ea023 COMPLETADO - ME r208_run_manager: run manager reanudable con checkpoints, timeout y límites, oráculo E2E 1/1, regresión de runs 70/70, gate Fase 32 2/2; antes R207 a578e03 COMPLETADO - ME r207_pipeline_multiagente: pipeline compilable y E2E con LLM y compilador real, oráculo E2E 1/1, pipeline existente 15/15, gate Fase 32 2/2; antes R206 7f17dec COMPLETADO - ME r206_validation_loop: bucle de validación y corrección automática con compilador real, oráculo E2E 4/4, regresión 85/85; antes R205b 5935a5d COMPLETADO — ME r205b_lsp_v3: reparación de compilación, ownership y protocolo del LSP nativo, 13 tests verdes; antes R205 b1e9959 COMPLETADO — ME r205_grafo_conocimiento: grafo de conocimiento real desde AST canónico, determinista, con persistencia JSON y oráculo E2E; antes R204 f018957 COMPLETADO — ME r204_tools_escritura: TOOL escribir/editar con sandbox y aprobación, gate de compilación Fase 32; antes R203 d865ab9 + R202 f1a4a02 + R201 c653fff + R200 f3b7268, ver dashboard; antes R199 a2d0ca3 + r198b3; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
+Última actualización: **2026-11-10** (R209 3064d40 COMPLETADO - ME r209_router_chat: router y chat compilables con extraccion/validacion de codigo, oraculo E2E 1/1, gate Fase 32 2/2, regresion 75/75; antes R208 95ea023 COMPLETADO - ME r208_run_manager: run manager reanudable con checkpoints, timeout y límites, oráculo E2E 1/1, regresión de runs 70/70, gate Fase 32 2/2; antes R207 a578e03 COMPLETADO - ME r207_pipeline_multiagente: pipeline compilable y E2E con LLM y compilador real, oráculo E2E 1/1, pipeline existente 15/15, gate Fase 32 2/2; antes R206 7f17dec COMPLETADO - ME r206_validation_loop: bucle de validación y corrección automática con compilador real, oráculo E2E 4/4, regresión 85/85; antes R205b 5935a5d COMPLETADO — ME r205b_lsp_v3: reparación de compilación, ownership y protocolo del LSP nativo, 13 tests verdes; antes R205 b1e9959 COMPLETADO — ME r205_grafo_conocimiento: grafo de conocimiento real desde AST canónico, determinista, con persistencia JSON y oráculo E2E; antes R204 f018957 COMPLETADO — ME r204_tools_escritura: TOOL escribir/editar con sandbox y aprobación, gate de compilación Fase 32; antes R203 d865ab9 + R202 f1a4a02 + R201 c653fff + R200 f3b7268, ver dashboard; antes R199 a2d0ca3 + r198b3; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
  cierre de los 2 fallos DETERMINISTAS del barrido r195 (1569✓/25skip/6✗;
  los 5 del grupo A pasaban aislados, infra del barrido):
  (R1/H-R196-1 decisión Arquitecto ratificada "corregir contrato al manual")
@@ -123,7 +123,13 @@
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-11-10 sesión:** R208
+Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-11-10 sesión:** R209
+                   COMPLETADO (3064d40): ME r209_router_chat — router y chat
+                   compilables con extracción de bloques, validación con
+                   `compilar_codigo`, selección de modelo desde
+                   `~/.opensyn/config.toml` y stubs deterministas de
+                   lifecycle. Oráculo E2E nuevo 1/1, gate Fase 32 2/2,
+                   regresión 75/75; evidencia d0a46a4e11076ea6. Antes R208
                    COMPLETADO (95ea023): ME r208_run_manager — run manager
                    reanudable. `opensyn/run_manager.syn` compila y persiste
                    checkpoints (`_syn_escribir_archivo` 0=éxito), corrige
@@ -882,6 +888,35 @@ Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc d
 - Verificación: build OK, oráculo E2E 1/1, runs reanudables 70/70, gate Fase 32
   2/2, `contrastar` 4 requisitos/1 oráculo, `alineacion` 1 archivo,
   `verificar_alineacion` 0 brechas; evidencia `10cc67173f42e68a`.
+
+### ME r209_router_chat (2026-11-10, 3064d40)
+- `opensyn/router.syn` y `opensyn/chat.syn` compilan con `--check --no-emit`
+  y ejecutan E2E: clasificación de tareas, modo, plan, file finder, parseo
+  `linea:columna`, extracción de bloques en router/chat, validación de código
+  vacío y selección de modelo desde `~/.opensyn/config.toml` con fallback.
+- Hallazgo H-R209-1 (RESUELTO): el router usaba `cmp_texto`, `strstr_f` y
+  `atoi_f` sin declararlos, y asignaba variables sin `let`. Resolución:
+  wrappers deterministas sobre `std.texto`/externos y declaraciones `let`.
+- Hallazgo H-R209-2 (RESUELTO): `ejecutar_lint`/`ejecutar_fmt` declaraban
+  `texto` pero `ejecutar_comando` retorna `entero`. Resolución: tipo de retorno
+  `entero`; no hay consumidores que esperen texto.
+- Hallazgo H-R209-3 (RESUELTO): `prompt.datos` puede ser de solo lectura;
+  escribir el truncado in situ fallaba. Resolución: reasignar con
+  `subcadena(prompt, 0, max_chars)`.
+- Hallazgo H-R209-4 (RESUELTO): `chat.syn` usaba sintaxis no soportada (`[]`,
+  `intentar`, `para cada`, argumentos con nombre). Resolución: reescritura a
+  `Lista<texto>()`, `para ... en`, `romper`/`siguiente`.
+- Hallazgo H-R209-5 (RESUELTO): `leer_archivo` rechaza rutas fuera del cwd y
+  `~/.opensyn/config.toml` vive en el perfil. Resolución: `_syn_leer_archivo`
+  para la configuración.
+- Hallazgo H-R209-6 (RESUELTO): `opensyn/orchestrator.h` declara la API de
+  lifecycle pero no existe implementación C enlazable. Resolución: stubs
+  locales deterministas; la integración real queda para el ME de orchestrator.
+- Lección: los parámetros `texto` se consumen en las fronteras; si el llamador
+  conserva la cadena debe pasar `_syn_strcpy`.
+- Verificación: builds OK, oráculo E2E 1/1, gate Fase 32 2/2, regresión 75/75,
+  `contrastar` 5 requisitos/1 oráculo, `alineacion` 2 archivos,
+  `verificar_alineacion` 0 brechas; evidencia `d0a46a4e11076ea6`.
 
 ### ME r207_pipeline_multiagente (2026-11-10, a578e03)
 - `opensyn/pipeline_multiagente.syn` compila y ejecuta E2E: imports

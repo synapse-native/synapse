@@ -965,3 +965,17 @@ usa `pool_alloc`. Oráculo E2E nuevo 1/1; test existente de runs reanudables
 `verificar_alineacion` 0 brechas.
 Reporte: `docs/reportes/R208.md` | 95ea023 |
 Manual 7 §4.3, Manual 2 §5.1, Manual 32 §3.2/§3.4 |
+
+### R209 - ME r209_router_chat (2026-11-10, 3064d40)
+Router y chat compilables y verificables E2E: `opensyn/router.syn` agrega
+wrappers de texto (`cmp_texto`, `strstr_f`, `atoi_f`), corrige `let` y el tipo
+`entero` de `ejecutar_lint`/`ejecutar_fmt`, extrae bloques con
+`extraer_codigo_router`, trunca el prompt con `subcadena` y usa stubs locales
+deterministas de lifecycle. `opensyn/chat.syn` se reescribe a sintaxis Synapse
+válida, lee `~/.opensyn/config.toml`, construye contexto del workspace, extrae
+el bloque con `extraer_codigo_chat` y lo valida con `compilar_codigo`. Oráculo
+E2E nuevo 1/1; gate Fase 32 2/2 (ambos módulos retirados del baseline);
+regresión 75/75. Evidencia `d0a46a4e11076ea6`; `contrastar` 5 requisitos/1
+oráculo, `alineacion` 2 archivos, `verificar_alineacion` 0 brechas.
+Reporte: `docs/reportes/R209.md` | 3064d40 |
+Manual 7 §2.4/§4.2/§6.2/§8, Manual 2 §5.1 |
