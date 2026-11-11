@@ -7,7 +7,7 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-11-10** (R206 7f17dec COMPLETADO - ME r206_validation_loop: bucle de validación y corrección automática con compilador real, oráculo E2E 4/4, regresión 85/85; antes R205b 5935a5d COMPLETADO — ME r205b_lsp_v3: reparación de compilación, ownership y protocolo del LSP nativo, 13 tests verdes; antes R205 b1e9959 COMPLETADO — ME r205_grafo_conocimiento: grafo de conocimiento real desde AST canónico, determinista, con persistencia JSON y oráculo E2E; antes R204 f018957 COMPLETADO — ME r204_tools_escritura: TOOL escribir/editar con sandbox y aprobación, gate de compilación Fase 32; antes R203 d865ab9 + R202 f1a4a02 + R201 c653fff + R200 f3b7268, ver dashboard; antes R199 a2d0ca3 + r198b3; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
+Última actualización: **2026-11-10** (R207 a578e03 COMPLETADO - ME r207_pipeline_multiagente: pipeline compilable y E2E con LLM y compilador real, oráculo E2E 1/1, pipeline existente 15/15, gate Fase 32 2/2; antes R206 7f17dec COMPLETADO - ME r206_validation_loop: bucle de validación y corrección automática con compilador real, oráculo E2E 4/4, regresión 85/85; antes R205b 5935a5d COMPLETADO — ME r205b_lsp_v3: reparación de compilación, ownership y protocolo del LSP nativo, 13 tests verdes; antes R205 b1e9959 COMPLETADO — ME r205_grafo_conocimiento: grafo de conocimiento real desde AST canónico, determinista, con persistencia JSON y oráculo E2E; antes R204 f018957 COMPLETADO — ME r204_tools_escritura: TOOL escribir/editar con sandbox y aprobación, gate de compilación Fase 32; antes R203 d865ab9 + R202 f1a4a02 + R201 c653fff + R200 f3b7268, ver dashboard; antes R199 a2d0ca3 + r198b3; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
  cierre de los 2 fallos DETERMINISTAS del barrido r195 (1569✓/25skip/6✗;
  los 5 del grupo A pasaban aislados, infra del barrido):
  (R1/H-R196-1 decisión Arquitecto ratificada "corregir contrato al manual")
@@ -123,7 +123,16 @@
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-11-10 sesión:** R206
+Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-11-10 sesión:** R207
+                   COMPLETADO (a578e03): ME r207_pipeline_multiagente — pipeline
+                   compilable y cableado E2E. `opensyn/pipeline_multiagente.syn`
+                   usa imports canónicos, grafo real, fases Explorer/Architect
+                   deterministas locales, Coder/Reviewer/Fixer con LLM real,
+                   máximo 3 inferencias y validación final con
+                   `validar_con_check`; `nucleo/grafo_conocimiento.syn` usa
+                   `_json_a_texto` para evitar la colisión con `std.texto`.
+                   Oráculo E2E nuevo 1/1, pipeline existente 15/15, grafo 1/1,
+                   gate Fase 32 2/2; evidencia 15b96b3c8f8fe172. Antes R206
                    COMPLETADO (7f17dec): ME r206_validation_loop — bucle de
                    validación y corrección automática con compilador real.
                    `opensyn/validation_loop.syn` valida por rc con
@@ -835,6 +844,26 @@ Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc d
 - Verificación: build OK, 13 tests LSP verdes, `contrastar` 3 requisitos/3
   oráculos, `alineacion` 1 archivo, `verificar_alineacion` 0 brechas;
   evidencia `c01c7e55ec8d56b9`.
+
+### ME r207_pipeline_multiagente (2026-11-10, a578e03)
+- `opensyn/pipeline_multiagente.syn` compila y ejecuta E2E: imports
+  `nucleo.grafo_conocimiento`/`opensyn.validation_loop`, estructuras reales del
+  grafo, Explorer/Architect deterministas locales, prompts Coder/Reviewer/Fixer,
+  `_syn_ollama_consultar` con overrides de host/puerto/modelo, máximo 3
+  inferencias y validación final con `validar_con_check`.
+- Hallazgo H-R207-1 (RESUELTO): el codegen emite campos struct anidados como
+  puntero y el constructor compound-literal falla en C. Resolución: aplanar
+  `MetricasImpacto` en `ContextoPipeline` y retornar `MetricasImpacto` (solo
+  escalares); las listas de afectados/contratos/ciclos se usan localmente.
+- Hallazgo H-R207-2 (RESUELTO): `std.texto.a_texto` colisiona con el conversor
+  JSON del grafo. Resolución: `json_entero`/`json_decimal` usan `_json_a_texto`.
+- Hallazgo H-R207-3 (RESUELTO): `_syn_ollama_consultar` ya está exportado por
+  `validation_loop`; redeclararlo produce “Redefinición”.
+- Deuda r217: integrar `explorer_det`/`architect_det` cuando compilen y retirar
+  las fases locales; el codegen de structs anidados sigue pendiente.
+- Verificación: build OK, oráculo E2E 1/1, pipeline existente 15/15, grafo 1/1,
+  gate Fase 32 2/2, `contrastar` 4 requisitos/1 oráculo, `alineacion` 2 archivos,
+  `verificar_alineacion` 0 brechas; evidencia `15b96b3c8f8fe172`.
 
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |

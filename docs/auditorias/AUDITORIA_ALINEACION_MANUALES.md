@@ -945,3 +945,8 @@ baseline). Evidencia `dc81f3f85c2e19f4`; `contrastar` 11 requisitos/1 oráculo,
 `alineacion` 1 archivo, `verificar_alineacion` 0 brechas.
 Reporte: `docs/reportes/R206.md` | 7f17dec |
 Manual 7 §4.2/§6.3, Manual 2 §5.1 |
+
+### R207 - ME r207_pipeline_multiagente (2026-11-10, a578e03)
+Pipeline multiagente compilable y cableado: imports canónicos a `nucleo.grafo_conocimiento` y `opensyn.validation_loop`, estructuras reales del grafo, fases Explorer/Architect deterministas locales, Coder/Reviewer/Fixer con LLM real vía `_syn_ollama_consultar`, límite de 3 inferencias y validación final con `validar_con_check`. Se corrigió la colisión `a_texto`/`_json_a_texto` en el grafo. Oráculo E2E nuevo 1/1; pipeline existente 15/15; grafo 1/1; gate Fase 32 2/2 (módulo retirado del baseline). Evidencia `15b96b3c8f8fe172`; `contrastar` 4 requisitos/1 oráculo, `alineacion` 2 archivos, `verificar_alineacion` 0 brechas.
+Reporte: `docs/reportes/R207.md` | a578e03 |
+Manual 6 §1.1, Manual 2 §5.1, Manual 32 §5.3-§5.5 |
