@@ -59,7 +59,7 @@ funcion crear_run(tarea: texto, num_subtareas: entero) -> RunEstado:
     run.subtarea_actual = 0
     run.estado = RUN_PENDIENTE
     run.timestamp_inicio = ahora_ms()
-    run.checkpoint_path = construir_ruta_checkpoint(run.run_id)
+    run.checkpoint_path = construir_ruta_checkpoint(_syn_strcpy(run.run_id))
     retornar run
 
 // ============================================================
@@ -75,8 +75,8 @@ funcion guardar_checkpoint(run: RunEstado) -> entero:
     garantiza:
         _resultado_ == 0 o _resultado_ == -1 // cumple Manual 2 §5.1
     contenido = serializar_run(run)
-    exito = escribir_checkpoint_local(run.checkpoint_path, contenido)
-    si exito == 1:
+    exito = escribir_checkpoint_local(_syn_strcpy(run.checkpoint_path), _syn_strcpy(contenido))
+    si exito == 0:
         retornar 0
     retornar -1
 
@@ -92,12 +92,12 @@ funcion cargar_checkpoint(run_id: texto) -> RunEstado:
     garantiza:
         _resultado_.estado >= RUN_PENDIENTE y _resultado_.estado <= RUN_FALLIDO // cumple Manual 2 §5.1
     run = RunEstado()
-    run.run_id = run_id
+    run.run_id = _syn_strcpy(run_id)
     run.estado = RUN_PENDIENTE
     run.subtarea_actual = 0
     run.cantidad_subtareas = 0
-    ruta = construir_ruta_checkpoint(run_id)
-    contenido = leer_checkpoint_local(ruta)
+    ruta = construir_ruta_checkpoint(_syn_strcpy(run_id))
+    contenido = leer_checkpoint_local(_syn_strcpy(ruta))
     // Si hay contenido, parsear; si no, retornar estado vacío
     si longitud(contenido) > 0:
         run = deserializar_run(contenido)
@@ -118,7 +118,9 @@ funcion marcar_subtarea_completada(run: RunEstado, resultado_texto: texto) -> en
     run.subtarea_actual = run.subtarea_actual + 1
     si run.subtarea_actual >= run.cantidad_subtareas:
         run.estado = RUN_COMPLETADO
-    guardar_checkpoint(run)
+    let rc = guardar_checkpoint(run)
+    si rc != 0:
+        retornar -1
     retornar 0
 
 // ============================================================
@@ -134,7 +136,9 @@ funcion marcar_subtarea_fallida(run: RunEstado, error: texto, intentos: entero) 
         _resultado_ == 0 o _resultado_ == -1 // cumple Manual 2 §5.1
     si intentos >= MAX_INTENTOS_SUBTAREA:
         run.estado = RUN_FALLIDO
-    guardar_checkpoint(run)
+    let rc = guardar_checkpoint(run)
+    si rc != 0:
+        retornar -1
     retornar 0
 
 // ============================================================
@@ -165,7 +169,7 @@ funcion resumir_run(run_id: texto) -> RunEstado:
         longitud(run_id) > 0
     garantiza:
         _resultado_.estado >= RUN_PENDIENTE // cumple Manual 2 §5.1
-    run = cargar_checkpoint(run_id)
+    run = cargar_checkpoint(_syn_strcpy(run_id))
     si run.estado == RUN_EN_PROGRESO:
         run.estado = RUN_PENDIENTE
     // Resetear timestamp al momento de reanudar para que el timeout
@@ -212,7 +216,7 @@ funcion run_timeout(run: RunEstado) -> booleano:
 funcion reemplazar_basico(t: texto, buscar: texto, reemplazo: texto) -> texto:
     requiere:
         longitud(buscar) == 1
-        longitud(reemplazo) == 1
+        longitud(reemplazo) >= 1
     garantiza:
         longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     resultado = ""
@@ -229,13 +233,50 @@ funcion reemplazar_basico(t: texto, buscar: texto, reemplazo: texto) -> texto:
 
 // Genera un ID único para el run basado en timestamp.
 // cumple Manual 2 §12: toda función pública tiene contrato
+funcion ahora_ms() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0 // cumple Manual 2 §5.1
+    inseguro:
+        asm("struct timespec _ts; clock_gettime(CLOCK_MONOTONIC, &_ts); return (int64_t)_ts.tv_sec * 1000 + _ts.tv_nsec / 1000000;")
+    retornar 0
+
+funcion entero_a_texto(n: entero) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    inseguro:
+        asm("char _etmp[32]; int _elen = snprintf(_etmp, 32, \"%lld\", (long long)n); char* _ebuf = (char*)pool_alloc((size_t)_elen + 1); memcpy(_ebuf, _etmp, (size_t)_elen + 1); return (CadenaSegura){.longitud = _elen, .datos = _ebuf};")
+    retornar ""
+
+funcion concatenar_texto(a: texto, b: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    inseguro:
+        asm("int _ca = a.longitud; int _cb = b.longitud; char* _cbuf = (char*)pool_alloc((size_t)(_ca + _cb + 1)); memcpy(_cbuf, a.datos, (size_t)_ca); memcpy(_cbuf + _ca, b.datos, (size_t)_cb); _cbuf[_ca + _cb] = 0; return (CadenaSegura){.longitud = _ca + _cb, .datos = _cbuf};")
+    retornar ""
+
+funcion siguiente_secuencia_run() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ > 0 // cumple Manual 2 §5.1
+    inseguro:
+        asm("static int64_t _rm_seq = 0; return ++_rm_seq;")
+    retornar 0
+
 funcion generar_run_id() -> texto:
     requiere:
         verdadero
     garantiza:
         longitud(_resultado_) > 0 // cumple Manual 2 §5.1
     ts = ahora_ms()
-    retornar concat("run_", entero_a_texto(ts))
+    secuencia = siguiente_secuencia_run()
+    retornar concatenar_texto(concatenar_texto("run_", entero_a_texto(ts)), concatenar_texto("_", entero_a_texto(secuencia)))
 
 // Construye la ruta del archivo de checkpoint.
 // cumple Manual 2 §12: toda función pública tiene contrato
@@ -244,6 +285,9 @@ funcion construir_ruta_checkpoint(run_id: texto) -> texto:
         longitud(run_id) > 0
     garantiza:
         longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    override = obtener_env("OPENSYN_RUNS_DIR")
+    si longitud(override) > 0:
+        retornar concat(override, concat("\\", concat(run_id, ".jsonl")))
     home = obtener_env("USERPROFILE")
     si home == "":
         home = _syn_obtener_cwd()
@@ -257,7 +301,8 @@ funcion serializar_run(run: RunEstado) -> texto:
         longitud(run.run_id) > 0
     garantiza:
         longitud(_resultado_) > 0 // cumple Manual 2 §5.1
-    tarea_limpia = reemplazar_basico(run.tarea, "\"", "\\\"")
+    tarea_limpia = reemplazar_basico(_syn_strcpy(run.tarea), "\\", "\\\\")
+    tarea_limpia = reemplazar_basico(_syn_strcpy(tarea_limpia), "\"", "\\\"")
     json = "{"
     json = concat(json, "\"run_id\": \"")
     json = concat(json, run.run_id)
@@ -284,11 +329,13 @@ funcion deserializar_run(json: texto) -> RunEstado:
     run.subtarea_actual = 0
     run.cantidad_subtareas = 0
     // Parsing básico: extraer run_id entre comillas
-    run.run_id = extraer_campo_json(json, "run_id")
-    run.tarea = extraer_campo_json(json, "tarea")
-    run.estado = extraer_entero_json(json, "estado")
-    run.subtarea_actual = extraer_entero_json(json, "subtarea_actual")
-    run.cantidad_subtareas = extraer_entero_json(json, "cantidad_subtareas")
+    run.run_id = extraer_campo_json(_syn_strcpy(json), "run_id")
+    run.tarea = extraer_campo_json(_syn_strcpy(json), "tarea")
+    run.estado = extraer_entero_json(_syn_strcpy(json), "estado")
+    run.subtarea_actual = extraer_entero_json(_syn_strcpy(json), "subtarea_actual")
+    run.cantidad_subtareas = extraer_entero_json(_syn_strcpy(json), "cantidad_subtareas")
+    run.checkpoint_path = construir_ruta_checkpoint(_syn_strcpy(run.run_id))
+    run.timestamp_inicio = ahora_ms()
     retornar run
 
 // Extrae un campo de texto de un JSON simple.
@@ -316,7 +363,7 @@ funcion extraer_campo_json(json: texto, campo: texto) -> texto:
             inicio = i + longitud_prefijo
             fin = inicio
             mientras fin < longitud_json:
-                si json[fin] == 34:
+                si subcadena(json, fin, 1) == "\"":
                     romper
                 fin = fin + 1
             retornar subcadena(json, inicio, fin - inicio)
@@ -352,7 +399,7 @@ funcion extraer_entero_json(json: texto, campo: texto) -> entero:
                     romper
                 fin = fin + 1
             si fin > inicio:
-                retornar atoi_f(subcadena(json, inicio, fin - inicio))
+                retornar texto_a_entero(subcadena(json, inicio, fin - inicio))
             retornar 0
         i = i + 1
     retornar 0
@@ -361,47 +408,16 @@ funcion extraer_entero_json(json: texto, campo: texto) -> entero:
 // Puentes al runtime
 // ============================================================
 
-funcion ahora_ms() -> entero:
-    requiere: verdadero
-    garantiza: _resultado_ >= 0 // cumple Manual 2 §5.1
-    inseguro:
-        asm("struct timespec _ts; clock_gettime(CLOCK_MONOTONIC, &_ts); return (int64_t)_ts.tv_sec * 1000 + _ts.tv_nsec / 1000000;")
-    retornar 0
-
-funcion entero_a_texto(n: entero) -> texto:
-    requiere: verdadero
-    garantiza: longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
-    inseguro:
-        asm("char _buf[32]; int _len = snprintf(_buf, 32, \"%lld\", (long long)n); return (CadenaSegura){_len, _buf};")
-    retornar ""
-
-funcion concat(a: texto, b: texto) -> texto:
-    requiere: verdadero
-    garantiza: longitud(_resultado_) >= longitud(a) + longitud(b) // cumple Manual 2 §5.1
-    inseguro:
-        asm("int _la = a.longitud; int _lb = b.longitud; char* _buf = (char*)malloc(_la + _lb + 1); memcpy(_buf, a.datos, _la); memcpy(_buf + _la, b.datos, _lb); _buf[_la + _lb] = 0; return (CadenaSegura){_la + _lb, _buf};")
-    retornar a
-
-funcion subcadena(t: texto, inicio: entero, longitud_sub: entero) -> texto:
-    requiere: inicio >= 0 y longitud_sub >= 0
-    garantiza: longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
-    inseguro:
-        asm("return (CadenaSegura){longitud_sub, t.datos + inicio};")
-    retornar ""
-
-funcion atoi_f(t: texto) -> entero:
-    requiere: longitud(t) > 0
-    garantiza: _resultado_ >= 0 o _resultado_ < 0 // cumple Manual 2 §5.1
-    inseguro:
-        asm("return (int64_t)atoll(t.datos);")
-    retornar 0
-
 funcion escribir_checkpoint_local(ruta: texto, contenido: texto) -> entero:
     requiere: longitud(ruta) > 0 y longitud(contenido) > 0
     garantiza: _resultado_ == 0 o _resultado_ == -1 // cumple Manual 2 §5.1
+    let escrito = 0
+    let resultado = -1
     inseguro:
-        asm("CadenaSegura _ecr = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _ecc = {.datos = (char*)contenido.datos, .longitud = contenido.longitud}; _syn_escribir_archivo(_ecr, _ecc);")
-    retornar 0
+        asm("CadenaSegura _ecr = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _ecc = {.datos = (char*)contenido.datos, .longitud = contenido.longitud}; escrito = _syn_escribir_archivo(_ecr, _ecc);")
+    si escrito == 0:
+        resultado = 0
+    retornar resultado
 
 funcion leer_checkpoint_local(ruta: texto) -> texto:
     requiere: longitud(ruta) > 0

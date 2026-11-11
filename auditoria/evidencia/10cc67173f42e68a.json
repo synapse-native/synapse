@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "10cc67173f42e68a",
+ "expediente": "docs/alineacion/r208_run_manager.md",
+ "fecha": "2026-11-10",
+ "archivos": [
+  "opensyn/run_manager.syn"
+ ],
+ "oraculos": {
+  "tests/opensyn/test_run_manager_comportamiento.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}
