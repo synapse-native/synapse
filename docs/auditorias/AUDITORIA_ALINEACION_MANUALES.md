@@ -1006,3 +1006,19 @@ puntero y el puntero colgante a una variable local; se conservó
 `alineacion` 1 archivo, `verificar_alineacion` 0 brechas.
 Reporte: `docs/reportes/R211.md` | b3180ed |
 Manual 6 §1.1, Manual 2 §5.1, Manual 7 §2.3, Manual 32 §4.4/§4.6 (referencia funcional) |
+
+### R217 - ME r217_integracion_determinista (2026-11-11, 6497e80)
+Integración determinista del pipeline: `opensyn/pipeline_multiagente.syn`
+importa `opensyn/explorer_det.syn` y `opensyn/architect_det.syn` y retira las
+copias locales de `ArchivoRelevante`, `NodoAfectado`, `ContratoCritico`,
+`Ciclo`, `MetricasImpacto`, `explorar_contexto`, `analizar_impacto_completo` y
+`archivo_de_id`. La fase Architect consume `AnalisisImpacto` y copia sus
+métricas aplanadas a `ContextoPipeline`; `architect_det` usa `entero_a_texto`
+para evitar la colisión con `std.json.a_texto` al importar ambos módulos
+(H-R207-2). Probe modular con ambos imports y enlace OK; pipeline existente +
+E2E 16/16; architect existente + E2E 12/12; gate Fase 32 2/2; regresión
+combinada 114/114. Evidencia `c5e70770a1514592`; `contrastar` 3
+requisitos/2 oráculos, `alineacion` 2 archivos, `verificar_alineacion` 0
+brechas.
+Reporte: `docs/reportes/R217.md` | 6497e80 |
+Manual 6 §1.1, Manual 7 §2.3, Manual 2 §5.1 |

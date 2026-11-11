@@ -7,7 +7,7 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-11-11** (R211 b3180ed COMPLETADO - ME r211_architect_det: architect determinista compilable con DFS invertido, contratos criticos, ciclos y metricas, oraculo E2E 1/1, gate Fase 32 2/2, regresion combinada 114/114; antes R210 990aedb COMPLETADO - ME r210_explorer_det: explorer determinista compilable con BFS, oraculo E2E 1/1, gate Fase 32 2/2, regresion combinada 102/102; antes R209 3064d40 COMPLETADO - ME r209_router_chat: router y chat compilables con extraccion/validacion de codigo, oraculo E2E 1/1, gate Fase 32 2/2, regresion 75/75; antes R208 95ea023 COMPLETADO - ME r208_run_manager: run manager reanudable con checkpoints, timeout y límites, oráculo E2E 1/1, regresión de runs 70/70, gate Fase 32 2/2; antes R207 a578e03 COMPLETADO - ME r207_pipeline_multiagente: pipeline compilable y E2E con LLM y compilador real, oráculo E2E 1/1, pipeline existente 15/15, gate Fase 32 2/2; antes R206 7f17dec COMPLETADO - ME r206_validation_loop: bucle de validación y corrección automática con compilador real, oráculo E2E 4/4, regresión 85/85; antes R205b 5935a5d COMPLETADO — ME r205b_lsp_v3: reparación de compilación, ownership y protocolo del LSP nativo, 13 tests verdes; antes R205 b1e9959 COMPLETADO — ME r205_grafo_conocimiento: grafo de conocimiento real desde AST canónico, determinista, con persistencia JSON y oráculo E2E; antes R204 f018957 COMPLETADO — ME r204_tools_escritura: TOOL escribir/editar con sandbox y aprobación, gate de compilación Fase 32; antes R203 d865ab9 + R202 f1a4a02 + R201 c653fff + R200 f3b7268, ver dashboard; antes R199 a2d0ca3 + r198b3; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
+Última actualización: **2026-11-11** (R217 6497e80 COMPLETADO - ME r217_integracion_determinista: pipeline reutiliza explorer/architect deterministas, probe modular con ambos imports, pipeline existente + E2E 16/16, architect existente + E2E 12/12, gate Fase 32 2/2, regresion combinada 114/114; antes R211 b3180ed COMPLETADO - ME r211_architect_det: architect determinista compilable con DFS invertido, contratos criticos, ciclos y metricas, oraculo E2E 1/1, gate Fase 32 2/2, regresion combinada 114/114; antes R210 990aedb COMPLETADO - ME r210_explorer_det: explorer determinista compilable con BFS, oraculo E2E 1/1, gate Fase 32 2/2, regresion combinada 102/102; antes R209 3064d40 COMPLETADO - ME r209_router_chat: router y chat compilables con extraccion/validacion de codigo, oraculo E2E 1/1, gate Fase 32 2/2, regresion 75/75; antes R208 95ea023 COMPLETADO - ME r208_run_manager: run manager reanudable con checkpoints, timeout y límites, oráculo E2E 1/1, regresión de runs 70/70, gate Fase 32 2/2; antes R207 a578e03 COMPLETADO - ME r207_pipeline_multiagente: pipeline compilable y E2E con LLM y compilador real, oráculo E2E 1/1, pipeline existente 15/15, gate Fase 32 2/2; antes R206 7f17dec COMPLETADO - ME r206_validation_loop: bucle de validación y corrección automática con compilador real, oráculo E2E 4/4, regresión 85/85; antes R205b 5935a5d COMPLETADO — ME r205b_lsp_v3: reparación de compilación, ownership y protocolo del LSP nativo, 13 tests verdes; antes R205 b1e9959 COMPLETADO — ME r205_grafo_conocimiento: grafo de conocimiento real desde AST canónico, determinista, con persistencia JSON y oráculo E2E; antes R204 f018957 COMPLETADO — ME r204_tools_escritura: TOOL escribir/editar con sandbox y aprobación, gate de compilación Fase 32; antes R203 d865ab9 + R202 f1a4a02 + R201 c653fff + R200 f3b7268, ver dashboard; antes R199 a2d0ca3 + r198b3; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
  cierre de los 2 fallos DETERMINISTAS del barrido r195 (1569✓/25skip/6✗;
  los 5 del grupo A pasaban aislados, infra del barrido):
  (R1/H-R196-1 decisión Arquitecto ratificada "corregir contrato al manual")
@@ -123,15 +123,23 @@
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-11-11 sesión:** R211
-                   COMPLETADO (b3180ed): ME r211_architect_det — Architect
-                   determinista compilable. `opensyn/architect_det.syn` hace DFS
-                   invertido sobre `GrafoProyecto`, contratos críticos por
-                   dependientes, detección de ciclo por nodo y métricas de
-                   impacto; `AnalisisImpacto` aplana las métricas por H-R207-1.
-                   Oráculo E2E nuevo 1/1, architect existente 11/11, gate Fase 32
-                   2/2, regresión combinada 114/114; evidencia
-                   6ac72a2f8744254a. Antes R210 COMPLETADO (990aedb): ME
+Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-11-11 sesión:** R217
+                   COMPLETADO (6497e80): ME r217_integracion_determinista —
+                   `opensyn/pipeline_multiagente.syn` importa
+                   `opensyn.explorer_det.syn` y `opensyn.architect_det.syn` y
+                   retira las fases locales duplicadas; la fase Architect usa
+                   `AnalisisImpacto` aplanado. Probe modular con ambos imports
+                   OK; pipeline existente + E2E 16/16, architect existente + E2E
+                   12/12, gate Fase 32 2/2, regresión combinada 114/114;
+                   evidencia c5e70770a1514592. Antes R211 COMPLETADO (b3180ed):
+                   ME r211_architect_det — Architect determinista compilable.
+                   `opensyn/architect_det.syn` hace DFS invertido sobre
+                   `GrafoProyecto`, contratos críticos por dependientes,
+                   detección de ciclo por nodo y métricas de impacto;
+                   `AnalisisImpacto` aplana las métricas por H-R207-1. Oráculo
+                   E2E nuevo 1/1, architect existente 11/11, gate Fase 32 2/2,
+                   regresión combinada 114/114; evidencia 6ac72a2f8744254a.
+                   Antes R210 COMPLETADO (990aedb): ME
                    r210_explorer_det — Explorer determinista compilable.
                    `opensyn/explorer_det.syn` hace BFS sobre
                    `GrafoProyecto`/`NodoGrafo`/`AristaGrafo`, con
@@ -905,6 +913,27 @@ Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc d
   2/2, `contrastar` 4 requisitos/1 oráculo, `alineacion` 1 archivo,
   `verificar_alineacion` 0 brechas; evidencia `10cc67173f42e68a`.
 
+### ME r217_integracion_determinista (2026-11-11, 6497e80)
+- `opensyn/pipeline_multiagente.syn` importa `opensyn.explorer_det.syn` y
+  `opensyn.architect_det.syn`; retira las copias locales de `ArchivoRelevante`,
+  `NodoAfectado`, `ContratoCritico`, `Ciclo`, `MetricasImpacto`,
+  `explorar_contexto`, `analizar_impacto_completo` y `archivo_de_id`.
+- La fase Architect consume `AnalisisImpacto` y copia sus métricas aplanadas
+  (`metricas_total_afectados`, `metricas_profundidad_maxima`,
+  `metricas_contratos_criticos`, `metricas_ciclos_potenciales`) a
+  `ContextoPipeline`.
+- Hallazgo H-R217-1 (RESUELTO): al importar `explorer_det` y `architect_det`
+  juntos, `a_texto` colisiona (`std.texto.a_texto(entero)` vs
+  `std.json.a_texto(NodoJson)`) y falla la compilación C, no el `--check`.
+  Resolución: `architect_det` usa `entero_a_texto`.
+- Deuda r217 de R207 (RESUELTA): Explorer/Architect deterministas ya se
+  reutilizan en el pipeline; el cableado a un grafo persistido real sigue
+  pendiente en `cargar_grafo_proyecto` (devuelve grafo vacío).
+- Verificación: probe modular con ambos imports y enlace OK, pipeline existente
+  + E2E 16/16, architect existente + E2E 12/12, gate Fase 32 2/2, regresión
+  combinada 114/114, `contrastar` 3 requisitos/2 oráculos, `alineacion` 2
+  archivos, `verificar_alineacion` 0 brechas; evidencia `c5e70770a1514592`.
+
 ### ME r211_architect_det (2026-11-11, b3180ed)
 - `opensyn/architect_det.syn` compila con `--check --no-emit` y ejecuta E2E:
   DFS invertido con dependientes directos/indirectos, contratos críticos,
@@ -918,9 +947,9 @@ Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc d
   tipo de arista (`llamada`); debe describir la relación de impacto
   (`dependiente`). Resolución: valor fijo `dependiente` en
   `analizar_impacto_completo`.
-- Deuda r217 actualizada: `explorer_det` (r210) y `architect_det` (r211) ya
-  compilan; falta integrarlos en `pipeline_multiagente` y retirar las fases
-  locales.
+- Deuda r217 (RESUELTA en 6497e80): `explorer_det` (r210) y `architect_det`
+  (r211) ya se integran en `pipeline_multiagente`; las fases locales fueron
+  retiradas.
 - Verificación: build OK, oráculo E2E 1/1, architect existente 11/11, gate Fase
   32 2/2, regresión combinada 114/114, `contrastar` 3 requisitos/1 oráculo,
   `alineacion` 1 archivo, `verificar_alineacion` 0 brechas; evidencia
@@ -942,9 +971,8 @@ Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc d
 - Hallazgo H-R210-4 (RESUELTO): el pre-commit exige Manual 7 para `opensyn/*`
   según `mapa_manuales.md`. Resolución: registrar también Manual 7 §2.3
   (extracción de contexto del AST/RAG) antes del commit.
-- Deuda r217 actualizada: `explorer_det` ya compila; falta integrarlo en
-  `pipeline_multiagente` y retirar la fase Explorer local. `architect_det`
-  también compila desde r211 (b3180ed).
+- Deuda r217 (RESUELTA en 6497e80): `explorer_det` y `architect_det` ya se
+  integran en `pipeline_multiagente`; las fases locales fueron retiradas.
 - Verificación: build OK, oráculo E2E 1/1, explorer existente 6/6, gate Fase 32
   2/2, regresión combinada 102/102, `contrastar` 3 requisitos/1 oráculo,
   `alineacion` 1 archivo, `verificar_alineacion` 0 brechas; evidencia
@@ -993,10 +1021,10 @@ Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc d
   JSON del grafo. Resolución: `json_entero`/`json_decimal` usan `_json_a_texto`.
 - Hallazgo H-R207-3 (RESUELTO): `_syn_ollama_consultar` ya está exportado por
   `validation_loop`; redeclararlo produce “Redefinición”.
-- Deuda r217: `explorer_det` (r210, 990aedb) y `architect_det` (r211, b3180ed)
-  ya compilan; falta integrarlos en el pipeline y retirar las fases locales. El
-  codegen de structs anidados sigue pendiente (H-R207-1; r211 lo evitó aplanando
-  las métricas).
+- Deuda r217 (RESUELTA en 6497e80): `explorer_det` (r210, 990aedb) y
+  `architect_det` (r211, b3180ed) ya se integran en el pipeline; las fases
+  locales fueron retiradas. El codegen de structs anidados sigue pendiente
+  (H-R207-1; r211 lo evitó aplanando las métricas).
 - Verificación: build OK, oráculo E2E 1/1, pipeline existente 15/15, grafo 1/1,
   gate Fase 32 2/2, `contrastar` 4 requisitos/1 oráculo, `alineacion` 2 archivos,
   `verificar_alineacion` 0 brechas; evidencia `15b96b3c8f8fe172`.
@@ -1004,6 +1032,7 @@ Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc d
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
 |--------|-------------|---------|
+| `6497e80` | R217/ME r217_integracion_determinista: `opensyn/pipeline_multiagente.syn` importa `opensyn.explorer_det.syn` y `opensyn.architect_det.syn` y retira las estructuras/funciones deterministas locales; la fase Architect usa `AnalisisImpacto` aplanado. `architect_det` cambia `a_texto` por `entero_a_texto` para evitar la colisión con `std.json.a_texto` al importar ambos módulos (H-R217-1). Probe modular con ambos imports y enlace OK; pipeline existente + E2E 16/16, architect existente + E2E 12/12, gate Fase 32 2/2, regresión combinada 114/114; evidencia `c5e70770a1514592`; `contrastar` 3 requisitos/2 oráculos, `alineacion` 2 archivos, `verificar_alineacion` 0 brechas. Deuda r217 de R207 cerrada; queda pendiente cablear `cargar_grafo_proyecto` a un grafo persistido real. Reporte: `docs/reportes/R217.md` |
 | R176 | Re-baseline suite integración COMPLETA tras los 2 MEs de la sesión (mandato "primera sugerencia + alinea todo"): 1596 tests → 1453✓/104✗/39skip (2:12:18) vs R171 1447✓/110✗ → **+6✓/−6✗ = MEJORA, no regresión**. Composición EXACTA de las 6 bajas: 4 warps paridad (cerrados por 90eb18c, 6/6 en suite) + 2 bajas netas familia GCC test_e2e_adv_10 (7→5, composición irrecuperable: R171 no individualizó y lastfailed sobrescrito). 0 regresiones certificadas: 21 RED TDD IDÉNTICOS uno a uno, ninguna familia creció, 3 ambiguos FALLAN aislados (link runtime completo, no tocan .syq). 104 clasificados con parseo de los 99 bloques de traceback: 21 RED TDD declarado EXACTOS, 10 YAML CI, 27 GCC entorno = **H-R176-1** (ALTO, ME candidato radio ~27), 8 compila .syn, 46 asserts, 4 flaky entorno, 3 lifetimes, 3 cli_check = **H-R176-2** feature gap declarado, 1 wrapper. Gates "alinea todo": SIN BRECHAS + DEUDA 0/0 — 0 brechas de alineación en los 104. Artefactos regenerados restaurados (suite regenera también test_cluster_handshake.c, fuera del patrón _*.c). Verificación pura: 0 producción/0 tests; reporte docs/reportes/R176.md |
 | R179 | ME r27_ctor_aridad COMPLETADO (0faea8e): H-R177-1 CERRADA — aridad del ctor de struct en el analizador nativo con paridad S1. R1 (M2 §2): registrar_estructura puebla total_campos contando la cadena NODO_PARAMETRO via slot [6] canonico (patrón ADT de analizar_paso_estructuras); R2 (M2 §8.2): check de aridad restaurado en NODO_LLAMADA — struct no-función con 0<args≠campos → ERR_SEM_ARGUMENTOS_INVALIDOS rc=7, mensaje paridad S1. Oráculo NUEVO test_oraculos_r27_ctor_aridad.py 4/4 GREEN (144 s; auto-compilación 37747 nodos con check activo, cero falsos positivos; probes Punto(1,2)→12, Punto(1)→rc7 paridad, Punto()→0). Tests modificados AUTORIZADOS (regla 5/TDD/MTO): test_r27 de test_fase2_nativa_hm alineado de la forma pre-r153 deprecada a la ley vigente + test_r27_struct_ctor_aridad_invalida_rechazada NUEVO (3/3 con -k r27); OBL-M2-05 añadida al MTO (50 entradas OK). Gates MTS: contrastar PASA (4 requisitos, marca en UNA línea — el regex no cruza saltos), huella 1ff87d0097335768 (evidencia auditoria/evidencia/1ff87d0097335768.json), verificar_alineacion SIN BRECHAS, lectura previa OK. H-R179-1 cerrado: hijos del nodo plano viajan en slot [6] (nodo_expr), NO en .hijo_izq — el .hijo_izq contó 0 campos y el check rechazó la auto-compilación (stage2 rc=7); bootstrap la detectó. Bootstrap S1→S2 rc=0; unit 514✓; mb+nucleo+synapse 30✓; matriz 35✓. Reporte: docs/reportes/R179.md |
 | R177 | ME nativa_rc5_familia COMPLETADO (4ebd025): familia de fallos nativos rc=5/rc=0 de test_fase2_nativa_hm reparada — 8 fallos → 1 (r27 = H-R177-1 para el Arquitecto). R1 canal(...) en EXPRESIÓN (parser_expr.syn, M5 §3.2; gcc rc=5 'entero' undeclared); R2 constantes tipadas no-texto (escaneo.syn _G_native_consts_txt + expr_eval.syn rama _ot==30: concat solo si el inicializador es texto, M2 §2/§4.1); R3 pool_destroy DESPUÉS de esperar fibras en _emit_main ×4 (M6 §2.2; antes segfault 0xC0000005 por args liberados; cita fabricada M6 §4.4→§2.2 corregida); R4 asignación a variable nueva con RHS Identificador hereda el tipo C (funciones.syn + nodos_flujo.syn, paridad S1 tipo_de_expr, M2 §8.2); R5 constantes de módulo S1 como enum/static const con guardas _SYN_CSTDECL_ y excepción ABI T_*/NODO_*/ERR_*/_ — el #define se expandía dentro de firmas que sombrean (M2 §2). Oráculo NUEVO test_oraculos_nativa_rc5_familia.py 5/5 GREEN; bootstrap S1→S2 rc=0; unit 514✓; mb+synapse+nucleo 30✓; matriz 35✓; fase2 familia 10✓/1✗. Gates MTS: contrastar PASA (5 requisitos, oráculo ejecutado release), huella 828a4be257954718, verificar_alineacion SIN BRECHAS. H-R177-2 NUEVO (paridad de parser: coincidir sin literales/wildcard en nativo). Tests: NINGUNO modificado. Reporte: docs/reportes/R177.md |
