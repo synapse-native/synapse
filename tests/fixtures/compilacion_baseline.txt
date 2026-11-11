@@ -10,7 +10,6 @@ opensyn/architect_det.syn
 opensyn/chat.syn
 opensyn/explorer_det.syn
 opensyn/memoria_persistente_cifrada.syn
-opensyn/pipeline_multiagente.syn
 opensyn/router.syn
 opensyn/run_manager.syn
 opensyn/verificacion_aot.syn

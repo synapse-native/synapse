@@ -1,0 +1,15 @@
+{
+ "cambio_hash": "15b96b3c8f8fe172",
+ "expediente": "docs/alineacion/r207_pipeline_multiagente.md",
+ "fecha": "2026-11-10",
+ "archivos": [
+  "nucleo/grafo_conocimiento.syn",
+  "opensyn/pipeline_multiagente.syn"
+ ],
+ "oraculos": {
+  "tests/opensyn/test_grafo_comportamiento.py": true,
+  "tests/opensyn/test_pipeline_multiagente_comportamiento.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

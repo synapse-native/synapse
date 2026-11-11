@@ -629,7 +629,9 @@ funcion json_entero(doc: NodoJson, clave: texto) -> entero:
     garantiza:
         verdadero
     let campo = obtener_campo(doc, clave)
-    retornar texto_a_entero(a_texto(campo))
+    // cumple Manual 6 §1.1: usa el conversor JSON del AST canónico sin
+    // colisionar con std.texto.a_texto cuando ambos módulos se importan.
+    retornar texto_a_entero(_json_a_texto(campo))
 
 funcion json_decimal(doc: NodoJson, clave: texto) -> decimal:
     requiere:
@@ -637,7 +639,8 @@ funcion json_decimal(doc: NodoJson, clave: texto) -> decimal:
     garantiza:
         verdadero
     let campo = obtener_campo(doc, clave)
-    retornar texto_a_decimal(a_texto(campo))
+    // cumple Manual 6 §1.1: conversor JSON canónico (ver json_entero).
+    retornar texto_a_decimal(_json_a_texto(campo))
 
 funcion json_booleano(doc: NodoJson, clave: texto) -> booleano:
     requiere:
