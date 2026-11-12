@@ -1,4 +1,6 @@
 #lang: es
+// cumple Manual 9 §6.2: submodulo regenerado y reformateado para el bootstrap S2 determinista
+// cumple Manual 2 §5.1: la monomorfizacion conserva la semantica formal de los ADT genericos
 # cumple Manual 1 5: nucleo del compilador Synapse
 // ============================================================
 // monomorfizacion.syn - monomorfizacion de ADT genericos (registro + scan D-2 de instanciaciones)
@@ -164,7 +166,7 @@ funcion gen_escanear_adt_instancias(est: GeneradorCEst, programa: Programa) -> n
         asm("fprintf(stderr, \"[Orquestador] D-2: %d ADT genericos registrados\\n\", _G_native_adt_gen_count); fflush(stderr);")
 // R24 (paridad S1 context.py L385/L394; cumple Manual 5 §3.6 — ME r188b,
 // H-R188-2: sujeto de `coincidir c ->:`): los ADT genéricos BUILTIN
-// Resultado<T,E>/Opcion<T> se usan en firmas y en modo_resultado
+// Resultado<T, E>/Opcion<T> se usan en firmas y en modo_resultado
 // SIN DeclaracionTipo del usuario —
         // el nativo debe conocerlos también para materializar la instancia
         // monomorfizada (Resultado_entero_texto) en vez del placeholder
@@ -189,7 +191,7 @@ funcion gen_escanear_adt_instancias(est: GeneradorCEst, programa: Programa) -> n
         // R24 (paridad S1 context.py L388/L399): constructores BUILTIN ok(T)/err(E)
         // y el tipo de campo genérico que _G_native_adt_registrar_syn sustituye
         // con los args de la instancia (H-R188-2: receive del sujeto
-        // `coincidir c ->:` produce Resultado<elem,texto>). Registrados SOLO si
+        // `coincidir c ->:` produce Resultado<elem, texto>). Registrados SOLO si
         // el usuario no los declaró (una DeclaracionTipo Resultado gana).
         asm("int _r24_kon = 0;")
         asm("for (int _r24k = 0; _r24k < _G_native_adt_ctrs_count; _r24k++) { if (strcmp(_G_native_adt_ctrs[_r24k], \"ok\") == 0 && strcmp(_G_native_adt_ctrs_adt[_r24k], \"Resultado\") == 0) _r24_kon = 1; }")
@@ -457,10 +459,10 @@ funcion gen_escanear_adt_instancias(est: GeneradorCEst, programa: Programa) -> n
 // ----------------------------------------------------------
 funcion gen_emitir_str_typedef_instancia(est: GeneradorCEst, idx: entero):
     // requiere: idx entero de instancia ADT registrada (0 <= idx <
-    //   _G_native_adt_inst_count); GeneradorCEst valido.
+    // _G_native_adt_inst_count); GeneradorCEst valido.
     // garantiza: emite el typedef C de la instancia idx (nombre
-    //   _G_native_adt_inst_c[idx]) + linea vacia; sin efecto si idx fuera de
-    //   rango. Contratos en funcion publica nueva (cumple Manual 2 §12).
+    // _G_native_adt_inst_c[idx]) + linea vacia; sin efecto si idx fuera de
+    // rango. Contratos en funcion publica nueva (cumple Manual 2 §12).
     inseguro:
         asm("extern char _G_native_adt_inst_base[64][64]; extern char _G_native_adt_inst_c[64][64]; extern char _G_native_adt_inst_fields_c[64][8][64]; extern int _G_native_adt_inst_nfields[64]; extern int _G_native_adt_inst_count;")
         asm("int _d2e = (int)idx;")

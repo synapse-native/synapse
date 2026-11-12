@@ -879,7 +879,7 @@ def _emitir_encabezado(ctx: GeneratorContext):
     # NOTA: _syn_* y _toml_* externs ya estan en #include "librerias/embedded_libs.h"
     ctx.write_line("extern char _gen_tmp_buf[4096];")
     ctx.write_line("")
-    ctx.write_line("extern char _G_emit_buf[1048576];")
+    ctx.write_line("extern char _G_emit_buf[4194304];")
     ctx.write_line("extern int _G_emit_pos;")
     ctx.write_line("extern FILE* _G_fp;")
     ctx.write_line("")
@@ -1167,7 +1167,7 @@ class GeneradorC:
             # Definiciones de variables globales (declaradas como extern en _emitir_encabezado)
             ctx.write_line("char _gen_tmp_buf[4096];")
             ctx.write_line("")
-            ctx.write_line("char _G_emit_buf[1048576];")
+            ctx.write_line("char _G_emit_buf[4194304];")
             ctx.write_line("int _G_emit_pos;")
             ctx.write_line("FILE* _G_fp;")
             ctx.write_line("int _G_scope_depth;")
@@ -1942,7 +1942,7 @@ class GeneradorC:
             if tiene_principal and not ctx.is_no_std():
                 ctx.write_line("char _gen_tmp_buf[4096];")
                 ctx.write_line("")
-                ctx.write_line("char _G_emit_buf[1048576];")
+                ctx.write_line("char _G_emit_buf[4194304];")
                 ctx.write_line("int _G_emit_pos;")
                 ctx.write_line("FILE* _G_fp;")
                 # M22.2: Scope tracking globals (definiciones)

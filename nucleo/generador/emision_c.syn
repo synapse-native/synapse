@@ -1,4 +1,6 @@
 #lang: es
+// cumple Manual 9 §6.2: buffer de emision C de 4 MB para el unity build del bootstrap S2 (antes 1 MB truncaba `int main`)
+// cumple Manual 2 §5.1: la emision C respeta la semantica formal (lineas completas, sin truncamiento silencioso)
 // cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
 // ============================================================
 // emision_c.syn — API de emision de codigo C de bajo nivel
@@ -93,11 +95,11 @@ funcion traducir_tipo_retorno(tipo_synapse: puntero) -> nulo:
 // ----------------------------------------------------------
 funcion gen_emitir_linea(est: GeneradorCEst, linea: cadena) -> nulo:
     inseguro:
-        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos;")
+        asm("extern char _G_emit_buf[4194304]; extern int _G_emit_pos;")
         asm("{")
         asm("    const char* _gs = linea.datos;")
         asm("    int _gl = linea.longitud;")
-        asm("    if (_G_emit_pos + _gl + 2 > 1048576) return;")
+        asm("    if (_G_emit_pos + _gl + 2 > 4194304) return;")
         asm("    memcpy(_G_emit_buf + _G_emit_pos, _gs, _gl);")
         asm("    _G_emit_pos += _gl;")
         asm("    _G_emit_buf[_G_emit_pos] = 10;")
@@ -121,9 +123,9 @@ funcion gen_emitir_str(est: GeneradorCEst, str: puntero) -> nulo:
 // ----------------------------------------------------------
 funcion gen_emitir_nueva_linea(est: GeneradorCEst) -> nulo:
     inseguro:
-        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos;")
+        asm("extern char _G_emit_buf[4194304]; extern int _G_emit_pos;")
         asm("{")
-        asm("    if (_G_emit_pos + 2 > 1048576) return;")
+        asm("    if (_G_emit_pos + 2 > 4194304) return;")
         asm("    _G_emit_buf[_G_emit_pos] = 10;")
         asm("    _G_emit_pos++;")
         asm("    _G_emit_buf[_G_emit_pos] = 0;")
@@ -135,7 +137,7 @@ funcion gen_emitir_nueva_linea(est: GeneradorCEst) -> nulo:
 funcion gen_obtener_salida(est: GeneradorCEst) -> cadena:
     r = ""
     inseguro:
-        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos;")
+        asm("extern char _G_emit_buf[4194304]; extern int _G_emit_pos;")
         asm("if (_G_emit_pos > 0) {")
         asm("    _G_emit_buf[_G_emit_pos] = 0;")
         asm("    strcpy(_gen_tmp_buf, _G_emit_buf);")
@@ -197,8 +199,8 @@ funcion gen_emitir_lifetime_assert(est: GeneradorCEst, condicion: puntero, mensa
 // ----------------------------------------------------------
 funcion gen_abrir_bloque_c(est: GeneradorCEst) -> nulo:
     inseguro:
-        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos; extern int _G_scope_depth;")
-        asm("if (_G_emit_pos + 2 > 1048576) return;")
+        asm("extern char _G_emit_buf[4194304]; extern int _G_emit_pos; extern int _G_scope_depth;")
+        asm("if (_G_emit_pos + 2 > 4194304) return;")
         asm("_G_emit_buf[_G_emit_pos] = '{';")
         asm("_G_emit_pos++;")
         asm("_G_emit_buf[_G_emit_pos] = 10;") // '\n'
@@ -222,7 +224,7 @@ funcion gen_abrir_bloque_c(est: GeneradorCEst) -> nulo:
 // ----------------------------------------------------------
 funcion gen_cerrar_bloque_c(est: GeneradorCEst) -> nulo:
     inseguro:
-        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos; extern int _G_scope_depth;")
+        asm("extern char _G_emit_buf[4194304]; extern int _G_emit_pos; extern int _G_scope_depth;")
         asm("extern int _G_scope_vars_depth[256]; extern char _G_scope_vars_names[256][64];")
         asm("extern int _G_scope_vars_total; extern int _G_scope_vars_kind[256];")
         asm("// M22.2: Emitir pool_free para vars RAII en este ambito")
@@ -261,7 +263,7 @@ funcion gen_cerrar_bloque_c(est: GeneradorCEst) -> nulo:
         asm("        snprintf(_free_line, 128, \"    _syn_texto_liberar(%s); /* RAII scope %d */\", _G_scope_vars_names[_v], _sd);")
         asm("    }")
         asm("    int _fl = (int)strlen(_free_line);")
-        asm("    if (_G_emit_pos + _fl + 2 <= 1048576) {")
+        asm("    if (_G_emit_pos + _fl + 2 <= 4194304) {")
         asm("        memcpy(_G_emit_buf + _G_emit_pos, _free_line, _fl);")
         asm("        _G_emit_pos += _fl;")
         asm("        _G_emit_buf[_G_emit_pos] = 10;")
@@ -282,7 +284,7 @@ funcion gen_cerrar_bloque_c(est: GeneradorCEst) -> nulo:
         asm("}")
         asm("_G_scope_vars_total = _wi;")
         asm("_G_scope_depth--;")
-        asm("if (_G_emit_pos + 2 > 1048576) return;")
+        asm("if (_G_emit_pos + 2 > 4194304) return;")
         asm("_G_emit_buf[_G_emit_pos] = '}';")
         asm("_G_emit_pos++;")
         asm("_G_emit_buf[_G_emit_pos] = 10;") // '\n'

@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 9 §6.2: buffer de emision C de 4 MB para el unity build del bootstrap S2 (antes 1 MB truncaba `int main`)
 // ============================================================
 // nodos_flujo.syn - Visitantes de control de flujo (OO style)
 // cumple Manual 2 §1.3: documentación de los visitantes en comentarios de línea // (paridad S1 emit_control.py)
@@ -1175,7 +1176,7 @@ funcion gen_visitar_escuchar(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("// Generar el cuerpo del bloque en el buffer temporal con el modo")
         asm("// escuchar activo: dentro del bloque, ExprRecibirCanal emite")
         asm("// canal_recibir(_canal) (la variable del listener, no la local).")
-        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos;")
+        asm("extern char _G_emit_buf[4194304]; extern int _G_emit_pos;")
         asm("extern int _G_listener_modo;")
         asm("int _save_pos = _G_emit_pos;")
         asm("int _prev_modo = _G_listener_modo; _G_listener_modo = 1;")
@@ -1374,7 +1375,7 @@ funcion gen_visitar_coincidir(est: GeneradorCEst, stmt: puntero) -> nulo:
         // ANTES de traducir el sujeto porque el tipo NO aparece en el fuente y
         // el pre-scan D-2 no lo ve). El parser (parser_sentencias.syn) envuelve
         // el sujeto identificador en NODO_RECIBIR_CANAL; aqui registro
-        // `Resultado<elem,texto>` (los CTORS ok/err vienen del R24 builtin en
+        // `Resultado<elem, texto>` (los CTORS ok/err vienen del R24 builtin en
         // monomorfizacion.syn), emito el typedef de la instancia a nivel global
         // (el pre-bloque ya especifico el struct; sin paso, el C queda
         // con el global vaco) y prendo el flag modo_resultado AWSem expr_eval.
