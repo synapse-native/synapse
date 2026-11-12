@@ -1057,3 +1057,21 @@ requisitos/1 oráculo, `alineacion` 9 archivos, `verificar_alineacion` 0
 brechas.
 Reporte: `docs/reportes/R218.md` | e2ec33f |
 Manual 9 §6.2, Manual 2 §8.2, Manual 2 §5.1 |
+
+### R215 - ME r215_tool_patch (2026-11-12, c1d051d)
+`TOOL aplicar_patch <ruta> :: <diff>` en OpenSyn: `herramienta_aplicar_patch` y
+`herr_aplicar_diff` aplican diffs unificados (`@@`, contexto, borrado, adición y
+`\ No newline at end of file`) validando todo en memoria antes de escribir; un
+contexto/borrado que no coincide rechaza el parche completo. La ruta se confina
+al workspace y `aplicar_patch` se aliasa a `editar` en la matriz de permisos
+(MAX_HERRAMIENTAS=8 intacto), por lo que exige aprobación ASK; en stdin no
+interactivo se deniega cerrado. `opensyn/principal.syn` despacha la tool,
+normaliza la ruta antes del sandbox y actualiza el System Prompt. Oráculo nuevo
+`tests/integration/test_tool_patch.py` 3/3 (parche aplicado, contexto inválido,
+archivo nuevo, marcador no-newline, escape `..`, ASK/aprobado/modo);
+regresión de escritura + permisos 46/46. Evidencia `d815bb878cda3f41`;
+`contrastar` 3 requisitos/1 oráculo, `alineacion` 2 archivos,
+`verificar_alineacion` 0 brechas.
+Reporte: `docs/reportes/R215.md` | c1d051d |
+Manual 7 §1.1, Manual 7 §7.3, Manual 2 §5.1 |
+
