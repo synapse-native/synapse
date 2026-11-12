@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "d815bb878cda3f41",
+ "expediente": "docs/alineacion/r215_tool_patch.md",
+ "fecha": "2026-11-12",
+ "archivos": [
+  "opensyn/herramientas.syn",
+  "opensyn/principal.syn"
+ ],
+ "oraculos": {
+  "tests/integration/test_tool_patch.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

@@ -106,6 +106,310 @@ funcion herr_desescapar_saltos(t: texto) -> texto:
             i = i + 1
     retornar res
 
+// Divide un texto en lineas conservando el terminador de cada linea.
+// Consume 't': el llamador pasa una copia _syn_strcpy.
+// cumple Manual 7 §1.1: parser de diff del asistente local.
+funcion herr_dividir_lineas(t: texto) -> Lista<texto>:
+    requiere:
+        longitud(t) >= 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    let lineas = Lista<texto>()
+    largo = longitud(t)
+    inicio = 0
+    i = 0
+    mientras i < largo:
+        si subcadena(t, i, 1) == "\n":
+            lineas.agregar(subcadena(t, inicio, i - inicio + 1))
+            inicio = i + 1
+        i = i + 1
+    si inicio < largo:
+        lineas.agregar(subcadena(t, inicio, largo - inicio))
+    retornar lineas
+
+// Devuelve el contenido de una linea sin su terminador CR/LF.
+// Consume 'linea': el llamador pasa una copia _syn_strcpy.
+// cumple Manual 7 §1.1: comparacion de contexto del diff.
+funcion herr_contenido_linea(linea: texto) -> texto:
+    requiere:
+        longitud(linea) >= 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    res = _syn_strcpy(linea)
+    si termina_con(res, "\r\n") == 1:
+        res = subcadena(res, 0, longitud(res) - 2)
+    sino:
+        si termina_con(res, "\n") == 1:
+            res = subcadena(res, 0, longitud(res) - 1)
+    retornar res
+
+// Quita el terminador final de un texto si existe.
+// Consume 't': el llamador pasa una copia _syn_strcpy.
+// cumple Manual 7 §1.1: marcador "\ No newline at end of file" del diff.
+funcion herr_quitar_salto_final(t: texto) -> texto:
+    requiere:
+        longitud(t) >= 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    res = _syn_strcpy(t)
+    si termina_con(res, "\r\n") == 1:
+        res = subcadena(res, 0, longitud(res) - 2)
+    sino:
+        si termina_con(res, "\n") == 1:
+            res = subcadena(res, 0, longitud(res) - 1)
+    retornar res
+
+// Accede a una linea por indice sin indexar la Lista directamente.
+// cumple Manual 7 §1.1: helper de recorrido del diff.
+funcion herr_elemento_linea(lineas: Lista<texto>, indice: entero) -> texto:
+    requiere:
+        indice >= 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    contador = 0
+    para valor en lineas:
+        si contador == indice:
+            retornar valor
+        contador = contador + 1
+    retornar ""
+
+// Extrae la linea inicial (1-based) de una cabecera @@ -a,b +c,d @@.
+// Consume 'l': el llamador pasa una copia _syn_strcpy.
+// cumple Manual 7 §1.1: parser de hunks del diff unificado.
+funcion herr_hunk_inicio(l: texto) -> entero:
+    requiere:
+        longitud(l) >= 0
+    garantiza:
+        _resultado_ >= -1 // cumple Manual 2 §5.1
+    pos = indice_de(l, "-")
+    si pos < 0:
+        retornar -1
+    i = pos + 1
+    n = 0
+    mientras i < longitud(l):
+        c = subcadena(l, i, 1)
+        d = indice_de("0123456789", c)
+        si d < 0:
+            romper
+        n = n * 10 + d
+        i = i + 1
+    retornar n
+
+// Extrae la cantidad de lineas viejas de una cabecera @@ -a,b +c,d @@.
+// Consume 'l': el llamador pasa una copia _syn_strcpy.
+// cumple Manual 7 §1.1: parser de hunks del diff unificado.
+funcion herr_hunk_cantidad(l: texto) -> entero:
+    requiere:
+        longitud(l) >= 0
+    garantiza:
+        _resultado_ >= -1 // cumple Manual 2 §5.1
+    pos = indice_de(l, "-")
+    si pos < 0:
+        retornar -1
+    i = pos + 1
+    n = 0
+    mientras i < longitud(l):
+        c = subcadena(l, i, 1)
+        d = indice_de("0123456789", c)
+        si d < 0:
+            romper
+        n = n * 10 + d
+        i = i + 1
+    si i < longitud(l):
+        si subcadena(l, i, 1) == ",":
+            i = i + 1
+            n = 0
+            mientras i < longitud(l):
+                c = subcadena(l, i, 1)
+                d = indice_de("0123456789", c)
+                si d < 0:
+                    romper
+                n = n * 10 + d
+                i = i + 1
+    sino:
+        n = 1
+    retornar n
+
+// Aplica un diff unificado en memoria. Retorna "[PATCH_OK]<contenido>" o
+// "[PATCH_ERROR] <motivo>"; nunca escribe. La validacion de contexto/borrado
+// es estricta: si una linea no coincide, el parche se rechaza completo.
+// Consume 'original' y 'diff': el llamador pasa copias _syn_strcpy.
+// cumple Manual 7 §1.1: aplicacion determinista de parches del asistente local.
+// cumple Manual 7 §7.3: el parche se valida antes de tocar el disco.
+funcion herr_aplicar_diff(original: texto, diff: texto) -> texto:
+    requiere:
+        longitud(diff) > 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    originales = herr_dividir_lineas(_syn_strcpy(original))
+    diff_lineas = herr_dividir_lineas(_syn_strcpy(diff))
+    salto = "\n"
+    si indice_de(original, "\r\n") >= 0:
+        salto = "\r\n"
+    salida = ""
+    idx_orig = 0
+    total_orig = longitud(originales)
+    en_hunk = 0
+    hunk_inicio = 0
+    hunk_count = 0
+    aplicado = 0
+    error = ""
+    sin_salto_final = 0
+    siguiente_sin_salto = 0
+    ultimo_tipo = ""
+    para linea_diff en diff_lineas:
+        l = herr_contenido_linea(_syn_strcpy(linea_diff))
+        si en_hunk == 1:
+            si error == "" y siguiente_sin_salto == 1:
+                si longitud(l) > 0:
+                    si subcadena(l, 0, 1) != "+":
+                        error = "marcador no newline seguido de linea no-adicion"
+            si error == "" y sin_salto_final == 1:
+                si longitud(l) > 0:
+                    error = "marcador no newline seguido de contenido"
+            si error != "":
+                romper
+            si longitud(l) >= 2 y subcadena(l, 0, 2) == "@@":
+                si idx_orig - hunk_inicio != hunk_count:
+                    error = "hunk no consume las lineas declaradas"
+                    romper
+                inicio_h = herr_hunk_inicio(_syn_strcpy(l))
+                cant_h = herr_hunk_cantidad(_syn_strcpy(l))
+                si inicio_h < 0 o cant_h < 0:
+                    error = "cabecera de hunk invalida"
+                    romper
+                destino = inicio_h - 1
+                si inicio_h == 0 y cant_h == 0:
+                    destino = 0
+                si destino < idx_orig o destino > total_orig:
+                    error = "hunk fuera de rango"
+                    romper
+                mientras idx_orig < destino:
+                    salida = concat(salida, herr_elemento_linea(originales, idx_orig))
+                    idx_orig = idx_orig + 1
+                hunk_inicio = idx_orig
+                hunk_count = cant_h
+                aplicado = 1
+                ultimo_tipo = ""
+            sino:
+                si longitud(l) > 0 y subcadena(l, 0, 1) == "\\":
+                    si ultimo_tipo == "menos":
+                        siguiente_sin_salto = 1
+                    sino:
+                        salida = herr_quitar_salto_final(_syn_strcpy(salida))
+                        sin_salto_final = 1
+                    ultimo_tipo = ""
+                sino:
+                    si longitud(l) > 0 y subcadena(l, 0, 1) == " ":
+                        si idx_orig >= total_orig:
+                            error = "contexto fuera del archivo"
+                            romper
+                        linea_orig = herr_elemento_linea(originales, idx_orig)
+                        si herr_contenido_linea(_syn_strcpy(linea_orig)) != subcadena(l, 1, longitud(l) - 1):
+                            error = "contexto no aplicable"
+                            romper
+                        salida = concat(salida, linea_orig)
+                        idx_orig = idx_orig + 1
+                        ultimo_tipo = "contexto"
+                    sino:
+                        si longitud(l) > 0 y subcadena(l, 0, 1) == "-":
+                            si idx_orig >= total_orig:
+                                error = "borrado fuera del archivo"
+                                romper
+                            linea_orig = herr_elemento_linea(originales, idx_orig)
+                            si herr_contenido_linea(_syn_strcpy(linea_orig)) != subcadena(l, 1, longitud(l) - 1):
+                                error = "borrado no aplicable"
+                                romper
+                            idx_orig = idx_orig + 1
+                            ultimo_tipo = "menos"
+                        sino:
+                            si longitud(l) > 0 y subcadena(l, 0, 1) == "+":
+                                contenido = subcadena(l, 1, longitud(l) - 1)
+                                si siguiente_sin_salto == 1:
+                                    salida = concat(salida, contenido)
+                                    siguiente_sin_salto = 0
+                                sino:
+                                    si longitud(salida) > 0 y termina_con(salida, "\n") == 0:
+                                        salida = concat(salida, salto)
+                                    salida = concat(salida, contenido)
+                                    salida = concat(salida, salto)
+                                ultimo_tipo = "mas"
+                            sino:
+                                si longitud(l) > 0:
+                                    error = "linea de diff invalida"
+                                    romper
+        sino:
+            si longitud(l) >= 2 y subcadena(l, 0, 2) == "@@":
+                inicio_h = herr_hunk_inicio(_syn_strcpy(l))
+                cant_h = herr_hunk_cantidad(_syn_strcpy(l))
+                si inicio_h < 0 o cant_h < 0:
+                    error = "cabecera de hunk invalida"
+                    romper
+                destino = inicio_h - 1
+                si inicio_h == 0 y cant_h == 0:
+                    destino = 0
+                si destino < idx_orig o destino > total_orig:
+                    error = "hunk fuera de rango"
+                    romper
+                mientras idx_orig < destino:
+                    salida = concat(salida, herr_elemento_linea(originales, idx_orig))
+                    idx_orig = idx_orig + 1
+                hunk_inicio = idx_orig
+                hunk_count = cant_h
+                en_hunk = 1
+                aplicado = 1
+                ultimo_tipo = ""
+    si error == "" y en_hunk == 1:
+        si idx_orig - hunk_inicio != hunk_count:
+            error = "hunk no consume las lineas declaradas"
+    si error == "" y aplicado == 0:
+        error = "diff sin hunks"
+    si error == "":
+        si sin_salto_final == 1:
+            si idx_orig < total_orig:
+                error = "marcador no newline con lineas restantes"
+        sino:
+            mientras idx_orig < total_orig:
+                salida = concat(salida, herr_elemento_linea(originales, idx_orig))
+                idx_orig = idx_orig + 1
+    si error != "":
+        retornar concat("[PATCH_ERROR] ", error)
+    retornar concat("[PATCH_OK]", salida)
+
+// Aplica un diff unificado a un archivo del workspace.
+// Consume 'ruta', 'diff' y 'cwd': el llamador pasa copias _syn_strcpy.
+// cumple Manual 7 §1.1: tool aplicar_patch del asistente local.
+// cumple Manual 7 §7.3: ruta confinada al workspace y escritura atomica.
+funcion herramienta_aplicar_patch(ruta: texto, diff: texto, cwd: texto) -> texto:
+    requiere:
+        longitud(cwd) > 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    msg = ""
+    si herr_ruta_permitida(_syn_strcpy(ruta), _syn_strcpy(cwd)) == falso:
+        msg = "[TOOL_ERROR] ruta no permitida (usa rutas relativas dentro del repo)"
+    sino:
+        si longitud(diff) == 0:
+            msg = "[TOOL_ERROR] diff vacio"
+        sino:
+            si longitud(diff) > HERR_MAX_CONTENIDO:
+                msg = "[TOOL_ERROR] diff demasiado grande"
+            sino:
+                original = ""
+                si existe_archivo(_syn_strcpy(ruta)) == verdadero:
+                    original = leer_archivo(_syn_strcpy(ruta))
+                aplicado = herr_aplicar_diff(_syn_strcpy(original), _syn_strcpy(diff))
+                si indice_de(aplicado, "[PATCH_OK]") == 0:
+                    nuevo = subcadena(aplicado, 10, longitud(aplicado) - 10)
+                    res = escribir_archivo(_syn_strcpy(ruta), _syn_strcpy(nuevo))
+                    si res != 0:
+                        msg = concat("[TOOL_ERROR] no se pudo escribir ", ruta)
+                    sino:
+                        msg = concat("[TOOL_RESULT] parche aplicado ", ruta)
+                sino:
+                    msg = concat("[TOOL_ERROR] parche no aplicable: ", aplicado)
+    retornar msg
+
 // Escribe un archivo relativo al workspace.
 // Consume 'ruta', 'contenido' y 'cwd': el llamador pasa copias _syn_strcpy.
 // cumple Manual 7 §1.1: escritura asistida equivalente a OpenCode/Copilot.

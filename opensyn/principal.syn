@@ -1051,7 +1051,8 @@ funcion construir_contexto(cwd_act: texto) -> texto:
 
 // Parsea "TOOL <nombre> <argumento>" y ejecuta la herramienta.
 // listar [ruta] (cwd si vacia) | leer <ruta> | git status|log |
-// escribir <ruta> :: <contenido> | editar <ruta> :: <buscar> :: <reemplazo>.
+// escribir <ruta> :: <contenido> | editar <ruta> :: <buscar> :: <reemplazo> |
+// aplicar_patch <ruta> :: <diff_unificado>.
 // R113: un unico retornar al final (depth 0); todas las ramas asignan 'res'.
 // ME-1 (R1): verifica permisos del modo actual antes de ejecutar.
 // cumple Manual 7 §1.1: despacho de las herramientas del agente local.
@@ -1070,7 +1071,7 @@ funcion ejecutar_tool_aprobado(linea: texto, cwd_act: texto, modo: entero, aprob
         aprobado == 0 o aprobado == 1
     garantiza:
         longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
-    res = "[TOOL_ERROR] herramienta desconocida. Usa: TOOL listar|leer|git|escribir|editar <arg>"
+    res = "[TOOL_ERROR] herramienta desconocida. Usa: TOOL listar|leer|git|escribir|editar|aplicar_patch <arg>"
     total = longitud(linea)
     inicio = 5
     fin = inicio
@@ -1087,7 +1088,7 @@ funcion ejecutar_tool_aprobado(linea: texto, cwd_act: texto, modo: entero, aprob
         // 'escribir' se aliasa a 'editar' en la matriz de permisos: MAX_HERRAMIENTAS
         // es contrato inmutable de tests/integration/test_permisos_opensyn.py.
         nombre_perm = _syn_strcpy(nombre)
-        si nombre == "escribir":
+        si nombre == "escribir" o nombre == "aplicar_patch":
             nombre_perm = "editar"
         // ME-1 (R1): verificar permisos del modo actual
         si herramienta_permitida(modo, _syn_strcpy(nombre_perm)) == 0:
@@ -1095,7 +1096,7 @@ funcion ejecutar_tool_aprobado(linea: texto, cwd_act: texto, modo: entero, aprob
         // cumple Manual 7 §7.3: la ruta de escritura se normaliza a absoluta
         // ANTES de verificar el confinamiento al workspace.
         ruta_perm = _syn_strcpy(arg)
-        si nombre == "escribir" o nombre == "editar":
+        si nombre == "escribir" o nombre == "editar" o nombre == "aplicar_patch":
             sep_ini = indice_de(arg, "::")
             si sep_ini >= 0:
                 ruta_rel = recortar(subcadena(arg, 0, sep_ini))
@@ -1174,6 +1175,17 @@ funcion ejecutar_tool_aprobado(linea: texto, cwd_act: texto, modo: entero, aprob
                     buscar = herr_desescapar_saltos(_syn_strcpy(buscar))
                     reemplazo = herr_desescapar_saltos(_syn_strcpy(reemplazo))
                     res = herramienta_editar(_syn_strcpy(ruta), _syn_strcpy(buscar), _syn_strcpy(reemplazo), _syn_strcpy(cwd_act))
+        // cumple Manual 7 §1.1: parche unificado del asistente local.
+        // cumple Manual 7 §7.3: el sandbox y la aprobacion ya se verificaron.
+        si nombre == "aplicar_patch":
+            sep = indice_de(arg, "::")
+            si sep < 0:
+                res = "[TOOL_ERROR] formato: TOOL aplicar_patch <ruta> :: <diff>"
+            sino:
+                ruta = recortar(subcadena(arg, 0, sep))
+                diff = recortar(subcadena(arg, sep + 2, longitud(arg) - sep - 2))
+                diff = herr_desescapar_saltos(_syn_strcpy(diff))
+                res = herramienta_aplicar_patch(_syn_strcpy(ruta), _syn_strcpy(diff), _syn_strcpy(cwd_act))
     retornar res
 
 // Ejecuta una herramienta con confirmacion interactiva para el nivel ASK.
@@ -1258,7 +1270,7 @@ funcion consultar_agente(modelo: texto, prompt_usuario: texto, modo: entero) -> 
 // (R147: la versión "ejemplo" lo hacía narrar en vez de actuar). Sin el
 // literal [USUARIO] dentro del texto (ollama.c parte system/user por esa
 // marca). Mantener bajo 3500 bytes: ollama.c trunca a los ÚLTIMOS 3500 (R144c).
-constante AGENTE_SYS_BASE = "Eres OpenSyn, asistente IA de Synapse (.syn). Syntax: 4 espacios, sin ;, funcion(name:type)->type, si/para/mientras, retornar. REGLA: si el usuario pregunta por archivos, carpetas, rutas o codigo REAL, tu respuesta debe ser UNA sola linea exacta: TOOL listar <ruta> (vacia = raiz del repo) o TOOL leer <ruta> o TOOL git status. Para crear o sobrescribir un archivo: TOOL escribir <ruta> :: <contenido>. Para editar un fragmento unico: TOOL editar <ruta> :: <texto_viejo> :: <texto_nuevo>. Usa \\n para saltos de linea. Las herramientas de escritura piden confirmacion al usuario. No expliques nada antes. Ejemplo: usuario: 'que archivos hay en la raiz?' - tu respuesta: TOOL listar. Cuando ya recibas [TOOL_RESULT], responde en el idioma del usuario resumiendo (maximo 10), sin inventar archivos.\n\n[CONTEXTO]\n"
+constante AGENTE_SYS_BASE = "Eres OpenSyn, asistente IA de Synapse (.syn). Syntax: 4 espacios, sin ;, funcion(name:type)->type, si/para/mientras, retornar. REGLA: si el usuario pregunta por archivos, carpetas, rutas o codigo REAL, tu respuesta debe ser UNA sola linea exacta: TOOL listar <ruta> (vacia = raiz del repo) o TOOL leer <ruta> o TOOL git status. Para crear o sobrescribir un archivo: TOOL escribir <ruta> :: <contenido>. Para editar un fragmento unico: TOOL editar <ruta> :: <texto_viejo> :: <texto_nuevo>. Para aplicar un diff unificado: TOOL aplicar_patch <ruta> :: <diff>. Usa \\n para saltos de linea. Las herramientas de escritura piden confirmacion al usuario. No expliques nada antes. Ejemplo: usuario: 'que archivos hay en la raiz?' - tu respuesta: TOOL listar. Cuando ya recibas [TOOL_RESULT], responde en el idioma del usuario resumiendo (maximo 10), sin inventar archivos.\n\n[CONTEXTO]\n"
 
 // Elementos del menu de comandos (el menu filtra mientras se escribe).
 // ME-1 (R1): agregar comandos de modo ask/plan/code/debug/orchestrator
@@ -1433,7 +1445,7 @@ funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero,
         retornar "!modo:1"
     si entrada == "/code":
         _syn_tui_mensaje(2, "Modo: CODE (edición)")
-        _syn_tui_mensaje(2, "  Herramientas: listar, leer, git, plan, escribir, editar, compilar")
+        _syn_tui_mensaje(2, "  Herramientas: listar, leer, git, plan, escribir, editar, aplicar_patch, compilar")
         _syn_tui_repintar(modelo)
         retornar "!modo:2"
     si entrada == "/debug":
