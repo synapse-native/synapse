@@ -1041,3 +1041,19 @@ archivo, `verificar_alineacion` 0 brechas. Desviaciones declaradas H-R212-1
 (Argon2id), H-R212-2 (SQLite cifrado) y H-R212-3 (estado global mutable).
 Reporte: `docs/reportes/R212.md` | 4ab0406 |
 Manual 6 §1.1, Manual 7 §7.3, Manual 2 §5.1 |
+
+### R218 - ME r218_bootstrap_json (2026-11-12, e2ec33f)
+Bootstrap nativo S2 reparado: `nucleo/principal.syn` incluye `std/json.syn` y
+`std/texto.syn` antes de `actualizador.syn`; causa raíz H-R218-1: el buffer de
+emisión de 1 MB truncaba en silencio el C del compilador (1.072.939 bytes con
+CRLF), borrando `int main`; se elevó a 4 MB en `emision_c.syn`,
+`nodos_flujo.syn`, `orquestador.syn` y `compilador/generator/generator.py`.
+H-R218-2: inferencia nativa con paridad S1 en `OpBinaria`, `LlamadaFuncion` y
+`ExprAccesoCampo` vía `_syn_nativo_expr_tipo_c`; `generator.syn` regenerado y
+`fmt --check` GREEN. S1/S2/S3 rc=0, S2==S3 SHA256
+`950AA09B8C3204E2A8FCC95102265FCB03AD5C7E2AC6E59997FAF6D94FA71B2A`;
+16/16 oráculos de auditoría. Evidencia `8cfce46f5d55e053`; `contrastar` 2
+requisitos/1 oráculo, `alineacion` 9 archivos, `verificar_alineacion` 0
+brechas.
+Reporte: `docs/reportes/R218.md` | e2ec33f |
+Manual 9 §6.2, Manual 2 §8.2, Manual 2 §5.1 |

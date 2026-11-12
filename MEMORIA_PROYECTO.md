@@ -7,7 +7,7 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-11-11** (R217 6497e80 COMPLETADO - ME r217_integracion_determinista: pipeline reutiliza explorer/architect deterministas, probe modular con ambos imports, pipeline existente + E2E 16/16, architect existente + E2E 12/12, gate Fase 32 2/2, regresion combinada 114/114; antes R211 b3180ed COMPLETADO - ME r211_architect_det: architect determinista compilable con DFS invertido, contratos criticos, ciclos y metricas, oraculo E2E 1/1, gate Fase 32 2/2, regresion combinada 114/114; antes R210 990aedb COMPLETADO - ME r210_explorer_det: explorer determinista compilable con BFS, oraculo E2E 1/1, gate Fase 32 2/2, regresion combinada 102/102; antes R209 3064d40 COMPLETADO - ME r209_router_chat: router y chat compilables con extraccion/validacion de codigo, oraculo E2E 1/1, gate Fase 32 2/2, regresion 75/75; antes R208 95ea023 COMPLETADO - ME r208_run_manager: run manager reanudable con checkpoints, timeout y límites, oráculo E2E 1/1, regresión de runs 70/70, gate Fase 32 2/2; antes R207 a578e03 COMPLETADO - ME r207_pipeline_multiagente: pipeline compilable y E2E con LLM y compilador real, oráculo E2E 1/1, pipeline existente 15/15, gate Fase 32 2/2; antes R206 7f17dec COMPLETADO - ME r206_validation_loop: bucle de validación y corrección automática con compilador real, oráculo E2E 4/4, regresión 85/85; antes R205b 5935a5d COMPLETADO — ME r205b_lsp_v3: reparación de compilación, ownership y protocolo del LSP nativo, 13 tests verdes; antes R205 b1e9959 COMPLETADO — ME r205_grafo_conocimiento: grafo de conocimiento real desde AST canónico, determinista, con persistencia JSON y oráculo E2E; antes R204 f018957 COMPLETADO — ME r204_tools_escritura: TOOL escribir/editar con sandbox y aprobación, gate de compilación Fase 32; antes R203 d865ab9 + R202 f1a4a02 + R201 c653fff + R200 f3b7268, ver dashboard; antes R199 a2d0ca3 + r198b3; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
+Última actualización: **2026-11-12** (R218 e2ec33f COMPLETADO - ME r218_bootstrap_json: bootstrap S2 con std.json/std.texto y buffer de emision de 4 MB, inferencia nativa OpBinaria/llamadas/acceso a campo, S2==S3 sha 950AA09B...A71B2A, 16/16 oraculos de auditoria, gates 0 brechas; antes R217 6497e80 COMPLETADO - ME r217_integracion_determinista: pipeline reutiliza explorer/architect deterministas, probe modular con ambos imports, pipeline existente + E2E 16/16, architect existente + E2E 12/12, gate Fase 32 2/2, regresion combinada 114/114; antes R211 b3180ed COMPLETADO - ME r211_architect_det: architect determinista compilable con DFS invertido, contratos criticos, ciclos y metricas, oraculo E2E 1/1, gate Fase 32 2/2, regresion combinada 114/114; antes R210 990aedb COMPLETADO - ME r210_explorer_det: explorer determinista compilable con BFS, oraculo E2E 1/1, gate Fase 32 2/2, regresion combinada 102/102; antes R209 3064d40 COMPLETADO - ME r209_router_chat: router y chat compilables con extraccion/validacion de codigo, oraculo E2E 1/1, gate Fase 32 2/2, regresion 75/75; antes R208 95ea023 COMPLETADO - ME r208_run_manager: run manager reanudable con checkpoints, timeout y límites, oráculo E2E 1/1, regresión de runs 70/70, gate Fase 32 2/2; antes R207 a578e03 COMPLETADO - ME r207_pipeline_multiagente: pipeline compilable y E2E con LLM y compilador real, oráculo E2E 1/1, pipeline existente 15/15, gate Fase 32 2/2; antes R206 7f17dec COMPLETADO - ME r206_validation_loop: bucle de validación y corrección automática con compilador real, oráculo E2E 4/4, regresión 85/85; antes R205b 5935a5d COMPLETADO — ME r205b_lsp_v3: reparación de compilación, ownership y protocolo del LSP nativo, 13 tests verdes; antes R205 b1e9959 COMPLETADO — ME r205_grafo_conocimiento: grafo de conocimiento real desde AST canónico, determinista, con persistencia JSON y oráculo E2E; antes R204 f018957 COMPLETADO — ME r204_tools_escritura: TOOL escribir/editar con sandbox y aprobación, gate de compilación Fase 32; antes R203 d865ab9 + R202 f1a4a02 + R201 c653fff + R200 f3b7268, ver dashboard; antes R199 a2d0ca3 + r198b3; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
  cierre de los 2 fallos DETERMINISTAS del barrido r195 (1569✓/25skip/6✗;
  los 5 del grupo A pasaban aislados, infra del barrido):
  (R1/H-R196-1 decisión Arquitecto ratificada "corregir contrato al manual")
@@ -123,7 +123,14 @@
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-11-11 sesión:** R212
+Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-11-12 sesión:** R218
+                   COMPLETADO (e2ec33f): ME r218_bootstrap_json — bootstrap
+                   nativo S2 con `std/json.syn`/`std/texto.syn`, buffer de
+                   emisión de 4 MB (el C superaba 1 MB y se truncaba), inferencia
+                   nativa `OpBinaria`/llamadas/acceso a campo, `generator.syn`
+                   regenerado y `fmt --check` GREEN; S2==S3 sha
+                   950AA09B...A71B2A, 16/16 oráculos de auditoría, gates 0
+                   brechas; evidencia 8cfce46f5d55e053. Antes R212
                    COMPLETADO (4ab0406): ME r212_memoria_cifrada —
                    `opensyn/memoria_persistente_cifrada.syn` reescrito sobre
                    XSalsa20-Poly1305/SHA-256 reales, tres capas, almacén
@@ -966,6 +973,30 @@ Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc d
   + E2E 16/16, architect existente + E2E 12/12, gate Fase 32 2/2, regresión
   combinada 114/114, `contrastar` 3 requisitos/2 oráculos, `alineacion` 2
   archivos, `verificar_alineacion` 0 brechas; evidencia `c5e70770a1514592`.
+
+### ME r218_bootstrap_json (2026-11-12, e2ec33f)
+- `nucleo/principal.syn` incluye `std/json.syn` y `std/texto.syn` en el unity
+  build nativo antes de `nucleo/actualizador.syn`; se mantiene en 1200 líneas
+  (límite R13).
+- Causa raíz H-R218-1 (RESUELTO): `gen_emitir_linea` truncaba en silencio al
+  superar 1 MB; el C del compilador (1.072.939 bytes con CRLF) perdía `int
+  main` y dejaba `return _rc;` fuera de función. Resolución: buffer de 4 MB en
+  `emision_c.syn`, `nodos_flujo.syn`, `orquestador.syn` y
+  `compilador/generator/generator.py`.
+- H-R218-2 (RESUELTO): la inferencia nativa asumía `int64_t` en `OpBinaria`,
+  llamadas y acceso a campo. Resolución: `_syn_nativo_expr_tipo_c` con paridad
+  S1 (lógicos/comparación → `int`, `double` si algún lado, fallback por
+  `_G_native_tipo_retorno`/`_G_native_campo_tipo`).
+- `nucleo/generator.syn` se regeneró desde `nucleo/generador/*.syn` con
+  `_rebuild_generator.py`; `fmt --check` GREEN y módulos reformateados.
+- Lección: `generator.syn` es concatenado; los arreglos van en los submódulos y
+  el bootstrap S2==S3 es el oráculo real. El truncamiento silencioso no produce
+  diagnóstico; el buffer necesita margen.
+- Verificación: S1/S2/S3 rc=0, S2==S3 SHA256
+  `950AA09B8C3204E2A8FCC95102265FCB03AD5C7E2AC6E59997FAF6D94FA71B2A`,
+  `fmt --check` correcto, 16/16 oráculos de auditoría, `contrastar` 2
+  requisitos/1 oráculo, `alineacion` 9 archivos, `verificar_alineacion` 0
+  brechas; evidencia `8cfce46f5d55e053`.
 
 ### ME r211_architect_det (2026-11-11, b3180ed)
 - `opensyn/architect_det.syn` compila con `--check --no-emit` y ejecuta E2E:
