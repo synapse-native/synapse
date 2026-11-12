@@ -6,5 +6,4 @@
 #
 # Cada linea es una ruta relativa a la raiz del repo. Los comentarios y las
 # lineas vacias se ignoran.
-opensyn/memoria_persistente_cifrada.syn
 opensyn/verificacion_aot.syn
