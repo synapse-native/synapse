@@ -123,7 +123,14 @@
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-11-11 sesión:** R217
+Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-11-11 sesión:** R212
+                   COMPLETADO (4ab0406): ME r212_memoria_cifrada —
+                   `opensyn/memoria_persistente_cifrada.syn` reescrito sobre
+                   XSalsa20-Poly1305/SHA-256 reales, tres capas, almacén
+                   cifrado plano en `~/.opensyn/memoria.db` y estado explícito
+                   `MemoriaCifrada`; retirado del baseline. Oráculo E2E nuevo
+                   1/1, test estructural existente 14/14, gate Fase 32 2/2;
+                   evidencia cc3cf959ff0b1a25. Antes R217
                    COMPLETADO (6497e80): ME r217_integracion_determinista —
                    `opensyn/pipeline_multiagente.syn` importa
                    `opensyn.explorer_det.syn` y `opensyn.architect_det.syn` y
@@ -912,6 +919,32 @@ Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc d
 - Verificación: build OK, oráculo E2E 1/1, runs reanudables 70/70, gate Fase 32
   2/2, `contrastar` 4 requisitos/1 oráculo, `alineacion` 1 archivo,
   `verificar_alineacion` 0 brechas; evidencia `10cc67173f42e68a`.
+
+### ME r212_memoria_cifrada (2026-11-11, 4ab0406)
+- `opensyn/memoria_persistente_cifrada.syn` (777 líneas) compila y ejecuta E2E:
+  `PatronAprendido`, `MemoriaNegativa`, `EntradaCifrada`, `CapaMemoria` y
+  `MemoriaCifrada`; cifrado real con
+  `cluster_sesion_cifrar_buffer`/`cluster_sesion_descifrar_buffer`; KDF SHA-256
+  iterado (20000 rondas) con sal de hardware; almacén cifrado plano
+  línea-a-línea en `~/.opensyn/memoria.db`.
+- Hallazgo H-R212-1 (RESUELTO parcial): Argon2id no existe en el runtime;
+  `derivar_clave` usa SHA-256 iterado. Resolución: implementar Argon2id en un ME
+  posterior; el módulo queda aislado tras `derivar_clave`.
+- Hallazgo H-R212-2 (RESUELTO parcial): no hay API SQLite expuesta a Synapse;
+  la capa Evolución usa almacén cifrado plano. Resolución: binding SQLite
+  cifrado cuando el runtime lo exponga.
+- Hallazgo H-R212-3 (RESUELTO): S1 no soporta globales mutables; la API usa
+  `MemoriaCifrada` explícito y el llamador reasigna el estado devuelto.
+- Hallazgo H-R212-4 (RESUELTO): el E2E destapó triple free en `tokenizar`;
+  `tokens.agregar(minusculas(actual))` duplicaba la expresión en el constructor
+  y `minusculas` (pura) libera su parámetro. Resolución:
+  `let token = minusculas(_syn_strcpy(actual))` antes de `agregar`.
+- Lección: el E2E de comportamiento detecta corrupciones de pool que `--check`
+  y los tests estructurales no ven; `_syn_a_texto_decimal` usa `%g` (`0.9`, no
+  `0.900000`); un driver de persistencia debe ser idempotente.
+- Verificación: build OK, oráculo E2E 1/1, test estructural existente 14/14,
+  gate Fase 32 2/2, `contrastar` 3 requisitos/2 oráculos, `alineacion` 1
+  archivo, `verificar_alineacion` 0 brechas; evidencia `cc3cf959ff0b1a25`.
 
 ### ME r217_integracion_determinista (2026-11-11, 6497e80)
 - `opensyn/pipeline_multiagente.syn` importa `opensyn.explorer_det.syn` y

@@ -1022,3 +1022,22 @@ requisitos/2 oráculos, `alineacion` 2 archivos, `verificar_alineacion` 0
 brechas.
 Reporte: `docs/reportes/R217.md` | 6497e80 |
 Manual 6 §1.1, Manual 7 §2.3, Manual 2 §5.1 |
+
+### R212 - ME r212_memoria_cifrada (2026-11-11, 4ab0406)
+Memoria persistente cifrada compilable y verificable E2E:
+`opensyn/memoria_persistente_cifrada.syn` (777 líneas) reescrito sobre
+`PatronAprendido`, `MemoriaNegativa`, `EntradaCifrada`, `CapaMemoria` y
+`MemoriaCifrada`, con XSalsa20-Poly1305 real vía
+`cluster_sesion_cifrar_buffer`/`cluster_sesion_descifrar_buffer`, KDF SHA-256
+iterado (20000 rondas) con sal de hardware y almacén cifrado plano
+línea-a-línea en `~/.opensyn/memoria.db`. El E2E destapó y corrigió un triple
+free en `tokenizar` (`tokens.agregar(minusculas(actual))` duplicaba la expresión
+en el constructor y la función pura liberaba su parámetro; se usa
+`minusculas(_syn_strcpy(actual))`); el driver del oráculo es idempotente para no
+duplicar entradas. Oráculo E2E nuevo 1/1; test estructural existente 14/14;
+gate Fase 32 2/2 (módulo retirado del baseline). Evidencia
+`cc3cf959ff0b1a25`; `contrastar` 3 requisitos/2 oráculos, `alineacion` 1
+archivo, `verificar_alineacion` 0 brechas. Desviaciones declaradas H-R212-1
+(Argon2id), H-R212-2 (SQLite cifrado) y H-R212-3 (estado global mutable).
+Reporte: `docs/reportes/R212.md` | 4ab0406 |
+Manual 6 §1.1, Manual 7 §7.3, Manual 2 §5.1 |
