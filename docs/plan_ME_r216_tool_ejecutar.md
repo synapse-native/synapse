@@ -8,7 +8,7 @@ requisito: `Manual 7 §7.3` — sandboxing y permisos mínimos.
 
 texto: "**Sandboxing:** El servidor de inferencia se ejecuta con permisos mínimos."
 
-implementacion: `opensyn/herramientas.syn` valida el comando antes de ejecutarlo: solo `synapse check`, `synapse build`, `pytest`, `git status`, `git diff`; rechaza metacaracteres de shell, `..`, rutas absolutas y flags peligrosos de git. No usa `system()` ni `sh -c` en el nuevo camino.
+implementacion: `opensyn/herramientas.syn` valida el comando antes de ejecutarlo: solo `synapse check`, `synapse build`, `pytest`, `git status`, `git diff`; rechaza metacaracteres de shell, `..`, rutas absolutas y flags peligrosos de git. Windows usa `CreateProcessA` y POSIX usa `execvp` con argv dividido por espacios; no usa `system()` ni `sh -c` en el nuevo camino.
 
 oraculo: tests/integration/test_tool_ejecutar.py
 

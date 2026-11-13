@@ -126,6 +126,10 @@ def test_fuente_declara_ejecutar_y_citas():
     assert "TOOL ejecutar" in principal
     assert 'nombre == "ejecutar"' in principal
     assert "ejecutar" in (RAIZ / "opensyn" / "principal.syn").read_text(encoding="utf-8")
+    proceso = (RAIZ / "runtime" / "core" / "proceso.c").read_text(encoding="utf-8")
+    assert "system(" not in proceso
+    assert "/bin/sh" not in proceso
+    assert "execl(" not in proceso
 
 
 @pytest.mark.slow

@@ -16,6 +16,7 @@
 
 #define SYNAPSE_PROCESO_MAX_SALIDA 32768
 #define SYNAPSE_PROCESO_TIMEOUT_EXIT 124
+#define SYNAPSE_PROCESO_MAX_ARGS 64
 
 static CadenaSegura _proceso_vacio(void) {
     return (CadenaSegura){ .longitud = 0, .datos = "" };
@@ -191,6 +192,25 @@ static int64_t _proceso_ms_desde(const struct timespec* inicio) {
            ((int64_t)ahora.tv_nsec - (int64_t)inicio->tv_nsec) / 1000000;
 }
 
+/* Divide por espacios sin invocar un shell: la allowlist ya valido el comando. */
+static int _proceso_dividir_args(char* linea, char* argv[], int max) {
+    int argc = 0;
+    char* p = linea;
+    while (*p != '\0') {
+        while (*p == ' ') p++;
+        if (*p == '\0') break;
+        if (argc >= max) return -1;
+        argv[argc++] = p;
+        while (*p != '\0' && *p != ' ') p++;
+        if (*p == ' ') {
+            *p = '\0';
+            p++;
+        }
+    }
+    argv[argc] = NULL;
+    return argc;
+}
+
 CadenaSegura _syn_capturar_comando_timeout(CadenaSegura cmd, int64_t timeout_ms) {
     if (cmd.datos == NULL || cmd.longitud <= 0 || cmd.longitud >= 4096) {
         return _proceso_vacio();
@@ -210,11 +230,15 @@ CadenaSegura _syn_capturar_comando_timeout(CadenaSegura cmd, int64_t timeout_ms)
         return _proceso_vacio();
     }
     if (pid == 0) {
+        char* argv[SYNAPSE_PROCESO_MAX_ARGS + 1];
+        int argc;
         dup2(fds[1], STDOUT_FILENO);
         dup2(fds[1], STDERR_FILENO);
         close(fds[0]);
         close(fds[1]);
-        execl("/bin/sh", "sh", "-c", cmdline, (char*)NULL);
+        argc = _proceso_dividir_args(cmdline, argv, SYNAPSE_PROCESO_MAX_ARGS);
+        if (argc <= 0) _exit(127);
+        execvp(argv[0], argv);
         _exit(127);
     }
 

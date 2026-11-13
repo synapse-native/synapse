@@ -2170,3 +2170,5 @@ funcion principal() -> entero:
     escribir_linea("  [OK] Para cambiar: elimina .synapse_config y re-ejecuta")
     escribir_linea("")
     retornar modo_compilador()
+
+// cumple Manual 7 §7.3: TOOL ejecutar delega en la allowlist y el timeout de herramienta_ejecutar.

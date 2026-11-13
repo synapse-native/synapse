@@ -1,7 +1,7 @@
 # Expediente de alineación r216_tool_ejecutar
 
 base: HEAD  # commit sobre el que se leyó el manual
-cambio_hash: 384d8dd0391350fb
+cambio_hash: 36ff59676065b465
 
 > Una ancla por requisito. `estado:` CUMPLE | DESVIACION.
 > CUMPLE exige `evidencia: archivo:linea` con el comentario

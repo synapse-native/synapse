@@ -628,3 +628,5 @@ funcion herramienta_editar(ruta: texto, buscar: texto, reemplazo: texto, cwd: te
                         sino:
                             msg = concat("[TOOL_RESULT] editado ", ruta)
     retornar msg
+
+// cumple Manual 7 §7.3: la ejecucion POSIX usa execvp sin shell (runtime/core/proceso.c).
