@@ -9,4 +9,5 @@
 CadenaSegura _syn_capturar_comando_timeout(CadenaSegura cmd, int64_t timeout_ms);
 
 // cumple Manual 7 §7.3: contrato sin shell; POSIX usa execvp con argv dividido.
+// cumple Manual 7 §7.3: la validacion de rutas absolutas ocurre antes de este contrato.
 #endif /* SYNAPSE_PROCESO_H */

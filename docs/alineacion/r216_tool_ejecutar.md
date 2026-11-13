@@ -1,7 +1,7 @@
 # Expediente de alineación r216_tool_ejecutar
 
 base: HEAD  # commit sobre el que se leyó el manual
-cambio_hash: 36ff59676065b465
+cambio_hash: db8058173bc4604a
 
 > Una ancla por requisito. `estado:` CUMPLE | DESVIACION.
 > CUMPLE exige `evidencia: archivo:linea` con el comentario
@@ -31,7 +31,7 @@ cambio_hash: 36ff59676065b465
   cita: "**Sandboxing:** El servidor de inferencia se ejecuta con permisos mínimos."
   tipo: seguridad
   estado: CUMPLE
-  evidencia: opensyn/herramientas.syn:246
+  evidencia: opensyn/herramientas.syn:250
   oraculo: tests/integration/test_tool_ejecutar.py
 
 - manual: 2
@@ -39,7 +39,7 @@ cambio_hash: 36ff59676065b465
   cita: "**`garantiza`:** Se evalúa inmediatamente antes de cada `retornar`. La variable `_resultado_` contiene el valor que se va a retornar."
   tipo: contrato
   estado: CUMPLE
-  evidencia: opensyn/herramientas.syn:251
+  evidencia: opensyn/herramientas.syn:255
   oraculo: tests/integration/test_tool_ejecutar.py
 
 ## opensyn/principal.syn

@@ -153,6 +153,10 @@ funcion herr_comando_sin_rutas_absolutas(comando: texto) -> booleano:
                 si anterior == " ":
                     seguro = falso
                     romper
+                sino:
+                    si anterior == "=":
+                        seguro = falso
+                        romper
         i = i + 1
     retornar seguro
 

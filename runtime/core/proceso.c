@@ -1,6 +1,7 @@
 // Timeout de 5 s (Manual FASE 32 §6.4, no indexado por el gate).
 // cumple Manual 7 §7.3: el comando ya viene validado por la allowlist de OpenSyn;
 // aqui solo se ejecuta directo (sin shell) y se acota la salida a 32 KB.
+// cumple Manual 7 §7.3: la allowlist tambien rechaza valores absolutos tras '='.
 // cumple Manual 2 §9.1: toda devolucion usa pool_alloc (RAII del llamador).
 //
 // _syn_capturar_comando_timeout devuelve "[RC]<codigo>\n<salida>":

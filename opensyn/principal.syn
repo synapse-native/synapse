@@ -2171,4 +2171,6 @@ funcion principal() -> entero:
     escribir_linea("")
     retornar modo_compilador()
 
+// cumple Manual 7 §7.3: el despacho delega la validacion de rutas absolutas en la allowlist.
+
 // cumple Manual 7 §7.3: TOOL ejecutar delega en la allowlist y el timeout de herramienta_ejecutar.

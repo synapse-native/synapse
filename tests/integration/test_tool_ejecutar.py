@@ -37,6 +37,7 @@ funcion principal() -> entero:
     escribir_linea(herramienta_ejecutar("git diff --ext-diff"))
     escribir_linea(herramienta_ejecutar("pytest ../fuera.txt"))
     escribir_linea(herramienta_ejecutar("pytest C:\\Windows\\win.ini"))
+    escribir_linea(herramienta_ejecutar("pytest --junitxml=/tmp/out.xml"))
     escribir_linea(herramienta_ejecutar("rm -rf /"))
     retornar 0
 '''
@@ -140,7 +141,7 @@ def test_e2e_allowlist_rechaza_inyeccion_y_rutas(tmp_path):
     p = _ejecutar(exe, tmp_path)
     assert p.returncode == 0, f"rc={p.returncode}: {p.stdout[-500:]} {p.stderr[-300:]}"
     lineas = [l for l in p.stdout.splitlines() if l.strip()]
-    assert len(lineas) == 6, f"salida inesperada: {p.stdout!r}"
+    assert len(lineas) == 7, f"salida inesperada: {p.stdout!r}"
     for linea in lineas:
         assert "[TOOL_ERROR] comando no permitido" in linea, linea
 

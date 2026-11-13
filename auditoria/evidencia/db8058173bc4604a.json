@@ -1,0 +1,16 @@
+{
+ "cambio_hash": "db8058173bc4604a",
+ "expediente": "docs/alineacion/r216_tool_ejecutar.md",
+ "fecha": "2026-11-12",
+ "archivos": [
+  "opensyn/herramientas.syn",
+  "opensyn/principal.syn",
+  "runtime/core/proceso.c",
+  "runtime/core/proceso.h"
+ ],
+ "oraculos": {
+  "tests/integration/test_tool_ejecutar.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}
