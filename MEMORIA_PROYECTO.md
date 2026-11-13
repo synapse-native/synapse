@@ -7,7 +7,7 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-11-12** (R215 c1d051d COMPLETADO - ME r215_tool_patch: TOOL aplicar_patch con sandbox y aprobacion, parser de diff unificado, oraculo nuevo 3/3, regresion escritura+permisos 46/46, gates 0 brechas; antes R218 e2ec33f COMPLETADO - ME r218_bootstrap_json: bootstrap S2 con std.json/std.texto y buffer de emision de 4 MB, inferencia nativa OpBinaria/llamadas/acceso a campo, S2==S3 sha 950AA09B...A71B2A, 16/16 oraculos de auditoria, gates 0 brechas; antes R217 6497e80 COMPLETADO - ME r217_integracion_determinista: pipeline reutiliza explorer/architect deterministas, probe modular con ambos imports, pipeline existente + E2E 16/16, architect existente + E2E 12/12, gate Fase 32 2/2, regresion combinada 114/114; antes R211 b3180ed COMPLETADO - ME r211_architect_det: architect determinista compilable con DFS invertido, contratos criticos, ciclos y metricas, oraculo E2E 1/1, gate Fase 32 2/2, regresion combinada 114/114; antes R210 990aedb COMPLETADO - ME r210_explorer_det: explorer determinista compilable con BFS, oraculo E2E 1/1, gate Fase 32 2/2, regresion combinada 102/102; antes R209 3064d40 COMPLETADO - ME r209_router_chat: router y chat compilables con extraccion/validacion de codigo, oraculo E2E 1/1, gate Fase 32 2/2, regresion 75/75; antes R208 95ea023 COMPLETADO - ME r208_run_manager: run manager reanudable con checkpoints, timeout y límites, oráculo E2E 1/1, regresión de runs 70/70, gate Fase 32 2/2; antes R207 a578e03 COMPLETADO - ME r207_pipeline_multiagente: pipeline compilable y E2E con LLM y compilador real, oráculo E2E 1/1, pipeline existente 15/15, gate Fase 32 2/2; antes R206 7f17dec COMPLETADO - ME r206_validation_loop: bucle de validación y corrección automática con compilador real, oráculo E2E 4/4, regresión 85/85; antes R205b 5935a5d COMPLETADO — ME r205b_lsp_v3: reparación de compilación, ownership y protocolo del LSP nativo, 13 tests verdes; antes R205 b1e9959 COMPLETADO — ME r205_grafo_conocimiento: grafo de conocimiento real desde AST canónico, determinista, con persistencia JSON y oráculo E2E; antes R204 f018957 COMPLETADO — ME r204_tools_escritura: TOOL escribir/editar con sandbox y aprobación, gate de compilación Fase 32; antes R203 d865ab9 + R202 f1a4a02 + R201 c653fff + R200 f3b7268, ver dashboard; antes R199 a2d0ca3 + r198b3; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
+Última actualización: **2026-11-12** (R216 7d0ef12 COMPLETADO - ME r216_tool_ejecutar: TOOL ejecutar con allowlist y timeout, Windows CreateProcessA/POSIX execvp sin shell, oraculo nuevo 4/4, regresion 49/49 + control 24/24, gates 0 brechas, evidencia 36ff59676065b465; antes R215 c1d051d COMPLETADO - ME r215_tool_patch: TOOL aplicar_patch con sandbox y aprobacion, parser de diff unificado, oraculo nuevo 3/3, regresion escritura+permisos 46/46, gates 0 brechas; antes R218 e2ec33f COMPLETADO - ME r218_bootstrap_json: bootstrap S2 con std.json/std.texto y buffer de emision de 4 MB, inferencia nativa OpBinaria/llamadas/acceso a campo, S2==S3 sha 950AA09B...A71B2A, 16/16 oraculos de auditoria, gates 0 brechas; antes R217 6497e80 COMPLETADO - ME r217_integracion_determinista: pipeline reutiliza explorer/architect deterministas, probe modular con ambos imports, pipeline existente + E2E 16/16, architect existente + E2E 12/12, gate Fase 32 2/2, regresion combinada 114/114; antes R211 b3180ed COMPLETADO - ME r211_architect_det: architect determinista compilable con DFS invertido, contratos criticos, ciclos y metricas, oraculo E2E 1/1, gate Fase 32 2/2, regresion combinada 114/114; antes R210 990aedb COMPLETADO - ME r210_explorer_det: explorer determinista compilable con BFS, oraculo E2E 1/1, gate Fase 32 2/2, regresion combinada 102/102; antes R209 3064d40 COMPLETADO - ME r209_router_chat: router y chat compilables con extraccion/validacion de codigo, oraculo E2E 1/1, gate Fase 32 2/2, regresion 75/75; antes R208 95ea023 COMPLETADO - ME r208_run_manager: run manager reanudable con checkpoints, timeout y límites, oráculo E2E 1/1, regresión de runs 70/70, gate Fase 32 2/2; antes R207 a578e03 COMPLETADO - ME r207_pipeline_multiagente: pipeline compilable y E2E con LLM y compilador real, oráculo E2E 1/1, pipeline existente 15/15, gate Fase 32 2/2; antes R206 7f17dec COMPLETADO - ME r206_validation_loop: bucle de validación y corrección automática con compilador real, oráculo E2E 4/4, regresión 85/85; antes R205b 5935a5d COMPLETADO — ME r205b_lsp_v3: reparación de compilación, ownership y protocolo del LSP nativo, 13 tests verdes; antes R205 b1e9959 COMPLETADO — ME r205_grafo_conocimiento: grafo de conocimiento real desde AST canónico, determinista, con persistencia JSON y oráculo E2E; antes R204 f018957 COMPLETADO — ME r204_tools_escritura: TOOL escribir/editar con sandbox y aprobación, gate de compilación Fase 32; antes R203 d865ab9 + R202 f1a4a02 + R201 c653fff + R200 f3b7268, ver dashboard; antes R199 a2d0ca3 + r198b3; antes R196 ME r196_deuda_contrato_y_cobertura d022ad8 COMPLETADO —
  cierre de los 2 fallos DETERMINISTAS del barrido r195 (1569✓/25skip/6✗;
  los 5 del grupo A pasaban aislados, infra del barrido):
  (R1/H-R196-1 decisión Arquitecto ratificada "corregir contrato al manual")
@@ -123,8 +123,14 @@
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      POST-FASE 33 — DEUDA CERO. **2026-11-12 sesión:** R215
-                   COMPLETADO (c1d051d): ME r215_tool_patch — TOOL
+Fase roadmap:      POST-FASE 33 - DEUDA CERO. **2026-11-12 sesión:** R216
+                   COMPLETADO (7d0ef12): ME r216_tool_ejecutar - TOOL
+                   ejecutar con allowlist (synapse check/build, pytest, git
+                   status/diff), timeout de 5 s (rc 124, salida 32 KB),
+                   Windows CreateProcessA y POSIX execvp sin shell; oráculo
+                   nuevo 4/4, regresión escritura+permisos+patch 49/49,
+                   control de alineación 24/24, evidencia 36ff59676065b465.
+                   Antes R215 COMPLETADO (c1d051d): ME r215_tool_patch - TOOL
                    aplicar_patch con parser de diff unificado, sandbox y
                    aprobación ASK (alias a editar, MAX_HERRAMIENTAS=8 intacto);
                    oráculo nuevo 3/3, regresión escritura+permisos 46/46,
@@ -998,6 +1004,29 @@ Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc d
 - Verificación: `--check --no-emit` rc=0 en ambos módulos, `contrastar` 3
   requisitos/1 oráculo, `alineacion` 2 archivos, `verificar_alineacion` 0
   brechas; evidencia `d815bb878cda3f41`.
+
+### ME r216_tool_ejecutar (2026-11-12, 7d0ef12)
+- `runtime/core/proceso.c/.h` (NUEVOS): `_syn_capturar_comando_timeout`
+  devuelve `[RC]<rc>\n<salida>`, capa a 32 KB, usa `pool_alloc` y rc 124 en
+  timeout. Windows `CreateProcessA`; POSIX `fork` + `execvp` con argv dividido
+  por espacios, sin `system()` ni `sh -c`.
+- `opensyn/herramientas.syn`: allowlist `synapse check`, `synapse build`,
+  `pytest`, `git status`, `git diff`; rechazo de metacaracteres de shell, `..`,
+  rutas absolutas y flags `--ext-diff`/`--textconv`/`--output`; helpers con
+  contratos y `herramienta_ejecutar`.
+- `opensyn/principal.syn`: despacho `TOOL ejecutar` en Code/Debug, alias
+  `ejecutar` → `compilar` solo en la matriz (MAX_HERRAMIENTAS=8 intacto),
+  prompt y ayuda actualizados.
+- Oráculo nuevo `tests/integration/test_tool_ejecutar.py` 4/4: allowlist/
+  inyección, modos ASK/Code, ejecución permitida y timeout con shim real;
+  guarda de fuente sin `system`/`/bin/sh`/`execl`. Regresión patch+permisos+
+  escritura 49/49 y control de alineación 24/24.
+- Lección: el timeout debe terminar el hijo y cerrar el pipe; en Windows
+  `TerminateProcess` no mata nietos; POSIX debe evitar `sh -c`; los comentarios
+  finales cambian el `cambio_hash` y obligan a re-sellar el expediente.
+- Verificación: `--check --no-emit` rc=0, `contrastar` 2 requisitos/1 oráculo,
+  `alineacion` 4 archivos, `verificar_alineacion` 0 brechas; evidencia
+  `36ff59676065b465`.
 
 ### ME r218_bootstrap_json (2026-11-12, e2ec33f)
 - `nucleo/principal.syn` incluye `std/json.syn` y `std/texto.syn` en el unity

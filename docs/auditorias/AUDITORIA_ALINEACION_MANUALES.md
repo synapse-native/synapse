@@ -1075,3 +1075,22 @@ regresión de escritura + permisos 46/46. Evidencia `d815bb878cda3f41`;
 Reporte: `docs/reportes/R215.md` | c1d051d |
 Manual 7 §1.1, Manual 7 §7.3, Manual 2 §5.1 |
 
+### R216 - ME r216_tool_ejecutar (2026-11-12, 7d0ef12)
+`TOOL ejecutar <comando>` en OpenSyn con allowlist estricta (`synapse check`,
+`synapse build`, `pytest`, `git status`, `git diff`), rechazo de metacaracteres
+de shell, `..`, rutas absolutas y flags peligrosos, y timeout real de 5 s
+(rc 124, salida capada a 32 KB). `runtime/core/proceso.c/.h` nuevos:
+Windows usa `CreateProcessA`; POSIX usa `fork` + `execvp` con argv dividido por
+espacios, sin `system()` ni `sh -c`. `opensyn/principal.syn` despacha la tool en
+Code/Debug, aliasa `ejecutar` → `compilar` solo en la matriz
+(MAX_HERRAMIENTAS=8 intacto) y actualiza prompt/ayuda. Oráculo nuevo
+`tests/integration/test_tool_ejecutar.py` 4/4 (allowlist/inyección, modos
+ASK/Code, ejecución permitida y timeout con shim real) + guarda de fuente sin
+shell; regresión de escritura/permisos/patch 49/49 y control de alineación
+24/24. Evidencia `36ff59676065b465`; `contrastar` 2 requisitos/1 oráculo,
+`alineacion` 4 archivos, `verificar_alineacion` 0 brechas. Manual 32 no está
+indexado: ancla formal Manual 7 §7.3 + Manual 2 §5.1/§9.1; timeout documentado
+como `Manual FASE 32 §6.4` (referencia no gateada).
+Reporte: `docs/reportes/R216.md` | 7d0ef12 |
+Manual 7 §7.3, Manual 2 §5.1, Manual 2 §9.1 |
+
