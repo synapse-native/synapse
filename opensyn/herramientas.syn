@@ -14,7 +14,15 @@ importar std.texto
 importar std.sistema
 importar permisos
 
+// Timeout de 5 s (Manual FASE 32 §6.4, no indexado): runtime/core/proceso.c.
+externo funcion _syn_capturar_comando_timeout(cmd: texto, timeout_ms: entero) -> texto
+
 constante HERR_MAX_CONTENIDO = 262144
+// timeout de 5 s para detectar bucles infinitos (Manual FASE 32 §6.4).
+constante HERR_EJECUTAR_TIMEOUT_MS = 5000
+constante HERR_EJECUTAR_MAX_COMANDO = 2048
+// cumple Manual 7 §7.3: alfabeto minimo; cualquier metacaracter de shell queda fuera.
+constante HERR_EJECUTAR_ALFABETO = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 _-./\\=,+@"
 
 // Normaliza el cwd para comparar rutas con el mismo separador de plataforma.
 // Consume 'cwd': el llamador pasa una copia _syn_strcpy si la necesita despues.
@@ -105,6 +113,157 @@ funcion herr_desescapar_saltos(t: texto) -> texto:
             res = concat(res, c)
             i = i + 1
     retornar res
+
+// Valida que un comando solo use caracteres seguros (sin metacaracteres de shell).
+// Consume 'comando': el llamador pasa una copia _syn_strcpy.
+// cumple Manual 7 §7.3: allowlist de ejecucion local sin inyeccion.
+funcion herr_comando_caracteres_seguros(comando: texto) -> booleano:
+    requiere:
+        longitud(comando) > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso // cumple Manual 2 §5.1
+    seguro = verdadero
+    i = 0
+    mientras i < longitud(comando):
+        c = subcadena(comando, i, 1)
+        si indice_de(HERR_EJECUTAR_ALFABETO, c) < 0:
+            seguro = falso
+            romper
+        i = i + 1
+    retornar seguro
+
+// Rechaza rutas absolutas dentro de los argumentos del comando.
+// Consume 'comando': el llamador pasa una copia _syn_strcpy.
+// cumple Manual 7 §7.3: el comando solo puede tocar rutas relativas del workspace.
+funcion herr_comando_sin_rutas_absolutas(comando: texto) -> booleano:
+    requiere:
+        longitud(comando) > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso // cumple Manual 2 §5.1
+    seguro = verdadero
+    i = 0
+    mientras i < longitud(comando):
+        c = subcadena(comando, i, 1)
+        si c == "/" o c == "\\":
+            si i == 0:
+                seguro = falso
+                romper
+            sino:
+                anterior = subcadena(comando, i - 1, 1)
+                si anterior == " ":
+                    seguro = falso
+                    romper
+        i = i + 1
+    retornar seguro
+
+// Compara el prefijo exigiendo separador o fin de comando.
+// Consume 'comando' y 'prefijo': el llamador pasa copias _syn_strcpy.
+// cumple Manual 7 §7.3: evita que "pytestfoo" pase como "pytest".
+funcion herr_comando_empieza(comando: texto, prefijo: texto) -> booleano:
+    requiere:
+        longitud(comando) > 0
+        longitud(prefijo) > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso // cumple Manual 2 §5.1
+    coincide = falso
+    lp = longitud(prefijo)
+    si longitud(comando) >= lp:
+        si subcadena(comando, 0, lp) == prefijo:
+            si longitud(comando) == lp:
+                coincide = verdadero
+            sino:
+                sig = subcadena(comando, lp, 1)
+                si sig == " ":
+                    coincide = verdadero
+    retornar coincide
+
+// Allowlist de comandos del agente (Manual 7 §7.3).
+// Consume 'comando': el llamador pasa una copia _syn_strcpy.
+funcion herr_comando_permitido(comando: texto) -> booleano:
+    requiere:
+        longitud(comando) > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso // cumple Manual 2 §5.1
+    permitido = falso
+    si longitud(comando) <= HERR_EJECUTAR_MAX_COMANDO:
+        si herr_comando_caracteres_seguros(_syn_strcpy(comando)) == verdadero:
+            si herr_comando_sin_rutas_absolutas(_syn_strcpy(comando)) == verdadero:
+                si indice_de(comando, "..") < 0:
+                    si herr_comando_empieza(_syn_strcpy(comando), "synapse check") == verdadero:
+                        permitido = verdadero
+                    sino:
+                        si herr_comando_empieza(_syn_strcpy(comando), "synapse build") == verdadero:
+                            permitido = verdadero
+                        sino:
+                            si herr_comando_empieza(_syn_strcpy(comando), "pytest") == verdadero:
+                                permitido = verdadero
+                            sino:
+                                si herr_comando_empieza(_syn_strcpy(comando), "git status") == verdadero:
+                                    permitido = verdadero
+                                sino:
+                                    si herr_comando_empieza(_syn_strcpy(comando), "git diff") == verdadero:
+                                        permitido = verdadero
+    si permitido == verdadero:
+        si indice_de(comando, "--ext-diff") >= 0:
+            permitido = falso
+        si indice_de(comando, "--textconv") >= 0:
+            permitido = falso
+        si indice_de(comando, "--output") >= 0:
+            permitido = falso
+    retornar permitido
+
+// Extrae el rc del formato "[RC]<codigo>\n<salida>".
+// Consume 'salida': el llamador pasa una copia _syn_strcpy.
+funcion herr_ejecutar_rc(salida: texto) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= -1 // cumple Manual 2 §5.1
+    rc = -1
+    nl = indice_de(salida, "\n")
+    si nl >= 4:
+        si subcadena(salida, 0, 4) == "[RC]":
+            rc = _syn_atoi(subcadena(salida, 4, nl - 4))
+    retornar rc
+
+// Quita la cabecera "[RC]...\n" y devuelve solo la salida.
+// Consume 'salida': el llamador pasa una copia _syn_strcpy.
+funcion herr_ejecutar_salida(salida: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    nl = indice_de(salida, "\n")
+    si nl < 0:
+        retornar ""
+    si nl + 1 >= longitud(salida):
+        retornar ""
+    retornar subcadena(salida, nl + 1, longitud(salida) - nl - 1)
+
+// Ejecuta un comando permitido con timeout y devuelve rc + salida.
+// Consume 'comando': el llamador pasa una copia _syn_strcpy.
+// timeout de 5 s y proceso terminado al excederlo (Manual FASE 32 §6.4).
+// cumple Manual 7 §7.3: allowlist previa; nunca se pasa a un shell.
+funcion herramienta_ejecutar(comando: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    cmd = recortar(comando)
+    si longitud(cmd) == 0:
+        retornar "[TOOL_ERROR] falta el comando: TOOL ejecutar <comando>"
+    si longitud(cmd) > HERR_EJECUTAR_MAX_COMANDO:
+        retornar "[TOOL_ERROR] comando demasiado largo"
+    si herr_comando_permitido(_syn_strcpy(cmd)) == falso:
+        retornar "[TOOL_ERROR] comando no permitido (usa: synapse check|synapse build|pytest|git status|git diff)"
+    bruto = _syn_capturar_comando_timeout(_syn_strcpy(cmd), HERR_EJECUTAR_TIMEOUT_MS)
+    rc = herr_ejecutar_rc(_syn_strcpy(bruto))
+    salida = herr_ejecutar_salida(_syn_strcpy(bruto))
+    si rc == -1 y longitud(salida) == 0:
+        retornar "[TOOL_ERROR] no se pudo lanzar el comando"
+    si rc == 124:
+        retornar concat("[TOOL_ERROR] timeout: comando terminado (124)\n", salida)
+    retornar concat(concat("[TOOL_RESULT] rc=", entero_a_texto(rc)), concat("\n", salida))
 
 // Divide un texto en lineas conservando el terminador de cada linea.
 // Consume 't': el llamador pasa una copia _syn_strcpy.

@@ -895,10 +895,10 @@ funcion herramientas_permitidas(modo: entero) -> texto:
         retornar "listar,leer,git,plan"
     // code: todas las herramientas incluyendo edición
     si modo == MODO_CODE:
-        retornar "listar,leer,git,plan,editar,compilar"
+        retornar "listar,leer,git,plan,editar,compilar,ejecutar"
     // debug: lectura + diagnóstico
     si modo == MODO_DEBUG:
-        retornar "listar,leer,git,diagnosticar"
+        retornar "listar,leer,git,diagnosticar,ejecutar"
     // orchestrator: NO ejecuta herramientas, solo delega a otros modos
     si modo == MODO_ORCHESTRATOR:
         retornar "delegar"
@@ -1071,7 +1071,7 @@ funcion ejecutar_tool_aprobado(linea: texto, cwd_act: texto, modo: entero, aprob
         aprobado == 0 o aprobado == 1
     garantiza:
         longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
-    res = "[TOOL_ERROR] herramienta desconocida. Usa: TOOL listar|leer|git|escribir|editar|aplicar_patch <arg>"
+    res = "[TOOL_ERROR] herramienta desconocida. Usa: TOOL listar|leer|git|escribir|editar|aplicar_patch|ejecutar <arg>"
     total = longitud(linea)
     inicio = 5
     fin = inicio
@@ -1085,13 +1085,18 @@ funcion ejecutar_tool_aprobado(linea: texto, cwd_act: texto, modo: entero, aprob
         arg = subcadena(linea, fin, total - fin)
         // El modelo suele pegar espacio inicial/comillas/residuos: normalizar.
         arg = recortar(_syn_strcpy(arg))
-        // 'escribir' se aliasa a 'editar' en la matriz de permisos: MAX_HERRAMIENTAS
-        // es contrato inmutable de tests/integration/test_permisos_opensyn.py.
+        // 'escribir' se aliasa a 'editar' y 'ejecutar' a 'compilar' SOLO en la
+        // matriz: MAX_HERRAMIENTAS es contrato inmutable de
+        // tests/integration/test_permisos_opensyn.py.
+        nombre_modo_perm = _syn_strcpy(nombre)
         nombre_perm = _syn_strcpy(nombre)
         si nombre == "escribir" o nombre == "aplicar_patch":
+            nombre_modo_perm = "editar"
             nombre_perm = "editar"
-        // ME-1 (R1): verificar permisos del modo actual
-        si herramienta_permitida(modo, _syn_strcpy(nombre_perm)) == 0:
+        si nombre == "ejecutar":
+            nombre_perm = "compilar"
+        // ME-1 (R1): verificar permisos del modo actual con el nombre real
+        si herramienta_permitida(modo, _syn_strcpy(nombre_modo_perm)) == 0:
             retornar concat("[TOOL_ERROR] herramienta '", nombre, "' no permitida en modo ", nombre_modo(modo))
         // cumple Manual 7 §7.3: la ruta de escritura se normaliza a absoluta
         // ANTES de verificar el confinamiento al workspace.
@@ -1150,6 +1155,13 @@ funcion ejecutar_tool_aprobado(linea: texto, cwd_act: texto, modo: entero, aprob
                 sino:
                     res = "[TOOL_ERROR] comando git no permitido (usa: git status|git log)"
         // cumple Manual 7 §1.1: escritura/edicion asistida del agente.
+        // Timeout de 5 s (Manual FASE 32 §6.4, no indexado).
+        // cumple Manual 7 §7.3: allowlist estricta, sin shell.
+        si nombre == "ejecutar":
+            si arg == "":
+                res = "[TOOL_ERROR] formato: TOOL ejecutar <comando>"
+            sino:
+                res = herramienta_ejecutar(_syn_strcpy(arg))
         si nombre == "escribir":
             sep = indice_de(arg, "::")
             si sep < 0:
@@ -1270,7 +1282,7 @@ funcion consultar_agente(modelo: texto, prompt_usuario: texto, modo: entero) -> 
 // (R147: la versión "ejemplo" lo hacía narrar en vez de actuar). Sin el
 // literal [USUARIO] dentro del texto (ollama.c parte system/user por esa
 // marca). Mantener bajo 3500 bytes: ollama.c trunca a los ÚLTIMOS 3500 (R144c).
-constante AGENTE_SYS_BASE = "Eres OpenSyn, asistente IA de Synapse (.syn). Syntax: 4 espacios, sin ;, funcion(name:type)->type, si/para/mientras, retornar. REGLA: si el usuario pregunta por archivos, carpetas, rutas o codigo REAL, tu respuesta debe ser UNA sola linea exacta: TOOL listar <ruta> (vacia = raiz del repo) o TOOL leer <ruta> o TOOL git status. Para crear o sobrescribir un archivo: TOOL escribir <ruta> :: <contenido>. Para editar un fragmento unico: TOOL editar <ruta> :: <texto_viejo> :: <texto_nuevo>. Para aplicar un diff unificado: TOOL aplicar_patch <ruta> :: <diff>. Usa \\n para saltos de linea. Las herramientas de escritura piden confirmacion al usuario. No expliques nada antes. Ejemplo: usuario: 'que archivos hay en la raiz?' - tu respuesta: TOOL listar. Cuando ya recibas [TOOL_RESULT], responde en el idioma del usuario resumiendo (maximo 10), sin inventar archivos.\n\n[CONTEXTO]\n"
+constante AGENTE_SYS_BASE = "Eres OpenSyn, asistente IA de Synapse (.syn). Syntax: 4 espacios, sin ;, funcion(name:type)->type, si/para/mientras, retornar. REGLA: si el usuario pregunta por archivos, carpetas, rutas o codigo REAL, tu respuesta debe ser UNA sola linea exacta: TOOL listar <ruta> (vacia = raiz del repo) o TOOL leer <ruta> o TOOL git status. Para crear o sobrescribir un archivo: TOOL escribir <ruta> :: <contenido>. Para editar un fragmento unico: TOOL editar <ruta> :: <texto_viejo> :: <texto_nuevo>. Para aplicar un diff unificado: TOOL aplicar_patch <ruta> :: <diff>. Para ejecutar un comando permitido: TOOL ejecutar <comando> (solo synapse check, synapse build, pytest, git status, git diff; timeout 5s). Usa \\n para saltos de linea. Las herramientas de escritura piden confirmacion al usuario. No expliques nada antes. Ejemplo: usuario: 'que archivos hay en la raiz?' - tu respuesta: TOOL listar. Cuando ya recibas [TOOL_RESULT], responde en el idioma del usuario resumiendo (maximo 10), sin inventar archivos.\n\n[CONTEXTO]\n"
 
 // Elementos del menu de comandos (el menu filtra mientras se escribe).
 // ME-1 (R1): agregar comandos de modo ask/plan/code/debug/orchestrator
@@ -1445,12 +1457,12 @@ funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero,
         retornar "!modo:1"
     si entrada == "/code":
         _syn_tui_mensaje(2, "Modo: CODE (edición)")
-        _syn_tui_mensaje(2, "  Herramientas: listar, leer, git, plan, escribir, editar, aplicar_patch, compilar")
+        _syn_tui_mensaje(2, "  Herramientas: listar, leer, git, plan, escribir, editar, aplicar_patch, compilar, ejecutar")
         _syn_tui_repintar(modelo)
         retornar "!modo:2"
     si entrada == "/debug":
         _syn_tui_mensaje(2, "Modo: DEBUG (diagnóstico)")
-        _syn_tui_mensaje(2, "  Herramientas: listar, leer, git, diagnosticar")
+        _syn_tui_mensaje(2, "  Herramientas: listar, leer, git, diagnosticar, ejecutar")
         _syn_tui_repintar(modelo)
         retornar "!modo:3"
     si entrada == "/orchestrator":

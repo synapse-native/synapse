@@ -175,6 +175,7 @@ _RT_HEADERS = [
     "runtime/core/axon.h",  # D-9(d) corte 11: API del modulo axon
     "runtime/core/cache.h",  # D-9(d) corte 11: API del modulo cache
     "runtime/core/sistema.h",  # D-9(d) corte 11: API del modulo sistema
+    "runtime/core/proceso.h",  # r216: API del subproceso con timeout (Manual 32 §6.4)
     "librerias/embedded_libs.h",  # incluido por runtime/core/memory.c y concurrency.c
 ]
 
