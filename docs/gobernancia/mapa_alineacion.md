@@ -32,7 +32,7 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "opensyn/architect_det.syn": ["Manual 6 §1.1"],
   "opensyn/memoria_persistente_cifrada.syn": ["Manual 6 §1.1"],
   "opensyn/pipeline_multiagente.syn": ["Manual 6 §1.1"],
-  "opensyn/verificacion_aot.syn": ["Manual 6 §1.1"],
+  "opensyn/verificacion_aot.syn": ["Manual 6 §1.1", "Manual 7 §4.2", "Manual 7 §6.3", "Manual 2 §5.1"],
   "nucleo/grafo_conocimiento.syn": ["Manual 6 §1.1", "Manual 2 §5.1"],
   "nucleo/puente_ffi_lista_mapa.syn": ["Manual 6 §3.1", "Manual 6 §3.2", "Manual 2 §5"],
    "nucleo/lsp.syn": ["Manual 8 §1"],
