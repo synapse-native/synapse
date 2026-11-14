@@ -1,7 +1,7 @@
 # GUÍA DE GOBERNANZA — SYNAPSE v8.1.0-industrial
 
 ## 📖 FUENTES DE VERDAD ABSOLUTA
-- **Manuales de Ingeniería**: `docs/manuales/MANUAL 1.md` al `MANUAL 9.md`
+- **Manuales de Ingeniería**: `docs/manuales/MANUAL 1.md` al `MANUAL 9.md` y anexos.
 - **Roadmap**: `ROADMAP.md`
 
 ## 🛑 REGLAS INFRINGIBLES (CADA UNA = ERROR GRAVE)
