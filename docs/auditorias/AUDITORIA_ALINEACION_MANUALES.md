@@ -1095,3 +1095,20 @@ como `Manual FASE 32 §6.4` (referencia no gateada).
 Reporte: `docs/reportes/R216.md` | 7adc440 |
 Manual 7 §7.3, Manual 2 §5.1, Manual 2 §9.1 |
 
+
+### R219 - ME r219_verificacion_aot (2026-11-13, 26e4cf8)
+Verificación AOT con auto-refutación operativa: `synapse check --no-emit`
+antes de generar, hasta 5 casos límite compilados/ejecutados con timeout y
+agregación en `Verificacion`. Causa raíz H-R219-1: el wrapper de `sha256_texto`
+libera su argumento y `aot_nombre_base` le pasaba `caso.codigo_ejecucion`, que
+quedaba liberado y luego se corrompía al concatenar; fix con
+`_syn_strcpy(caso.codigo_ejecucion)`. H-R219-2: `elemento_texto` devuelve copia
+para no liberar elementos de la lista y los valores default/caso usan un único
+retorno. Oráculo E2E nuevo `tests/integration/test_verificacion_aot_e2e.py`
+(2/2; válido 5 casos/0 fallos, inválido CHECK=error sin residuos) + suite
+estructural existente 13/13 = 15 passed. Evidencia `c0a201a1ecbe7d72`;
+`contrastar` 4 requisitos/2 oráculos, `alineacion` 1 archivo,
+`verificar_alineacion` 0 brechas. Manual 6 §1.1, Manual 7 §4.2/§6.3, Manual 2
+§5.1.
+Reporte: `docs/reportes/R219.md` | 26e4cf8 |
+Manual 7 §4.2, Manual 7 §6.3, Manual 2 §5.1, Manual 6 §1.1 |
