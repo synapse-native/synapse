@@ -501,7 +501,9 @@ funcion parse_primario_sq(est: ParserEst) -> entero:
     // Identificador (o keyword contextual en posición de nombre)
     si token_es_nombre(t) == 1:
         retornar sq_id(est)
-    si t == T_LISTA o t == T_MAPA o t == T_ARENA:
+    // cumple Manual 3 §3: Canal<tipo> es un constructor generico valido
+    // cumple Manual 3 §8.1: Canal<texto>(10) es constructor con nombre contextual
+    si t == T_LISTA o t == T_MAPA o t == T_ARENA o t == T_CANAL:
         // Constructores de colección/arena (M3 §3 L157-158, L167, L197):
         // los TokenID propios 75+ no están en token_es_nombre del módulo
         // compartido; se aceptan aquí como nombre contextual (patrón FASE A).

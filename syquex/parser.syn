@@ -91,7 +91,9 @@ funcion sq_declaracion(est: ParserEst) -> entero:
     si t == T_IMPORTAR:
         token_avanzar(est)
         nombre = sq_id(est)
-        // M6: paths punteados — importar mod.sub.mod (Manual 3 §3 L72)
+        sub = -1
+        // M6: paths punteados - importar mod.sub.mod (Manual 3 §3 L72)
+        // cumple Manual 3 §3: `importar std` sin punto no debe leer nodos[sub]
         mientras token_mirar(est) == T_PUNTO:
             token_avanzar(est)
             sub = sq_id(est)
@@ -106,7 +108,7 @@ funcion sq_declaracion(est: ParserEst) -> entero:
         // trad_arena). Reconstruye los punteros 64-bit con sq_tokens_hi (R88,
         // paridad sq_copiar_nombre).
         inseguro:
-            asm("{ struct SqLexerBuffers* _b_imp=(struct SqLexerBuffers*)sq_buffers(); int* _hi_imp=(int*)sq_tokens_hi(); int _nl=est->nodos[nombre].len_str; int _sl=est->nodos[sub].len_str; int _total=_nl+1+_sl; if (_b_imp && _b_imp->sbuf && _hi_imp && _nl>=0 && _sl>=0 && _b_imp->str_pos+_total<1048575) { char* _buf=(char*)_b_imp->sbuf+_b_imp->str_pos; uintptr_t _pn=((uintptr_t)(unsigned)_hi_imp[nombre]<<32)|(unsigned)est->nodos[nombre].ptr_str; uintptr_t _ps=((uintptr_t)(unsigned)_hi_imp[sub]<<32)|(unsigned)est->nodos[sub].ptr_str; memcpy(_buf,(const char*)_pn,_nl); _buf[_nl]='.'; memcpy(_buf+_nl+1,(const char*)_ps,_sl); _b_imp->str_pos+=_total; uintptr_t _p=(uintptr_t)_buf; est->nodos[nombre].ptr_str=(int)(_p&0xFFFFFFFFu); est->nodos[nombre].len_str=_total; _hi_imp[nombre]=(int)(_p>>32); } }")
+            asm("{ struct SqLexerBuffers* _b_imp=(struct SqLexerBuffers*)sq_buffers(); int* _hi_imp=(int*)sq_tokens_hi(); int _nl=est->nodos[nombre].len_str; int _sl=(sub>=0)?est->nodos[sub].len_str:0; int _total=_nl+(sub>=0?1+_sl:0); if (_b_imp && _b_imp->sbuf && _hi_imp && _nl>=0 && _sl>=0 && _b_imp->str_pos+_total<1048575) { char* _buf=(char*)_b_imp->sbuf+_b_imp->str_pos; uintptr_t _pn=((uintptr_t)(unsigned)_hi_imp[nombre]<<32)|(unsigned)est->nodos[nombre].ptr_str; memcpy(_buf,(const char*)_pn,_nl); if (sub>=0) { uintptr_t _ps=((uintptr_t)(unsigned)_hi_imp[sub]<<32)|(unsigned)est->nodos[sub].ptr_str; _buf[_nl]='.'; memcpy(_buf+_nl+1,(const char*)_ps,_sl); } _b_imp->str_pos+=_total; uintptr_t _p=(uintptr_t)_buf; est->nodos[nombre].ptr_str=(int)(_p&0xFFFFFFFFu); est->nodos[nombre].len_str=_total; _hi_imp[nombre]=(int)(_p>>32); } }")
         // M6: alias — importar mod.sub como alias (Manual 3 §3 L72)
         si token_mirar(est) == T_IDENTIFICADOR:
             // Verificar si el lexema es "como" (keyword contextual en import)
