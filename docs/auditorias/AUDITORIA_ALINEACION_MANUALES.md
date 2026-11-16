@@ -1111,4 +1111,37 @@ estructural existente 13/13 = 15 passed. Evidencia `c0a201a1ecbe7d72`;
 `verificar_alineacion` 0 brechas. Manual 6 §1.1, Manual 7 §4.2/§6.3, Manual 2
 §5.1.
 Reporte: `docs/reportes/R219.md` | 26e4cf8 |
+### R220 - ME r220_harness_runtime_path (2026-11-15, 1319d82)
+El harness antepone `toolchain_gcc12/mingw64/bin` a PATH (cierra
+`0xC000014B` por `libwinpthread-1.dll`) y resuelve `ffi_marshaling.h` con
+`-I runtime/core` dirigido, sin CPATH global (evita sombrear `<math.h>`).
+Oraculo nuevo 4/4; regresion afectada 15+4+38+11 GREEN; build/release 3 GREEN.
+Gates: `contrastar` 2 requisitos/1 oraculo, `verificar_alineacion` 0 brechas,
+MTO y lectura OK. Tests existentes NO modificados. Manual 9 §6.2/§2.3.
+Reporte: `docs/reportes/R220.md` | 1319d82 |
+Manual 9 §6.2, Manual 9 §2.3 | 0 brechas |
+### R222 - ME r222_std_texto_contracts (2026-11-15, 805ab8d)
+Restaura en `std/texto.syn` los envoltorios `cmp_texto`, `strlen_s`,
+`strstr_f`, `strchr_f`, `atoi_f`, `strcpy_f` y `strncpy_f` con contratos;
+`contiene` declara `requiere: verdadero` sin reintroducir la precondicion
+retirada por H-R196-1 (subcadena vacia valida). Oraculo nuevo 4/4;
+`test_std_contracts` 20/20. Evidencia `beb9f255cf3636f8`; `contrastar` 4
+requisitos/1 oraculo, `alineacion` 1 archivo, `verificar_alineacion` 0
+brechas. Deuda H-R222-3 (duplicados del std) a R228. Manual 2 §5.1,
+Manual 6 §3.1, Manual 8 §1.7.3.
+Reporte: `docs/reportes/R222.md` | 805ab8d |
+Manual 2 §5.1, Manual 6 §3.1, Manual 8 §1.7.3 | 0 brechas |
+### R223 - ME r223_syquex_frontend (2026-11-15, 63aefa3)
+Cierra los 10 RED de Syquex. Causa raiz doble: `importar std` sin punto dejaba
+`sub` sin inicializar y leia `est->nodos[sub]` (SIGSEGV en `sq_declaracion`);
+`T_CANAL` no se aceptaba como primario y `sq_args(est, -1)` escribia
+`est->nodos[-1]`. Fix en `syquex/parser.syn` (`sub = -1` + asm guarded) y
+`syquex/expr.syn` (`T_CANAL` como nombre contextual). Oraculos
+`test_concurrency.py` 5/5 y `test_result.py` 5/5; unit+syquex 795 passed,
+1 skipped, 0 failed. Evidencia `12b61e28b17a5b04` (+ `af8e0e6` sello);
+`contrastar` 4 requisitos/2 oraculos, `alineacion` 2 archivos,
+`verificar_alineacion` 0 brechas. Tests TDD NO modificados. Manual 3 §3,
+§8.1, §7.3, §7.1.
+Reporte: `docs/reportes/R223.md` | 63aefa3 |
+Manual 3 §3, Manual 3 §8.1, Manual 3 §7.3, Manual 3 §7.1 | 0 brechas |
 Manual 7 §4.2, Manual 7 §6.3, Manual 2 §5.1, Manual 6 §1.1 |
