@@ -10,7 +10,11 @@
 // §1.7.1 — Contiene
 // ============================================================
 
+// cumple Manual 8 §1.7.3: contiene se expone como binding del builtin C
+// cumple Manual 2 §5.1: contrato explícito sin precondición (H-R196-1)
 funcion contiene(texto: texto, subcadena: texto) -> entero:
+    requiere:
+        verdadero
     garantiza:
         _resultado_ == 0 o _resultado_ == 1
     retornar _syn_texto_contiene(texto, subcadena)
@@ -98,7 +102,11 @@ importar std.sistema
 // §1.7.3 — Contiene (otra vez, en std.sistema)
 // ============================================================
 
+// cumple Manual 8 §1.7.3: contiene se expone como binding del builtin C
+// cumple Manual 2 §5.1: contrato explícito sin precondición (H-R196-1)
 funcion contiene(texto: texto, subcadena: texto) -> entero:
+    requiere:
+        verdadero
     garantiza:
         _resultado_ == 0 o _resultado_ == 1
     retornar _syn_texto_contiene(texto, subcadena)
@@ -193,7 +201,55 @@ funcion longitud(texto: texto) -> entero:
     retornar _syn_texto_longitud(texto)
 
 // ============================================================
-// Externos C — funciones string de bajo nivel
+// §1.7.3 - Funciones string de bajo nivel (API histórica)
+// ============================================================
+
+// cumple Manual 2 §5.1: contratos observables de los envoltorios de texto.c
+funcion cmp_texto(a: texto, b: texto) -> entero:
+    garantiza:
+        _resultado_ == 0 o _resultado_ < 0 o _resultado_ > 0
+    retornar _syn_strcmp(a, b)
+
+funcion strlen_s(a: texto) -> entero:
+    garantiza:
+        _resultado_ >= 0
+    retornar _syn_strlen(a)
+
+funcion strstr_f(texto: texto, patron: texto) -> entero:
+    requiere:
+        longitud(patron) > 0
+    garantiza:
+        _resultado_ >= -1
+    retornar _syn_strstr(texto, patron)
+
+funcion strchr_f(texto: texto, caracter: entero) -> entero:
+    requiere:
+        caracter >= 0
+    garantiza:
+        _resultado_ >= -1
+    retornar _syn_strchr(texto, caracter)
+
+funcion atoi_f(texto: texto) -> entero:
+    requiere:
+        longitud(texto) > 0
+    garantiza:
+        verdadero
+    retornar _syn_atoi(texto)
+
+funcion strcpy_f(texto: texto) -> texto:
+    garantiza:
+        longitud(_resultado_) == longitud(texto)
+    retornar _syn_strcpy(texto)
+
+funcion strncpy_f(texto: texto, max_len: entero) -> texto:
+    requiere:
+        max_len > 0
+    garantiza:
+        longitud(_resultado_) <= max_len
+    retornar _syn_strncpy(texto, max_len)
+
+// ============================================================
+// Externos C - funciones string de bajo nivel
 // ============================================================
 
 // cumple Manual 6 §3.1: declaraciones externo de las implementaciones C de texto.c
