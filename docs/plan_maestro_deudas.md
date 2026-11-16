@@ -55,7 +55,11 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   `synapse_stage2.exe check --no-emit` sobre `router.syn` y `lsp_v3.syn` rc=0;
   `tests/e2e/e2e_hola.syn` compila y ejecuta ("Hola Mundo"); 
   `examples/syquex/04_resultado.syq` compila y ejecuta; LSP nativo responde
-  `initialize` JSON-RPC correctamente. Brecha de producto confirmada:
+  `initialize` JSON-RPC correctamente. Distribucion fresca y firmada
+  (`SIGNATURE_VALID=YES`, `synapse.exe` SHA `327fc514adb5`); `dist/bin`
+  refrescado (`synapse`, `opensyn`, `synapse_lsp`) e instalador Windows
+  recompilado. `opensyn doctor` solo falla por `llama-server.exe` ausente
+  (el GGUF si existe). Brecha de producto confirmada:
   `synapse_stage2.exe opensyn ...` no despacha el CLI nativo (r242 pendiente).
 - **R198b1/ME r198b1_resello (CERRADA 2026-10-27, commit b657bb8):**
   cierre H-R198b-1 — re-sello auto-sanante de `cambio_hash` en
