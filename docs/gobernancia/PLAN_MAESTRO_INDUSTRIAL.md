@@ -2,6 +2,9 @@
 
 **Fecha:** 2026-11-09
 **Base:** `release/v8.1.0-industrial`, HEAD `44b2717` (r204 + documentación)
+**Renumeración 2026-11-15:** los MEs r220-r233 se reasignaron a r240-r253 para
+no colisionar con la cola de deuda R220/R222/R223 ya commiteada. La secuencia
+de olas y dependencias se conserva.
 **Alcance:** convertir en realidad verificable todo lo especificado en los
 manuales, con OpenSyn a la altura de opencode/Codebuff en el eje que los
 manuales definen: contexto profundo + validación con el compilador real +
@@ -133,40 +136,40 @@ completos), no en semanas calendario.
 | ME | Objetivo | Manual | Criterio de aceptación / oráculo | Depende |
 |---|---|---|---|---|
 | `r219_lsp_ai` | Implementar de verdad `aiExplain`, `aiComplete`, `aiFix`, `aiStatus`; quitar los skips TDD | Manual 7 §4.1, §4.2; Manual 8 §1.4, §5.1, §5.4 | Tests LSP sin skip: respuesta JSON-RPC válida; código generado validado con `--check`; `aiStatus` refleja el servidor real | r217 |
-| `r220_vscode_ai` | Comandos de la paleta y configuración de la extensión | Manual 8 §2.3, §2.4 | Test de la extensión: comandos despachan a los métodos LSP correctos | r219 |
-| `r221_debugger` | Time-travel/reversible y comandos CLI | Manual 8 §3.1-§3.5 | Test de avance/retroceso y snapshots; integración VS Code | r219 |
+| `r240_vscode_ai` | Comandos de la paleta y configuración de la extensión | Manual 8 §2.3, §2.4 | Test de la extensión: comandos despachan a los métodos LSP correctos | r219 |
+| `r241_debugger` | Time-travel/reversible y comandos CLI | Manual 8 §3.1-§3.5 | Test de avance/retroceso y snapshots; integración VS Code | r219 |
 
 ### Frente D — CLI y paridad nativa (prioridad 1)
 
 | ME | Objetivo | Manual | Criterio de aceptación / oráculo | Depende |
 |---|---|---|---|---|
-| `r222_native_opensyn_cli` | Despachar `synapse opensyn` (`status`, `download`, `finetune`, `bindings`, `transpile`) en el binario nativo | Manual 8 §4.1, §7 | Test E2E del binario nativo: `status` y `--help`; paridad con el CLI Python | r204 |
-| `r223_native_fase32` | Compilar los módulos de Fase 32 con el compilador nativo (S2), no solo con S1 | Manual 1 §6; Manual 2 §5.1 | Bootstrap S1→S2 y gate de compilación nativa de los módulos reparados | r214 |
-| `r224_paridad_lint_fmt_test` | Asegurar que `lint/fmt/test` nativos soportan los módulos nuevos | Manual 8 §4.1, §5.5 | Oráculo de paridad S1↔S2 sobre los módulos de Fase 32 | r223 |
+| `r242_native_opensyn_cli` | Despachar `synapse opensyn` (`status`, `download`, `finetune`, `bindings`, `transpile`) en el binario nativo | Manual 8 §4.1, §7 | Test E2E del binario nativo: `status` y `--help`; paridad con el CLI Python | r204 |
+| `r243_native_fase32` | Compilar los módulos de Fase 32 con el compilador nativo (S2), no solo con S1 | Manual 1 §6; Manual 2 §5.1 | Bootstrap S1→S2 y gate de compilación nativa de los módulos reparados | r214 |
+| `r244_paridad_lint_fmt_test` | Asegurar que `lint/fmt/test` nativos soportan los módulos nuevos | Manual 8 §4.1, §5.5 | Oráculo de paridad S1↔S2 sobre los módulos de Fase 32 | r243 |
 
 ### Frente E — Calidad industrial (prioridad 1/2)
 
 | ME | Objetivo | Manual | Criterio de aceptación / oráculo | Depende |
 |---|---|---|---|---|
-| `r225_e2e_llama_server` | E2E real o hermético de chat + tools + validación con `llama-server` | Manual 7 §7.2, §8; Manual 9 §5.5 | Test E2E reproducible: chat responde, tool se ejecuta con aprobación, código se valida | r217 |
-| `r226_benchmark_latencia` | Benchmark de latencia/throughput/VRAM | Manual 7 §7.2 | Umbrales: <1 s prompt corto, >100 tok/s, <6 GB en 7B Q4_K_M; reporte medido | r225 |
-| `r227_tests_comportamiento` | Reemplazar tests de inspección de fuente por tests de comportamiento en Fase 32 | Manual 32 §9; Manual Tests Obligatorios | Ratio de tests de comportamiento documentado; 0 tests nuevos de solo grep | r214 |
-| `r228_cobertura_opensyn` | Medir cobertura de OpenSyn con `synapse test --coverage` | Manual 8 §4.2 | Informe de cobertura de aristas con umbral acordado | r227 |
+| `r245_e2e_llama_server` | E2E real o hermético de chat + tools + validación con `llama-server` | Manual 7 §7.2, §8; Manual 9 §5.5 | Test E2E reproducible: chat responde, tool se ejecuta con aprobación, código se valida | r217 |
+| `r246_benchmark_latencia` | Benchmark de latencia/throughput/VRAM | Manual 7 §7.2 | Umbrales: <1 s prompt corto, >100 tok/s, <6 GB en 7B Q4_K_M; reporte medido | r245 |
+| `r247_tests_comportamiento` | Reemplazar tests de inspección de fuente por tests de comportamiento en Fase 32 | Manual 32 §9; Manual Tests Obligatorios | Ratio de tests de comportamiento documentado; 0 tests nuevos de solo grep | r214 |
+| `r248_cobertura_opensyn` | Medir cobertura de OpenSyn con `synapse test --coverage` | Manual 8 §4.2 | Informe de cobertura de aristas con umbral acordado | r247 |
 
 ### Frente F — Distribución y hardening (prioridad 2)
 
 | ME | Objetivo | Manual | Criterio de aceptación / oráculo | Depende |
 |---|---|---|---|---|
-| `r229_doctor_installer` | `opensyn doctor` encuentra `llama-server`; instalador limpio | Manual 9 §5.4, §5.5; Manual 7 §6.1 | E2E de instalación limpia y doctor verde | r225 |
-| `r230_multiplataforma` | Instaladores Linux/macOS y CI matrix | Manual 9 §2.4, §2.5, §6.2 | Build/instalación en 3 plataformas; firma y checksum | r229 |
-| `r231_release_hardening` | SBOM/SLSA, runner limpio, verificación de firma end-to-end | Manual 9 §6.1, §6.3 | Release de prueba verificado en runner limpio | r230 |
+| `r249_doctor_installer` | `opensyn doctor` encuentra `llama-server`; instalador limpio | Manual 9 §5.4, §5.5; Manual 7 §6.1 | E2E de instalación limpia y doctor verde | r245 |
+| `r250_multiplataforma` | Instaladores Linux/macOS y CI matrix | Manual 9 §2.4, §2.5, §6.2 | Build/instalación en 3 plataformas; firma y checksum | r249 |
+| `r251_release_hardening` | SBOM/SLSA, runner limpio, verificación de firma end-to-end | Manual 9 §6.1, §6.3 | Release de prueba verificado en runner limpio | r250 |
 
 ### Frente G — Compilador/runtime (soporte)
 
 | ME | Objetivo | Manual | Criterio de aceptación / oráculo | Depende |
 |---|---|---|---|---|
-| `r232_bootstrap_parity` | Paridad S1↔S2 de nodos/tokens y bootstrap determinista | Manual 1 §6; Manual 2 §7.2 | S2==S3 byte-idéntico; oráculo de paridad de nodos | r223 |
-| `r233_contracts_audit` | Contratos en toda función pública y auditoría de deuda | Manual 2 §5.1, §12 | `verificar_alineacion.py` 0 brechas; 0 funciones públicas sin contrato | r214 |
+| `r252_bootstrap_parity` | Paridad S1↔S2 de nodos/tokens y bootstrap determinista | Manual 1 §6; Manual 2 §7.2 | S2==S3 byte-idéntico; oráculo de paridad de nodos | r243 |
+| `r253_contracts_audit` | Contratos en toda función pública y auditoría de deuda | Manual 2 §5.1, §12 | `verificar_alineacion.py` 0 brechas; 0 funciones públicas sin contrato | r214 |
 
 ---
 
@@ -182,7 +185,7 @@ completos), no en semanas calendario.
 
 `r205_grafo_conocimiento` → `r206_validation_loop` →
 `r207_pipeline_multiagente` → `r209_router_chat` →
-`r215_tool_patch` → `r216_tool_ejecutar` → `r222_native_opensyn_cli`.
+`r215_tool_patch` → `r216_tool_ejecutar` → `r242_native_opensyn_cli`.
 
 Por qué: sin grafo no hay contexto profundo; sin validation loop no hay
 auto-corrección; sin patch/ejecutar no hay agente de coding; sin CLI nativo el
@@ -196,15 +199,15 @@ producto distribuido no expone OpenSyn.
 
 ### Ola 3 — Puerta de entrada y calidad (4-5 ME)
 
-`r219_lsp_ai` → `r220_vscode_ai` → `r221_debugger` →
-`r225_e2e_llama_server` → `r226_benchmark_latencia` →
-`r227_tests_comportamiento` → `r228_cobertura_opensyn`.
+`r219_lsp_ai` → `r240_vscode_ai` → `r241_debugger` →
+`r245_e2e_llama_server` → `r246_benchmark_latencia` →
+`r247_tests_comportamiento` → `r248_cobertura_opensyn`.
 
 ### Ola 4 — Paridad nativa y distribución (4 ME)
 
-`r223_native_fase32` → `r224_paridad_lint_fmt_test` →
-`r229_doctor_installer` → `r230_multiplataforma` → `r231_release_hardening` →
-`r232_bootstrap_parity` → `r233_contracts_audit`.
+`r243_native_fase32` → `r244_paridad_lint_fmt_test` →
+`r249_doctor_installer` → `r250_multiplataforma` → `r251_release_hardening` →
+`r252_bootstrap_parity` → `r253_contracts_audit`.
 
 ---
 
@@ -237,10 +240,10 @@ El programa se considera "industrial" cuando TODOS estos son verdad:
 | Riesgo | Impacto | Mitigación |
 |---|---|---|
 | Ownership de `texto` (params consumidos por el callee) | Corrupción de pool, contenido truncado | Usar `_syn_strcpy` en cada call site; test de regresión de escritura/edición (H-R204-1) |
-| El compilador nativo (S2) no soporta construcciones de Fase 32 | Los módulos compilan en S1 pero no en el producto | `r223` y `r232`: reparar S1 primero, luego paridad S2 con oráculo |
+| El compilador nativo (S2) no soporta construcciones de Fase 32 | Los módulos compilan en S1 pero no en el producto | `r243` y `r252`: reparar S1 primero, luego paridad S2 con oráculo |
 | `nucleo/lsp_v3.syn` es de otro agente | Conflictos de merge | No tocarlo; planificar `r219` después de su integración |
-| `llama-server` no disponible en el árbol de desarrollo | E2E no verificable | `r225`: doble hermético por defecto + job CI con servidor real |
-| Tests de Fase 32 son de inspección de fuente | Falsa sensación de verde | `r227`: exigir test de comportamiento por módulo; ratio medido |
+| `llama-server` no disponible en el árbol de desarrollo | E2E no verificable | `r245`: doble hermético por defecto + job CI con servidor real |
+| Tests de Fase 32 son de inspección de fuente | Falsa sensación de verde | `r247`: exigir test de comportamiento por módulo; ratio medido |
 | Cambiar tests existentes | Violación de regla 5 | Aprobación previa del Arquitecto; documentar en el plan del ME |
 | Citas de manual inventadas | Gate de alineación bloquea | Leer y registrar la sección real; `alineacion.py --leer` antes de codificar |
 | Scope creep (MCP, cloud, multi-proveedor) | Distrae del objetivo | Manual 32 §1.3 lo excluye; no abrir frentes fuera del plan |

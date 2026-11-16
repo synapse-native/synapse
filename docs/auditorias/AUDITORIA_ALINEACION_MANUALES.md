@@ -1145,3 +1145,17 @@ Cierra los 10 RED de Syquex. Causa raiz doble: `importar std` sin punto dejaba
 Reporte: `docs/reportes/R223.md` | 63aefa3 |
 Manual 3 §3, Manual 3 §8.1, Manual 3 §7.3, Manual 3 §7.1 | 0 brechas |
 Manual 7 §4.2, Manual 7 §6.3, Manual 2 §5.1, Manual 6 §1.1 |
+### R222b - ME r222b_wrappers_regression (2026-11-15, ebc1dd6)
+Cierra la regresion introducida por R222: `opensyn/router.syn` y
+`nucleo/lsp_v3.syn` importaban `std.texto` y redeclaraban `cmp_texto`,
+`strstr_f` y `atoi_f`, por lo que el gate de Fase 32 reportaba DEUDA NUEVA y
+`lsp_v3` dejaba de compilar. Se eliminan los helpers locales y se usa la unica
+definicion publica del std. Se vacia `tests/fixtures/compilacion_baseline.txt`
+(`verificacion_aot.syn` ya compilaba desde R219). Oraculo nuevo 3/3; gate Fase
+32 2/2; `build.py` S2==S3 `327fc514adb5`; unit+syquex 795 passed/1 skip;
+dirigida router/LSP/contratos 57/57. Evidencia `74f53ae26613e627`;
+`contrastar` 4 requisitos/1 oraculo, `alineacion` 2 archivos,
+`verificar_alineacion` 0 brechas. Manual 7 §2.4/§4.2, Manual 8 §1.1,
+Manual 1 §6.
+Reporte: `docs/reportes/R222b.md` | ebc1dd6 |
+Manual 7 §2.4, Manual 7 §4.2, Manual 8 §1.1, Manual 1 §6 | 0 brechas |

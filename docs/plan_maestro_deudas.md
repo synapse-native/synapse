@@ -10,7 +10,7 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
 
 ## Cola de MEs (prioridad por radio/costo, actualizable)
 
-- **R220/ME r220_harness_runtime_path (IMPLEMENTADO 2026-11-13, sin commit):**
+- **R220/ME r220_harness_runtime_path (CERRADO 2026-11-15, commit 1319d82):**
   harness de tests con PATH/CPATH canonico. Antepone `toolchain_gcc12/mingw64/bin`
   a PATH (cierra `0xC000014B` por `libwinpthread-1.dll`) y agrega
   `-I runtime/core` dirigido solo al fuente FFI (no CPATH global, para no
@@ -18,7 +18,7 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   `tests/auditoria/test_oraculos_r220_harness_runtime_path.py` 4/4; regresion
   afectada 15+4+38+11 GREEN. Plan integral de continuidad:
   `docs/plan_MEJORA_INTEGRAL_R220.md`. Tests existentes NO modificados.
-- **R222/ME r222_std_texto_contracts (IMPLEMENTADO 2026-11-14, sin commit):**
+- **R222/ME r222_std_texto_contracts (CERRADO 2026-11-15, commit 805ab8d):**
   restaura los envoltorios historicos `cmp_texto`, `strlen_s`, `strstr_f`,
   `strchr_f`, `atoi_f`, `strcpy_f` y `strncpy_f` en `std/texto.syn` con
   contratos; agrega `requiere: verdadero` a `contiene` sin revertir H-R196-1.
@@ -26,7 +26,7 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   20/20; `contrastar` y `alineacion --verificar` PASS
   (`auditoria/evidencia/beb9f255cf3636f8.json`). Deuda H-R222-3: duplicados de
   `contiene`/`indice_de`/`reemplazar` en `std/texto.syn` para barrido R228.
-- **R223/ME r223_syquex_frontend (IMPLEMENTADO 2026-11-14, sin commit):**
+- **R223/ME r223_syquex_frontend (CERRADO 2026-11-15, commit 63aefa3):**
   cierra los 10 RED de Syquex. Causa raiz doble: `importar std` sin punto dejaba
   `sub` sin inicializar y leia `est->nodos[sub]` (`SIGSEGV` en `sq_declaracion`);
   `T_CANAL` no se aceptaba como primario y `sq_args(est, -1)` escribia
@@ -34,8 +34,16 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   `syquex/expr.syn` (`T_CANAL` como nombre contextual). Oraculos
   `test_concurrency.py` 5/5 y `test_result.py` 5/5; `contrastar` PASS;
   alineacion verificada (`auditoria/evidencia/12b61e28b17a5b04.json`).
-- **R221 baseline por bloques (EN CURSO 2026-11-14):** unit+syquex 796 tests ->
-  795 passed / 1 skipped / 0 failed tras R222+R223. `tests/auditoria` recolecta
+- **R222b/ME r222b_wrappers_regression (CERRADO 2026-11-15, commit ebc1dd6):**
+  regresion de R222: `router.syn` y `lsp_v3.syn` redefinian `cmp_texto`,
+  `strstr_f` y `atoi_f` tras restaurarse en `std/texto.syn`. Se eliminan los
+  duplicados locales, se vacia `tests/fixtures/compilacion_baseline.txt` y se
+  agrega oraculo de compilacion real 3/3. `test_compilacion_fase32.py` 2/2;
+  `build.py` S2==S3 `327fc514adb5`; unit+syquex 795 passed/1 skip; dirigida
+  57/57. Gates y evidencia `74f53ae26613e627`.
+- **R221 baseline por bloques (EN CURSO 2026-11-15):** unit+syquex 796 tests ->
+  795 passed / 1 skipped / 0 failed tras R222+R223+R222b. `test_compilacion_fase32.py`
+  2/2 y `build.py` S2==S3 `327fc514adb5`. `tests/auditoria` recolecta
   230; el run completo excede 30 min (se corto en r183). Subset fallido
   re-ejecutado: 6 RED ambientales/prexistentes (exe `synapse.exe` stale por
   `_tmp_ast_abi_drv.syn`, `dist/bin/opensyn.exe` anterior a su fuente, chat

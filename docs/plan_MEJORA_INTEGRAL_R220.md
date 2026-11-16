@@ -43,6 +43,8 @@ tests existentes no se modifican sin aprobacion explicita del Arquitecto.
 - Objetivo: obtener baseline sin depender de un unico run de 40 min.
 - Resultado actual: `tests/unit` + `tests/syquex` = 796 tests, 795 passed,
   1 skipped, 0 failed. Integration dirigida: 57 GREEN; build/release 3 GREEN.
+- `build.py` completo S1->S2->S3 con S2==S3 `327fc514adb5`; gate Fase 32 2/2
+  y baseline vacio tras R222b.
 - Los 13 RED originales quedaron cerrados por R222 (3 contratos) y R223
   (10 Syquex). No se modifico ningun test.
 - `tests/auditoria`: 230 tests; el run completo excede 30 min. Subset fallido
@@ -61,6 +63,8 @@ tests existentes no se modifican sin aprobacion explicita del Arquitecto.
 - Resultado: 7 envoltorios historicos restaurados con contratos y
   `requiere: verdadero` en `contiene` (sin revertir H-R196-1). Contratos 20/20;
   oraculo `test_oraculos_r222_std_texto.py` 4/4; gates PASS.
+- Regresion: router y lsp_v3 redeclaraban esos helpers; cerrada en R222b
+  `ebc1dd6` (baseline vacio, build S2==S3, gate Fase 32 2/2).
 - Deuda H-R222-3: duplicados de `contiene`/`indice_de`/`reemplazar` para R228.
 
 ### R223 - Syquex Canal/Resultado/intentar (IMPLEMENTADO 2026-11-14)
