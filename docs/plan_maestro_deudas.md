@@ -51,6 +51,12 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   test busca como `resultado` pero el codigo usa `_resultado_`). No relacionados
   con R222/R223; asignados a R226 (release/CI/entorno) y R228 (barrido).
   Pendiente baseline de integration completa.
+- **R221 smoke operativo 2026-11-15:** `build.py` S2==S3 `327fc514adb5`;
+  `synapse_stage2.exe check --no-emit` sobre `router.syn` y `lsp_v3.syn` rc=0;
+  `tests/e2e/e2e_hola.syn` compila y ejecuta ("Hola Mundo"); 
+  `examples/syquex/04_resultado.syq` compila y ejecuta; LSP nativo responde
+  `initialize` JSON-RPC correctamente. Brecha de producto confirmada:
+  `synapse_stage2.exe opensyn ...` no despacha el CLI nativo (r242 pendiente).
 - **R198b1/ME r198b1_resello (CERRADA 2026-10-27, commit b657bb8):**
   cierre H-R198b-1 — re-sello auto-sanante de `cambio_hash` en
   `auditoria/alineacion.py`: `cmd_verificar` era un círculo (el re-sello
