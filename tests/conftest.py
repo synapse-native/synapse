@@ -16,8 +16,29 @@ sys.path.insert(0, _project_root)
 # primero los includes del repo.
 _SEP_R181 = ";" if sys.platform == "win32" else ":"
 _R181_RAIZ = os.path.abspath(_project_root)
+_R220_RUNTIME_CORE = os.path.join(_R181_RAIZ, "runtime", "core")
 _R181_CPATH_PREVIO = os.environ.get("CPATH", "")
-os.environ["CPATH"] = _R181_RAIZ + (_SEP_R181 + _R181_CPATH_PREVIO if _R181_CPATH_PREVIO else "")
+# No se agrega runtime/core a CPATH: ese directorio contiene `math.h` propio y
+# CPATH se busca ANTES de los includes del sistema, por lo que `<math.h>` de
+# runtime/core/math.c resolveria el header del proyecto (sin `log`) y romperia
+# la compilacion del runtime. El header FFI se resuelve con un `-I` dirigido en
+# el binario de test que lo necesita (ver _RT_BINARIOS_EXTRA).
+_R181_CPATH = _R181_RAIZ + (_SEP_R181 + _R181_CPATH_PREVIO if _R181_CPATH_PREVIO else "")
+os.environ["CPATH"] = _R181_CPATH
+
+# cumple Manual 9 §6.2 (ME r220_harness_runtime_path): el bin del toolchain
+# canonico (mismo que resuelve cli._resolver_gcc) debe estar en PATH ANTES de
+# ejecutar cualquier binario compilado por el harness; sin el, los exes no
+# encuentran libwinpthread-1.dll (0xC000014B) aunque la compilacion haya sido
+# correcta. Se inserta una sola vez y se conserva el PATH previo.
+_R220_TOOLCHAIN_BIN = os.path.join(_R181_RAIZ, "toolchain_gcc12", "mingw64", "bin")
+_R181_PATH_PREVIO = os.environ.get("PATH", "")
+if os.path.isdir(_R220_TOOLCHAIN_BIN):
+    _R220_PATH_PARTES = [p for p in _R181_PATH_PREVIO.split(os.pathsep) if p]
+    if _R220_TOOLCHAIN_BIN not in _R220_PATH_PARTES:
+        os.environ["PATH"] = _R220_TOOLCHAIN_BIN + (
+            os.pathsep + _R181_PATH_PREVIO if _R181_PATH_PREVIO else ""
+        )
 
 from compilador.ast_nodes import TokenID, Token, Programa
 from compilador.lexer import Lexer
@@ -238,7 +259,10 @@ _RT_BINARIOS_EXTRA = [
     # FASE 24: Web HTTP server (Manual 3 §12.1) — enlaza web.o (impl _syn_web_*)
     ("test_web", "test_web.c", ["web.o"], ["-lws2_32"]),
     # FASE 24.B: FFI Marshaling automático (Manual 4 §7)
-    ("test_ffi_marshaling_auto", "test_ffi_marshaling_auto.c", ["ffi_marshaling.o", "synapse_rt_memory.o"], []),
+    # cumple Manual 9 §6.2 (ME r220_harness_runtime_path): include dirigido a
+    # runtime/core SOLO para este fuente (ffi_marshaling.h); no se usa CPATH
+    # global porque runtime/core/math.h sombrearia <math.h> del sistema.
+    ("test_ffi_marshaling_auto", "test_ffi_marshaling_auto.c", ["ffi_marshaling.o", "synapse_rt_memory.o"], ["-I" + _R220_RUNTIME_CORE]),
     # ME_27_T4: Debugger time-travel (grabación) — M8 §5.2 / Manual 8 §3
     ("test_time_travel", "test_time_travel.c", None, []),
     # ME_27_T4: Debugger reversión + breakpoints reversibles — M8 §5.3 / §5.4

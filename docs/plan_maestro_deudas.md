@@ -10,6 +10,39 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
 
 ## Cola de MEs (prioridad por radio/costo, actualizable)
 
+- **R220/ME r220_harness_runtime_path (IMPLEMENTADO 2026-11-13, sin commit):**
+  harness de tests con PATH/CPATH canonico. Antepone `toolchain_gcc12/mingw64/bin`
+  a PATH (cierra `0xC000014B` por `libwinpthread-1.dll`) y agrega
+  `-I runtime/core` dirigido solo al fuente FFI (no CPATH global, para no
+  sombrear `<math.h>`). Oraculo
+  `tests/auditoria/test_oraculos_r220_harness_runtime_path.py` 4/4; regresion
+  afectada 15+4+38+11 GREEN. Plan integral de continuidad:
+  `docs/plan_MEJORA_INTEGRAL_R220.md`. Tests existentes NO modificados.
+- **R222/ME r222_std_texto_contracts (IMPLEMENTADO 2026-11-14, sin commit):**
+  restaura los envoltorios historicos `cmp_texto`, `strlen_s`, `strstr_f`,
+  `strchr_f`, `atoi_f`, `strcpy_f` y `strncpy_f` en `std/texto.syn` con
+  contratos; agrega `requiere: verdadero` a `contiene` sin revertir H-R196-1.
+  Oraculo `tests/auditoria/test_oraculos_r222_std_texto.py` 4/4; contratos
+  20/20; `contrastar` y `alineacion --verificar` PASS
+  (`auditoria/evidencia/beb9f255cf3636f8.json`). Deuda H-R222-3: duplicados de
+  `contiene`/`indice_de`/`reemplazar` en `std/texto.syn` para barrido R228.
+- **R223/ME r223_syquex_frontend (IMPLEMENTADO 2026-11-14, sin commit):**
+  cierra los 10 RED de Syquex. Causa raiz doble: `importar std` sin punto dejaba
+  `sub` sin inicializar y leia `est->nodos[sub]` (`SIGSEGV` en `sq_declaracion`);
+  `T_CANAL` no se aceptaba como primario y `sq_args(est, -1)` escribia
+  `est->nodos[-1]`. Fix en `syquex/parser.syn` (`sub = -1` + asm guarded) y
+  `syquex/expr.syn` (`T_CANAL` como nombre contextual). Oraculos
+  `test_concurrency.py` 5/5 y `test_result.py` 5/5; `contrastar` PASS;
+  alineacion verificada (`auditoria/evidencia/12b61e28b17a5b04.json`).
+- **R221 baseline por bloques (EN CURSO 2026-11-14):** unit+syquex 796 tests ->
+  795 passed / 1 skipped / 0 failed tras R222+R223. `tests/auditoria` recolecta
+  230; el run completo excede 30 min (se corto en r183). Subset fallido
+  re-ejecutado: 6 RED ambientales/prexistentes (exe `synapse.exe` stale por
+  `_tmp_ast_abi_drv.syn`, `dist/bin/opensyn.exe` anterior a su fuente, chat
+  OpenSyn sin `modelo_synapse.gguf`, y contrato `std/io.syn::stdin_eof` que el
+  test busca como `resultado` pero el codigo usa `_resultado_`). No relacionados
+  con R222/R223; asignados a R226 (release/CI/entorno) y R228 (barrido).
+  Pendiente baseline de integration completa.
 - **R198b1/ME r198b1_resello (CERRADA 2026-10-27, commit b657bb8):**
   cierre H-R198b-1 — re-sello auto-sanante de `cambio_hash` en
   `auditoria/alineacion.py`: `cmd_verificar` era un círculo (el re-sello
