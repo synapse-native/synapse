@@ -1100,16 +1100,10 @@ funcion ia_extraer_campo(json_txt: texto, clave: texto) -> texto:
 
 
 // ============================================================
-// Helper: comparar dos strings
+// Comparacion de texto
 // ============================================================
 
-// cumple Manual 6 §3.1: helper interno sobre el externo C _syn_strcmp de std.texto
-funcion cmp_texto(a: texto, b: texto) -> entero:
-    requiere:
-        verdadero
-    garantiza:
-        _resultado_ == 0 o _resultado_ < 0 o _resultado_ > 0
-    retornar _syn_strcmp(a, b)
+// cumple Manual 8 §1.1: el LSP usa la unica definicion publica cmp_texto de std.texto.
 
 
 funcion principal() -> entero:

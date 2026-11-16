@@ -889,3 +889,6 @@
 {"fecha": "2026-11-15", "archivos": ["syquex/expr.syn", "syquex/parser.syn"], "cita": "Manual 3 §3", "puntos": "gramatica formal de Syquex; Canal<tipo>; importar mod.sub; tipos genericos Resultado y Canal"}
 {"fecha": "2026-11-15", "archivos": ["syquex/parser.syn"], "cita": "Manual 1 §1.1", "puntos": "Syquex es el lenguaje de alto nivel hermano de Synapse; plataforma de desarrollo completa y unificada"}
 {"fecha": "2026-11-15", "archivos": ["syquex/parser.syn"], "cita": "Manual 1 §5.1", "puntos": "el codigo debe leerse casi como un lenguaje natural estructurado"}
+{"fecha": "2026-11-15", "archivos": ["opensyn/router.syn"], "cita": "Manual 7 §2.4", "puntos": "El router esta escrito en Synapse y decide que modelo usar y como procesar la respuesta; debe compilar y usar los helpers de texto del std."}
+{"fecha": "2026-11-15", "archivos": ["opensyn/router.syn"], "cita": "Manual 7 §4.2", "puntos": "La respuesta se procesa en el router para extraer el codigo si lo hay y el flujo se valida con el compilador."}
+{"fecha": "2026-11-15", "archivos": ["nucleo/lsp_v3.syn"], "cita": "Manual 8 §1", "puntos": "El LSP es un binario nativo sin telemetria que soporta Synapse y Syquex y se comunica por JSON-RPC 2.0."}

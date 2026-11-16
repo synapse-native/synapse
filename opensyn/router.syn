@@ -21,31 +21,10 @@ importar std.modelo
 importar std.texto
 
 // ============================================================
-// Helpers de texto (wrappers de std.texto)
+// Helpers de texto
 // ============================================================
 // cumple Manual 7 §2.4: el router usa comparacion y busqueda de texto
-// deterministas para clasificar y localizar codigo.
-
-funcion cmp_texto(a: texto, b: texto) -> entero:
-    requiere:
-        longitud(a) >= 0 y longitud(b) >= 0
-    garantiza:
-        _resultado_ == 0 o _resultado_ < 0 o _resultado_ > 0
-    retornar _syn_strcmp(a, b)
-
-funcion strstr_f(texto: texto, patron: texto) -> entero:
-    requiere:
-        longitud(texto) >= 0 y longitud(patron) >= 0
-    garantiza:
-        _resultado_ >= -1
-    retornar indice_de(texto, patron)
-
-funcion atoi_f(valor: texto) -> entero:
-    requiere:
-        longitud(valor) >= 0
-    garantiza:
-        verdadero
-    retornar _syn_atoi(valor)
+// deterministas mediante los envoltorios publicos de std.texto.
 
 // ============================================================
 // Constantes de enrutamiento
