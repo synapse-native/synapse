@@ -1,7 +1,7 @@
 # Expediente de alineación r242_native_opensyn_cli
 
 base: HEAD  # commit sobre el que se leyó el manual
-cambio_hash:
+cambio_hash: 4437bc919e048bd1
 
 > Una ancla por requisito. `estado:` CUMPLE | DESVIACION.
 > CUMPLE exige `evidencia: archivo:linea` con el comentario
