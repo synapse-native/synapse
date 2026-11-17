@@ -14,14 +14,16 @@ importar std.tiempo
 importar permisos
 // ME r204: herramientas de escritura/edicion del agente (Manual 7 §1.1/§7.3).
 importar herramientas
+// ME r217_loop_integracion: cableado de validation_loop y pipeline al loop vivo.
+// cumple Manual 7 §2.1
+importar validation_loop
+importar pipeline_multiagente
 
 constante ARCHIVO_CONFIG = ".synapse_config"
 
 // --- Cliente Ollama local (runtime/core/ollama.c) ---
 // cumple Manual 7 §2.1: consulta al oraculo local via HTTP (8088)
-externo funcion _syn_ollama_consultar(modelo: texto, prompt: texto, host: texto, puerto: entero, max_tokens: entero) -> texto
-// cumple Manual 7 §2.1: lista los modelos instalados en Ollama (GET /api/tags)
-externo funcion _syn_ollama_modelos(host: texto, puerto: entero) -> texto
+// (declaraciones externas provistas por `importar validation_loop`, ME r217)
 // --- Herramientas del agente (Manual 7 §2.3: contexto del codigo local) ---
 // cumple Manual 7 §2.3: std.texto ya exporta _syn_texto_longitud.
 externo funcion _syn_listar_directorio(ruta: texto) -> texto
@@ -1388,6 +1390,63 @@ funcion tui_ejecutar_skill(modelo: texto, prompt_skill: texto, etiqueta: texto, 
         _syn_tui_mensaje(2, "Sin respuesta de la skill (revisa el servidor IA).")
         _syn_tui_repintar(modelo)
 
+// ME r217_loop_integracion: tras editar/escribir un .syn/.syq, valida con el
+// cumple Manual 7 §4.2
+// cumple Manual 7 §6.3
+// cumple Manual 7 §7.3
+// compilador real (validation_loop.validar_con_check) y devuelve un resumen
+// parseado para que el modelo auto-corrija (editar->compilar->corregir).
+funcion validar_fuente_si_aplica(linea_tool: texto, cwd_act: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    res = ""
+    total = longitud(linea_tool)
+    inicio = 5
+    fin = inicio
+    mientras fin < total:
+        c = subcadena(linea_tool, fin, 1)
+        si c == " ":
+            romper
+        fin = fin + 1
+    si fin <= inicio:
+        retornar res
+    nombre = subcadena(linea_tool, inicio, fin - inicio)
+    si nombre != "editar" y nombre != "escribir" y nombre != "aplicar_patch":
+        retornar res
+    arg = recortar(subcadena(linea_tool, fin, total - fin))
+    ruta = arg
+    idx_sep = _syn_strstr(arg, " :: ")
+    si idx_sep >= 0:
+        ruta = recortar(subcadena(arg, 0, idx_sep))
+    si ruta == "":
+        retornar res
+    es_fuente = 0
+    si termina_con(ruta, ".syn") == 1 o termina_con(ruta, ".syq") == 1:
+        es_fuente = 1
+    si es_fuente == 0:
+        retornar res
+    ruta_abs = ruta
+    si _syn_strstr(ruta, ":") < 0:
+        si cwd_act != "":
+            ruta_abs = concat(concat(cwd_act, "\\"), ruta)
+    contenido = ""
+    inseguro:
+        asm("CadenaSegura _vr = {.datos = (char*)ruta_abs.datos, .longitud = ruta_abs.longitud}; CadenaSegura _vc = _syn_leer_archivo(_vr); if(_vc.longitud>0) contenido = _vc;")
+    si contenido == "":
+        retornar res
+    idioma = "syn"
+    si termina_con(ruta, ".syq") == 1:
+        idioma = "syquex"
+    vr = validar_con_check(_syn_strcpy(contenido), idioma)
+    si vr.es_valido:
+        res = "[VALIDACION] codigo valido."
+        retornar res
+    res = "[VALIDACION] codigo NO valido: "
+    res = concat(res, vr.errores)
+    retornar res
+
 // Agente con contexto del repositorio: bucle [TOOL] + streaming en vivo.
 // ME-1 (R1): recibe modo para verificar permisos de herramientas.
 // ME-3 (R5): clasifica la tarea para /next contextual.
@@ -1420,6 +1479,12 @@ funcion tui_agente(modelo: texto, pregunta: texto, cwd_act: texto, modo: entero)
             _syn_tui_mensaje(2, concat("· ", pedido))
             _syn_tui_repintar(modelo)
             salida = tui_ejecutar_tool_con_aprobacion(_syn_strcpy(limpia), _syn_strcpy(cwd_act), modo)
+            // ME r217_loop_integracion: validar fuentes editadas con el compilador
+            // cumple Manual 7 §4.2
+            // real para cerrar el bucle editar->compilar->corregir.
+            validacion = validar_fuente_si_aplica(_syn_strcpy(limpia), _syn_strcpy(cwd_act))
+            si validacion != "":
+                salida = concat(salida, validacion)
             resumen = tui_acotar(_syn_strcpy(salida), 1200)
             _syn_tui_mensaje(2, resumen)
             _syn_tui_repintar(modelo)
@@ -1588,6 +1653,49 @@ funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero,
         prompt_skill = concat(SKILL_PLAN_PROMPT, "\n\nCaracteristica: ")
         prompt_skill = concat(prompt_skill, feat)
         tui_ejecutar_skill(modelo, prompt_skill, "/plan", modo)
+        retornar "!ok"
+    // ME r217_loop_integracion: validar fuente con el compilador real.
+    // cumple Manual 7 §6.3
+    si entrada == "/validar" o _syn_strstr(entrada, "/validar ") == 0:
+        ruta_v = ""
+        si _syn_strstr(entrada, "/validar ") == 0:
+            ruta_v = recortar(subcadena(entrada, 9, longitud(entrada) - 9))
+        si ruta_v == "":
+            _syn_tui_entrada_poner("/validar ")
+            _syn_tui_mensaje(2, "Escribe la ruta del .syn/.syq a validar")
+            _syn_tui_repintar(modelo)
+            retornar "!ok"
+        contenido_v = ""
+        inseguro:
+            asm("CadenaSegura _rr = {.datos = (char*)ruta_v.datos, .longitud = ruta_v.longitud}; CadenaSegura _cc = _syn_leer_archivo(_rr); if(_cc.longitud>0) contenido_v = _cc;")
+        si contenido_v == "":
+            _syn_tui_mensaje(3, concat("No se pudo leer: ", ruta_v))
+            _syn_tui_repintar(modelo)
+            retornar "!ok"
+        idioma_v = "syn"
+        si termina_con(ruta_v, ".syq") == 1:
+            idioma_v = "syquex"
+        vr_v = validar_con_check(_syn_strcpy(contenido_v), idioma_v)
+        si vr_v.es_valido:
+            _syn_tui_mensaje(1, "[VALIDACION] codigo valido.")
+        sino:
+            _syn_tui_mensaje(3, concat("[VALIDACION] codigo NO valido: ", vr_v.errores))
+        _syn_tui_repintar(modelo)
+        retornar "!ok"
+    // ME r217_loop_integracion: ejecutar pipeline multiagente (determinista).
+    // cumple Manual 7 §2.3
+    si entrada == "/pipeline" o _syn_strstr(entrada, "/pipeline ") == 0:
+        instr_p = ""
+        si _syn_strstr(entrada, "/pipeline ") == 0:
+            instr_p = recortar(subcadena(entrada, 10, longitud(entrada) - 10))
+        si instr_p == "":
+            _syn_tui_entrada_poner("/pipeline ")
+            _syn_tui_mensaje(2, "Escribe la instruccion del pipeline")
+            _syn_tui_repintar(modelo)
+            retornar "!ok"
+        rp = ejecutar_pipeline(instr_p, "")
+        _syn_tui_mensaje(2, concat("[PIPELINE] inferencias: ", entero_a_texto(rp.num_inferencias)))
+        _syn_tui_repintar(modelo)
         retornar "!ok"
     // Comando desconocido: abre el menu de comandos.
     r = _syn_tui_menu("Comandos (filtra escribiendo)", MENU_COMANDOS)
