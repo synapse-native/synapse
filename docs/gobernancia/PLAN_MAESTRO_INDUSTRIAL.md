@@ -215,11 +215,11 @@ HEAD `c341fc5` (R237). Leyenda: **HECHO** (entregado con reporte y oráculo),
 | `r240_vscode_ai` | PARCIAL | `vscode-synapse/package.json` declara `synapse.aiStatus/aiExplain/aiComplete/aiFix`; los métodos LSP que despachan siguen en skip ⇒ comandos sin verificación real |
 | `r241_debugger` | PARCIAL | `opensyn/router.syn` cataloga `std.debug` con `rp_*` (retroceder, breakpoints, pila) y `ms_*`/`tr_*` (snapshots, recording); sin oráculo de time-travel ni integración VS Code |
 
-#### Frente D — CLI y paridad nativa: **0 de 3**
+#### Frente D — CLI y paridad nativa: **1 de 3**
 
 | ME | Estado | Evidencia |
 |---|---|---|
-| `r242_native_opensyn_cli` | PENDIENTE | `dist/bin/synapse.exe opensyn status` → «Compilando archivo: opensyn … Error de compilacion»: el binario trata el subcomando como archivo fuente |
+| `r242_native_opensyn_cli` | **HECHO** (`616e321`) | `nucleo/principal.syn` despacha `opensyn`: `status`/`doctor` delegados en `opensyn.exe`, ayuda con los 5 subcomandos, errores honestos en el resto; oráculo `test_oraculos_r242_opensyn_nativo.py` 8/8; reporte `docs/reportes/R242.md` |
 | `r243_native_fase32` | PENDIENTE | No hay gate S2 de los módulos de Fase 32 (`test_compilacion_fase32.py` compila con S1) ni reporte |
 | `r244_paridad_lint_fmt_test` | PARCIAL | El nativo ya expone `lint`, `fmt`, `test [--coverage]`; falta el oráculo de paridad S1↔S2 sobre los módulos reparados |
 
@@ -265,7 +265,7 @@ ids libres: **r219, r240-r253 y r218 ya no están disponibles** (colisión).
 | 3 | 7 herramientas de OpenSyn con sandbox | ✅ (`opensyn/principal.syn` las despacha) |
 | 4 | Loop editar→compilar→corregir a 3 intentos | ❌ (r217: módulo existe, no cableado) |
 | 5 | `ai*` LSP responden, sin skips TDD | ❌ (5 skips) |
-| 6 | `synapse opensyn <sub>` en el nativo | ❌ (r242) |
+| 6 | `synapse opensyn <sub>` en el nativo | ✅ (r242, `616e321`) |
 | 7 | E2E `llama-server` + benchmark medido | ❌ (r245/r246) |
 | 8 | `doctor` + instalador en máquina limpia, release firmado y verificado | ❌ parcial (VM limpia y verificación end-to-end pendientes) |
 | 9 | `verificar_alineacion` 0 brechas, `contrastar` verde, 0 deudas sin resolución | ⚠️ primera mitad cumplida; quedan deudas abiertas en `docs/plan_maestro_deudas.md` |

@@ -1201,6 +1201,27 @@ Manual 9 §7, Manual 9 §6.2, Manual 8 §4.2, Manual 8 §4.1.
 Reporte: `docs/reportes/R236.md` | 9f14b97 |
 Manual 9 §7, Manual 9 §6.2 | 0 brechas |
 
+## R242 — `synapse opensyn` en el binario nativo | 2026-11-17
+`nucleo/principal.syn` gana la rama `opensyn` en el dispatcher de subcomandos,
+antes del prescan de flags y de `generar_etapa()`: antes `argv(1) == "opensyn"`
+caía a la pipeline y el binario intentaba COMPILAR el literal («Compilando
+archivo: opensyn … Error de compilacion»), de modo que el producto instalado
+(sin Python) no exponía OpenSyn. `opensyn`/`--help` listan los cinco
+subcomandos del Manual 8 §4.1; `status`/`doctor` delegan en el binario OpenSyn
+nativo `opensyn.exe` resuelto desde `argv(0)` (una sola fuente de verdad del
+diagnóstico local, Manual 7 §2.1); `download`/`finetune` y
+`bindings`/`transpile` fallan con error honesto (servidor local `:8088` /
+toolchain Python) sin fingir éxito; subcomando desconocido rc=1. `--help`
+global lista también `opensyn <sub>`. Oráculo nuevo
+`tests/auditoria/test_oraculos_r242_opensyn_nativo.py` 8/8 (incluye paridad del
+juego de subcomandos con `cli.py` y guarda de `opensyn.exe` ausente);
+regresión dirigida 71/71 (gate Fase 32, CLI/doctor de OpenSyn, guard OBL-EXE-R2,
+orquesta de comandos). Evidencia `4437bc919e048bd1`; `contrastar` 2
+requisitos/1 oráculo; `verificar_alineacion` 0 brechas. Manual 8 §4.1,
+Manual 8 §4.2. Cierra el criterio 6 del PLAN MAESTRO INDUSTRIAL.
+Reporte: `docs/reportes/R242.md` | 616e321 |
+Manual 8 §4.1, Manual 8 §4.2 | 0 brechas |
+
 ## R237 — toolchain MinGW empaquetado en el instalador (H-R234-2) | 2026-11-17
 `instaladores/windows/empaquetar_toolchain.py` stagea el subset mínimo de MinGW
 (3836 archivos, 300 MB: gcc/as/ld/dlltool, cc1, collect2, liblto_plugin, DLLs del
