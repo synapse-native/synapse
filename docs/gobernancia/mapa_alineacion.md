@@ -60,6 +60,8 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "instaladores/common/auto_actualizar.py": ["Manual 9 §3.2", "Manual 9 §4.1", "Manual 1 §3.1"],
   "instaladores/common/verificar_firma.py": ["Manual 9 §6.3", "Manual 9 §4.1"],
   "instaladores/windows/synapse.iss": ["Manual 9 §2.5"],
+  "instaladores/windows/empaquetar_toolchain.py": ["Manual 9 §2.5", "Manual 9 §7"],
+  "instaladores/windows/scripts/install.ps1": ["Manual 9 §2.5"],
   "build.py": ["Manual 9 §6.2", "Manual 9 §2.3"],
   "distribuir.py": ["Manual 9 §6.3", "Manual 9 §2.1"],
   ".github/workflows/release_matrix.yml": ["Manual 9 §4", "Manual 9 §6.3"],

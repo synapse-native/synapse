@@ -164,3 +164,6 @@ vscode-synapse/node_modules/
 # Logs
 logs/
 pipeline.log
+
+# Artefacto de build: toolchain MinGW staged para el instalador (empaquetar_toolchain.py)
+instaladores/windows/dist/

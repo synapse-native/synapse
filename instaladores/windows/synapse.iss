@@ -108,6 +108,8 @@ Name: "synapse"; Description: "{cm:setup_type_synapse}"; Types: full minimal
 Name: "syquex"; Description: "{cm:setup_type_syquex}"; Types: full syquex_only
 Name: "opensyn"; Description: "{cm:setup_type_opensyn}"; Types: full
 Name: "vscode"; Description: "{cm:setup_type_vscode}"; Types: full minimal
+; cumple Manual 9 §7: toolchain C empaquetado — una VM limpia compila sin instalar MinGW
+Name: "toolchain"; Description: "Toolchain C (MinGW-w64 gcc) para compilar"; Types: full minimal
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -151,6 +153,10 @@ Source: "{#SourcePath}\..\..\opensyn\*"; DestDir: "{app}/opensyn"; Components: o
 Source: "{#SourcePath}\..\..\vscode-synapse\synapse-{#MyAppVersion}.vsix"; DestDir: "{app}/vscode"; Components: vscode; Flags: ignoreversion skipifsourcedoesntexist
 ; cumple Manual 9 §2.5: MinGW toolchain provisioning script (scripts/install.ps1 existe — provisioning real)
 Source: "{#SourcePath}\scripts\install.ps1"; DestDir: "{app}"; Components: synapse; Flags: ignoreversion
+; cumple Manual 9 §7 + Manual 9 §2.2: toolchain C empaquetado (H-R234-2) — nucleo/principal.syn busca
+; ..\toolchain_gcc12\mingw64\bin desde {app}\bin, así que el destino replica ese layout.
+; El subset lo prepara instaladores/windows/empaquetar_toolchain.py en dist/ (artefacto de release).
+Source: "{#SourcePath}\dist\toolchain_gcc12\mingw64\*"; DestDir: "{app}\toolchain_gcc12\mingw64"; Components: toolchain; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 ; cumple Manual 9 §2.5: OpenSyn orquestador (nucleo/ai_orchestrador.c contiene synapse_shutdown_hook)
 Source: "{#SourcePath}\..\..\nucleo\ai_orchestrator.h"; DestDir: "{app}/src"; Components: opensyn; Flags: ignoreversion skipifsourcedoesntexist
 Source: "{#SourcePath}\..\..\nucleo\ai_orchestrator.c"; DestDir: "{app}/src"; Components: opensyn; Flags: ignoreversion skipifsourcedoesntexist
