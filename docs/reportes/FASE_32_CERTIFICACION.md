@@ -45,9 +45,21 @@ MinGW. Verificado con PATH reducido a `System32` (`tests/auditoria/test_oraculos
 3/3) y con el binario regenerado. Queda como seguimiento H-R234-2 empaquetar el
 toolchain en el instalador, para la VM totalmente limpia.
 
+### Actualización 2026-11-17 — H-R234-2 cerrado por el ME r237_instalador_toolchain
+
+El instalador de Windows ya entrega el compilador: el componente `toolchain`
+instala `dist\toolchain_gcc12\mingw64` (subset mínimo de 300 MB: gcc, cc1, as,
+ld, collect2, headers y libs) en `{app}\toolchain_gcc12\mingw64`, justo donde
+`synapse.exe` lo busca. `empaquetar_toolchain.py` prepara y autoverifica ese
+subset, y `install.ps1` pasa de pedir MinGW a verificar el toolchain incluido.
+Oráculo `tests/auditoria/test_oraculos_r237_instalador_toolchain.py` 4/4; Inno
+Setup compiló el `.iss` y una instalación silenciosa `/COMPONENTS=toolchain`
+dejó un `gcc` funcional.
+
 ## Pendiente dentro de R234
 
 1. `instaladores/test_instalador_silencioso.py`: instalación desatendida en VM limpia, PATH y `--version`.
-2. ~~Cerrar H-R234-1 (resolución del toolchain desde el binario o desde el instalador).~~ → **CERRADO** (ME r236). Queda H-R234-2: empaquetar MinGW en el instalador.
+2. ~~Cerrar H-R234-1 (resolución del toolchain desde el binario o desde el instalador).~~ → **CERRADO** (ME r236).
+3. ~~Cerrar H-R234-2 (empaquetar MinGW en el instalador).~~ → **CERRADO** (ME r237). Falta ejecutar el paso 1 (VM limpia) con el setup que ya incluye toolchain.
 3. Manual 7 §7.3: monitoreo de conexiones salientes durante una inferencia real + permisos mínimos del servidor.
 4. Informe final de Fase 30/32.8 con las cuatro cláusulas en CUMPLE.

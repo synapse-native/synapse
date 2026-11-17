@@ -1200,3 +1200,20 @@ Oráculo `tests/auditoria/test_oraculos_r236_toolchain_gcc.py` 3/3; evidencia
 Manual 9 §7, Manual 9 §6.2, Manual 8 §4.2, Manual 8 §4.1.
 Reporte: `docs/reportes/R236.md` | 9f14b97 |
 Manual 9 §7, Manual 9 §6.2 | 0 brechas |
+
+## R237 — toolchain MinGW empaquetado en el instalador (H-R234-2) | 2026-11-17
+`instaladores/windows/empaquetar_toolchain.py` stagea el subset mínimo de MinGW
+(3836 archivos, 300 MB: gcc/as/ld/dlltool, cc1, collect2, liblto_plugin, DLLs del
+compilador copiadas también junto a cc1 por el orden de búsqueda de DLLs de
+Windows, `x86_64-w64-mingw32/{include,lib}` y `lib/gcc`) en
+`instaladores/windows/dist/toolchain_gcc12/mingw64`, y lo autoverifica compilando
+y ejecutando un C con PATH sin gcc. `synapse.iss` declara el componente
+`toolchain` y lo copia a `{app}\toolchain_gcc12\mingw64`, el directorio que
+`nucleo/principal.syn` resuelve desde `{app}\bin`; `install.ps1` verifica el
+toolchain incluido en lugar de pedir MinGW. ISCC 6 compiló el `.iss` y la
+instalación silenciosa `/COMPONENTS=toolchain` dejó un gcc funcional.
+Oráculo `tests/auditoria/test_oraculos_r237_instalador_toolchain.py` 4/4;
+evidencia `7b4be78d842ad19e`; `contrastar` 3 requisitos/1 oráculo;
+`verificar_alineacion` 0 brechas. Manual 9 §2.5, Manual 9 §7, Manual 9 §2.2.
+Reporte: `docs/reportes/R237.md` | 7c7382b |
+Manual 9 §2.5, Manual 9 §7 | 0 brechas |
