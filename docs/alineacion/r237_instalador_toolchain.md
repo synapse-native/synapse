@@ -1,7 +1,7 @@
 # Expediente de alineación r237_instalador_toolchain
 
 base: HEAD  # commit sobre el que se leyó el manual (a08bcef)
-cambio_hash:
+cambio_hash: 7b4be78d842ad19e
 
 > Una ancla por requisito. `estado:` CUMPLE | DESVIACION.
 > CUMPLE exige `evidencia: archivo:linea` con el comentario
