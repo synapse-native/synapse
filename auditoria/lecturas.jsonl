@@ -896,3 +896,4 @@
 {"fecha": "2026-11-17", "archivos": ["pipeline.py"], "cita": "Manual 1 §3.1", "puntos": "Pipeline compartido de compilacion; backend GCC/Clang; cache incremental como parte del pipeline."}
 {"fecha": "2026-11-17", "archivos": ["pipeline.py"], "cita": "Manual 9 §1", "puntos": "Unica cache persistente bajo ~/.synapse/cache; build y *.o son efimeros y no deben usarse para cache persistente."}
 {"fecha": "2026-11-17", "archivos": ["runtime/core/ollama.c"], "cita": "Manual 5 §7.1", "puntos": "OpenSyn asiste en concurrencia: explica fibras y canales, sugiere canales sobre mutexes, detecta bloqueos y genera codigo concurrente; el cliente local debe respetar ese modelo."}
+{"fecha": "2026-11-17", "archivos": ["runtime/core/ollama.c"], "cita": "Manual 7 §2.2", "puntos": "Flujo de llama_client_completion: POST a /completion con JSON, extraer content o completion de la respuesta y retornar la respuesta como string."}

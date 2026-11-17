@@ -730,6 +730,40 @@ static CadenaSegura _openai_completar(const char* modelo, const char* prompt,
     return resultado;
 }
 
+// Un `content` compuesto solo por blancos o por marcadores de plantilla no es
+// una respuesta: si se acepta, el fallback /completion nunca se intenta y el
+// usuario recibe una burbuja vacia con "No hubo respuesta del servidor IA
+// local" (H-R221-1-R1, smoke real de R227).
+// cumple Manual 7 §2.2: extraer content/completion real y retornarlo como string.
+static int _oll_contenido_util(const CadenaSegura* c) {
+    if (c == NULL || c->datos == NULL || c->longitud <= 0) return 0;
+    static const char* const marcas[] = {
+        "<|im_end|>", "<|im_start|>", "<|endoftext|>", "<|eot_id|>",
+        "<|EOT|>", "<s>", "</s>",
+    };
+    const size_t nmarcas = sizeof(marcas) / sizeof(marcas[0]);
+    const char* p = c->datos;
+    const char* fin = c->datos + c->longitud;
+    while (p < fin) {
+        if (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r' ||
+            *p == '\f' || *p == '\v') {
+            p++;
+            continue;
+        }
+        int es_marca = 0;
+        for (size_t i = 0; i < nmarcas; i++) {
+            size_t ml = strlen(marcas[i]);
+            if ((size_t)(fin - p) >= ml && memcmp(p, marcas[i], ml) == 0) {
+                p += ml;
+                es_marca = 1;
+                break;
+            }
+        }
+        if (!es_marca) return 1;
+    }
+    return 0;
+}
+
 // ============================================================
 // API unificada: OpenAI primero, luego Ollama como fallback
 // ============================================================
@@ -829,19 +863,22 @@ CadenaSegura _syn_ollama_consultar(CadenaSegura modelo, CadenaSegura prompt,
     }
     ps[ps_len] = '\0';
 
-    // Intentar OpenAI primero (llama-server)
+    // Intentar OpenAI primero (llama-server). Se exige contenido util: con una
+    // plantilla incompatible el chat responde "\n\n" o solo <|im_end|>, que no
+    // es una respuesta (H-R221-1-R1).
+    // cumple Manual 7 §2.2: solo un content/completion con texto util cuenta como respuesta.
     CadenaSegura resultado = _openai_consultar(ms, ps, hip, pt, mt);
-    if (resultado.longitud > 0) {
+    if (_oll_contenido_util(&resultado)) {
         free(ms);
         free(ps);
         return resultado;
     }
 
-    // /v1/chat/completions puede devolver content vacio si la plantilla de
-    // chat del servidor no coincide con el GGUF. Reintentar con /completion,
-    // que recibe el prompt instruct explicito (Manual 7 §2.2).
+    // /v1/chat/completions puede devolver content vacio (o solo blanco) si la
+    // plantilla de chat del servidor no coincide con el GGUF. Reintentar con
+    // /completion, que recibe el prompt instruct explicito (Manual 7 §2.2).
     resultado = _openai_completar(ms, ps, hip, pt, mt);
-    if (resultado.longitud > 0) {
+    if (_oll_contenido_util(&resultado)) {
         free(ms);
         free(ps);
         return resultado;
@@ -928,6 +965,9 @@ CadenaSegura _syn_ollama_consultar(CadenaSegura modelo, CadenaSegura prompt,
     free(body);
     free(ms);
     free(ps);
+    // Tampoco el fallback Ollama debe devolver una respuesta fantasma.
+    // cumple Manual 7 §2.2: retornar la respuesta como string.
+    if (!_oll_contenido_util(&resultado)) resultado = vacio;
     return resultado;
 }
 
