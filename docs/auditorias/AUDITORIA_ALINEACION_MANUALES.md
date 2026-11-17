@@ -1186,3 +1186,17 @@ oraculo, `alineacion` 1 archivo, `verificar_alineacion` 0 brechas. No se probo
 con GGUF instruct. Manual 7 §2.2.
 Reporte: `docs/reportes/R227.md` | 24a7feb |
 Manual 7 §2.2 | 0 brechas |
+
+## R236 — toolchain gcc resuelto por el binario (H-R234-1) | 2026-11-17
+`nucleo/principal.syn` resuelve el compilador C antes de invocarlo
+(`SYNAPSE_GCC` → junto al binario → `tools\mingw64\bin` → `mingw64\bin` →
+`..\toolchain_gcc12\mingw64\bin` → `..\..\toolchain_gcc12\mingw64\bin` → PATH) y
+antepone su directorio al PATH del hijo; el comando sigue invocando `gcc` sin
+comillas porque citar el primer token rompia `cmd.exe`. Con PATH reducido a
+`System32` el binario distribuido compila y el ejecutable imprime `Hola Mundo`.
+Oráculo `tests/auditoria/test_oraculos_r236_toolchain_gcc.py` 3/3; evidencia
+`4871e66aeb5e856c`; `contrastar` 2 requisitos/1 oráculo; `verificar_alineacion`
+0 brechas; `nucleo/principal.syn` 1244 líneas registrado en D-9.
+Manual 9 §7, Manual 9 §6.2, Manual 8 §4.2, Manual 8 §4.1.
+Reporte: `docs/reportes/R236.md` | 9f14b97 |
+Manual 9 §7, Manual 9 §6.2 | 0 brechas |
