@@ -1159,3 +1159,17 @@ dirigida router/LSP/contratos 57/57. Evidencia `74f53ae26613e627`;
 Manual 1 §6.
 Reporte: `docs/reportes/R222b.md` | ebc1dd6 |
 Manual 7 §2.4, Manual 7 §4.2, Manual 8 §1.1, Manual 1 §6 | 0 brechas |
+
+### R229 - ME r229_cache_resiliencia (2026-11-17, 6a5176b)
+Elimina el `WinError 5` de caché sin crear una caché persistente fuera de
+`~/.synapse/cache/`: si el home no es escribible, `pipeline.py` avisa por
+stderr y compila con objetos efímeros en `build/obj/runtime_ephemeral` y memo
+en proceso. `nucleo/cache.syn` no se modifica porque el fallo reproducido está
+en el pipeline Python. Oraculo nuevo 3/3; `cache_audit` 4/4;
+`release_flags`+`cache_adv_10` 18/18; E2E `e2e_hola.syn` compila y ejecuta.
+Evidencia `72f57ee447e56c67`; `contrastar` 2 requisitos/1 oraculo,
+`alineacion` 1 archivo, `verificar_alineacion` 0 brechas. Se corrigieron citas
+inexistentes (`Manual 9 §9`, `Manual 1 §9`) y `Manual 9 §9.5` del probe de
+sanitizers. Manual 9 §1, Manual 1 §3.1.
+Reporte: `docs/reportes/R229.md` | 6a5176b |
+Manual 9 §1, Manual 1 §3.1 | 0 brechas |
