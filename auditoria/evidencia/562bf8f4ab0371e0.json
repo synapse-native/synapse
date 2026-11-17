@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "562bf8f4ab0371e0",
+ "expediente": "docs/alineacion/r227_llm_mock.md",
+ "fecha": "2026-11-17",
+ "archivos": [
+  "runtime/core/ollama.c"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r227_llm_mock.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

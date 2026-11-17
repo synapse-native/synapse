@@ -624,6 +624,112 @@ static CadenaSegura _openai_consultar(const char* modelo, const char* prompt,
     return resultado;
 }
 
+// Construye el prompt instruct para /completion. El endpoint /completion no
+// aplica la plantilla ChatML de llama-server; DeepSeek-Coder espera el formato
+// ### Instruction / ### Response (Manual 7 §2.2).
+// cumple Manual 7 §2.2: POST /completion con prompt explicito.
+static char* _oll_prompt_completion(const char* prompt, int prompt_len,
+                                     int* out_len) {
+    const char* fin_prompt = prompt + prompt_len;
+    const char* marcador = NULL;
+    for (const char* p = prompt; p + 9 <= fin_prompt; p++) {
+        if (memcmp(p, "[USUARIO]", 9) == 0) { marcador = p; break; }
+    }
+    const char* sys_ini = prompt;
+    int sys_len = marcador ? (int)(marcador - prompt) : 0;
+    const char* usr_ini = marcador ? marcador + 9 : prompt;
+    int usr_len = (int)(fin_prompt - usr_ini);
+    while (usr_len > 0 && (*usr_ini == '\n' || *usr_ini == '\r')) {
+        usr_ini++;
+        usr_len--;
+    }
+    if (sys_len > 3500) {
+        sys_ini += sys_len - 3500;
+        sys_len = 3500;
+    }
+    int cap = sys_len + usr_len + 96;
+    char* out = (char*)malloc((size_t)cap);
+    if (!out) return NULL;
+    int n;
+    if (sys_len > 0) {
+        n = snprintf(out, (size_t)cap,
+            "### System:\n%.*s\n\n### Instruction:\n%.*s\n### Response:\n",
+            sys_len, sys_ini, usr_len, usr_ini);
+    } else {
+        n = snprintf(out, (size_t)cap,
+            "### Instruction:\n%.*s\n### Response:\n", usr_len, usr_ini);
+    }
+    if (n <= 0 || n >= cap) { free(out); return NULL; }
+    if (out_len) *out_len = n;
+    return out;
+}
+
+// Fallback /completion (llama-server). Se usa cuando /v1/chat/completions
+// devuelve contenido vacio por una plantilla de chat incompatible.
+// cumple Manual 7 §2.2: POST /completion y extraccion de content/completion.
+static CadenaSegura _openai_completar(const char* modelo, const char* prompt,
+                                       const char* hip, int pt, int max_tokens) {
+    CadenaSegura vacio = { .longitud = 0, .datos = "" };
+    if (max_tokens > 512) max_tokens = 512;
+
+    int plen = 0;
+    char* p = _oll_prompt_completion(prompt, (int)strlen(prompt), &plen);
+    if (!p) return vacio;
+    int pjlen = 0, mjlen = 0;
+    char* pjs = _ollama_esc_json(p, plen, &pjlen);
+    free(p);
+    char* mjs = _ollama_esc_json(modelo, (int)strlen(modelo), &mjlen);
+    if (!pjs || !mjs) {
+        if (pjs) free(pjs);
+        if (mjs) free(mjs);
+        return vacio;
+    }
+
+    int cap_body = mjlen + pjlen + 240;
+    char* body = (char*)malloc((size_t)cap_body);
+    if (!body) { free(pjs); free(mjs); return vacio; }
+    int bl = snprintf(body, (size_t)cap_body,
+        "{\"model\":\"%s\",\"prompt\":\"%s\",\"n_predict\":%d,"
+        "\"temperature\":0,\"stop\":[\"<|im_end|>\",\"<|im_start|>\","
+        "\"<|EOT|>\"]}", mjs, pjs, max_tokens);
+    free(pjs);
+    free(mjs);
+    if (bl <= 0 || bl >= cap_body) { free(body); return vacio; }
+
+    char cab[256];
+    int hl = snprintf(cab, sizeof(cab),
+        "POST /completion HTTP/1.1\r\n"
+        "Host: %s:%d\r\n"
+        "Content-Type: application/json\r\n"
+        "Content-Length: %d\r\n"
+        "Connection: close\r\n\r\n",
+        hip, pt, bl);
+
+    CadenaSegura resultado = vacio;
+    _syn_iniciar_red();
+    int fd = _syn_socket();
+    if (fd < 0) { free(body); return vacio; }
+    if (_syn_conectar(fd, hip, pt) == 0) {
+        _syn_enviar(fd, cab, hl);
+        _syn_enviar(fd, body, bl);
+        int rlen = 0;
+        char* resp = _ollama_leer_respuesta(fd, &rlen);
+        if (resp) {
+            resultado = _ollama_campo(resp, "content");
+            if (resultado.longitud == 0) {
+                resultado = _ollama_campo(resp, "completion");
+            }
+            if (resultado.longitud == 0) {
+                resultado = _ollama_campo(resp, "error");
+            }
+            free(resp);
+        }
+    }
+    _syn_cerrar_socket(fd);
+    free(body);
+    return resultado;
+}
+
 // ============================================================
 // API unificada: OpenAI primero, luego Ollama como fallback
 // ============================================================
@@ -725,6 +831,16 @@ CadenaSegura _syn_ollama_consultar(CadenaSegura modelo, CadenaSegura prompt,
 
     // Intentar OpenAI primero (llama-server)
     CadenaSegura resultado = _openai_consultar(ms, ps, hip, pt, mt);
+    if (resultado.longitud > 0) {
+        free(ms);
+        free(ps);
+        return resultado;
+    }
+
+    // /v1/chat/completions puede devolver content vacio si la plantilla de
+    // chat del servidor no coincide con el GGUF. Reintentar con /completion,
+    // que recibe el prompt instruct explicito (Manual 7 §2.2).
+    resultado = _openai_completar(ms, ps, hip, pt, mt);
     if (resultado.longitud > 0) {
         free(ms);
         free(ps);
@@ -1079,6 +1195,9 @@ static int _oll_linea_json(const char* linea, int largo, char** out, int* out_le
     // OpenAI: "finish_reason" con valor NO nulo (entre comillas) — cada chunk
     // de streaming trae "finish_reason":null, que NO marca el fin (H-R145-3).
     if (strstr(linea, "\"done\":true")) return 2;
+    // /completion de llama.cpp cierra con {"content":"","stop":true} (Manual 7
+    // §2.2); el content vacio ya se proceso arriba, asi que stop=true es fin.
+    if (strstr(linea, "\"stop\":true")) return 2;
     const char* fr = strstr(linea, "\"finish_reason\"");
     if (fr) {
         const char* q = strchr(fr, ':');
@@ -1109,63 +1228,34 @@ void* _syn_ollama_stream_iniciar(CadenaSegura modelo, CadenaSegura prompt,
     int mt = (int)((max_tokens <= 0) ? 1024 : max_tokens);
     if (mt > 512) mt = 512;
 
-    // Buscar marcador [USUARIO] para separar system/user
-    char* ps_raw = (char*)malloc((size_t)prompt.longitud + 1);
-    if (!ps_raw) return NULL;
-    memcpy(ps_raw, prompt.datos, (size_t)prompt.longitud);
-    ps_raw[prompt.longitud] = '\0';
-
-    const char* marcador = strstr(ps_raw, "[USUARIO]");
-    const char* sys_ini = ps_raw;
-    int sys_len = marcador ? (int)(marcador - ps_raw) : 0;
-    const char* usr_ini = marcador ? marcador + 9 : ps_raw;
-    while (*usr_ini == '\n') usr_ini++;
-    int usr_len = (int)strlen(usr_ini);
-    if (sys_len > 3500) { sys_ini += sys_len - 3500; sys_len = 3500; }
-
-    int mjlen = 0, sjlen = 0, ujlen = 0;
-    char* ms = (char*)malloc((size_t)modelo.longitud + 1);
-    if (!ms) { free(ps_raw); return NULL; }
-    memcpy(ms, modelo.datos, (size_t)modelo.longitud);
-    ms[modelo.longitud] = '\0';
-    char* mjs = _ollama_esc_json(ms, (int)modelo.longitud, &mjlen);
-    char* sjs = sys_len > 0 ? _ollama_esc_json(sys_ini, sys_len, &sjlen) : NULL;
-    char* ujs = _ollama_esc_json(usr_ini, usr_len, &ujlen);
-    free(ms);
-    free(ps_raw);
-    if (!ujs) { if (mjs) free(mjs); if (sjs) free(sjs); return NULL; }
-
-    // Streaming via API OpenAI-compatible (/v1/chat/completions): valida tanto
-    // en Ollama como en llama-server (Manual 5 §5: cliente de red con cabeceras correctas)
-    int cap_body;
-    char* body;
-    int bl;
-    const char* endpoint = "/v1/chat/completions";
-    if (sjs && sjlen > 0) {
-        cap_body = mjlen + sjlen + ujlen + 280;
-        body = (char*)malloc((size_t)cap_body);
-        if (!body) { free(mjs); free(sjs); free(ujs); return NULL; }
-        bl = snprintf(body, (size_t)cap_body,
-            "{\"model\":\"%s\",\"messages\":["
-            "{\"role\":\"system\",\"content\":\"%s\"},"
-            "{\"role\":\"user\",\"content\":\"%s\"}"
-            "],\"stream\":true,\"max_tokens\":%d,\"temperature\":0,"
-            "\"stop\":[\"<|im_end|>\",\"<|im_start|>\",\"<|EOT|>\"]}",
-            mjs, sjs, ujs, mt);
-        free(sjs);
-    } else {
-        cap_body = mjlen + ujlen + 240;
-        body = (char*)malloc((size_t)cap_body);
-        if (!body) { free(mjs); free(ujs); return NULL; }
-        bl = snprintf(body, (size_t)cap_body,
-            "{\"model\":\"%s\",\"messages\":[{\"role\":\"user\",\"content\":\"%s\"}],"
-            "\"stream\":true,\"max_tokens\":%d,\"temperature\":0,"
-            "\"stop\":[\"<|im_end|>\",\"<|im_start|>\",\"<|EOT|>\"]}",
-            mjs, ujs, mt);
+    // /completion recibe el prompt crudo con formato instruct, evitando la
+    // plantilla ChatML que llama-server aplica en /v1/chat/completions.
+    // cumple Manual 7 §2.2: POST /completion para inferencia y streaming.
+    int plen = 0;
+    char* p = _oll_prompt_completion(prompt.datos, (int)prompt.longitud, &plen);
+    if (!p) return NULL;
+    int pjlen = 0, mjlen = 0;
+    char* pjs = _ollama_esc_json(p, plen, &pjlen);
+    free(p);
+    char* mjs = _ollama_esc_json(modelo.datos, (int)modelo.longitud, &mjlen);
+    if (!pjs || !mjs) {
+        if (pjs) free(pjs);
+        if (mjs) free(mjs);
+        return NULL;
     }
+
+    int cap_body = mjlen + pjlen + 240;
+    char* body = (char*)malloc((size_t)cap_body);
+    if (!body) { free(pjs); free(mjs); return NULL; }
+    int bl = snprintf(body, (size_t)cap_body,
+        "{\"model\":\"%s\",\"prompt\":\"%s\",\"stream\":true,"
+        "\"n_predict\":%d,\"temperature\":0,"
+        "\"stop\":[\"<|im_end|>\",\"<|im_start|>\",\"<|EOT|>\"]}",
+        mjs, pjs, mt);
+    free(pjs);
     free(mjs);
-    free(ujs);
     if (bl <= 0 || bl >= cap_body) { free(body); return NULL; }
+    const char* endpoint = "/completion";
 
     char cab[256];
     int hl = snprintf(cab, sizeof(cab),
