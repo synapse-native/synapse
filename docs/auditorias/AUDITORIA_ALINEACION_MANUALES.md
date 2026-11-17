@@ -1173,3 +1173,16 @@ inexistentes (`Manual 9 §9`, `Manual 1 §9`) y `Manual 9 §9.5` del probe de
 sanitizers. Manual 9 §1, Manual 1 §3.1.
 Reporte: `docs/reportes/R229.md` | 6a5176b |
 Manual 9 §1, Manual 1 §3.1 | 0 brechas |
+
+### R227 - ME r227_llm_mock (2026-11-17, 24a7feb)
+Cierra el fallo de chat cuando `/v1/chat/completions` devuelve contenido vacio
+por plantilla ChatML incompatible: `runtime/core/ollama.c` reintenta con
+`POST /completion` y normaliza el prompt instruct; el streaming usa
+`/completion`, acumula chunks `content` y cierra con `stop:true`. Oraculo nuevo
+con mock HTTP 2/2; regresion dirigida 26 passed/1 skipped; E2E `e2e_hola.syn`
+compila y ejecuta. Evidencia `562bf8f4ab0371e0`; `contrastar` 2 requisitos/1
+oraculo, `alineacion` 1 archivo, `verificar_alineacion` 0 brechas. No se probo
+`llama-server` real; H-R221-1 queda parcialmente resuelto hasta el smoke real
+con GGUF instruct. Manual 7 §2.2.
+Reporte: `docs/reportes/R227.md` | 24a7feb |
+Manual 7 §2.2 | 0 brechas |

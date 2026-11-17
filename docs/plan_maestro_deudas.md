@@ -73,11 +73,12 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
 - **R221 E2E IA 2026-11-15:** se instalo `llama-server` b10819 en
   `dist/opensyn/ia`; `opensyn doctor` rc=0, servidor OpenAI en :8088 responde
   `/v1/models` y `/v1/chat/completions`, y `opensyn status` lo detecta activo.
-  Hallazgo H-R221-1 (asignado a R227): el GGUF local
-  `deepseek-coder-1.3b-Q4_K_M.gguf` parece base/no-instruct (emite
-  `<|im_end|>` al inicio); `_syn_ollama_consultar` devuelve vacio con el
-  `stop` actual. Validar chat OpenSyn con el GGUF instruct correcto o ajustar
-  el manejo de stop antes de declarar el chat E2E cerrado.
+  Hallazgo H-R221-1 (PARCIAL R227, commit 24a7feb): el fallback
+  `POST /completion` con prompt instruct y el streaming hasta `stop:true`
+  estan cubiertos por mock HTTP 2/2 y regresion dirigida 26 passed/1 skipped.
+  El GGUF local `deepseek-coder-1.3b-Q4_K_M.gguf` y el `llama-server` real no
+  se levantaron en la suite; validar el chat OpenSyn real con el GGUF instruct
+  antes de declarar H-R221-1 cerrado.
 - **R198b1/ME r198b1_resello (CERRADA 2026-10-27, commit b657bb8):**
   cierre H-R198b-1 — re-sello auto-sanante de `cambio_hash` en
   `auditoria/alineacion.py`: `cmd_verificar` era un círculo (el re-sello
