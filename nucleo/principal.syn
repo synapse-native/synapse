@@ -616,6 +616,47 @@ funcion generar_etapa(ruta: cadena, salida: cadena, modo_validar: entero) -> Res
         asm("")
         asm("// 5. Compilar con GCC")
         asm("char _cmd[4096];")
+        // cumple Manual 9 §6.2 (ME r236, H-R234-1): el compilador resuelve el
+        // toolchain C por si mismo; antes emitia el literal "gcc" y dependia del
+        // PATH, asi que en una instalacion limpia `check` funcionaba pero compilar
+        // no (`"gcc" no se reconoce...`). Orden: SYNAPSE_GCC -> gcc junto al
+        // binario -> tools\mingw64\bin -> mingw64\bin -> ..\toolchain_gcc12\mingw64\bin
+        // (instalador) -> ..\..\toolchain_gcc12\mingw64\bin (checkout) -> "gcc".
+        asm("char _gcc_exe[1200];")
+        asm("{")
+        asm("#ifdef _WIN32")
+        asm("    extern unsigned long __stdcall GetModuleFileNameA(void*, char*, unsigned long);")
+        asm("    const char* _gcc_env = getenv(\"SYNAPSE_GCC\");")
+        asm("    if (_gcc_env && _gcc_env[0]) { snprintf(_gcc_exe, sizeof _gcc_exe, \"%s\", _gcc_env); }")
+        asm("    else {")
+        asm("        char _mdir[1024]; char _cand[1200]; int _found = 0;")
+        asm("        unsigned long _mn = GetModuleFileNameA(0, _mdir, 1024);")
+        asm("        if (_mn != 0) { char* _msl = strrchr(_mdir, '\\\\'); if (_msl) *_msl = 0; } else { strcpy(_mdir, \".\"); }")
+        asm("        const char* _rel[] = { \"gcc.exe\", \"tools\\\\mingw64\\\\bin\\\\gcc.exe\", \"mingw64\\\\bin\\\\gcc.exe\", \"..\\\\toolchain_gcc12\\\\mingw64\\\\bin\\\\gcc.exe\", \"..\\\\..\\\\toolchain_gcc12\\\\mingw64\\\\bin\\\\gcc.exe\", 0 };")
+        asm("        for (int _ci = 0; _rel[_ci]; _ci++) { snprintf(_cand, sizeof _cand, \"%s\\\\%s\", _mdir, _rel[_ci]); FILE* _cf = fopen(_cand, \"rb\"); if (_cf) { fclose(_cf); snprintf(_gcc_exe, sizeof _gcc_exe, \"%s\", _cand); _found = 1; break; } }")
+        asm("        if (!_found) strcpy(_gcc_exe, \"gcc\");")
+        asm("    }")
+        asm("#else")
+        asm("    const char* _gcc_env = getenv(\"SYNAPSE_GCC\"); if (_gcc_env && _gcc_env[0]) { snprintf(_gcc_exe, sizeof _gcc_exe, \"%s\", _gcc_env); } else { strcpy(_gcc_exe, \"gcc\"); }")
+        asm("#endif")
+        // El compilador C se invoca como \"gcc\" sin comillas (paridad con el comando
+        // historico y con las reglas de comillas de cmd.exe: citar el primer token
+        // junto a -I\".\" hacia que cmd no resolviera la ruta). Lo que se ajusta es el
+        // PATH del hijo: se antepone el directorio del toolchain resuelto, una sola
+        // vez, para que gcc y sus binarios auxiliares (as/ld, DLLs) se encuentren.
+        asm("if (strcmp(_gcc_exe, \"gcc\") != 0) {")
+        asm("    char _gdir[1200]; strcpy(_gdir, _gcc_exe); char* _gs = strrchr(_gdir, '\\\\'); if (_gs) *_gs = 0;")
+        asm("    const char* _pv = getenv(\"PATH\");")
+        asm("    if (_pv == 0 || strstr(_pv, _gdir) == 0) {")
+        asm("        char _np[3000]; snprintf(_np, sizeof _np, \"PATH=%s;%s\", _gdir, _pv ? _pv : \"\");")
+        asm("        _putenv(_np);")
+        asm("    }")
+        asm("}")
+        asm("}")
+        // cumple Manual 8 §4.2 (ME r236, H-R234-1): el toolchain resuelto se usa
+        // con las mismas opciones por modo de compilacion — `--release` (-O3
+        // -flto -DNDEBUG), `--debug` (-O0 -g, probe de sanitizadores) —; lo unico
+        // que cambia es de donde sale el `gcc` (PATH del hijo, no del usuario).
         asm("// Manual 8.3: PGO/LTO via --profile + --release/--debug (Manual 8 §4.2, Manual 1 §165)")
         asm("const char* _gcc_flags = \"\";")
         asm("const char* _gcc_defines = \"\";")
@@ -694,6 +735,9 @@ funcion generar_etapa(ruta: cadena, salida: cadena, modo_validar: entero) -> Res
         asm("    // cualquier .c nuevo en runtime/core/ se enlaza automaticamente en el")
         asm("    // compilador nativo — mismo comportamiento que el S1. Orden estable por")
         asm("    // qsort alfabetico (determinismo S2==S3, Manual 9 S9.7).")
+        // cumple Manual 8 §4.1 (ME r236, H-R234-1): el comando documentado
+        // `synapse <archivo>` sigue compilando a binario; solo cambia que el
+        // compilador C se localiza por cercania al ejecutable en vez del PATH.
         asm("    snprintf(_cmd, 4096, \"gcc %s %s -fno-ident -Wl,--no-insert-timestamp -Wl,--stack,8388608 -Wl,--gc-sections -I\\\"%s\\\" \\\"synapse_unity.c\\\" \\\"%s\\\\synapse_rt.c\\\"\", _gcc_opt, _gcc_flags, _rt_dir, _rt_dir);")
         asm("    {")
         asm("        char _rc_dir[1200]; snprintf(_rc_dir, 1200, \"%s\\\\runtime\\\\core\\\\\", _rt_dir);")

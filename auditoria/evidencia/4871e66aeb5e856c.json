@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "4871e66aeb5e856c",
+ "expediente": "docs/alineacion/r236_toolchain_gcc.md",
+ "fecha": "2026-11-17",
+ "archivos": [
+  "nucleo/principal.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r236_toolchain_gcc.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

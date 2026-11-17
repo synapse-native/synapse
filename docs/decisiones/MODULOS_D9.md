@@ -18,6 +18,7 @@
 - compilador/generator/emit_expressions.py
 - synapse_rt.c
 - opensyn/principal.syn
+- nucleo/principal.syn
 - runtime/core/cluster.c
 - runtime/core/debug.c
 - runtime/core/modelo.c

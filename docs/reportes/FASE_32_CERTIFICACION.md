@@ -36,9 +36,18 @@ Es decir: en una máquina limpia sin MinGW instalado, el usuario puede validar (
 limpia hace falta que el instalador resuelva el toolchain (PATH del instalador o resolución
 interna del binario). Asignado a la cola: `docs/plan_maestro_deudas.md` (H-R234-1).
 
+### Actualización 2026-11-17 — H-R234-1 cerrado por el ME r236_toolchain_gcc
+
+`synapse.exe` resuelve ahora el toolchain C por sí mismo (`SYNAPSE_GCC`, junto al
+binario, `tools\mingw64\bin`, `..\toolchain_gcc12\mingw64\bin`, `..\..\toolchain_gcc12\mingw64\bin`)
+y antepone su directorio al PATH del proceso hijo: compilar ya no exige configurar
+MinGW. Verificado con PATH reducido a `System32` (`tests/auditoria/test_oraculos_r236_toolchain_gcc.py`
+3/3) y con el binario regenerado. Queda como seguimiento H-R234-2 empaquetar el
+toolchain en el instalador, para la VM totalmente limpia.
+
 ## Pendiente dentro de R234
 
 1. `instaladores/test_instalador_silencioso.py`: instalación desatendida en VM limpia, PATH y `--version`.
-2. Cerrar H-R234-1 (resolución del toolchain desde el binario o desde el instalador).
+2. ~~Cerrar H-R234-1 (resolución del toolchain desde el binario o desde el instalador).~~ → **CERRADO** (ME r236). Queda H-R234-2: empaquetar MinGW en el instalador.
 3. Manual 7 §7.3: monitoreo de conexiones salientes durante una inferencia real + permisos mínimos del servidor.
 4. Informe final de Fase 30/32.8 con las cuatro cláusulas en CUMPLE.
