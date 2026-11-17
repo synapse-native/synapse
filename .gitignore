@@ -15,6 +15,9 @@
 *.wasm
 *.gguf
 
+# EXCLUSIÓN: staging del toolchain MinGW (artefacto de build, no rastrado)
+instaladores/windows/dist/
+
 # CLASE C: Objetos compilados
 *.o
 *.obj

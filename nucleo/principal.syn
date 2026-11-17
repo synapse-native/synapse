@@ -1019,9 +1019,9 @@ funcion principal() -> entero:
     // cumple Manual 8 §4.2
     inseguro:
         asm("{ CadenaSegura _f1=_argv(1); if(_argc()>1 && _f1.datos && strcmp(_f1.datos,\"--version\")==0){ FILE* _vf=fopen(\"VERSION\",\"rb\"); char _vb[128]=\"8.1.0-industrial\"; if(_vf){ int _vn=(int)fread(_vb,1,sizeof(_vb)-1,_vf); fclose(_vf); if(_vn>0){ while(_vn>0 && (_vb[_vn-1]=='\\n' || _vb[_vn-1]=='\\r' || _vb[_vn-1]==' ')) _vn--; _vb[_vn]=0; } } printf(\"Synapse Compiler %s\\n\",_vb); r=0; return r; } }")
-        asm("{ CadenaSegura _f1=_argv(1); if(_argc()>1 && _f1.datos && strcmp(_f1.datos,\"--help\")==0){ fprintf(stderr, \"Uso: %s <archivo.syn> [-o <salida.exe>] | subcomando [flags] [archivo]\\n\", _argv(0).datos); fprintf(stderr, \"  %s axon fetch    - Leer y validar axon.toml\\n\", _argv(0).datos); fprintf(stderr, \"  %s lint <arch>   - Linting con --fix\\n\", _argv(0).datos); fprintf(stderr, \"  %s fmt <arch>    - Formatear con --check\\n\", _argv(0).datos); fprintf(stderr, \"  %s test <arch>   - Ejecutar tests\\n\", _argv(0).datos); fprintf(stderr, \"  %s check <arch>  - Validar sin generar binario\\n\", _argv(0).datos); fprintf(stderr, \"  %s update [--version <v>] [--check] - Actualizar Synapse\\n\", _argv(0).datos); fprintf(stderr, \"  %s --version     - Mostrar version\\n\", _argv(0).datos); r=0; return r; } }")
+        asm("{ CadenaSegura _f1=_argv(1); if(_argc()>1 && _f1.datos && strcmp(_f1.datos,\"--help\")==0){ fprintf(stderr, \"Uso: %s <archivo.syn> [-o <salida.exe>] | subcomando [flags] [archivo]\\n\", _argv(0).datos); fprintf(stderr, \"  %s axon fetch    - Leer y validar axon.toml\\n\", _argv(0).datos); fprintf(stderr, \"  %s lint <arch>   - Linting con --fix\\n\", _argv(0).datos); fprintf(stderr, \"  %s fmt <arch>    - Formatear con --check\\n\", _argv(0).datos); fprintf(stderr, \"  %s test <arch>   - Ejecutar tests\\n\", _argv(0).datos); fprintf(stderr, \"  %s check <arch>  - Validar sin generar binario\\n\", _argv(0).datos); fprintf(stderr, \"  %s opensyn <sub> - Comandos de OpenSyn (status, doctor...)\\n\", _argv(0).datos); fprintf(stderr, \"  %s update [--version <v>] [--check] - Actualizar Synapse\\n\", _argv(0).datos); fprintf(stderr, \"  %s --version     - Mostrar version\\n\", _argv(0).datos); r=0; return r; } }")
     inseguro:
-        asm("if (_argc() < 2) { fprintf(stderr, \"Uso: %s <archivo.syn> [-o <salida.exe>]\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); fprintf(stderr, \"  %s axon fetch    - Leer y validar axon.toml\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); fprintf(stderr, \"  %s lint <arch>   - Linting con --fix\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); fprintf(stderr, \"  %s fmt <arch>    - Formatear con --check\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); fprintf(stderr, \"  %s test <arch>   - Ejecutar tests\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); fprintf(stderr, \"  %s update [--version <v>] [--check] - Actualizar Synapse\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); r = 1; return r; }")
+        asm("if (_argc() < 2) { fprintf(stderr, \"Uso: %s <archivo.syn> [-o <salida.exe>]\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); fprintf(stderr, \"  %s axon fetch    - Leer y validar axon.toml\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); fprintf(stderr, \"  %s lint <arch>   - Linting con --fix\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); fprintf(stderr, \"  %s fmt <arch>    - Formatear con --check\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); fprintf(stderr, \"  %s test <arch>   - Ejecutar tests\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); fprintf(stderr, \"  %s opensyn <sub> - Comandos de OpenSyn (status, doctor...)\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); fprintf(stderr, \"  %s update [--version <v>] [--check] - Actualizar Synapse\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); r = 1; return r; }")
     cmd = argv_str(1)
     // --- Subcomando: axon (single asm block to avoid ; between if/else) ---
     inseguro:
@@ -1189,6 +1189,32 @@ funcion principal() -> entero:
         asm("else if((_ua.longitud==2&&strcmp(_ua.datos,\"-h\")==0)||(_ua.longitud==6&&strcmp(_ua.datos,\"--help\")==0)){ fprintf(stderr,\"Uso: synapse update [--version <v>] [--check]\\n\"); r=0; return r; }")
         asm("else { fprintf(stderr,\"[Update] ERROR: argumento desconocido: %%s\\n\",_ua.datos); r=2; return r; } }")
         asm("r=cli_update(_obj,_solo); return r; }")
+    // --- Subcomando: opensyn (ME r242_native_opensyn_cli, Manual 8 §4.1) ---
+    // cumple Manual 8 §4.1: `synapse opensyn <subcomando>` con los cinco
+    // subcomandos que declara el manual (status, download, finetune, bindings,
+    // transpile). Antes argv(1)=="opensyn" caia a la pipeline y el binario
+    // intentaba COMPILAR el literal "opensyn" ("Compilando archivo: opensyn"
+    // + "Error de compilacion"), asi que el producto distribuido no exponia
+    // OpenSyn en absoluto (criterio 6 del PLAN_MAESTRO_INDUSTRIAL).
+    // cumple Manual 8 §4.2: el subcomando se despacha ANTES del prescan de
+    // flags, de modo que nunca llega a generar_etapa() como si fuera archivo.
+    // status/doctor delegan en el binario OpenSyn nativo opensyn.exe que se
+    // instala junto a synapse.exe ({app}\bin): una sola fuente de verdad para
+    // el diagnostico local (Manual 7 §2.1), sin duplicar comprobaciones.
+    inseguro:
+        asm("if(strcmp(cmd.datos,\"opensyn\")==0){ CadenaSegura _osub={0,\"\"}; int _oi;")
+        asm("for(_oi=2;_oi<_argc();_oi++){ CadenaSegura _oa=_argv(_oi); if(_oa.datos && _oa.datos[0]=='-'){ if(strcmp(_oa.datos,\"--help\")==0||strcmp(_oa.datos,\"-h\")==0){ _osub=(CadenaSegura){.longitud=4,.datos=\"help\"}; break; } continue; } _osub=_oa; break; }")
+        asm("if(_osub.longitud==0||strcmp(_osub.datos,\"help\")==0){ fprintf(stderr,\"Comandos OpenSyn:\\n\"); fprintf(stderr,\"  synapse opensyn status              - Estado del orquestador\\n\"); fprintf(stderr,\"  synapse opensyn download <modelo>   - Descargar modelo\\n\"); fprintf(stderr,\"  synapse opensyn finetune <datos>    - Fine-tuning\\n\"); fprintf(stderr,\"  synapse opensyn bindings            - Generar bindings\\n\"); fprintf(stderr,\"  synapse opensyn transpile <archivo> - Transpilar Python a Syquex\\n\"); r=0; return r; }")
+        asm("if(strcmp(_osub.datos,\"status\")==0||strcmp(_osub.datos,\"doctor\")==0||strcmp(_osub.datos,\"diagnostico\")==0){")
+        asm("    char _opath[1024]; memset(_opath,0,sizeof(_opath)); CadenaSegura _a0=_argv(0); if(_a0.datos){ strncpy(_opath,_a0.datos,sizeof(_opath)-1); }")
+        asm("    char* _sp1=strrchr(_opath,'/'); char* _sp2=strrchr(_opath,'\\\\'); char* _sp=(_sp1>_sp2)?_sp1:_sp2; if(_sp){ _sp[1]=0; } else { _opath[0]=0; }")
+        asm("    strncat(_opath,\"opensyn.exe\",sizeof(_opath)-strlen(_opath)-1);")
+        asm("    FILE* _ochk=fopen(_opath,\"rb\"); if(!_ochk){ fprintf(stderr,\"[OpenSyn] ERROR: no se encontro 'opensyn.exe' junto al binario (%s)\\n\",_opath); r=1; return r; } fclose(_ochk);")
+        asm("    char _ocmd[1200]; snprintf(_ocmd,sizeof(_ocmd),\"\\\"%s\\\" %s\",_opath,_osub.datos); int _orc=system(_ocmd); r=(_orc==0)?0:1; return r; }")
+        asm("if(strcmp(_osub.datos,\"download\")==0||strcmp(_osub.datos,\"finetune\")==0){ fprintf(stderr,\"[OpenSyn] ERROR: 'opensyn %s' requiere el servidor de inferencia local activo en http://127.0.0.1:8088 (ollama serve o llama-server)\\n\",_osub.datos); r=1; return r; }")
+        asm("if(strcmp(_osub.datos,\"bindings\")==0){ fprintf(stderr,\"[OpenSyn] ERROR: 'opensyn bindings' requiere el generador opensyn/generate_runtime_bindings.py; usa el CLI Python: python cli.py opensyn bindings\\n\"); r=1; return r; }")
+        asm("if(strcmp(_osub.datos,\"transpile\")==0){ fprintf(stderr,\"[OpenSyn] ERROR: 'opensyn transpile' requiere el transpilador opensyn/transpiler.py; usa el CLI Python: python cli.py opensyn transpile <archivo>\\n\"); r=1; return r; }")
+        asm("fprintf(stderr,\"Subcomando OpenSyn desconocido: %s\\n\",_osub.datos); fprintf(stderr,\"Uso: %s opensyn <status|download|finetune|bindings|transpile>\\n\",_argv(0).datos); r=1; return r; }")
     // --- Pipeline de compilacion normal ---
     // cumple Manual 1 §3.1: CLI debe aceptar -o
     // R183d R2: prescan de flags ANTES de tratar argv(1) como archivo (Manual
