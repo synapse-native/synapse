@@ -5,6 +5,11 @@
 #   dist\toolchain_gcc12\mingw64 a {app}\toolchain_gcc12\mingw64 | auditoria | TDD
 # OBL-R237-R2 | Manual 9 §7 | el subset staged compila y linkea un C real, y
 #   synapse.exe instalado compila un .syn con el toolchain incluido | auditoria | TDD
+# OBL-R237-R1 | Manual 9 §2.5 | el .iss declara el componente `toolchain` y copia
+#   dist\toolchain_gcc12\mingw64 a {app}\toolchain_gcc12\mingw64 | auditoria | TDD
+# OBL-R237-R2 | Manual 9 §7 | el subset staged compila y linkea un C real, y
+#   synapse.exe instalado compila un .syn con el toolchain incluido | auditoria | TDD
+
 """Requisitos:
 1. Ejecutar desde la raiz del repo:
    .venv/Scripts/python.exe -m pytest tests/auditoria/test_oraculos_r237_instalador_toolchain.py -v

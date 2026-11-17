@@ -44,7 +44,7 @@ CUMPLE_RE = re.compile(r"cumple\s+Manual\s+(\d+)\s*(?:§\s*)?(\d+(?:\.\d+)?)", r
 
 
 def _run(cmd):
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True,
+    result = subprocess.run(list(cmd), capture_output=True, text=True,
                             encoding="utf-8", errors="replace")
     return (result.stdout or ""), (result.stderr or ""), result.returncode
 
@@ -74,7 +74,7 @@ def get_modified_production_files():
     stagear y los archivos nuevos sin `git add` se listan como AVISO (quedan
     cubiertos por los gates de CI: trazabilidad-codigo + mts-contraste).
     """
-    stdout, _, _ = _run("git diff --cached --name-status")
+    stdout, _, _ = _run(["git", "diff", "--cached", "--name-status"])
     files = []
     for linea in stdout.splitlines():
         if not linea.strip():
@@ -89,7 +89,7 @@ def get_modified_production_files():
         if _es_produccion(ruta):
             files.append(ruta)
 
-    stdout_un, _, _ = _run("git ls-files --others --exclude-standard")
+    stdout_un, _, _ = _run(["git", "ls-files", "--others", "--exclude-standard"])
     nuevos = [r.strip().replace("\\", "/") for r in stdout_un.splitlines()
               if r.strip() and _es_produccion(r.strip())]
     for b in sorted(nuevos):
@@ -100,7 +100,7 @@ def get_modified_production_files():
 
 def get_modified_production_files_ci(base_ref="HEAD~1"):
     """Versión CI: usa git diff base..HEAD en vez de --cached (staging vacío en CI)."""
-    stdout, _, _ = _run(f"git diff --name-status {nonnull_base(base_ref)} HEAD")
+    stdout, _, _ = _run(["git", "diff", "--name-status", f"{nonnull_base(base_ref)}", "HEAD"])
     files = []
     for linea in stdout.splitlines():
         if not linea.strip():
@@ -319,9 +319,9 @@ def main():
     # 3. verificar_alineacion.py debe dar 0 brechas (por exit code, no por grep).
     # 3. verificar_alineacion.py debe dar 0 brechas (por exit code, no por grep).
     print("🔍 Ejecutando auditoria/verificar_alineacion.py...")
-    cmd_va = f'"{sys.executable}" auditoria/verificar_alineacion.py'
+    cmd_va = [sys.executable, "auditoria/verificar_alineacion.py"]
     if args.ci:
-        cmd_va += f" --ci --base {nonnull_base(args.base)}"
+        cmd_va += ["--ci", "--base", f"{nonnull_base(args.base)}"]
     stdout, _, rc_va = _run(cmd_va)
     if rc_va != 0:
         print("❌ Error: verificar_alineacion.py reportó brechas (rc != 0).")
