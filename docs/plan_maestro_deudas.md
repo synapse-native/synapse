@@ -17,7 +17,10 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   - **R231 / ME r231_verificacion_aot_fronteras:** Subfase 32.5 auto-refutación de casos límite derivados del AST.
   - **R232 / ME r232_rag_memoria_estructural:** Subfase 32.6 RAG con análisis de impacto del Architect y firmas AST en base cifrada.
   - **R233 / ME r233_compilador_puro_nativo:** driver de compilación nativo en `synapse.exe` y congelamiento de Python en Stage 0.
-  - **R234 / ME r234_certificacion_usuario_final:** arnés de prueba de humo post-instalación E2E en máquina limpia y reporte final (`docs/plan_ME_r234_certificacion_usuario_final.md`).
+  - **R234 / ME r234_certificacion_usuario_final (EN CURSO 2026-11-17, paso 1 de 4):** arnés de prueba de humo post-instalación E2E en máquina limpia y reporte final (`docs/plan_ME_r234_certificacion_usuario_final.md`).
+    - **Paso 1 ENTREGADO:** `tests/e2e/test_smoke_usuario_final.py` 7/7 sobre solo `dist/bin` (versión y `check` con PATH sin Python ni GCC, compilación + ejecución `.syn` y `.syq`, `opensyn --version`/`status`, LSP nativo `initialize`). `docs/reportes/FASE_32_CERTIFICACION.md` con la tabla de evidencia; requisitos Manual 9 §7 y Manual 7 §7.3 marcados NO CUMPLE (parcial) en `docs/verificacion_ME_r234_certificacion_usuario_final.md`.
+    - **H-R234-1 (ALTO, ABIERTO):** `dist/bin/synapse.exe` invoca `gcc` desde el PATH y no resuelve `toolchain_gcc12/mingw64/bin`; en máquina limpia sin MinGW el usuario puede `check` pero no compilar (`"gcc" no se reconoce...` + `ERROR: GCC fallo con codigo 1`). Resolución asignada: paso 2 de R234 (toolchain resuelto por el binario o por el instalador).
+    - **Pendiente:** `instaladores/test_instalador_silencioso.py` (instalación desatendida en VM limpia), Manual 7 §7.3 (monitoreo de conexiones salientes + permisos mínimos) e informe final con las cuatro cláusulas en CUMPLE.
 
 - **R220/ME r220_harness_runtime_path (CERRADO 2026-11-15, commit 1319d82):**
   harness de tests con PATH/CPATH canonico. Antepone `toolchain_gcc12/mingw64/bin`
