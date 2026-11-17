@@ -5,6 +5,9 @@
 **Renumeración 2026-11-15:** los MEs r220-r233 se reasignaron a r240-r253 para
 no colisionar con la cola de deuda R220/R222/R223 ya commiteada. La secuencia
 de olas y dependencias se conserva.
+**Estado del programa 2026-11-17:** EN CURSO — Frente A cerrado, Frentes B-G
+abiertos. Estado real ME a ME (con evidencia) en §3.1, verificado por comandos
+sobre el árbol y el binario, no por estimación.
 **Alcance:** convertir en realidad verificable todo lo especificado en los
 manuales, con OpenSyn a la altura de opencode/Codebuff en el eje que los
 manuales definen: contexto profundo + validación con el compilador real +
@@ -170,6 +173,102 @@ completos), no en semanas calendario.
 |---|---|---|---|---|
 | `r252_bootstrap_parity` | Paridad S1↔S2 de nodos/tokens y bootstrap determinista | Manual 1 §6; Manual 2 §7.2 | S2==S3 byte-idéntico; oráculo de paridad de nodos | r243 |
 | `r253_contracts_audit` | Contratos en toda función pública y auditoría de deuda | Manual 2 §5.1, §12 | `verificar_alineacion.py` 0 brechas; 0 funciones públicas sin contrato | r214 |
+
+---
+
+### 3.1 Estado real por frente (reconciliado 2026-11-17)
+
+Reconciliación contra el árbol y el binario en `release/v8.1.0-industrial`,
+HEAD `c341fc5` (R237). Leyenda: **HECHO** (entregado con reporte y oráculo),
+**PARCIAL** (existe infraestructura pero falta lo que el plan exige),
+**PENDIENTE** (no hay implementación), **RENUMERADO** (se ejecutó con otro id).
+
+#### Frente A — Reparar Fase 32: **CERRADO**
+
+| ME | Estado | Evidencia |
+|---|---|---|
+| `r205_grafo_conocimiento` | HECHO | `docs/reportes/R205.md` |
+| `r206_validation_loop` | HECHO | `docs/reportes/R206.md`; `opensyn/validation_loop.syn` con `MAX_INTENTOS = 3` |
+| `r207_pipeline_multiagente` | HECHO | `docs/reportes/R207.md` |
+| `r208_run_manager` | HECHO | `docs/reportes/R208.md` |
+| `r209_router_chat` | HECHO | `docs/reportes/R209.md` |
+| `r210_explorer_det` | HECHO | `docs/reportes/R210.md` |
+| `r211_architect_det` | HECHO | `docs/reportes/R211.md` |
+| `r212_memoria_cifrada` | HECHO | `docs/reportes/R212.md` |
+| `r213_verificacion_aot` | RENUMERADO → `r219_verificacion_aot` (HECHO) | `docs/reportes/R219.md`, commit `26e4cf8` |
+| `r214_baseline_cero` | HECHO (sin reporte propio) | `tests/fixtures/compilacion_baseline.txt` sólo comentarios; `pytest tests/integration/test_compilacion_fase32.py` → 2 passed |
+
+#### Frente B — Tools y loop: **2 de 4**
+
+| ME | Estado | Evidencia |
+|---|---|---|
+| `r215_tool_patch` | HECHO | `docs/reportes/R215.md` |
+| `r216_tool_ejecutar` | HECHO | `docs/reportes/R216.md`; allowlist y timeout en `opensyn/` |
+| `r217_loop_integracion` | PENDIENTE | `nucleo/principal.syn` y `opensyn/principal.syn` **no** invocan `validation_loop` ni `pipeline_multiagente` (grep vacío); el loop a 3 intentos sólo existe dentro del módulo y su oráculo. R217 es otro ME (`r217_integracion_determinista`) |
+| `r218_sesiones_undo` | PENDIENTE | R218 es `r218_bootstrap_json`, otro ME. `reanudar`/`revertir` aparecen sólo como funciones de `opensyn/run_manager.syn`, sin cableado al loop ni oráculo de reanudación |
+
+#### Frente C — LSP/IDE e IA: **0 de 3**
+
+| ME | Estado | Evidencia |
+|---|---|---|
+| `r219_lsp_ai` | PENDIENTE | `tests/integration/test_ai_commands_opensyn.py` conserva **5 `pytest.skip`** («no implementado aún (TDD)»); el bloqueo de id viene de que `r219` se usó para `verificacion_aot` |
+| `r240_vscode_ai` | PARCIAL | `vscode-synapse/package.json` declara `synapse.aiStatus/aiExplain/aiComplete/aiFix`; los métodos LSP que despachan siguen en skip ⇒ comandos sin verificación real |
+| `r241_debugger` | PARCIAL | `opensyn/router.syn` cataloga `std.debug` con `rp_*` (retroceder, breakpoints, pila) y `ms_*`/`tr_*` (snapshots, recording); sin oráculo de time-travel ni integración VS Code |
+
+#### Frente D — CLI y paridad nativa: **0 de 3**
+
+| ME | Estado | Evidencia |
+|---|---|---|
+| `r242_native_opensyn_cli` | PENDIENTE | `dist/bin/synapse.exe opensyn status` → «Compilando archivo: opensyn … Error de compilacion»: el binario trata el subcomando como archivo fuente |
+| `r243_native_fase32` | PENDIENTE | No hay gate S2 de los módulos de Fase 32 (`test_compilacion_fase32.py` compila con S1) ni reporte |
+| `r244_paridad_lint_fmt_test` | PARCIAL | El nativo ya expone `lint`, `fmt`, `test [--coverage]`; falta el oráculo de paridad S1↔S2 sobre los módulos reparados |
+
+#### Frente E — Calidad industrial: **0 de 4**
+
+| ME | Estado | Evidencia |
+|---|---|---|
+| `r245_e2e_llama_server` | PARCIAL | Doble hermético de LLM (R227, `test_oraculos_r227_llm_mock.py`) y fixtures GGUF; sin E2E de chat+tools+validación contra `llama-server` |
+| `r246_benchmark_latencia` | PENDIENTE | No hay reporte con latencia/tok-s/VRAM medidos contra los umbrales de Manual 7 §7.2 (lo más cercano son mediciones sueltas de R136/FASE_29) |
+| `r247_tests_comportamiento` | PARCIAL | Existe `auditoria/auditar_calidad_tests.py` (usado en R160/R194); sin ratio de tests de comportamiento documentado para Fase 32 |
+| `r248_cobertura_opensyn` | PARCIAL | `synapse test --coverage` funciona en el nativo; sin informe de cobertura de aristas |
+
+#### Frente F — Distribución y hardening: **0 de 3**
+
+| ME | Estado | Evidencia |
+|---|---|---|
+| `r249_doctor_installer` | PARCIAL | `opensyn doctor` existe en el CLI Python (R200 + `tests/integration/test_opensyn_doctor.py`), no en el binario nativo (`synapse doctor` falla). Instalación limpia: R237 cerró H-R234-2 (el setup ya trae toolchain) pero la VM limpia sigue pendiente |
+| `r250_multiplataforma` | PARCIAL | `instaladores/{linux,macos,windows}` y matriz ubuntu/ubuntu-arm/macos/windows en `.github/workflows/release_matrix.yml` y `release-installers.yml`; sin evidencia de ejecución ni firma/checksum por plataforma en un release reciente |
+| `r251_release_hardening` | PARCIAL | `scripts/ci_sbom.py` y `scripts/ci_sign.py` cableados en `release_matrix.yml`; falta el release de prueba verificado en runner limpio |
+
+#### Frente G — Compilador/runtime: **0 de 2**
+
+| ME | Estado | Evidencia |
+|---|---|---|
+| `r252_bootstrap_parity` | PARCIAL | La política S2==S3 se congeló en R222b (`327fc514adb5`); sin oráculo de paridad de nodos/tokens dedicado |
+| `r253_contracts_audit` | PARCIAL | `verificar_alineacion.py` → 0 brechas; falta la auditoría «0 funciones públicas sin `requiere`/`garantiza`» con oráculo propio |
+
+#### MEs entregados fuera de esta cartera
+
+La numeración posterior diverge del plan. Entregados y documentados fuera de
+§3: R220 (harness runtime path), R222/R222b/R223 (std texto, wrappers,
+Syquex), R227 (mock LLM), R229 (caché resiliente), R234-R237 (certificación de
+usuario final, fallback blanco, toolchain resuelto por el binario, toolchain
+empaquetado en el instalador). Cualquier reordenamiento futuro debe reasignar
+ids libres: **r219, r240-r253 y r218 ya no están disponibles** (colisión).
+
+#### Criterios de cierre de §5 — estado verificado
+
+| # | Criterio | Estado |
+|---|---|---|
+| 1 | Baseline vacío y gate duro | ✅ cumplido |
+| 2 | Los 10 módulos de Fase 32 compilan con S2 + test de comportamiento | ❌ (S2 pendiente, r243) |
+| 3 | 7 herramientas de OpenSyn con sandbox | ✅ (`opensyn/principal.syn` las despacha) |
+| 4 | Loop editar→compilar→corregir a 3 intentos | ❌ (r217: módulo existe, no cableado) |
+| 5 | `ai*` LSP responden, sin skips TDD | ❌ (5 skips) |
+| 6 | `synapse opensyn <sub>` en el nativo | ❌ (r242) |
+| 7 | E2E `llama-server` + benchmark medido | ❌ (r245/r246) |
+| 8 | `doctor` + instalador en máquina limpia, release firmado y verificado | ❌ parcial (VM limpia y verificación end-to-end pendientes) |
+| 9 | `verificar_alineacion` 0 brechas, `contrastar` verde, 0 deudas sin resolución | ⚠️ primera mitad cumplida; quedan deudas abiertas en `docs/plan_maestro_deudas.md` |
 
 ---
 
