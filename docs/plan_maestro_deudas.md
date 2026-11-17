@@ -10,6 +10,15 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
 
 ## Cola de MEs (prioridad por radio/costo, actualizable)
 
+- **R229-R234 / Plan de Mejoras Arquitectónicas y Cierre Fase 32 (REGISTRADO 2026-11-16):**
+  Plan maestro en `docs/plan_MEJORAS_ARQUITECTURA_R229_R233.md`.
+  - **R229 / ME r229_cache_resiliencia:** caché persistente solo en `~/.synapse/cache/`; si no es escribible, degradación avisada a objetos efímeros en `build/obj/runtime_ephemeral` (sin fallback persistente) para erradicar `WinError 5` (`docs/plan_ME_r229_cache_resiliencia.md`).
+  - **R230 / ME r230_opensyn_contratos_mocks:** normalización de mocks ante precondición `longitud(codigo) > 0` (100% tests opensyn verdes).
+  - **R231 / ME r231_verificacion_aot_fronteras:** Subfase 32.5 auto-refutación de casos límite derivados del AST.
+  - **R232 / ME r232_rag_memoria_estructural:** Subfase 32.6 RAG con análisis de impacto del Architect y firmas AST en base cifrada.
+  - **R233 / ME r233_compilador_puro_nativo:** driver de compilación nativo en `synapse.exe` y congelamiento de Python en Stage 0.
+  - **R234 / ME r234_certificacion_usuario_final:** arnés de prueba de humo post-instalación E2E en máquina limpia y reporte final (`docs/plan_ME_r234_certificacion_usuario_final.md`).
+
 - **R220/ME r220_harness_runtime_path (CERRADO 2026-11-15, commit 1319d82):**
   harness de tests con PATH/CPATH canonico. Antepone `toolchain_gcc12/mingw64/bin`
   a PATH (cierra `0xC000014B` por `libwinpthread-1.dll`) y agrega

@@ -87,7 +87,7 @@ def _resolver_toolchain_gcc() -> str:
 
 
 def _soporta_sanitizers(compiler: str) -> bool:
-    """Detecta si el toolchain puede LINKEAR -fsanitize (Manual 9 §9.5).
+    """Detecta si el toolchain puede LINKEAR -fsanitize (Manual 9 §6.1).
 
     R183d: en MinGW-w64 (GCC 16.1) el driver acepta -fsanitize=address,undefined
     pero el linker no encuentra -lasan/-lubsan (no se distribuyen con el
@@ -176,50 +176,77 @@ def _compilar_objeto_cacheado(compiler: str, opt_flags: str, base_flags: str,
                               extra_flags: str = "") -> Optional[str]:
     """Compila un .o desde fuente SOLO si cambió su fuente o los flags.
 
-    cumple Manual 1 4 (cache.syn: "Sistema de caché incremental SHA-256" / runtime
-    modularizado) y Manual 9 §9 (caché local en `~/.synapse/cache/`, NO en directorios
-    de build del repositorio). Manual 1 §6 (Regla de hierro: no romper el bootstrap —
-    el .o cacheado es idéntico al recién compilado porque la clave incluye fuente+flags).
-    ME-R2 evitó depender de .o precompilados inexistentes en instalación limpia;
-    este helper CACHEA los .o generados (hash SHA-256 de la fuente + compilador +
-    flags) en `~/.synapse/cache/runtime_obj/` y los recompila únicamente cuando el
-    hash cambia. El runtime es grande (incluye sqlite3.c, tweetnacl.c, etc.) y
-    recompilarlo en cada invocación multiplicaba ~90s el coste de cada compilación
-    de usuario (causa de los timeouts en tests/unit).
+    # cumple Manual 9 §1: la única caché persistente es `~/.synapse/cache/`;
+    # si no es escribible se degrada a objetos efímeros en build/obj, nunca a
+    # una caché persistente en workspace/temp.
+    # cumple Manual 1 §3.1: el pipeline compartido conserva compilación y enlace
+    # aun cuando la caché persistente no esté disponible.
+    Manual 1 §6: el .o cacheado es idéntico al recién compilado porque la clave
+    incluye fuente+flags. ME-R2 evitó depender de .o precompilados inexistentes
+    en instalación limpia; este helper CACHEA los .o generados en
+    `~/.synapse/cache/runtime_obj/`. Si el home no es escribible, usa
+    `build/obj/runtime_ephemeral` (efímero) y un memo en proceso.
     """
     src = os.path.join(SYNAPSE_BIN, src_rel)
-    if dir_obj is None:
-        dir_obj = os.path.join(_cache_dir(), "runtime_obj")
-    os.makedirs(dir_obj, exist_ok=True)
-    ruta_obj = os.path.join(dir_obj, nombre + ".o")
-    sidecar = ruta_obj + ".sha"
-    # cumple Manual 1 §4 (ME r193_fixtures_infra, H-R193-2): la key normaliza
-    # espacios múltiplios de base_flags — los dos caminos del compilador
-    # conforman base_flags con vacíos intermedios distintos (el enlace normal
-    # intercala `no_std_flags`/`env_gcc_flags` vacíos y deja DOBLE espacio;
-    # _link_object deja UNO), y la comparación cruda del sidecar no matcheaba:
-    # los 46 .o del runtime se recompilaban en CADA pasada (~90 s) aunque el
-    # código de usuario diera [CACHE HIT]. Con la key canónizada, el HIT del
-    # runtime es real en la segunda compilación.
     base_norm = ' '.join((base_flags or '').split())
     key = f"{_cache_file_hash(src)}|{compiler}|{opt_flags}|{base_norm}|{extra_flags}"
-    if os.path.exists(ruta_obj) and os.path.exists(sidecar):
+
+    if dir_obj is not None:
+        os.makedirs(dir_obj, exist_ok=True)
+        cache_ok = True
+    elif _cache_disponible():
+        dir_obj = os.path.join(_cache_dir(), "runtime_obj")
         try:
-            with open(sidecar, 'r') as f:
-                if f.read() == key:
-                    return ruta_obj
-        except Exception:
-            pass
+            os.makedirs(dir_obj, exist_ok=True)
+            cache_ok = True
+        except OSError:
+            _cache_desactivar(_cache_dir())
+            dir_obj = _cache_ephemeral_dir()
+            os.makedirs(dir_obj, exist_ok=True)
+            cache_ok = False
+    else:
+        dir_obj = _cache_ephemeral_dir()
+        os.makedirs(dir_obj, exist_ok=True)
+        cache_ok = False
+
+    if cache_ok:
+        ruta_obj = os.path.join(dir_obj, nombre + ".o")
+        sidecar = ruta_obj + ".sha"
+        # cumple Manual 1 §4 (ME r193_fixtures_infra, H-R193-2): la key normaliza
+        # espacios múltiplios de base_flags — los dos caminos del compilador
+        # conforman base_flags con vacíos intermedios distintos (el enlace normal
+        # intercala `no_std_flags`/`env_gcc_flags` vacíos y deja DOBLE espacio;
+        # _link_object deja UNO), y la comparación cruda del sidecar no matcheaba:
+        # los 46 .o del runtime se recompilaban en CADA pasada (~90 s) aunque el
+        # código de usuario diera [CACHE HIT]. Con la key canónizada, el HIT del
+        # runtime es real en la segunda compilación.
+        if os.path.exists(ruta_obj) and os.path.exists(sidecar):
+            try:
+                with open(sidecar, 'r') as f:
+                    if f.read() == key:
+                        return ruta_obj
+            except Exception:
+                pass
+    else:
+        ruta_obj = os.path.join(dir_obj, f"{nombre}_{key[:12]}.o")
+        previo = _CACHE_EPHEMERAL_MEMO.get(key)
+        if previo and os.path.exists(previo):
+            return previo
+
     cmd = f'{compiler} {opt_flags} -c {base_flags} {extra_flags} "{src}" -o "{ruta_obj}"'
-    print(f"[RUNTIME] gcc -c (cache): {src_rel}")
+    modo = "cache" if cache_ok else "efímero"
+    print(f"[RUNTIME] gcc -c ({modo}): {src_rel}")
     rc = subprocess.run(cmd, shell=True).returncode
     if rc != 0:
         return None
-    try:
-        with open(sidecar, 'w') as f:
-            f.write(key)
-    except Exception:
-        pass
+    if cache_ok:
+        try:
+            with open(sidecar, 'w') as f:
+                f.write(key)
+        except Exception:
+            pass
+    else:
+        _CACHE_EPHEMERAL_MEMO[key] = ruta_obj
     return ruta_obj
 
 
@@ -264,11 +291,67 @@ def _cache_dir() -> str:
     home = os.environ.get('USERPROFILE') or os.environ.get('HOME') or '.'
     return os.path.normpath(os.path.join(home, '.synapse', 'cache'))
 
+
+_CACHE_ESTADO: Dict[str, bool] = {}
+_CACHE_ADVERTIDOS: Set[str] = set()
+_CACHE_EPHEMERAL_MEMO: Dict[str, str] = {}
+
+
+def _cache_advertir(base: str) -> None:
+    if base in _CACHE_ADVERTIDOS:
+        return
+    _CACHE_ADVERTIDOS.add(base)
+    print(
+        f"[CACHE][!] No se puede escribir en {base}; se compila con "
+        "artefactos efímeros y sin caché persistente (Manual 9 §1).",
+        file=sys.stderr,
+    )
+
+
+def _cache_desactivar(base: str) -> None:
+    _CACHE_ESTADO[base] = False
+    _cache_advertir(base)
+
+
+def _cache_escribible(base: str) -> bool:
+    """Prueba escritura real en `base`; nunca crea una caché fuera de home."""
+    if base in _CACHE_ESTADO:
+        return _CACHE_ESTADO[base]
+    try:
+        os.makedirs(base, exist_ok=True)
+        sonda = os.path.join(base, f".synapse_cache_probe_{os.getpid()}")
+        with open(sonda, 'w', encoding='utf-8') as f:
+            f.write('ok')
+        os.remove(sonda)
+    except OSError:
+        _cache_desactivar(base)
+        return False
+    _CACHE_ESTADO[base] = True
+    return True
+
+
+def _cache_disponible() -> bool:
+    return _cache_escribible(_cache_dir())
+
+
+def _cache_ephemeral_dir() -> str:
+    """Directorio efímero de build para cuando la caché de home no es usable."""
+    # cumple Manual 9 §1: build/ es efímero; no es una caché persistente.
+    ruta = os.path.join(SYNAPSE_BIN, 'build', 'obj', 'runtime_ephemeral')
+    os.makedirs(ruta, exist_ok=True)
+    return ruta
+
+
 def _cache_ensure_dirs() -> None:
-    """Crea los directorios de caché necesarios."""
+    """Crea los directorios de caché necesarios si la caché es escribible."""
+    if not _cache_disponible():
+        return
     base = _cache_dir()
-    os.makedirs(os.path.join(base, 'obj'), exist_ok=True)
-    os.makedirs(os.path.join(base, 'meta'), exist_ok=True)
+    try:
+        os.makedirs(os.path.join(base, 'obj'), exist_ok=True)
+        os.makedirs(os.path.join(base, 'meta'), exist_ok=True)
+    except OSError:
+        _cache_desactivar(base)
 
 def _cache_file_hash(ruta: str) -> str:
     """Calcula SHA-256 de un archivo."""
@@ -305,6 +388,8 @@ def _cache_index_path() -> str:
     return os.path.join(_cache_dir(), 'index.json')
 
 def _cache_load_stats() -> Dict[str, int]:
+    if not _cache_disponible():
+        return {'hits': 0, 'misses': 0, 'total_entries': 0, 'total_bytes': 0}
     path = _cache_index_path()
     if os.path.exists(path):
         try:
@@ -315,6 +400,8 @@ def _cache_load_stats() -> Dict[str, int]:
     return {'hits': 0, 'misses': 0, 'total_entries': 0, 'total_bytes': 0}
 
 def _cache_save_stats(stats: Dict[str, int]) -> None:
+    if not _cache_disponible():
+        return
     path = _cache_index_path()
     try:
         with open(path, 'w') as f:
@@ -324,6 +411,8 @@ def _cache_save_stats(stats: Dict[str, int]) -> None:
 
 def _cache_lookup(clave: str, archivo: str, flags: str) -> Optional[str]:
     """Busca en caché. Retorna ruta al .o si hit válido, None si miss/stale."""
+    if not _cache_disponible():
+        return None
     meta_path = _cache_meta_path(clave)
     if not os.path.exists(meta_path):
         return None
@@ -351,6 +440,9 @@ def _cache_lookup(clave: str, archivo: str, flags: str) -> Optional[str]:
 
 def _cache_store(clave: str, archivo: str, flags: str, obj_path: str) -> None:
     """Guarda entrada en caché."""
+    if not _cache_disponible():
+        return
+    _cache_ensure_dirs()
     meta = {
         'clave': clave,
         'archivo': archivo,
@@ -382,6 +474,8 @@ def _cache_clean() -> None:
 
 def _cache_stats() -> Dict[str, int]:
     stats = _cache_load_stats()
+    if not _cache_disponible():
+        return stats
     base = _cache_dir()
     if os.path.exists(base):
         obj_dir = os.path.join(base, 'obj')
