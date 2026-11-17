@@ -79,6 +79,51 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   El GGUF local `deepseek-coder-1.3b-Q4_K_M.gguf` y el `llama-server` real no
   se levantaron en la suite; validar el chat OpenSyn real con el GGUF instruct
   antes de declarar H-R221-1 cerrado.
+- **H-R221-1 smoke REAL 2026-11-17 (CERRADO tras r235 — ver abajo):** se
+  levanto `dist/opensyn/ia/llama-server.exe` b10819 con el GGUF local sobre
+  :8088 y se ejecuto un probe `.syn` compilado con el pipeline real
+  (`_syn_ollama_consultar` + streaming), observado por un proxy TCP que solo
+  registra el path (el modelo/servidor siguen siendo reales).
+  (a) El GGUF **SI es instruct**: `general.name =
+  deepseek-ai_deepseek-coder-1.3b-instruct`; queda **REFUTADA** la hipotesis
+  "parece base/no-instruct" registrada en R222b/R227.
+  (b) Con la plantilla nativa del GGUF: la consulta usa
+  `/v1/chat/completions` y devuelve texto limpio; el streaming usa
+  `/completion` con prompt `### System/Instruction/Response` (`ESTADO:0`,
+  `ERROR:` vacio). Con el binario real regenerado
+  (`main.py opensyn/principal.syn -o dist/bin/opensyn.exe`) el chat conecta y
+  responde. Nota: `dist/bin/opensyn.exe` estaba STALE (2026-11-15, sin las
+  cadenas de R227) antes de este smoke.
+  (c) **H-R221-1-R1 (NUEVO, ALTO — fallback no dispara con blanco):** con una
+  plantilla de chat que cierra de inmediato (reproducible con
+  `--chat-template-file`), `/v1/chat/completions` responde
+  `content: "\n\n"`; `_openai_consultar` compara `resultado.longitud > 0`
+  (`runtime/core/ollama.c`) y lo acepta como exito, por lo que **no** se
+  reintenta `POST /completion`. E2E real: probe imprime `CONSULTA:` (dos
+  saltos) y el chat de `dist/bin/opensyn.exe` muestra "[Error] No hubo
+  respuesta del servidor IA local". Fix propuesto: recortar blancos y
+  descartar `content` que solo contenga tokens de plantilla (`<|im_end|>`,
+  `<|im_start|>`) antes de decidir el fallback; oraculo nuevo con mock
+  server que devuelva `"\n\n"`. Resolucion asignada: **ME r235_fallback_blanco**
+  (cola, antes de declarar H-R221-1 cerrado). Sin cambios de produccion en
+  este smoke: `runtime/core/ollama.c` intacto.
+- **R235 / H-R221-1-R1 RESUELTO 2026-11-17 (ME r235_fallback_blanco):**
+  `runtime/core/ollama.c` agrega `_oll_contenido_util()` y solo acepta como
+  respuesta un `content`/`completion` con texto util (ignora blancos y
+  marcadores `<|im_end|>`, `<|im_start|>`, `<|endoftext|>`, `<|eot_id|>`,
+  `<|EOT|>`, `<s>`, `</s>`); si el chat trae solo eso, reintenta
+  `POST /completion` y, si tampoco hay texto, devuelve cadena vacia (el
+  llamador .syn muestra "sin respuesta" en vez de una burbuja fantasma).
+  Oraculo nuevo `tests/auditoria/test_oraculos_r235_fallback_blanco.py` 3/3
+  (blanco, marcadores, texto real sin fallback) + regresion R227 2/2.
+  Gates: `verificar_alineacion` 0 brechas, `alineacion --verificar` evidencia
+  `8bffa132a1f1f3df`, `contrastar --plan` PASS. Smoke REAL con
+  `llama-server` + GGUF instruct y `--chat-template-file` vacia: probe
+  `CONSULTA:Hola!` (antes: dos saltos) y, por el proxy, `/v1/chat/completions`
+  seguido de `/completion`; el chat de `dist/bin/opensyn.exe` responde
+  contenido en lugar del error. Con esto **H-R221-1 queda CERRADO**
+  (fallback + streaming + smoke real, con y sin plantilla valida).
+  Evidencia: `docs/reportes/R235.md` y `docs/reportes/R227_smoke_real.md`.
 - **R198b1/ME r198b1_resello (CERRADA 2026-10-27, commit b657bb8):**
   cierre H-R198b-1 — re-sello auto-sanante de `cambio_hash` en
   `auditoria/alineacion.py`: `cmd_verificar` era un círculo (el re-sello
