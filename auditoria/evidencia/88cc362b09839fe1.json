@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "88cc362b09839fe1",
+ "expediente": "docs/alineacion/r252_bootstrap_parity.md",
+ "fecha": "2026-11-18",
+ "archivos": [
+  "build.py"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r252_paridad_bootstrap.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

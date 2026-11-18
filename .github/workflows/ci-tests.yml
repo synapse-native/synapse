@@ -307,15 +307,11 @@ jobs:
             echo "❌ Bootstrap Etapa 3 fallo: synapse_stage3.exe no generado"
             exit 1
           fi
-          S2=$(sha256sum synapse_stage2.exe | cut -d' ' -f1)
-          S3=$(sha256sum synapse_stage3.exe | cut -d' ' -f1)
-          echo "S2 sha256: $S2"
-          echo "S3 sha256: $S3"
-          if [ "$S2" != "$S3" ]; then
-            echo "❌ Manual 9 §6.1 VIOLADO: S2 != S3 (bootstrap no determinista)"
-            exit 1
-          fi
-          echo "✅ Bootstrap sellado: S2==S3 byte-idénticos ($S2)"
+          # El cálculo del sello vive en el oráculo del ME r252 (misma
+          # implementación que usa build.py): un solo lugar para Manual 1 §6
+          # y Manual 9 §6.1/§6.2.
+          python auditoria/oraculos/oraculo_r252_paridad_bootstrap.py --artefactos
+          echo "✅ Bootstrap sellado: S2==S3 byte-idénticos (oráculo r252)"
 
       - name: Verificar micro-tests (bootstrap nativo)
         run: |

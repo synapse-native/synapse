@@ -10,6 +10,28 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
 
 ## Cola de MEs (prioridad por radio/costo, actualizable)
 
+- **H-R252-1 (CRITICO, REGISTRADO 2026-11-18 en el ME r252_bootstrap_parity):**
+  el bootstrap NO cierra en esta rama. Medido con el oráculo
+  `auditoria/oraculos/oraculo_r252_paridad_bootstrap.py --artefactos`:
+  `synapse_stage2.exe` (construido por S1) = `737a4000dabccbea`, 2.077.570 bytes;
+  `synapse_stage3.exe` (construido por S2) = `b032e2ddc78dd235`, 2.558.970 bytes.
+  2.0 de 2.1 MB difieren, así que no es ruido de timestamps: son programas
+  distintos. Causa raíz identificada en los logs de enlace: S1 (`pipeline.py`)
+  compila **modular** (un `.c` y un `.o` por módulo del núcleo) y enlaza con
+  `-static`, mientras que S2 (`nucleo/principal.syn:764`) emite **unity**
+  (`synapse_unity.c`) y enlaza sin `-static` y con
+  `-Wl,--allow-multiple-definition`. Mientras los dos caminos de emisión no
+  coincidan, la regla de hierro de Manual 1 §6 (diff 0 bytes entre etapa 2 y 3)
+  no puede cumplirse. El sello de CI (`job bootstrap` de `ci-tests.yml`) nunca
+  lo detectó porque ese job no se ha ejecutado en esta rama con el estado
+  actual. **Resolución asignada:** ME de seguimiento `r252b_emision_paridad`
+  (id libre, la numeración r219/r240-r253 está ocupada): unificar la invocación
+  de GCC de S2 con la de S1 (misma estrategia de emisión, `-static` en win32 y
+  mismos `-l*`) o, si el coste es mayor, declarar por decisión ratificada del
+  Arquitecto cuál de las dos es la canónica y alinear la otra. Oráculo de
+  aceptación: el sello r252 en modo `--artefactos` con rc=0, más
+  `--estricto` verde después de refrescar `synapse.exe` y `dist/bin/synapse.exe`.
+
 - **R229-R234 / Plan de Mejoras Arquitectónicas y Cierre Fase 32 (REGISTRADO 2026-11-16):**
   Plan maestro en `docs/plan_MEJORAS_ARQUITECTURA_R229_R233.md`.
   - **R229 / ME r229_cache_resiliencia (CERRADO 2026-11-17, commit 6a5176b):** caché persistente solo en `~/.synapse/cache/`; si no es escribible, degradación avisada a objetos efímeros en `build/obj/runtime_ephemeral` (sin fallback persistente) para erradicar `WinError 5` (`docs/plan_ME_r229_cache_resiliencia.md`).

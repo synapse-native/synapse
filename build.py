@@ -61,14 +61,21 @@ def main():
             sys.exit(1)
         os.replace(nuevo, os.path.join(RAIZ, exe))
 
-    # Determinismo: S2 == S3 (Manual 9 §6.2)
-    sha2, sha3 = (_sha256(os.path.join(RAIZ, "synapse_stage2.exe")),
-                  _sha256(os.path.join(RAIZ, "synapse_stage3.exe")))
-    if sha2 != sha3:
-        print(f"[build][ERROR] bootstrap NO determinista: {sha2[:12]} != {sha3[:12]}",
-              file=sys.stderr)
-        sys.exit(1)
-    print(f"[build] OK determinismo S2==S3 sha {sha2[:12]}")
+    # Determinismo: S2 == S3 (Manual 1 §6, Manual 9 §6.2, Manual 9 §2.3).
+    # El cálculo del sello vive en un solo lugar: el oráculo del ME r252, que
+    # también usa el job `bootstrap` de CI. Antes había una copia aquí y otra
+    # en el workflow, así que el sello podía divergir sin que nadie lo notara.
+    sello = os.path.join(RAIZ, "auditoria", "oraculos",
+                         "oraculo_r252_paridad_bootstrap.py")
+    # cumple Manual 9 §2.3: verificar el bootstrap como paso del pipeline
+    # cumple Manual 1 §6: un bootstrap no determinista aborta el build
+    rc_sello = subprocess.call([py, sello, "--artefactos"], cwd=RAIZ)
+    if rc_sello != 0:
+        print("[build][ERROR] sello de bootstrap S2==S3 NO verificado "
+              "(Manual 1 §6 / Manual 9 §6.2)", file=sys.stderr)
+        sys.exit(rc_sello)
+    print(f"[build] OK determinismo S2==S3 sha "
+          f"{_sha256(os.path.join(RAIZ, 'synapse_stage2.exe'))[:12]}")
 
 
 if __name__ == "__main__":
