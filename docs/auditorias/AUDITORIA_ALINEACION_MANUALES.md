@@ -1253,3 +1253,19 @@ con `llama-server` b10819 + `deepseek-coder-1.3b-Q4_K_M.gguf`: `CONSULTA` y
 `verificar_alineacion` 0 brechas. Manual 7 §2.2.
 Reporte: `docs/reportes/R227b.md` | a76e546 |
 Manual 7 §2.2 | 0 brechas |
+## R230 - ME r230_opensyn_contratos_mocks (2026-11-18, fa3349f)
+`opensyn/validation_loop.syn` agrega `ERR_RESPUESTA_VACIA` y
+`es_codigo_vacio()`; `bucle_validacion_detallado` intercepta la respuesta vacia
+del LLM (intento inicial y reintentos) antes de `validar_con_check`, cuyo
+`requiere: longitud(codigo) > 0` abortaba el proceso con
+`Fallo en contrato: requiere`. `opensyn/pipeline_multiagente.syn` aplica la
+misma guarda en `validation_loop_corregir` (entrada y respuesta del Fixer).
+Los mocks existentes ya usaban codigo invalido no vacio; se agregan 3 oraculos
+E2E: vacio inicial, vacio durante la correccion y pipeline con Coder vacio.
+Focalizados 8/8; regresion `tests/opensyn` 136 passed, 1 skipped, 1 failed
+(`test_installer_opensyn`, timeout de 10 s ante un GGUF local de 873 MB;
+preexistente). Evidencia `6950a8a8421573ce`; `contrastar` 3 requisitos/2
+oraculos en release; `alineacion --verificar` OK; `verificar_alineacion` 0
+brechas. Manual 7 §6.3, Manual 2 §5.1, Manual 6 §1.1.
+Reporte: `docs/reportes/R230.md` | fa3349f |
+Manual 7 §6.3, Manual 2 §5.1, Manual 6 §1.1 | 0 brechas |

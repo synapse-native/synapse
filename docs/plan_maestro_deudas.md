@@ -13,7 +13,7 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
 - **R229-R234 / Plan de Mejoras Arquitectónicas y Cierre Fase 32 (REGISTRADO 2026-11-16):**
   Plan maestro en `docs/plan_MEJORAS_ARQUITECTURA_R229_R233.md`.
   - **R229 / ME r229_cache_resiliencia (CERRADO 2026-11-17, commit 6a5176b):** caché persistente solo en `~/.synapse/cache/`; si no es escribible, degradación avisada a objetos efímeros en `build/obj/runtime_ephemeral` (sin fallback persistente) para erradicar `WinError 5` (`docs/plan_ME_r229_cache_resiliencia.md`).
-  - **R230 / ME r230_opensyn_contratos_mocks:** normalización de mocks ante precondición `longitud(codigo) > 0` (100% tests opensyn verdes).
+  - **R230 / ME r230_opensyn_contratos_mocks (CERRADO 2026-11-18, commit fa3349f):** respuestas vacías del LLM se interceptan como `ERR_RESPUESTA_VACIA` antes de `validar_con_check`/backend en validación y pipeline; 3 oráculos nuevos, focalizados 8/8; regresión `tests/opensyn` 136 passed, 1 skipped, 1 failed (timeout preexistente del instalador).
   - **R231 / ME r231_verificacion_aot_fronteras:** Subfase 32.5 auto-refutación de casos límite derivados del AST.
   - **R232 / ME r232_rag_memoria_estructural:** Subfase 32.6 RAG con análisis de impacto del Architect y firmas AST en base cifrada.
   - **R233 / ME r233_compilador_puro_nativo:** driver de compilación nativo en `synapse.exe` y congelamiento de Python en Stage 0.
