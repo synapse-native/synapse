@@ -27,22 +27,19 @@ class TestExtensionVSCode:
     def test_vscode_extension_directorio(self):
         """Debe existir directorio de extensión VS Code."""
         dirs_posibles = [
+            os.path.join(RAIZ, "vscode-synapse"),
             os.path.join(RAIZ, "vscode-extension"),
             os.path.join(RAIZ, "extension"),
-            os.path.join(RAIZ, ".vscode"),
         ]
         alguno = any(os.path.exists(f) for f in dirs_posibles)
-        if not alguno:
-            pytest.skip("Directorio de extensión VS Code no encontrado (TDD)")
         assert alguno, "Debe existir un directorio de extensión VS Code"
 
     def test_vscode_package_json(self):
         """package.json de la extensión debe existir."""
         posibles = [
+            os.path.join(RAIZ, "vscode-synapse", "package.json"),
             os.path.join(RAIZ, "vscode-extension", "package.json"),
             os.path.join(RAIZ, "extension", "package.json"),
         ]
         alguno = any(os.path.exists(f) for f in posibles)
-        if not alguno:
-            pytest.skip("package.json de extensión no encontrado (TDD)")
         assert alguno, "package.json de la extensión debe existir"
