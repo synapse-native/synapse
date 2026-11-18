@@ -903,12 +903,20 @@ funcion handle_unknown(id: entero) -> nulo:
     enviar_respuesta(construir_error(id, -32601, "Method not found"))
 
 # cumple Manual 8 2.3: synapse/aiStatus — estado de IA local
+// cumple Manual 8 §1.1: LSP nativo, sin telemetria, sin dependencias externas
 funcion handle_ai_status(id: entero) -> nulo:
     requiere:
         id >= 0
     garantiza:
         verdadero
-    enviar_respuesta(construir_respuesta(id, "{\"loaded\":false,\"model\":null,\"memory\":\"N/A\",\"status\":\"not_loaded\"}"))
+    // cumple Manual 7 §2.1: refleja el servidor real (llama-server :8088)
+    let modelos = _syn_ollama_modelos("127.0.0.1", 8088)
+    si modelos != "":
+        let modelo = ia_primer_modelo(modelos)
+        let json_resp = "{\"loaded\":true,\"model\":\"" + _syn_strcpy(modelo) + "\",\"memory\":\"N/A\",\"status\":\"ready\"}"
+        enviar_respuesta(construir_respuesta(id, _syn_strcpy(json_resp)))
+    sino:
+        enviar_respuesta(construir_respuesta(id, "{\"loaded\":false,\"model\":null,\"memory\":\"N/A\",\"status\":\"not_loaded\"}"))
 
 # cumple Manual 8 2.3: synapse/aiTranspile — transpila Python a Syquex
 funcion handle_ai_transpile(id: entero, params: texto) -> nulo:
