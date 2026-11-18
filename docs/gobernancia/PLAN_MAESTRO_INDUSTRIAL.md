@@ -215,13 +215,13 @@ HEAD `c341fc5` (R237). Leyenda: **HECHO** (entregado con reporte y oráculo),
 | `r240_vscode_ai` | PARCIAL | `vscode-synapse/package.json` declara `synapse.aiStatus/aiExplain/aiComplete/aiFix`; los métodos LSP que despachan siguen en skip ⇒ comandos sin verificación real |
 | `r241_debugger` | PARCIAL | `opensyn/router.syn` cataloga `std.debug` con `rp_*` (retroceder, breakpoints, pila) y `ms_*`/`tr_*` (snapshots, recording); sin oráculo de time-travel ni integración VS Code |
 
-#### Frente D — CLI y paridad nativa: **1 de 3**
+#### Frente D — CLI y paridad nativa: **3 de 3**
 
 | ME | Estado | Evidencia |
 |---|---|---|
 | `r242_native_opensyn_cli` | **HECHO** (`616e321`) | `nucleo/principal.syn` despacha `opensyn`: `status`/`doctor` delegados en `opensyn.exe`, ayuda con los 5 subcomandos, errores honestos en el resto; oráculo `test_oraculos_r242_opensyn_nativo.py` 8/8; reporte `docs/reportes/R242.md` |
-| `r243_native_fase32` | PENDIENTE | No hay gate S2 de los módulos de Fase 32 (`test_compilacion_fase32.py` compila con S1) ni reporte |
-| `r244_paridad_lint_fmt_test` | PARCIAL | El nativo ya expone `lint`, `fmt`, `test [--coverage]`; falta el oráculo de paridad S1↔S2 sobre los módulos reparados |
+| `r243_native_fase32` | **HECHO** (`379d978`) | El binario nativo (S2) valida los 14 módulos `opensyn/*.syn` + `nucleo/grafo_conocimiento.syn` con diagnóstico accionable; oráculo `test_compilacion_fase32_s2.py` 8/8; reporte `docs/reportes/R247.md` |
+| `r244_paridad_lint_fmt_test` | **HECHO** (`a4b6f6d`) | `lint`/`fmt` aceptan flags en cualquier orden (antes `lint --check f` leía `--check` como ruta), `lint` solo mira código (0 falsos positivos en los 15 módulos) y los relojes de `router`/`run_manager` son portátiles, así que `synapse test` compila y ejecuta un programa que importa `opensyn/router.syn`; oráculo de paridad S1↔S2 `test_paridad_lint_fmt_test_fase32.py` 10/10; reporte `docs/reportes/R248.md` |
 
 #### Frente E — Calidad industrial: **0 de 4**
 
