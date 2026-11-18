@@ -1,4 +1,5 @@
-﻿#lang: es
+#lang: es
+// cumple Manual 2 §1.2 (ME r243): fuente UTF-8 sin BOM — el BOM inicial impedia detectar #lang.
 // opensyn/chat.syn — Agente IA conversacional (Manual 7 §6)
 // cumple Manual 7 §6.2: seleccion de modelo desde ~/.opensyn/config.toml ([modelo])
 // cumple Manual 7 §8: validacion del codigo extraido con el compilador real

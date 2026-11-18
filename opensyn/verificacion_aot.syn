@@ -1,4 +1,5 @@
-﻿#lang: es
+#lang: es
+// cumple Manual 2 §1.2 (ME r243): fuente UTF-8 sin BOM — el BOM inicial impedia detectar #lang.
 // opensyn/verificacion_aot.syn - Verificación AOT con auto-refutación
 // cumple Manual 7 §4.2: validación del código generado con synapse check --no-emit
 // cumple Manual 7 §6.3: bucle de validación/corrección y error exacto

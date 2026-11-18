@@ -333,12 +333,15 @@ funcion lexer_push_token_punt(tipo: entero, linea: entero, columna: entero, ini:
         asm("lexer_push_token_valor(tipo, linea, columna, (CadenaSegura){.longitud = (fin - ini), .datos = (char*)ptr + ini});")
 
 // --- Report lexer error ---
+// cumple Manual 2 §1.1 (ME r243): el lexer rechaza con mensaje accionable (ERR_LEX_MISSING_LANG).
+// cumple Manual 2 §10.2 (ME r243): ubicacion exacta (linea y columna) y mensaje explicativo.
 funcion lexer_error(mensaje: cadena, linea: entero, columna: entero) -> nulo:
     inseguro:
         asm("struct LexerBuffers* _b = (struct LexerBuffers*)lexer_buffers();")
         asm("_b->hay_error = 1;")
+        asm("fprintf(stderr, \"[Synapse] Error lexico (linea %lld, columna %lld): %s\\n\", (long long)linea, (long long)columna, mensaje.datos);")
 
-// --- Detect language from first line (Manual 2 S2.3: es|en|fr|pt) ---
+// --- Detect language from first line (Manual 2 §1.1: es|en|fr|pt) ---
 funcion lexer_detectar_idioma(ptr: puntero, len: entero) -> entero:
     inseguro:
         r = 0
@@ -717,6 +720,8 @@ funcion tokenizar(fuente: cadena) -> entero:
     inseguro:
         asm("ptr_fuente = (void*)fuente.datos;")
         asm("len_fuente = fuente.longitud;")
+        // cumple Manual 2 §1.2 (ME r243): BOM UTF-8 inicial se omite para hallar #lang y paridad S1/S2.
+        asm("if (len_fuente >= 3 && ((const unsigned char*)ptr_fuente)[0]==0xEF && ((const unsigned char*)ptr_fuente)[1]==0xBB && ((const unsigned char*)ptr_fuente)[2]==0xBF) { ptr_fuente = (void*)((const char*)ptr_fuente + 3); len_fuente = len_fuente - 3; }")
     lexer_reset_buffers()
     lexer_fijar_linea(1)
     inseguro:

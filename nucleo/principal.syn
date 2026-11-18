@@ -58,7 +58,21 @@ funcion etapa_ok() -> ResultadoEtapa:
 
 funcion fallo_etapa(cod: entero) -> entero:
     inseguro:
-        asm("fprintf(stderr, \"Error de compilacion\\n\");")
+    // cumple Manual 8 §4.2 (ME r243): modo de validacion reporta la causa de la etapa.
+    // cumple Manual 2 §10.2 (ME r243): mensaje explicativo por categoria de error.
+        asm("switch((int)cod){")
+        asm("case 1: fprintf(stderr, \"Error de compilacion: sin memoria\\n\"); break;")
+        asm("case 2: fprintf(stderr, \"Error de compilacion: no se pudo abrir el archivo de entrada\\n\"); break;")
+        asm("case 3: fprintf(stderr, \"Error de compilacion: fallo lexico (ver mensaje anterior)\\n\"); break;")
+        asm("case 4: fprintf(stderr, \"Error de compilacion: fallo en la generacion de codigo\\n\"); break;")
+        asm("case 5: fprintf(stderr, \"Error de compilacion: fallo del compilador C (GCC)\\n\"); break;")
+        asm("case 6: fprintf(stderr, \"Error de compilacion: archivo de entrada mayor a 1MB\\n\"); break;")
+        asm("case 7: fprintf(stderr, \"Error de compilacion: modulo importado no encontrado\\n\"); break;")
+        asm("case 8: fprintf(stderr, \"Error de compilacion: error de sintaxis (ver mensaje anterior)\\n\"); break;")
+        asm("case 9: fprintf(stderr, \"Error de compilacion: verificacion formal fallida\\n\"); break;")
+        asm("case 10: fprintf(stderr, \"Error de compilacion: error de analisis semantico (ver mensaje anterior)\\n\"); break;")
+        asm("default: fprintf(stderr, \"Error de compilacion (codigo %lld)\\n\", (long long)cod); break;")
+        asm("}")
     retornar cod
 
 funcion argv_str(i: entero) -> cadena:
@@ -148,10 +162,11 @@ funcion generar_etapa(ruta: cadena, salida: cadena, modo_validar: entero) -> Res
         asm("// ME-B9.z: fusion INLINE de imports (paridad pipeline.py:327-383 / Manual 3 S3.1)")
         asm("// (reemplaza el orden usuario-primero por el orden inline de la referencia:")
         asm("//  cada modulo se expande en el punto de su importar; primero-gana)")
+        // cumple Manual 9 §6.2 (ME r243): resolucion de imports relativa al modulo importador.
         asm("char _seen_imp[64][256]; int _seen_imp_n = 0;")
         asm("char _seen_sym[2048][64]; int _seen_sym_n = 0;")
-        asm("struct ListaNodo* _stk[64]; int _stk_n = 0;")
-        asm("_stk[0] = _prog.sentencias; _stk_n = 1;")
+        asm("struct ListaNodo* _stk[64]; char _dirstk[64][512]; int _stk_n = 0;")
+        asm("_stk[0] = _prog.sentencias; _stk_n = 1; _dirstk[0][0]=0; { int _dl=-1; for(int _di=0; ruta.datos && ruta.datos[_di]; _di++){ if(ruta.datos[_di]==47||ruta.datos[_di]==92) _dl=_di; } if(_dl>=0){ int _cl=_dl<511?_dl:511; memcpy(_dirstk[0], ruta.datos, _cl); _dirstk[0][_cl]=0; } }")
         asm("while(_stk_n > 0){")
         asm("    struct ListaNodo* _sc = _stk[_stk_n - 1];")
         asm("    if(!_sc){ _stk_n--; continue; }")
@@ -182,15 +197,19 @@ funcion generar_etapa(ruta: cadena, salida: cadena, modo_validar: entero) -> Res
         asm("        } else {")
         asm("            char _rsub[256]; int _rk2=0;")
         asm("            for(int _si=0;_rt[_si]&&_rk2<255;_si++){ _rsub[_rk2++]= (_rt[_si]=='.')?'/':_rt[_si]; } _rsub[_rk2]=0;")
-        asm("            char _c0[512],_c1[512],_c2[512],_c3[512];")
-        asm("            snprintf(_c0,sizeof(_c0),\"axon_modules/%s/principal.syn\",_rsub);")
-        asm("            snprintf(_c1,sizeof(_c1),\"axon_modules/%s.syn\",_rsub);")
-        asm("            snprintf(_c2,sizeof(_c2),\"%s.syn\",_rt);")
-        asm("            snprintf(_c3,sizeof(_c3),\"%s.syn\",_rsub);")
-        asm("            const char* _cands[4]={_c0,_c1,_c2,_c3};")
-        asm("            for(int _ci=0;_ci<4;_ci++){")
-        asm("                FILE* _tf=fopen(_cands[_ci],\"rb\"); if(_tf){ fclose(_tf); strncpy(_path,_cands[_ci],511); _path[511]=0; _res=1; break; }")
-        asm("            }")
+        asm("char _c0[512],_c1[512],_c2[512],_c3[512],_c4[512],_c5[512];")
+        asm("const char* _cdir = _dirstk[_stk_n - 1];")
+        asm("_c0[0]=0; _c1[0]=0;")
+        asm("if(_cdir[0]){ snprintf(_c0,sizeof(_c0),\"%s/%s.syn\",_cdir,_rsub); snprintf(_c1,sizeof(_c1),\"%s/%s/principal.syn\",_cdir,_rsub); }")
+        asm("snprintf(_c2,sizeof(_c2),\"axon_modules/%s/principal.syn\",_rsub);")
+        asm("snprintf(_c3,sizeof(_c3),\"axon_modules/%s.syn\",_rsub);")
+        asm("snprintf(_c4,sizeof(_c4),\"%s.syn\",_rsub);")
+        asm("snprintf(_c5,sizeof(_c5),\"%s.syn\",_rt);")
+        asm("const char* _cands[6]={_c0,_c1,_c2,_c3,_c4,_c5};")
+        asm("for(int _ci=0;_ci<6;_ci++){")
+        asm("if(!_cands[_ci][0]) continue;")
+        asm("FILE* _tf=fopen(_cands[_ci],\"rb\"); if(_tf){ fclose(_tf); strncpy(_path,_cands[_ci],511); _path[511]=0; _res=1; break; }")
+        asm("}")
         asm("        }")
         asm("        if(!_res){")
         asm("            fprintf(stderr,\"[Synapse] ERROR: modulo '%s' no encontrado (ERR_MODULE_NOT_FOUND)\\n\",_rt);")
@@ -206,7 +225,11 @@ funcion generar_etapa(ruta: cadena, salida: cadena, modo_validar: entero) -> Res
         asm("        int64_t _mnt=tokenizar(_msrc); if(_mnt<0){ free(_mb); struct ResultadoEtapa _e={1,3}; return _e; }") // A5.2 D-7: entero -> int64_t
         asm("        struct Programa _mprog=parsear(_msrc); if(_G_parse_error){free(_mb);struct ResultadoEtapa _e={1,8};return _e;} free(_mb);")
         asm("        fprintf(stderr,\"[Synapse] Importado: %s -> %s\\n\",_rt,_path);")
-        asm("        if(_stk_n < 64){ _stk[_stk_n++] = _mprog.sentencias; }")
+        asm("if(_stk_n < 64){")
+        asm("int _pl=-1; for(int _pi=0; _path[_pi]; _pi++){ if(_path[_pi]==47||_path[_pi]==92) _pl=_pi; }")
+        asm("if(_pl>=0){ int _cl=_pl<511?_pl:511; memcpy(_dirstk[_stk_n], _path, _cl); _dirstk[_stk_n][_cl]=0; } else { _dirstk[_stk_n][0]=0; }")
+        asm("_stk[_stk_n] = _mprog.sentencias; _stk_n++;")
+        asm("}")
         asm("        continue;")
         asm("    }")
         asm("    const char* _nm=0;")
@@ -587,7 +610,7 @@ funcion generar_etapa(ruta: cadena, salida: cadena, modo_validar: entero) -> Res
         asm("// bootstrap 0 'Error semantico'); el aborto global es ahora seguro y alinea rc.")
         asm("if (_sem_est.hay_error_2_4 || _sem_est.hay_error) {")
         asm("    fprintf(stderr,\"[Synapse] Analisis semantico fallido \\n\");")
-        asm("    struct ResultadoEtapa _e = {1, 7}; return _e; }")
+        asm("    struct ResultadoEtapa _e = {1, 10}; return _e; }")
         asm("fprintf(stderr,\"[Synapse] F8: Analisis completado\\n\");")
         // cumple Manual 8 §4.2 (ME check_cli R1): modo de validación — corta
         // tras el análisis semántico (sintaxis + semántica verificadas) sin
@@ -879,6 +902,7 @@ funcion cli_check(ruta: cadena) -> entero:
     let re = generar_etapa(ruta, ruta, 1)
     si re.tag != 0:
         _cli_err("[Check] ERROR de validacion")
+        let _rcf_r243 = fallo_etapa(re.valor)
         retornar 1
     _cli_err("[Check] validacion exitosa")
     retornar 0
