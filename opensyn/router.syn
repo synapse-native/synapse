@@ -827,14 +827,25 @@ funcion verificar_timeout(timestamp_inicio: entero) -> booleano:
 
 // Stub de timestamp actual.
 // cumple Manual 2 §12: toda función pública tiene contrato
+// cumple Manual 7 §4.3 (ME r244): el reloj que mide el timeout de la inferencia
+// tiene que existir en el target Windows. Antes de r244 el bloque emitia C
+// solo-POSIX (`clock_gettime(CLOCK_MONOTONIC)`) sin guarda: `synapse check`
+// pasaba (no emite C) pero cualquier programa que importara este modulo fallaba
+// al compilar en Windows (`'CLOCK_MONOTONIC' undeclared`).
 funcion ahora_ms_router() -> entero:
     requiere:
         verdadero
     garantiza:
         _resultado_ >= 0 // cumple Manual 2 §5.1
+    let _ms = 0
     inseguro:
-        asm("struct timespec _ts; clock_gettime(CLOCK_MONOTONIC, &_ts); return (int64_t)_ts.tv_sec * 1000 + _ts.tv_nsec / 1000000;")
-    retornar 0
+        asm("#ifdef _WIN32")
+        asm("unsigned long long __stdcall GetTickCount64(void);")
+        asm("_ms = (int64_t)GetTickCount64();")
+        asm("#else")
+        asm("struct timespec _ts; clock_gettime(CLOCK_MONOTONIC, &_ts); _ms = (int64_t)_ts.tv_sec * 1000 + _ts.tv_nsec / 1000000;")
+        asm("#endif")
+    retornar _ms
 
 // ============================================================
 // R5: Revisión inline con archivo+línea+diff (M7 §4.2)

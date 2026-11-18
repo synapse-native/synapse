@@ -871,6 +871,13 @@ funcion cli_fmt(ruta: texto, check: booleano) -> entero:
     // (M8 §4.1; código usuario siempre en subproceso con su propio sandbox).
     inseguro:
         asm("extern void _syn_sandbox_set(int64_t); _syn_sandbox_set(0);")
+    // cumple Manual 8 §4.1 (ME r244): una ruta ilegible es un error de uso, no
+    // un archivo bien formateado. Antes de r244 `synapse fmt no_existe.syn`
+    // respondia "[Fmt] formato correcto" con rc=0 porque fmt_archivo()
+    // devuelve `falso` tanto para "sin cambios" como para "no se pudo leer".
+    si longitud(leer_archivo(ruta)) == 0:
+        _cli_err("[Fmt] ERROR: no se pudo leer " + ruta)
+        retornar 1
     // Delega en nucleo/formatter.syn (backend canonico R4)
     si check:
         let ok = verificar_formato(ruta)
@@ -1168,9 +1175,13 @@ funcion principal() -> entero:
     // canónico `synapse lint --fix <archivo>` (flags antes de la ruta) y
     // también `synapse lint <archivo> --fix`.
     inseguro:
-        asm("if(strcmp(cmd.datos,\"lint\")==0){ if(_argc()<3){ fprintf(stderr,\"Uso: %%s lint [--fix] <archivo.syn> | lint <archivo.syn> [--fix]\\n\",_argv(0).datos); r=1; return r; }")
+        asm("if(strcmp(cmd.datos,\"lint\")==0){ if(_argc()<3){ fprintf(stderr,\"Uso: %%s lint [--fix|--check] <archivo.syn> | lint <archivo.syn> [--fix|--check]\\n\",_argv(0).datos); r=1; return r; }")
+        // cumple Manual 9 §6.2 (ME r244): `synapse lint --check <archivo>` es el
+        // comando que el CI del manual ejecuta sobre el codigo del compilador.
+        // Antes de r244 el primer token no-flag se tomaba como ruta, asi que
+        // `--check` se convertia en la ruta ("no se pudo leer --check").
         asm("CadenaSegura _sub_ruta={0}; int _sub_flag=0; int _li=2;")
-        asm("for(;_li<_argc();_li++){ CadenaSegura _la=_argv(_li); if(_la.longitud==5&&strcmp(_la.datos,\"--fix\")==0){ _sub_flag=1; } else if(_sub_ruta.longitud==0){ _sub_ruta=_la; } }")
+        asm("for(;_li<_argc();_li++){ CadenaSegura _la=_argv(_li); if(_la.longitud>0&&_la.datos&&_la.datos[0]=='-'){ if(_la.longitud==5&&strcmp(_la.datos,\"--fix\")==0){ _sub_flag=1; } continue; } if(_sub_ruta.longitud==0){ _sub_ruta=_la; } }")
         asm("if(_sub_ruta.longitud==0){ fprintf(stderr,\"[Lint] ERROR: falta el archivo\\n\"); r=1; return r; }")
         asm("r=cli_lint(_sub_ruta,_sub_flag); return r; }")
     // --- Subcomando: fmt (Fase 31.4; backend real ME r152) ---
@@ -1179,8 +1190,12 @@ funcion principal() -> entero:
     // y también `synapse fmt <archivo> --check`.
     inseguro:
         asm("if(strcmp(cmd.datos,\"fmt\")==0){ if(_argc()<3){ fprintf(stderr,\"Uso: %%s fmt [--check] <archivo.syn> | fmt <archivo.syn> [--check]\\n\",_argv(0).datos); r=1; return r; }")
+        // cumple Manual 8 §5.5 (ME r244): `synapse fmt --check <archivo>` es la
+        // forma que documenta el manual para verificar el formato; ningun token
+        // con guion inicial puede convertirse en la ruta (antes de r244, un
+        // flag desconocido se tomaba como archivo).
         asm("CadenaSegura _sub_ruta={0}; int _sub_flag=0; int _fi=2;")
-        asm("for(;_fi<_argc();_fi++){ CadenaSegura _fa=_argv(_fi); if(_fa.longitud==7&&strcmp(_fa.datos,\"--check\")==0){ _sub_flag=1; } else if(_sub_ruta.longitud==0){ _sub_ruta=_fa; } }")
+        asm("for(;_fi<_argc();_fi++){ CadenaSegura _fa=_argv(_fi); if(_fa.longitud>0&&_fa.datos&&_fa.datos[0]=='-'){ if(_fa.longitud==7&&strcmp(_fa.datos,\"--check\")==0){ _sub_flag=1; } continue; } if(_sub_ruta.longitud==0){ _sub_ruta=_fa; } }")
         asm("if(_sub_ruta.longitud==0){ fprintf(stderr,\"[Fmt] ERROR: falta el archivo\\n\"); r=1; return r; }")
         asm("r=cli_fmt(_sub_ruta,_sub_flag); return r; }")
     // --- Subcomando: test (Fase 31.2; backend real ME r152) ---

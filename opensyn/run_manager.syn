@@ -261,14 +261,23 @@ funcion reemplazar_basico(t: texto, buscar: texto, reemplazo: texto) -> texto:
 
 // Genera un ID único para el run basado en timestamp.
 // cumple Manual 2 §12: toda función pública tiene contrato
+// cumple Manual 7 §4.3 (ME r244): mismo defecto y misma correccion que en
+// opensyn/router.syn — el reloj del run debe compilar en Windows
+// (`GetTickCount64`) y en POSIX (`clock_gettime`).
 funcion ahora_ms() -> entero:
     requiere:
         verdadero
     garantiza:
         _resultado_ >= 0 // cumple Manual 2 §5.1
+    let _ms = 0
     inseguro:
-        asm("struct timespec _ts; clock_gettime(CLOCK_MONOTONIC, &_ts); return (int64_t)_ts.tv_sec * 1000 + _ts.tv_nsec / 1000000;")
-    retornar 0
+        asm("#ifdef _WIN32")
+        asm("unsigned long long __stdcall GetTickCount64(void);")
+        asm("_ms = (int64_t)GetTickCount64();")
+        asm("#else")
+        asm("struct timespec _ts; clock_gettime(CLOCK_MONOTONIC, &_ts); _ms = (int64_t)_ts.tv_sec * 1000 + _ts.tv_nsec / 1000000;")
+        asm("#endif")
+    retornar _ms
 
 funcion entero_a_texto(n: entero) -> texto:
     requiere:

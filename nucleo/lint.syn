@@ -196,6 +196,11 @@ funcion lint_espacios_finales(linea: texto, num_linea: entero, archivo: texto, a
                 archivo
             ))
 // --- Regla 8: doble espacio interno (WARN_LINT_DOUBLE_SPACE) ---
+// cumple Manual 9 §6.2 (ME r244): el CI corre `synapse lint --check` sobre el
+// codigo fuente del compilador, asi que la regla solo puede mirar CODIGO. La
+// alineacion dentro de un comentario (`//   1. paso`) y el comentario de fin de
+// linea (`constante X = 0   // nota`) son deliberados: antes de r244 la regla
+// los marcaba y `synapse lint` devolvia rc=1 sobre 23 lineas de router.syn.
 funcion lint_doble_espacio(linea: texto, num_linea: entero, archivo: texto, advertencias: Lista<Advertencia>):
     requiere:
         verdadero
@@ -206,19 +211,66 @@ funcion lint_doble_espacio(linea: texto, num_linea: entero, archivo: texto, adve
         si subcadena(linea, espacios, 1) != " ":
             romper
         espacios = espacios + 1
-    // Buscar ' ' fuera del leading (>= 2 espacios internos consecutivos)
-    let i = espacios
-    mientras i + 1 < longitud(linea):
-        si subcadena(linea, i, 1) == " " y subcadena(linea, i + 1, 1) == " ":
-            advertencias.agregar(Advertencia(
-                "estilo",
-                WARN_LINT_DOUBLE_SPACE + ": doble espacio interno",
-                num_linea,
-                i + 1,
-                archivo
-            ))
+    // Fin del codigo: primer `//` que NO esta dentro de una cadena.
+    let largo = longitud(linea)
+    let fin_codigo = largo
+    let en_cadena = falso
+    let c = espacios
+    mientras c < largo:
+        let ch1 = subcadena(linea, c, 1)
+        si en_cadena:
+            si ch1 == "\\":
+                c = c + 2
+            sino:
+                si ch1 == "\"":
+                    en_cadena = falso
+                c = c + 1
+        sino:
+            si ch1 == "\"":
+                en_cadena = verdadero
+            sino:
+                si ch1 == "/":
+                    si c + 1 < largo:
+                        si subcadena(linea, c + 1, 1) == "/":
+                            fin_codigo = c
+                            romper
+            c = c + 1
+    // La separacion entre el codigo y su comentario de fin de linea es
+    // alineacion deliberada (`x = 0     // nota`): se descarta.
+    mientras fin_codigo > espacios:
+        si subcadena(linea, fin_codigo - 1, 1) != " ":
             romper
-        i = i + 1
+        fin_codigo = fin_codigo - 1
+    // Linea enteramente de comentario: nada que medir.
+    si fin_codigo <= espacios:
+        retornar
+    // Buscar ' ' fuera del leading y fuera de las cadenas (>= 2 seguidos).
+    let i = espacios
+    let en_texto = falso
+    mientras i < fin_codigo:
+        let ch2 = subcadena(linea, i, 1)
+        si en_texto:
+            si ch2 == "\\":
+                i = i + 2
+            sino:
+                si ch2 == "\"":
+                    en_texto = falso
+                i = i + 1
+        sino:
+            si ch2 == "\"":
+                en_texto = verdadero
+            sino:
+                si ch2 == " " y i > espacios:
+                    si subcadena(linea, i - 1, 1) == " ":
+                        advertencias.agregar(Advertencia(
+                            "estilo",
+                            WARN_LINT_DOUBLE_SPACE + ": doble espacio interno",
+                            num_linea,
+                            i + 1,
+                            archivo
+                        ))
+                        romper
+            i = i + 1
 // --- Regla 9: tabulaciones (estilo) ---
 funcion lint_tabs(linea: texto, num_linea: entero, archivo: texto, advertencias: Lista<Advertencia>):
     requiere:

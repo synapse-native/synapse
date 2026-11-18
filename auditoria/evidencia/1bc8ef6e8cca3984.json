@@ -1,0 +1,16 @@
+{
+ "cambio_hash": "1bc8ef6e8cca3984",
+ "expediente": "docs/alineacion/r244_paridad_lint_fmt_test.md",
+ "fecha": "2026-11-18",
+ "archivos": [
+  "nucleo/lint.syn",
+  "nucleo/principal.syn",
+  "opensyn/router.syn",
+  "opensyn/run_manager.syn"
+ ],
+ "oraculos": {
+  "tests/integration/test_paridad_lint_fmt_test_fase32.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

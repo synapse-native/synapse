@@ -17,7 +17,7 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
 
 ```json
 {
-  "opensyn/router.syn": ["Manual 7 §2.4", "Manual 7 §4.2"],
+  "opensyn/router.syn": ["Manual 7 §2.4", "Manual 7 §4.2", "Manual 7 §4.3"],
   "opensyn/principal.syn": ["Manual 7 §2.1", "Manual 7 §2.3", "Manual 7 §4.2", "Manual 7 §7.3"],
   "opensyn/herramientas.syn": ["Manual 7 §1.1", "Manual 7 §2.3", "Manual 7 §7.3", "Manual 2 §5.1"],
   "opensyn/installer.syn": ["Manual 7 §2.5", "Manual 9 §5.2", "Manual 9 §5.3", "Manual 9 §5.4"],
@@ -88,7 +88,7 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "std/sistema.syn": ["Manual 2 §5.1"],
   "std/texto.syn": ["Manual 2 §5.1"],
   "nucleo/coverage.syn": ["Manual 2 §5.1"],
-  "nucleo/lint.syn": ["Manual 3 §12", "Manual 2 §5.1", "Manual 6 §3.1"],
+  "nucleo/lint.syn": ["Manual 3 §12", "Manual 2 §5.1", "Manual 6 §3.1", "Manual 9 §6.2"],
   "nucleo/formatter.syn": ["Manual 3 §12", "Manual 2 §5.1", "Manual 6 §3.1"],
   "nucleo/reports.syn": ["Manual 3 §12", "Manual 2 §5.1"],
   "nucleo/parser_base.syn": ["Manual 2 §5.1"],
