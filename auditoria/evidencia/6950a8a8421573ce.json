@@ -1,0 +1,15 @@
+{
+ "cambio_hash": "6950a8a8421573ce",
+ "expediente": "docs/alineacion/r230_opensyn_contratos_mocks.md",
+ "fecha": "2026-11-18",
+ "archivos": [
+  "opensyn/pipeline_multiagente.syn",
+  "opensyn/validation_loop.syn"
+ ],
+ "oraculos": {
+  "tests/opensyn/test_pipeline_multiagente_comportamiento.py": true,
+  "tests/opensyn/test_validation_loop_comportamiento.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

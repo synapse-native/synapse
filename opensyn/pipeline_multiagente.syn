@@ -420,9 +420,12 @@ funcion llama_client_completar(prompt: texto, max_tokens: entero, temperature: d
 
 funcion validation_loop_corregir(codigo: texto, archivo: texto) -> ResultadoCorreccion:
     requiere:
-        longitud(codigo) > 0
+        verdadero // acepta la respuesta vacia del LLM para rechazarla sin abortar
     garantiza:
         _resultado_.intentos >= 0 y _resultado_.intentos <= 1
+    // cumple Manual 6 §1.1: el pipeline no invoca al compilador con respuesta vacia
+    si es_codigo_vacio(_syn_strcpy(codigo)):
+        retornar ResultadoCorreccion(falso, "", ERR_RESPUESTA_VACIA, 0)
     let validacion = validar_con_check(_syn_strcpy(codigo), "syn")
     si validacion.es_valido:
         retornar ResultadoCorreccion(verdadero, codigo, "", 0)
@@ -431,6 +434,9 @@ funcion validation_loop_corregir(codigo: texto, archivo: texto) -> ResultadoCorr
     let prompt = "# CORRECCIÓN DE CÓDIGO\n\n## Archivo: " + archivo + "\n\n## Código actual:\n```\n" + _syn_strcpy(codigo) + "\n```\n\n## Errores del compilador:\n" + _syn_strcpy(errores) + "\n\nGenera SOLO el código corregido.\n"
     let respuesta = llama_client_completar(prompt, 2048, 0.3)
     let corregido = extraer_codigo(respuesta)
+    // cumple Manual 7 §6.3: una respuesta vacia del LLM tambien se rechaza aqui
+    si es_codigo_vacio(_syn_strcpy(corregido)):
+        retornar ResultadoCorreccion(falso, "", ERR_RESPUESTA_VACIA, 1)
     si validar_codigo(_syn_strcpy(corregido)):
         retornar ResultadoCorreccion(verdadero, corregido, "", 1)
     retornar ResultadoCorreccion(falso, corregido, _syn_strcpy(errores), 1)

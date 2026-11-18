@@ -224,6 +224,26 @@ def test_codigo_valido_primer_intento(tmp_path):
     assert len(servidor.prompts) == 1, servidor.prompts
 
 
+def test_respuesta_vacia_inicial_se_intercepta_sin_abortar(tmp_path):
+    with _ServidorLLM([""]) as servidor:
+        salida = _compilar_y_ejecutar(tmp_path, DRIVER_BUCLE, servidor)
+    campos = _campos(salida)
+    assert campos.get("EXITO") == "0", salida
+    assert campos.get("INTENTOS") == "1", salida
+    assert campos.get("ERROR") == "ERR_RESPUESTA_VACIA", salida
+    assert not any("anterior tiene el siguiente error" in p for p in servidor.prompts), servidor.prompts
+
+
+def test_respuesta_vacia_en_correccion_se_intercepta_sin_abortar(tmp_path):
+    with _ServidorLLM([CODIGO_INVALIDO, ""]) as servidor:
+        salida = _compilar_y_ejecutar(tmp_path, DRIVER_BUCLE, servidor)
+    campos = _campos(salida)
+    assert campos.get("EXITO") == "0", salida
+    assert campos.get("INTENTOS") == "2", salida
+    assert campos.get("ERROR") == "ERR_RESPUESTA_VACIA", salida
+    assert any("anterior tiene el siguiente error" in p for p in servidor.prompts), servidor.prompts
+
+
 def test_feedback_jsonl_solo_para_correccion_manual(tmp_path):
     feedback = tmp_path / "feedback.jsonl"
     with _ServidorLLM([CODIGO_VALIDO]) as servidor:

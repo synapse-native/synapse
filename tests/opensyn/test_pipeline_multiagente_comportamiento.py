@@ -203,3 +203,12 @@ def test_pipeline_tres_inferencias_y_codigo_final_compila(tmp_path):
     assert "# CONTEXTO DEL PROYECTO" in servidor.prompts[0]
     assert "# REVISIÓN DE CÓDIGO" in servidor.prompts[1]
     assert "# CORRECCIÓN DE CÓDIGO" in servidor.prompts[2]
+
+def test_pipeline_respuesta_vacia_no_aborta_por_contrato(tmp_path):
+    with _ServidorLLM([""]) as servidor:
+        salida = _compilar_y_ejecutar(tmp_path, servidor)
+
+    campos = _campos(salida)
+    assert campos.get("EXITO") == "0", salida
+    assert campos.get("INFERENCIAS") == "1", salida
+    assert campos.get("RAZONAMIENTO") == "ERR_RESPUESTA_VACIA", salida

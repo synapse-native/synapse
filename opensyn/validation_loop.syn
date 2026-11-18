@@ -20,6 +20,7 @@ externo funcion _syn_ollama_modelos(host: texto, puerto: entero) -> texto
 
 constante MAX_INTENTOS = 3
 constante RUTA_FEEDBACK = "~/.opensyn/feedback.jsonl"
+constante ERR_RESPUESTA_VACIA = "ERR_RESPUESTA_VACIA"
 
 // ============================================================
 // Estructuras de datos
@@ -54,6 +55,16 @@ estructura RevisionInline:
     columna: entero
     diff: texto
     sugerencia: texto
+
+// Detecta una respuesta vacia del LLM antes de invocar al compilador.
+// cumple Manual 7 §6.3: el bucle valida el codigo generado, no cadenas vacias.
+// cumple Manual 2 §5.1: no se llama validar_con_check sin cumplir su requiere.
+funcion es_codigo_vacio(codigo: texto) -> booleano:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso // cumple Manual 2 §5.1
+    retornar longitud(codigo) == 0
 
 // ============================================================
 // R4: Validar código con --check (M7 §6.3)
@@ -307,6 +318,12 @@ funcion bucle_validacion_detallado(prompt_inicial: texto, idioma: texto) -> Resu
     resultado.error_mensaje = ""
     resultado.error_archivo = ""
     codigo_actual = generar_codigo_ia(_syn_strcpy(prompt_inicial))
+    si es_codigo_vacio(_syn_strcpy(codigo_actual)):
+        resultado.codigo = codigo_actual
+        resultado.errores = ERR_RESPUESTA_VACIA
+        resultado.error_mensaje = ERR_RESPUESTA_VACIA
+        resultado.intentos = 1
+        retornar resultado
     validacion = validar_con_check(_syn_strcpy(codigo_actual), idioma)
     si validacion.es_valido:
         resultado.exito = verdadero
@@ -322,8 +339,14 @@ funcion bucle_validacion_detallado(prompt_inicial: texto, idioma: texto) -> Resu
     mientras intentos < MAX_INTENTOS:
         prompt_correccion = reconstruir_prompt_con_error(_syn_strcpy(prompt_inicial), error)
         codigo_actual = generar_codigo_ia(prompt_correccion)
-        validacion = validar_con_check(_syn_strcpy(codigo_actual), idioma)
         intentos = intentos + 1
+        si es_codigo_vacio(_syn_strcpy(codigo_actual)):
+            resultado.codigo = codigo_actual
+            resultado.errores = ERR_RESPUESTA_VACIA
+            resultado.error_mensaje = ERR_RESPUESTA_VACIA
+            resultado.intentos = intentos
+            retornar resultado
+        validacion = validar_con_check(_syn_strcpy(codigo_actual), idioma)
         si validacion.es_valido:
             resultado.exito = verdadero
             resultado.codigo = codigo_actual
