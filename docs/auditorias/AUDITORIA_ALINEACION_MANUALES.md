@@ -1238,3 +1238,18 @@ evidencia `7b4be78d842ad19e`; `contrastar` 3 requisitos/1 oráculo;
 `verificar_alineacion` 0 brechas. Manual 9 §2.5, Manual 9 §7, Manual 9 §2.2.
 Reporte: `docs/reportes/R237.md` | 7c7382b |
 Manual 9 §2.5, Manual 9 §7 | 0 brechas |
+
+## R227b - ME r227b_stream_chunk_split (2026-11-17, a76e546)
+Corrige el cuelgue del streaming chunked del smoke real de R227:
+`_syn_ollama_stream_leer` solo releía la red con `rbpos >= rblen` y giraba en
+CPU cuando un CRLF de chunk quedaba partido entre dos lecturas TCP.
+`_oll_dechunk` ahora retorna al entrar en fase 5 sin reentrar y
+`_syn_ollama_stream_leer` lee más red ante tramas parciales (fases 0/3/4).
+Oráculo nuevo `tests/auditoria/test_oraculos_r227b_stream_chunk_split.py` 1/1
+(servidor chunked que parte el CRLF); regresión R227+R235+R227b 6/6. Smoke real
+con `llama-server` b10819 + `deepseek-coder-1.3b-Q4_K_M.gguf`: `CONSULTA` y
+`STREAM` con contenido en 7036 ms; servidor detenido. Evidencia
+`8d697386e8e7dfef`; `contrastar` 2 requisitos/1 oráculo; `alineacion` 1 archivo;
+`verificar_alineacion` 0 brechas. Manual 7 §2.2.
+Reporte: `docs/reportes/R227b.md` | a76e546 |
+Manual 7 §2.2 | 0 brechas |

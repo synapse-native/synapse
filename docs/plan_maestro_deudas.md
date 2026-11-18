@@ -127,6 +127,7 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   contenido en lugar del error. Con esto **H-R221-1 queda CERRADO**
   (fallback + streaming + smoke real, con y sin plantilla valida).
   Evidencia: `docs/reportes/R235.md` y `docs/reportes/R227_smoke_real.md`.
+- **R227b / H-R221-1 streaming chunked RESUELTO 2026-11-17 (ME r227b_stream_chunk_split, commit a76e546):** el smoke real de R227 reprodujo un cuelgue intermitente del streaming: si el CRLF de un chunk chunked quedaba partido entre dos lecturas TCP, `_syn_ollama_stream_leer` no avanzaba pero tampoco releía la red y giraba en CPU. `_oll_dechunk` ahora retorna al entrar en fase 5 sin reentrar y `_syn_ollama_stream_leer` lee más red cuando la fase no es 1 (tramas parciales en fases 0/3/4). Oráculo nuevo `tests/auditoria/test_oraculos_r227b_stream_chunk_split.py` 1/1; regresión R227+R235+R227b 6/6. Smoke real con `llama-server` b10819 + `deepseek-coder-1.3b-Q4_K_M.gguf`: `CONSULTA` y `STREAM` con contenido en 7036 ms. Gates: evidencia `8d697386e8e7dfef`, `contrastar` PASS, `verificar_alineacion` 0 brechas. Manual 7 §2.2. Reporte: `docs/reportes/R227b.md`.
 - **R198b1/ME r198b1_resello (CERRADA 2026-10-27, commit b657bb8):**
   cierre H-R198b-1 — re-sello auto-sanante de `cambio_hash` en
   `auditoria/alineacion.py`: `cmd_verificar` era un círculo (el re-sello
