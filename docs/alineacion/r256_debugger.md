@@ -1,7 +1,7 @@
 # Expediente de alineación r256_debugger
 
 base: HEAD  # commit sobre el que se leyó el manual
-cambio_hash: f69654dc0f0870b2
+cambio_hash: c3be53831d302078
 
 > Una ancla por requisito. `estado:` CUMPLE | DESVIACION.
 > CUMPLE exige `evidencia: archivo:linea` con el comentario

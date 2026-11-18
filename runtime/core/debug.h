@@ -57,6 +57,9 @@ CadenaSegura _syn_debug_finalizar_sesion(void);
 // cumple Manual 5 §2.6 (r241): implementación en el runtime (C).
 // cumple Manual 8 §3.4 (r241): CLI `synapse debug --load`.
 CadenaSegura _syn_debug_cargar_traza(CadenaSegura ruta);
+// cumple Manual 8 §3.4 (r241): persistencia de posicion entre invocaciones.
+int _syn_debug_posicion_actual(void);
+void _syn_debug_posicion_guardar(int pos);
 TraceSession _syn_debug_obtener_sesion(void);
 int tr_inicializar_recording(void);
 int tr_grabar_bifurcacion(int linea, int rama, CadenaSegura id_funcion);

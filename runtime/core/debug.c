@@ -414,6 +414,8 @@ CadenaSegura _syn_debug_finalizar_sesion(void) {
 
 // cumple Manual 8 §3.4: CLI `synapse debug --load` carga una traza persistida.
 // cumple Manual 9 §1 (r241): runtime de debug autocontenido, sin deps externas.
+static void _syn_debug_guardar_traza(const char*);
+static void _syn_debug_guardar_pos(int);
 CadenaSegura _syn_debug_cargar_traza(CadenaSegura ruta) {
     CadenaSegura vacia = {0, ""};
     const char* path = ruta.datos ? ruta.datos : "";
@@ -450,12 +452,50 @@ CadenaSegura _syn_debug_cargar_traza(CadenaSegura ruta) {
         return vacia;
     }
     fprintf(stderr, "[Debug] Traza cargada: id=%s programa=%s eventos=%d\n", id, programa, eventos);
+    _syn_debug_guardar_traza(path);
+    _syn_debug_guardar_pos(0);
     CadenaSegura res;
     res.longitud = (int)strlen(id);
     res.datos = strdup(id);
     return res;
 }
 
+// cumple Manual 8 §3.4 (r241): persistencia de posicion entre invocaciones CLI.
+#define DEBUG_TRAZA_PATH ".synapse/debug_traza"
+#define DEBUG_POS_PATH   ".synapse/debug_pos"
+static void _syn_debug_guardar_traza(const char* traza) {
+    (void)mkdir(".synapse");
+    FILE* f = fopen(DEBUG_TRAZA_PATH, "wb");
+    if (!f) return;
+    fprintf(f, "%s", traza ? traza : "");
+    fclose(f);
+}
+static void _syn_debug_guardar_pos(int pos) {
+    (void)mkdir(".synapse");
+    FILE* f = fopen(DEBUG_POS_PATH, "wb");
+    if (!f) return;
+    fprintf(f, "%d", pos);
+    fclose(f);
+}
+static int _syn_debug_leer_pos(void) {
+    FILE* f = fopen(DEBUG_POS_PATH, "rb");
+    if (!f) return 0;
+    int pos = 0;
+    if (fscanf(f, "%d", &pos) != 1) pos = 0;
+    fclose(f);
+    return pos;
+}
+static char* _syn_debug_leer_traza(void) {
+    FILE* f = fopen(DEBUG_TRAZA_PATH, "rb");
+    if (!f) return strdup("");
+    char buf[512];
+    size_t n = fread(buf, 1, 511, f);
+    buf[n] = '\0';
+    fclose(f);
+    return strdup(buf);
+}
+int _syn_debug_posicion_actual(void) { return _syn_debug_leer_pos(); }
+void _syn_debug_posicion_guardar(int pos) { _syn_debug_guardar_pos(pos); }
 
 
 TraceSession _syn_debug_obtener_sesion(void) {

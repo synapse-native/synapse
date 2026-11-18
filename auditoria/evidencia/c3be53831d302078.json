@@ -1,0 +1,15 @@
+{
+ "cambio_hash": "c3be53831d302078",
+ "expediente": "docs/alineacion/r256_debugger.md",
+ "fecha": "2026-11-18",
+ "archivos": [
+  "nucleo/principal.syn",
+  "runtime/core/debug.c",
+  "runtime/core/debug.h"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r256_debugger.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}
