@@ -910,3 +910,15 @@
 {"fecha": "2026-11-17", "archivos": ["opensyn/run_manager.syn"], "cita": "Manual 7 §4.3", "puntos": "run_manager: runs reanudables, checkpoints, reanudar, deshacer ultimo paso"}
 {"fecha": "2026-11-17", "archivos": ["nucleo/lsp_v3.syn"], "cita": "Manual 8 §1.1", "puntos": "LSP binario nativo JSON-RPC 2.0 stdin/stdout, sin telemetria, soporta Synapse y Syquex"}
 {"fecha": "2026-11-17", "archivos": ["runtime/core/ollama.c"], "cita": "Manual 7 §2.2", "puntos": "Cliente HTTP con timeouts, reintentos y manejo de errores; streaming chunked no debe bloquearse ni entrar en bucle ante tramas partidas."}
+{"fecha": "2026-11-17", "archivos": ["nucleo/principal.syn", "runtime/core/debug.c", "runtime/core/debug.h"], "cita": "Manual 8 §3.1, §3.4, §4.1; Manual 9 §6.2", "puntos": "debugger time-travel: vision general, comandos CLI (load/step/reverse/snapshots), CLI unificado, gate de compilacion nativa"}
+{"fecha": "2026-11-17", "archivos": ["opensyn/validation_loop.syn"], "cita": "Manual 2 §5.1", "puntos": "Semantica formal de contratos: requiere se evalua antes de la primera instruccion del cuerpo y todas sus expresiones deben ser booleanas."}
+{"fecha": "2026-11-17", "archivos": ["opensyn/validation_loop.syn"], "cita": "Manual 7 §6.3", "puntos": "Bucle de validacion y correccion automatica: el codigo generado se valida con el compilador y se corrige hasta 3 intentos, devolviendo el ultimo codigo y los errores."}
+{"fecha": "2026-11-17", "archivos": ["opensyn/pipeline_multiagente.syn"], "cita": "Manual 6 §1.1", "puntos": "AST canonico unificado SemNodo: el backend de analisis semantico, generacion de codigo y optimizaciones es compartido y solo opera sobre SemNodo."}
+{"fecha": "2026-11-18", "archivos": ["nucleo/principal.syn"], "cita": "Manual 2 §1.1", "puntos": "directiva de idioma en la linea 1"}
+{"fecha": "2026-11-18", "archivos": ["runtime/core/debug.c"], "cita": "Manual 9 §1", "puntos": "instalacion de un solo clic cero dependencias externas"}
+{"fecha": "2026-11-18", "archivos": ["runtime/core/debug.h"], "cita": "Manual 5 §2.6", "puntos": "implementacion en el runtime C"}
+{"fecha": "2026-11-18", "archivos": ["runtime/core/debug.h"], "cita": "Manual 5 §2.6", "puntos": "implementacion en el runtime C"}
+{"fecha": "2026-11-18", "archivos": ["nucleo/principal.syn"], "cita": "Manual 2 §1.1", "puntos": "directiva de idioma en la linea 1"}
+{"fecha": "2026-11-18", "archivos": ["runtime/core/debug.c"], "cita": "Manual 9 §1", "puntos": "instalacion de un solo clic cero dependencias externas"}
+{"fecha": "2026-11-18", "archivos": ["opensyn/pipeline_multiagente.syn"], "cita": "Manual 7 §1.1", "puntos": "asistente de inteligencia artificial local del ecosistema Synapse"}
+{"fecha": "2026-11-18", "archivos": ["opensyn/validation_loop.syn"], "cita": "Manual 7 §1.1", "puntos": "asistente de inteligencia artificial local del ecosistema Synapse"}

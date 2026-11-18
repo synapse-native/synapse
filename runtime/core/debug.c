@@ -412,6 +412,52 @@ CadenaSegura _syn_debug_finalizar_sesion(void) {
 
 
 
+// cumple Manual 8 §3.4: CLI `synapse debug --load` carga una traza persistida.
+// cumple Manual 9 §1 (r241): runtime de debug autocontenido, sin deps externas.
+CadenaSegura _syn_debug_cargar_traza(CadenaSegura ruta) {
+    CadenaSegura vacia = {0, ""};
+    const char* path = ruta.datos ? ruta.datos : "";
+    if (path[0] == '\0') {
+        fprintf(stderr, "[Debug] ERROR: ruta de traza vacia\n");
+        return vacia;
+    }
+    FILE* f = fopen(path, "rb");
+    if (!f) {
+        fprintf(stderr, "[Debug] ERROR: no se pudo abrir traza: %s\n", path);
+        return vacia;
+    }
+    char linea[1024];
+    char id[64] = {0};
+    char programa[256] = {0};
+    int eventos = 0;
+    int ok = 0;
+    if (fgets(linea, sizeof(linea), f) && strncmp(linea, "TRACE v1", 8) == 0) {
+        ok = 1;
+        while (fgets(linea, sizeof(linea), f)) {
+            if (strncmp(linea, "---", 3) == 0) break;
+            if (strncmp(linea, "id=", 3) == 0) {
+                sscanf(linea + 3, "%63[^\n]", id);
+            } else if (strncmp(linea, "programa=", 9) == 0) {
+                sscanf(linea + 9, "%255[^\n]", programa);
+            } else if (strncmp(linea, "eventos=", 8) == 0) {
+                sscanf(linea + 8, "%d", &eventos);
+            }
+        }
+    }
+    fclose(f);
+    if (!ok) {
+        fprintf(stderr, "[Debug] ERROR: formato de traza invalido: %s\n", path);
+        return vacia;
+    }
+    fprintf(stderr, "[Debug] Traza cargada: id=%s programa=%s eventos=%d\n", id, programa, eventos);
+    CadenaSegura res;
+    res.longitud = (int)strlen(id);
+    res.datos = strdup(id);
+    return res;
+}
+
+
+
 TraceSession _syn_debug_obtener_sesion(void) {
 
     return g_trace_session;

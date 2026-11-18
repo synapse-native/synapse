@@ -54,6 +54,9 @@ CadenaSegura _syn_debug_iniciar_sesion(CadenaSegura programa);
 int _syn_debug_registrar_evento(int tag, const char* funcion, const char* archivo, int linea, const char* variable, long long valor_entero, double valor_decimal, const char* valor_texto);
 int _syn_debug_trace(const char* expresion_texto, void* valor, const char* tipo);
 CadenaSegura _syn_debug_finalizar_sesion(void);
+// cumple Manual 5 §2.6 (r241): implementación en el runtime (C).
+// cumple Manual 8 §3.4 (r241): CLI `synapse debug --load`.
+CadenaSegura _syn_debug_cargar_traza(CadenaSegura ruta);
 TraceSession _syn_debug_obtener_sesion(void);
 int tr_inicializar_recording(void);
 int tr_grabar_bifurcacion(int linea, int rama, CadenaSegura id_funcion);
