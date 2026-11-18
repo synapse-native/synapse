@@ -1083,6 +1083,7 @@ static void _oll_acc_compact(_OllSesion* s) {
 // Decodifica chunked desde rb hacia acc (todo lo que pueda con los bytes
 // disponibles). Si el servidor no usa chunked, vuelca rb directo a acc.
 static void _oll_dechunk(_OllSesion* s) {
+    if (s->fase == 5) return;
     if (!s->chunked) {
         int disp = s->rblen - s->rbpos;
         if (disp > 0) {
@@ -1162,7 +1163,7 @@ static void _oll_dechunk(_OllSesion* s) {
                 if (largo <= 2) { s->fase = 5; break; }   // línea vacía = fin de trailers
             }
             if (s->fase != 5) return;
-            // todo el cuerpo llegó
+            return;   // todo el cuerpo llego: no reentrar en fase 5
         }
     }
 }
@@ -1429,7 +1430,10 @@ CadenaSegura _syn_ollama_stream_leer(void* h) {
         }
         if (hay_linea) continue;
         if (s->fase == 5) { s->hecho = 1; return vacio; }
-        if (s->rbpos >= s->rblen) {
+        // Si una trama chunked queda partida (fase 0/3/4), quedan bytes en rb
+        // pero el decodificador no avanza: hay que leer mas red, no girar.
+        // cumple Manual 7 §2.2: esperar la respuesta con timeout, sin colgar.
+        if (s->rbpos >= s->rblen || s->fase != 1) {
             int r = _oll_raw_leer(s);
             if (r == 0) {
                 // conexión cerrada por el servidor
