@@ -244,7 +244,7 @@ HEAD `c341fc5` (R237). Leyenda: **HECHO** (entregado con reporte y oráculo),
 
 | ME | Estado | Evidencia |
 |---|---|---|
-| `r252_bootstrap_parity` | PARCIAL | La política S2==S3 se congeló en R222b (`327fc514adb5`); sin oráculo de paridad de nodos/tokens dedicado |
+| `r252_bootstrap_parity` | PARCIAL (`8aaab43`) | La paridad de nodos ya estaba cubierta (`tests/auditoria/test_paridad_nodos.py` 4/4: manual ↔ `parser_constantes.syn` ↔ `ast_nodos.h`). El sello S2==S3 ahora es un oráculo propio con modos `--artefactos`/`--construir`/`--estricto`, invocado por `build.py` y por el job `bootstrap` de CI. **Sin embargo el sello FALLA (H-R252-1):** etapa 2 (S1 modular, `-static`) y etapa 3 (S2 unity, sin `-static`) difieren en 480 KB, así que el bootstrap no cierra; resolución asignada al ME `r252b_emision_paridad` en `docs/plan_maestro_deudas.md` |
 | `r253_contracts_audit` | PARCIAL | `verificar_alineacion.py` → 0 brechas; falta la auditoría «0 funciones públicas sin `requiere`/`garantiza`» con oráculo propio |
 
 #### MEs entregados fuera de esta cartera
