@@ -178,6 +178,34 @@ funcion resumir_run(run_id: texto) -> RunEstado:
     retornar run
 
 // ============================================================
+// R8b: Deshacer el ultimo paso completado (sesion/undo, ME r254)
+// ============================================================
+// Revierte la marca de la ultima subtarea completada, reponiendo el
+// contador a subtarea_actual-1 (acotado a 0) y el estado a EN_PROGRESO,
+// persistiendo el checkpoint. Permite "revertir" un cambio de la sesion.
+// cumple Manual 7 §4.3: "memoria de sesion" — reanudar/undo
+funcion deshacer_ultimo_paso(run_id: texto) -> entero:
+    requiere:
+        longitud(run_id) > 0
+    garantiza:
+        _resultado_ == 0 o _resultado_ == -1 // cumple Manual 2 §5.1
+    run = cargar_checkpoint(_syn_strcpy(run_id))
+    si run.cantidad_subtareas <= 0:
+        retornar -1
+    si run.subtarea_actual <= 0:
+        retornar -1
+    run.subtarea_actual = run.subtarea_actual - 1
+    si run.subtarea_actual >= run.cantidad_subtareas:
+        run.estado = RUN_COMPLETADO
+    sino:
+        run.estado = RUN_EN_PROGRESO
+    run.timestamp_inicio = ahora_ms()
+    let rc = guardar_checkpoint(run)
+    si rc != 0:
+        retornar -1
+    retornar 0
+
+// ============================================================
 // R8: Tiempo transcurrido (M7 §4.3)
 // ============================================================
 

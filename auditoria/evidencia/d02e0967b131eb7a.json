@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "d02e0967b131eb7a",
+ "expediente": "docs/alineacion/r254_sesiones_undo.md",
+ "fecha": "2026-11-17",
+ "archivos": [
+  "opensyn/principal.syn",
+  "opensyn/run_manager.syn"
+ ],
+ "oraculos": {
+  "tests/opensyn/test_sesiones_undo_comportamiento.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

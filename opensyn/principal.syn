@@ -18,6 +18,10 @@ importar herramientas
 // cumple Manual 7 §2.1
 importar validation_loop
 importar pipeline_multiagente
+// ME r254_sesiones_undo (reasignado de r218_sesiones_undo): sesiones
+// reanudables con checkpoint, reanudar y revertir en el loop vivo.
+// cumple Manual 7 §4.3
+importar run_manager
 
 constante ARCHIVO_CONFIG = ".synapse_config"
 
@@ -1447,6 +1451,73 @@ funcion validar_fuente_si_aplica(linea_tool: texto, cwd_act: texto) -> texto:
     res = concat(res, vr.errores)
     retornar res
 
+// ME r254_sesiones_undo: helpers de sesion (run reanudable) cableados al loop.
+// cumple Manual 7 §4.3
+// Devuelve la ruta del archivo de sesion activa.
+funcion sesion_archivo() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) > 0
+    cwd = _syn_obtener_cwd()
+    retornar concat(cwd, "\\.opensyn_session")
+
+// Lee el run_id de la sesion activa (vacio si no hay).
+funcion sesion_run_id_activo() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    ruta = sesion_archivo()
+    contenido = ""
+    inseguro:
+        asm("CadenaSegura _sr = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _sc = _syn_leer_archivo(_sr); if(_sc.longitud>0) contenido = _sc;")
+    res = recortar(_syn_strcpy(contenido))
+    retornar res
+
+// Persiste el run_id como sesion activa.
+funcion sesion_activar(run_id: texto) -> entero:
+    requiere:
+        longitud(run_id) > 0
+    garantiza:
+        _resultado_ == 0 o _resultado_ == -1
+    ruta = sesion_archivo()
+    contenido = concat(run_id, "\n")
+    inseguro:
+        asm("CadenaSegura _sr = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _sc = {.datos = (char*)contenido.datos, .longitud = contenido.longitud}; int _rw = _syn_escribir_archivo(_sr, _sc); (void)_rw;")
+    retornar 0
+
+// Limpia la sesion activa.
+funcion sesion_limpiar() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == 0
+    ruta = sesion_archivo()
+    contenido = ""
+    inseguro:
+        asm("CadenaSegura _sr = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _sc = {.datos = (char*)contenido.datos, .longitud = 0}; int _rw = _syn_escribir_archivo(_sr, _sc); (void)_rw;")
+    retornar 0
+
+
+// Marca un paso completado en la sesion activa (best-effort, no falla el loop).
+// cumple Manual 7 §4.3
+funcion sesion_marcar_paso() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= -1
+    rid = sesion_run_id_activo()
+    si rid == "":
+        retornar 0
+    run = cargar_checkpoint(rid)
+    si run.cantidad_subtareas <= 0:
+        retornar 0
+    si run.subtarea_actual < run.cantidad_subtareas:
+        rc = marcar_subtarea_completada(run, "paso")
+        // rc ignored: best-effort
+    retornar 0
+
 // Agente con contexto del repositorio: bucle [TOOL] + streaming en vivo.
 // ME-1 (R1): recibe modo para verificar permisos de herramientas.
 // ME-3 (R5): clasifica la tarea para /next contextual.
@@ -1485,6 +1556,9 @@ funcion tui_agente(modelo: texto, pregunta: texto, cwd_act: texto, modo: entero)
             validacion = validar_fuente_si_aplica(_syn_strcpy(limpia), _syn_strcpy(cwd_act))
             si validacion != "":
                 salida = concat(salida, validacion)
+            // ME r254_sesiones_undo: registrar el paso en la sesion activa.
+            // cumple Manual 7 §4.3
+            sesion_marcar_paso()
             resumen = tui_acotar(_syn_strcpy(salida), 1200)
             _syn_tui_mensaje(2, resumen)
             _syn_tui_repintar(modelo)
@@ -1697,6 +1771,58 @@ funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero,
         _syn_tui_mensaje(2, concat("[PIPELINE] inferencias: ", entero_a_texto(rp.num_inferencias)))
         _syn_tui_repintar(modelo)
         retornar "!ok"
+    // ME r254_sesiones_undo: sesiones reanudables (run_manager).
+    // cumple Manual 7 §4.3
+    si entrada == "/sesion" o _syn_strstr(entrada, "/sesion ") == 0:
+        tarea_s = ""
+        si _syn_strstr(entrada, "/sesion ") == 0:
+            tarea_s = recortar(subcadena(entrada, 8, longitud(entrada) - 8))
+        si tarea_s == "":
+            tarea_s = "sesion"
+        num = 5
+        run = crear_run(tarea_s, num)
+        sesion_activar(run.run_id)
+        _syn_tui_mensaje(2, concat("[SESION] creada: ", run.run_id))
+        _syn_tui_mensaje(2, concat("  subtareas: ", entero_a_texto(run.cantidad_subtareas)))
+        _syn_tui_repintar(modelo)
+        retornar "!ok"
+    si entrada == "/reanudar" o _syn_strstr(entrada, "/reanudar ") == 0:
+        rid_r = ""
+        si _syn_strstr(entrada, "/reanudar ") == 0:
+            rid_r = recortar(subcadena(entrada, 10, longitud(entrada) - 10))
+        si rid_r == "":
+            rid_r = sesion_run_id_activo()
+        si rid_r == "":
+            _syn_tui_mensaje(3, "Sin sesion activa. Usa /sesion <tarea>.")
+            _syn_tui_repintar(modelo)
+            retornar "!ok"
+        run_r = resumir_run(rid_r)
+        sesion_activar(run_r.run_id)
+        _syn_tui_mensaje(2, concat("[REANUDAR] ", run_r.run_id))
+        _syn_tui_mensaje(2, concat("  actual: ", entero_a_texto(run_r.subtarea_actual)))
+        _syn_tui_mensaje(2, concat("  total: ", entero_a_texto(run_r.cantidad_subtareas)))
+        _syn_tui_mensaje(2, concat("  estado: ", entero_a_texto(run_r.estado)))
+        _syn_tui_repintar(modelo)
+        retornar "!ok"
+    si entrada == "/revertir":
+        rid_v = sesion_run_id_activo()
+        si rid_v == "":
+            _syn_tui_mensaje(3, "Sin sesion activa.")
+            _syn_tui_repintar(modelo)
+            retornar "!ok"
+        rcv = deshacer_ultimo_paso(rid_v)
+        si rcv == 0:
+            _syn_tui_mensaje(2, "[REVERTIR] ultimo paso deshecho.")
+        sino:
+            _syn_tui_mensaje(3, "[REVERTIR] no se pudo revertir.")
+        _syn_tui_repintar(modelo)
+        retornar "!ok"
+    si entrada == "/sesion-fin" o entrada == "/sesion fin":
+        sesion_limpiar()
+        _syn_tui_mensaje(2, "[SESION] cerrada.")
+        _syn_tui_repintar(modelo)
+        retornar "!ok"
+
     // Comando desconocido: abre el menu de comandos.
     r = _syn_tui_menu("Comandos (filtra escribiendo)", MENU_COMANDOS)
     si r == "":
