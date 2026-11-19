@@ -36,6 +36,11 @@ externo funcion _syn_eliminar_archivo(ruta: texto) -> entero
 // dejaba el hash VACÍO — "checksum incorrecto" con el archivo correcto, hallazgo
 // de pruebas como usuario 2026-10-25)
 externo funcion _syn_hash_archivo(ruta: texto) -> texto
+// cumple Manual 9 §5.3: tamano y reloj para medir el coste real de la
+// verificacion (r273). El hash se cachea en runtime/core/hash_cache.c, asi que
+// la segunda corrida verifica en milisegundos y se informa como tal.
+externo funcion _syn_tamano_archivo(ruta: texto) -> entero
+externo funcion _syn_ahora_ms() -> entero
 externo funcion _syn_home() -> texto
 externo funcion _syn_escribir_archivo(ruta: texto, contenido: texto) -> entero
 // firma canónica de std/sistema.syn — descendant vía curl del sistema (M9 §5.4)
@@ -140,6 +145,29 @@ funcion descargar_url(url: texto, destino: texto) -> logico:
     let comando: texto = "curl -L -fsS --create-dirs -o " + destino + " " + url
     retornar _syn_ejecutar_comando(comando) == 0
 
+// cumple Manual 9 §5.3 — verificar_hash: SHA-256 medido y reportado (r273).
+// Avisa del tamano antes de hashear (Manual 7 §6.1: un solo clic no debe
+// parecer colgado) y devuelve el resultado real de la comparacion.
+funcion verificar_hash(ruta: texto, esperado: texto) -> logico:
+    requiere:
+        longitud(ruta) > 0
+        longitud(esperado) > 0
+    garantiza:
+        verdadero
+    let tamano: entero = _syn_tamano_archivo(ruta)
+    let grande: logico = tamano > 67108864
+    si grande:
+        escribir_linea("Verificando integridad (SHA-256) de " + entero_a_texto(tamano / 1048576) + " MB...")
+    let t0: entero = _syn_ahora_ms()
+    let hash: texto = _syn_hash_archivo(ruta)
+    let ms: entero = _syn_ahora_ms() - t0
+    si grande:
+        si ms > 0:
+            escribir_linea("Verificacion SHA-256: " + entero_a_texto(ms) + " ms (" + entero_a_texto((tamano / 1048576) * 1000 / ms) + " MB/s)")
+        sino:
+            escribir_linea("Verificacion SHA-256: " + entero_a_texto(ms) + " ms (desde cache de digest)")
+    retornar hash == esperado
+
 // cumple Manual 9 §5.3 — descargar_modelo: verifica SHA-256 tras la descarga
 funcion descargar_modelo(info: ModeloInfo) -> Resultado<texto, texto>:
     requiere:
@@ -149,8 +177,7 @@ funcion descargar_modelo(info: ModeloInfo) -> Resultado<texto, texto>:
         verdadero
     let ruta: texto = _syn_home() + "/.opensyn/models/" + info.nombre + ".gguf"
     si _syn_existe_archivo(ruta) == 1:
-        let hash: texto = _syn_hash_archivo(ruta)
-        si hash == info.sha256:
+        si verificar_hash(ruta, info.sha256):
             escribir_linea("Modelo ya descargado y verificado")
             retornar ok(ruta)
         sino:
@@ -159,8 +186,7 @@ funcion descargar_modelo(info: ModeloInfo) -> Resultado<texto, texto>:
     escribir_linea("Descargando modelo (" + entero_a_texto(info.tamano_aprox / 1048576) + " MB)...")
     si no descargar_url(info.url, ruta):
         retornar err("Error al descargar el modelo")
-    let hash: texto = _syn_hash_archivo(ruta)
-    si hash != info.sha256:
+    si no verificar_hash(ruta, info.sha256):
         _syn_eliminar_archivo(ruta)
         retornar err("Checksum incorrecto")
     retornar ok(ruta)
@@ -183,15 +209,13 @@ funcion principal() -> nulo:
     # cumple Manual 9 §5.3: descargar y verificar modelo
     let ruta_descarga: texto = _syn_home() + "/.opensyn/models/" + modelo.nombre + ".gguf"
     si _syn_existe_archivo(ruta_descarga) == 1:
-        let hash: texto = _syn_hash_archivo(ruta_descarga)
-        si hash == modelo.sha256:
+        si verificar_hash(ruta_descarga, modelo.sha256):
             escribir_linea("Modelo ya descargado y verificado")
         sino:
             escribir_linea("Hash incorrecto, re-descargando...")
             _syn_eliminar_archivo(ruta_descarga)
             si descargar_url(modelo.url, ruta_descarga):
-                let hash2: texto = _syn_hash_archivo(ruta_descarga)
-                si hash2 != modelo.sha256:
+                si no verificar_hash(ruta_descarga, modelo.sha256):
                     _syn_eliminar_archivo(ruta_descarga)
                     escribir_linea("Error: checksum incorrecto tras descarga")
                     retornar
@@ -203,8 +227,7 @@ funcion principal() -> nulo:
         si no descargar_url(modelo.url, ruta_descarga):
             escribir_linea("Error al descargar el modelo")
             retornar
-        let hash3: texto = _syn_hash_archivo(ruta_descarga)
-        si hash3 != modelo.sha256:
+        si no verificar_hash(ruta_descarga, modelo.sha256):
             _syn_eliminar_archivo(ruta_descarga)
             escribir_linea("Error: checksum incorrecto")
             retornar

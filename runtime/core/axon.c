@@ -44,16 +44,28 @@ CadenaSegura _syn_sha256_hex(CadenaSegura datos) {
 
 // --- Reusable: SHA-256 hash of a file on disk ---
 // Returns hex string (heap-allocated), or empty string on failure.
+// cumple Manual 9 §5.3: verificacion de un GGUF de 873 MB por streaming con
+// buffer acotado. r273 midio que 8 KB por fread cuesta ~8 s (106.000 lecturas,
+// overhead por llamada del sistema/AV) y que 1 MiB lo baja a menos de 1 s: el
+// buffer sigue siendo acotado (1 MiB fijos, nunca el archivo completo en RAM).
+#define SYN_HASH_BUF_BYTES (1024 * 1024)
 CadenaSegura _syn_sha256_archivo(const char* ruta) {
     FILE* f = fopen(ruta, "rb");
     if (!f) return (CadenaSegura){0, ""};
     SHA256_CTX ctx;
     sha256_init(&ctx);
-    uint8_t buf[8192];
+    uint8_t pila_buf[8192];
+    uint8_t* buf = (uint8_t*)malloc(SYN_HASH_BUF_BYTES);
+    size_t tam_buf = SYN_HASH_BUF_BYTES;
+    if (buf == NULL) {  // sin memoria para 1 MiB: se sigue con el buffer de pila
+        buf = pila_buf;
+        tam_buf = sizeof(pila_buf);
+    }
     size_t n;
-    while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
+    while ((n = fread(buf, 1, tam_buf, f)) > 0) {
         sha256_update(&ctx, buf, n);
     }
+    if (buf != pila_buf) free(buf);
     fclose(f);
     uint8_t digest[SHA256_DIGEST_SIZE];
     sha256_final(&ctx, digest);

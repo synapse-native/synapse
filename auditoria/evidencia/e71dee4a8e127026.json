@@ -1,0 +1,19 @@
+{
+ "cambio_hash": "e71dee4a8e127026",
+ "expediente": "docs/alineacion/r273_installer_modelo_grande.md",
+ "fecha": "2026-11-19",
+ "archivos": [
+  "opensyn/installer.syn",
+  "runtime/core/axon.c",
+  "runtime/core/cripto.c",
+  "runtime/core/hash_cache.c",
+  "runtime/core/hash_cache.h",
+  "runtime/core/modelo.c"
+ ],
+ "oraculos": {
+  "tests/integration/test_installer_modelo_grande.py": true,
+  "tests/unit/test_axon_crypto.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

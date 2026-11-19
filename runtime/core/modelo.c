@@ -13,6 +13,7 @@
 #include <math.h>
 #include "runtime/core/modelo.h"  // ME-SEC-3: tipos públicos para testing
 #include "runtime/core/axon.h"  // cumple Manual 7 2.5/9 §5.3: _syn_http_get_archivo, _syn_sha256_archivo
+#include "runtime/core/hash_cache.h"  // cumple Manual 9 §5.3: cache de digests por ruta+tamano+mtime (r273)
 #ifdef _WIN32
   #include <windows.h>
   #include <direct.h>
@@ -982,9 +983,60 @@ CadenaSegura _syn_hash_archivo(CadenaSegura ruta) {
     if (!cstr) return (CadenaSegura){0, ""};
     memcpy(cstr, ruta.datos, (size_t)ruta.longitud);
     cstr[ruta.longitud] = '\0';
+
+    /*
+     * cumple Manual 9 §5.3: verificar 873 MB por arranque costaba ~9 s (medido
+     * con _syn_ahora_ms, r273) y hacia fallar por timeout la verificacion del
+     * modelo. Si este runtime ya calculo el digest del MISMO contenido
+     * (ruta + tamano + mtime) se reutiliza; no es un atajo de la verificacion:
+     * la entrada solo vale para ese archivo exacto y, si algo no cuadra, se
+     * rehashea (_syn_sha256_archivo, streaming con buffer de 8 KB).
+     */
+    char cacheado[65];
+    if (_syn_hash_cache_obtener(cstr, cacheado, sizeof(cacheado))) {
+        char* datos = (char*)pool_alloc(65);
+        if (datos != NULL) {
+            memcpy(datos, cacheado, 65);
+            free(cstr);
+            return (CadenaSegura){ .longitud = 64, .datos = datos };
+        }
+        /* Sin memoria para el digest cacheado: se hashea igual, sin falsear. */
+    }
+
+    /* Aviso honesto antes de un hasheo largo: el usuario ve que hay actividad
+     * (y el instalador no parece colgado) en vez de esperar en silencio. Va a
+     * stderr para no contaminar la salida de contrato del programa. */
+    long long tam = _syn_tamano_archivo_c(cstr);
+    if (tam > 64LL * 1024 * 1024) {
+        fprintf(stderr, "[hash] verificando %lld MB (SHA-256)...\n", tam / (1024 * 1024));
+        fflush(stdout);
+        fflush(stderr);
+    }
+
     CadenaSegura hash = _syn_sha256_archivo((const char*)cstr);
+    if (hash.datos != NULL && hash.longitud == 64) {
+        _syn_hash_cache_guardar(cstr, hash.datos);
+    }
     free(cstr);
     return hash;
+}
+
+/*
+ * cumple Manual 9 §5.3: tamano de archivo con ABI CadenaSegura.
+ * El binding externo del compilador pasa CadenaSegura por valor; la version
+ * nativa _syn_tamano_archivo_c (runtime/core/hash_cache.c) recibe const char*
+ * y llamarla directamente desde Synapse repetiria el ABI mismatch de R197
+ * (devolvia -1 y el instalador perdia el aviso de tamano/tiempo).
+ */
+int64_t _syn_tamano_archivo(CadenaSegura ruta) {
+    if (ruta.datos == NULL || ruta.longitud <= 0) return -1;
+    char* cstr = (char*)malloc((size_t)(ruta.longitud + 1));
+    if (!cstr) return -1;
+    memcpy(cstr, ruta.datos, (size_t)ruta.longitud);
+    cstr[ruta.longitud] = '\0';
+    int64_t tam = (int64_t)_syn_tamano_archivo_c(cstr);
+    free(cstr);
+    return tam;
 }
 
 

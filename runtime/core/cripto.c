@@ -116,14 +116,26 @@ static const uint32_t K[64] = {
 #define sig0(x) (ROTR(x, 7) ^ ROTR(x, 18) ^ ((x) >> 3))
 #define sig1(x) (ROTR(x, 17) ^ ROTR(x, 19) ^ ((x) >> 10))
 
+// cumple Manual 9 §5.3: compresion por bloque con ventana rodante de 16
+// palabras (en vez de W[64] y un segundo bucle) y variables rotadas, que es lo
+// que hace viable verificar un GGUF de 873 MB. Mismo digest FIPS 180-4:
+// se contrasta contra `hashlib` en tests/integration/test_installer_modelo_grande.py.
+#define RONDA(a, b, c, d, e, f, g, h, i) \
+    do { \
+        if ((i) >= 16) { \
+            W[(i) & 15] += sig1(W[((i) + 14) & 15]) + W[((i) + 9) & 15] + sig0(W[((i) + 1) & 15]); \
+        } \
+        uint32_t t1 = (h) + SIG1(e) + CH((e), (f), (g)) + K[(i)] + W[(i) & 15]; \
+        uint32_t t2 = SIG0(a) + MAJ((a), (b), (c)); \
+        (d) += t1; \
+        (h) = t1 + t2; \
+    } while (0)
+
 static void sha256_transform(SHA256_CTX* ctx, const uint8_t* block) {
-    uint32_t W[64];
+    uint32_t W[16];
     for (int i = 0; i < 16; i++) {
         W[i] = ((uint32_t)block[i*4] << 24) | ((uint32_t)block[i*4+1] << 16)
              | ((uint32_t)block[i*4+2] << 8)  | (uint32_t)block[i*4+3];
-    }
-    for (int i = 16; i < 64; i++) {
-        W[i] = sig1(W[i-2]) + W[i-7] + sig0(W[i-15]) + W[i-16];
     }
 
     uint32_t a = ctx->state[0], b = ctx->state[1];
@@ -131,11 +143,19 @@ static void sha256_transform(SHA256_CTX* ctx, const uint8_t* block) {
     uint32_t e = ctx->state[4], f = ctx->state[5];
     uint32_t g = ctx->state[6], h = ctx->state[7];
 
-    for (int i = 0; i < 64; i++) {
-        uint32_t T1 = h + SIG1(e) + CH(e, f, g) + K[i] + W[i];
-        uint32_t T2 = SIG0(a) + MAJ(a, b, c);
-        h = g; g = f; f = e; e = d + T1;
-        d = c; c = b; b = a; a = T1 + T2;
+    // Las variables rotan en cada ronda: a->h pasa a ser "la que se actualiza".
+    // El desenrollado completo deja W/K con indices constantes y en registros:
+    // sin el, el bucle por bloque se queda en ~126 MB/s (medido r273).
+    #pragma GCC unroll 8
+    for (int i = 0; i < 64; i += 8) {
+        RONDA(a, b, c, d, e, f, g, h, i + 0);
+        RONDA(h, a, b, c, d, e, f, g, i + 1);
+        RONDA(g, h, a, b, c, d, e, f, i + 2);
+        RONDA(f, g, h, a, b, c, d, e, i + 3);
+        RONDA(e, f, g, h, a, b, c, d, i + 4);
+        RONDA(d, e, f, g, h, a, b, c, i + 5);
+        RONDA(c, d, e, f, g, h, a, b, i + 6);
+        RONDA(b, c, d, e, f, g, h, a, i + 7);
     }
 
     ctx->state[0] += a; ctx->state[1] += b;
@@ -143,6 +163,7 @@ static void sha256_transform(SHA256_CTX* ctx, const uint8_t* block) {
     ctx->state[4] += e; ctx->state[5] += f;
     ctx->state[6] += g; ctx->state[7] += h;
 }
+#undef RONDA
 
 void sha256_init(SHA256_CTX* ctx) {
     ctx->state[0] = 0x6a09e667; ctx->state[1] = 0xbb67ae85;
@@ -153,14 +174,43 @@ void sha256_init(SHA256_CTX* ctx) {
     ctx->buffer_len = 0;
 }
 
+// cumple Manual 9 §5.3: SHA-256 de archivos grandes (GGUF 873 MB) sin coste por
+// byte. La version anterior copiaba byte a byte y comprobaba bloque en cada
+// iteracion: 873 M iteraciones = 9 s medidos (sonda `_syn_ahora_ms`, 2026-11-19),
+// que hacian fallar por timeout la verificacion del modelo. El algoritmo no
+// cambia (mismo `sha256_transform`, mismo digest FIPS 180-4): solo se procesa
+// por bloques completos de 64 B con memcpy.
 void sha256_update(SHA256_CTX* ctx, const uint8_t* data, size_t len) {
-    for (size_t i = 0; i < len; i++) {
-        ctx->buffer[ctx->buffer_len++] = data[i];
-        ctx->bitcount += 8;
+    size_t i = 0;
+
+    // 1) Completar el bloque parcial pendiente, si lo hay.
+    if (ctx->buffer_len > 0) {
+        size_t hueco = (size_t)(SHA256_BLOCK_SIZE - ctx->buffer_len);
+        size_t n = (len < hueco) ? len : hueco;
+        memcpy(ctx->buffer + ctx->buffer_len, data, n);
+        ctx->buffer_len += (uint32_t)n;
+        ctx->bitcount += (uint64_t)n * 8;
+        i = n;
         if (ctx->buffer_len == SHA256_BLOCK_SIZE) {
             sha256_transform(ctx, ctx->buffer);
             ctx->buffer_len = 0;
         }
+    }
+
+    // 2) Bloques completos directamente desde el buffer de entrada.
+    while (len - i >= (size_t)SHA256_BLOCK_SIZE) {
+        sha256_transform(ctx, data + i);
+        uint64_t consumidos = (uint64_t)SHA256_BLOCK_SIZE;
+        ctx->bitcount += consumidos * 8;
+        i += (size_t)SHA256_BLOCK_SIZE;
+    }
+
+    // 3) Resto (< 64 B) al buffer interno para el proximo update/final.
+    if (i < len) {
+        size_t resto = len - i;
+        memcpy(ctx->buffer, data + i, resto);
+        ctx->buffer_len = (uint32_t)resto;
+        ctx->bitcount += (uint64_t)resto * 8;
     }
 }
 
