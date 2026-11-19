@@ -1,5 +1,7 @@
 # AUDITORÍA DE ALINEACIÓN — MANUALES v8.1.0 vs CÓDIGO (Ecosistema Synapse + Syquex + OpenSyn)
 
+> Documento informativo. La fuente de verdad es `docs/manuales/`.
+
 > **Propósito:** Registro oficial y AUTOCONTENIDO de la auditoría punto por punto que alinea TODO el código del repositorio con los 9 manuales de ingeniería (v8.1.-industrial) y el roadmap de implementación (`ROADMAP.md`). Cualquier sesión puede retomar la auditoría leyendo SOLO este documento y el plan de reparación de instalación limpia.
 
 ## ** ATENCION EXTREMADAMENTE IMPORTANTE** La Auditoria tiene como objetivo fundamental refactorizar todo el repo actual a cumlplimento estricto de los manuales, esto es lo mas importante de la auditoria.
