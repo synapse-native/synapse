@@ -34,7 +34,9 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   con el SHA-256 del contenido de la fuente (`--sellar`, invocado por `build.py`
   y el job `bootstrap` de CI) y certifica por contenido; sin sello conserva el
   criterio de `mtime` con aviso para un checkout limpio. Falla si la fuente
-  cambió desde el build, nombrando ambos hashes. Evidencia: 5 tests nuevos en
+  cambió desde el build, nombrando ambos hashes; y desde el commit `8e2c41f`
+  tampoco acredita si la etapa 2 presente no es la sellada (tests del directorio
+  `auditoria` regeneran etapas en la raíz). Evidencia: 6 tests nuevos en
   `tests/auditoria/test_r270b_frescura_contenido.py`, `contrastar` 3/3 PASS,
   `verificar_alineacion` sin brechas, y `touch` de la fuente sobre los
   artefactos reales sin falso rojo. Reporte: `docs/reportes/R270b.md`.
