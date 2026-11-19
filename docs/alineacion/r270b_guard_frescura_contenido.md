@@ -1,7 +1,7 @@
 # Expediente de alineación r270b_guard_frescura_contenido
 
 base: HEAD  # commit sobre el que se leyó el manual
-cambio_hash:
+cambio_hash: 907b8c3cf9d31fb5
 
 > Una ancla por requisito. `estado:` CUMPLE | DESVIACION.
 > CUMPLE exige `evidencia: archivo:linea` con el comentario

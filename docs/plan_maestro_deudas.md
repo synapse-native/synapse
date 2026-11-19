@@ -26,13 +26,18 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   `--estricto` da `RC=0` y `objdump -p synapse_stage2.exe` sólo lista DLL del
   sistema (`ADVAPI32`, `KERNEL32`, `msvcrt`, `WS2_32`), ninguna del toolchain —
   el objetivo del hallazgo. Evidencia en `docs/reportes/R249.md`.
-- **H-R252-5 (BAJA, ABIERTO 2026-11-19):** el guard de frescura del oráculo
-  r252 compara **mtime**: tocar `nucleo/principal.syn` sin cambiar contenido
-  (`git checkout`, guardado del editor) pone el sello en rojo con el hash
-  correcto. Ocurrió al verificar r270 y obligó a reconstruir la cadena. Resolución
-  asignada: sellar el hash del contenido de la fuente en un `.stamp` junto a la
-  etapa 2 en lugar de comparar timestamps; se aborda junto al oráculo, del que es
-  dueño el ME r270 (no se parchea desde otro frente).
+- **H-R252-5 (RESUELTO 2026-11-19, ME r270b, commit 84f67ba):** el guard de
+  frescura del oráculo r252 comparaba **mtime**: tocar `nucleo/principal.syn`
+  sin cambiar contenido (`git checkout`, guardado del editor) ponía el sello en
+  rojo con el hash correcto; ocurrió al verificar r270 y obligó a reconstruir la
+  cadena. **Resolución aplicada:** el oráculo escribe `synapse_stage2.stamp`
+  con el SHA-256 del contenido de la fuente (`--sellar`, invocado por `build.py`
+  y el job `bootstrap` de CI) y certifica por contenido; sin sello conserva el
+  criterio de `mtime` con aviso para un checkout limpio. Falla si la fuente
+  cambió desde el build, nombrando ambos hashes. Evidencia: 5 tests nuevos en
+  `tests/auditoria/test_r270b_frescura_contenido.py`, `contrastar` 3/3 PASS,
+  `verificar_alineacion` sin brechas, y `touch` de la fuente sobre los
+  artefactos reales sin falso rojo. Reporte: `docs/reportes/R270b.md`.
 - **H-R252-1 (original, RETIRADO — se conserva como registro de la lección H-R252-3):**
   el bootstrap NO cierra en esta rama. Medido con el oráculo
   `auditoria/oraculos/oraculo_r252_paridad_bootstrap.py --artefactos`:
