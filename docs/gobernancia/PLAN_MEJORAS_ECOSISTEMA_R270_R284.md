@@ -26,7 +26,7 @@ aprobación explícita del Arquitecto.
 | Id | ME | Prioridad | Deficiencia que cierra | Depende |
 |---|---|---|---|---|
 | `r270_bootstrap_emision_paridad` | Cerrar el bootstrap S2==S3 | P0 | H-R252-1: S1 modular `-static` vs S2 unity sin `-static` | — |
-| `r271_manuales_canonicos` | Índice, nombres y gate de manuales | P0 | Manual 31/32 fuera del índice, nombre no canónico, sin gate de encoding | D-MAN-1/2 |
+| `r271_manuales_canonicos` | Índice, nombres y gate de manuales | P0 | Manual 31/32 fuera del índice, nombre no canónico, sin gate de encoding | D-MAN-1/2 RATIFICADAS 2026-11-19 |
 | `r272_docs_encoding` | Reparación y normalización documental | P0 | Corrupción real de la auditoría y ejemplos históricos | r271 |
 | `r273_installer_modelo_grande` | Instalador con GGUF grande | P0 | Timeout de 10 s y verificación de 873 MB | — |
 | `r274_gates_independientes` | Gates que no viven dentro del build | P0 | H-R252-2, H-CONTROL-1/2/3, binarios stale | r270 |
@@ -101,11 +101,15 @@ antes de cambiar; no se usa force-push ni se reescribe la historia.
 
 ### r271_manuales_canonicos — P0
 
-**Deficiencia.** `docs/manuales/.indice.json` cubre solo los manuales 1–9.
-Manual 31, Manual 32 y los anexos no se indexan; el archivo
-`MANUAL  FASE 32 AGENTE DE CODIFICACIÓN.md` tiene doble espacio y no coincide
-con `MANUAL N.md`; no existe un gate que detecte BOM, U+FFFD, C1 o doble
-codificación. Las citas `Manual 32 §1.3` no pueden verificarse.
+**Deficiencia (histórica).** `docs/manuales/.indice.json` cubría solo los
+manuales 1–9. Manual 31, Manual 32 y los anexos no se indexaban; el archivo
+`MANUAL  FASE 32 AGENTE DE CODIFICACIÓN.md` tenía doble espacio y no coincidía
+con `MANUAL N.md`; no existía un gate que detectara BOM, U+FFFD, C1 o doble
+codificación. Las citas `Manual 32 §1.3` no podían verificarse.
+
+**Estado.** D-MAN-1/2 ratificadas el 2026-11-19 (opción A): Manual 31/32 se
+renombraron a `MANUAL 31.md` y `MANUAL 32.md`; los anexos quedan como material
+de apoyo citable, sin número de manual.
 
 **Requisito.** Manual 2 §1.2 (UTF-8 sin BOM); Manual 1 §7.4 (Definition of
 Done); Manual 9 §6.2 (validación cruzada en CI).
@@ -114,28 +118,29 @@ Done); Manual 9 §6.2 (validación cruzada en CI).
 **UTF-8 sin BOM**.”
 
 **Implementación.**
-- Registrar el conjunto canónico: manuales numerados, anexos y alias
-  temporales.
+- Registrar el conjunto canónico: manuales numerados y anexos de apoyo.
+- Renombrar Manual 31/32 a `MANUAL 31.md` y `MANUAL 32.md`, conservando el
+  alias histórico en el índice (D-MAN-1 opción A).
 - Extender `auditoria/indice_manual.py` para indexar todos los manuales y
-  anexos declarados, con `sha256`, secciones y alias.
+  anexos declarados, con `sha256`, secciones y alias de trazabilidad.
 - Añadir `auditoria/verificar_manuales.py` (stdlib only, sin red) con
   `--encoding`, `--nombres`, `--indice`, `--citas` y `--todo`, según
   `docs/gobernancia/POLITICA_MANUALES.md`.
 - Regenerar `.indice.json` y revisar el diff; no editar el JSON a mano.
 - Cablear el gate en pre-commit y CI, sin `--no-verify`.
-- Resolver D-MAN-1 (renombrar Manual 32 o alias) y D-MAN-2 (anexos citables)
-  antes de mover archivos.
+- Indexar los anexos como apoyo citable sin número de manual (D-MAN-2 opción
+  A); no se citan como `Manual N`.
 
 **Oráculo.** `tests/auditoria/test_verificar_manuales.py`: fixture limpio
 rc=0; fixture con BOM, U+FFFD, C1, nombre no canónico, índice desactualizado y
 cita rota rc=1 con archivo/línea. `python auditoria/verificar_manuales.py
 --todo` rc=0 sobre el árbol limpio.
 
-**Depende.** D-MAN-1/2 (aprobación); puede empezar con alias sin renombrar.
+**Depende.** D-MAN-1/2 ratificadas (2026-11-19, opción A).
 
-**Política.** No se renombra ni se mueve un manual de producción sin
-aprobación. No se añade BOM. No se reescribe contenido para “mejorar” el
-Markdown.
+**Política.** No se renombra ni se mueve un manual de producción sin una
+decisión `D-MAN` vigente. No se añade BOM. No se reescribe contenido para
+“mejorar” el Markdown.
 
 ---
 
@@ -478,6 +483,9 @@ uniforme. Un lector puede tomar un reporte histórico como ley.
 empaquetados (incluyendo el Manual 31).”
 
 **Implementación.**
+- Aplicar la política a `docs/book2-desarrollo/` en un **barrido único**
+  (D-MAN-3 opción A, 2026-11-19); el resto de documentos informativos queda
+  congelado hasta este ME.
 - Añadir cabecera “Documento informativo; la ley es `docs/manuales/`” a los
   documentos que no la tengan.
 - Mapear cada documento a las secciones canónicas que resume.
@@ -596,7 +604,8 @@ con métricas antes/después. No se abre la ola siguiente con un P0 abierto.
   detiene y se pregunta.
 - No se declara un módulo “reparado” solo porque compila: exige test de
   comportamiento y retiro del baseline.
-- No se renombra ni se mueve un manual de producción sin D-MAN-1/2.
+- No se renombra ni se mueve un manual de producción sin una decisión `D-MAN`
+  vigente.
 
 ---
 

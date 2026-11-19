@@ -71,9 +71,11 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   - **H-R252-1/H-R252-4 → r270_bootstrap_emision_paridad (RESUELTO 2026-11-19):**
     stage2 stale descartado y enlace nativo win32 con `-static`; S2=S3
     `30C07EF61C5F25A7…` (2.559.482 B), `--estricto` PASS. Sin deuda abierta.
-  - **Manuales → r271_manuales_canonicos (P0):** Manual 31/32 y anexos fuera de
-    `.indice.json`; `MANUAL  FASE 32...` no canónico; sin gate de encoding ni
-    de citas. Implementar `auditoria/verificar_manuales.py`.
+  - **Manuales → r271_manuales_canonicos (CERRADO 2026-11-19):** Manual 31/32
+    renombrados a `MANUAL 31.md`/`MANUAL 32.md` (D-MAN-1 A); anexos indexados
+    como apoyo citable sin número (D-MAN-2 A); `.indice.json` cubre 11 manuales
+    y 3 anexos; gate `verificar_manuales.py --todo` cableado en pre-commit/CI.
+    D-MAN-3 A fija el barrido único de `book2` en r282.
   - **Encoding documental → r272_docs_encoding (P0):** reparar la auditoría
     doblemente codificada y normalizar UTF-8 sin BOM; los manuales de
     producción ya son válidos y no se reescriben.

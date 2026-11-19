@@ -28,8 +28,10 @@ MANUALES_DIR = RAIZ / "docs" / "manuales"
 INDICE = MANUALES_DIR / ".indice.json"
 
 # cumple Manual 2 §1.2 + Manual 1 §7.4: el conjunto canonico incluye los
-# manuales numerados, los anexos y los alias temporales aprobados. Un alias
-# solo se usa si no existe su nombre canonico; renombrar requiere D-MAN-1/2.
+# manuales numerados y los anexos. Los alias historicos de Manual 31/32 se
+# conservan para trazabilidad y como fallback si faltara el nombre canonico;
+# D-MAN-1 (opcion A, 2026-11-19) ratifico el renombre a `MANUAL 31.md` y
+# `MANUAL 32.md`.
 ALIAS_MANUALES = {
     "31": "MANUAL  FASE 31 HERRAMIENTAS DE DESARRO.md",
     "32": "MANUAL  FASE 32 AGENTE DE CODIFICACIÓN.md",
@@ -182,7 +184,12 @@ def construir_indice(manuales_dir=None, raiz=None) -> dict:
         m = re.match(r"MANUAL (\d+)\.md$", path.name)
         if not m:
             continue
-        manuales[m.group(1)] = _entrada_documento(path, root)
+        num = m.group(1)
+        datos = _entrada_documento(path, root)
+        alias = ALIAS_MANUALES.get(num)
+        if alias:
+            datos["alias"] = [(base / alias).relative_to(root).as_posix()]
+        manuales[num] = datos
 
     for num, nombre in sorted(ALIAS_MANUALES.items()):
         if num in manuales:

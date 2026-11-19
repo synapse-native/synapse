@@ -101,12 +101,16 @@ def verificar_nombres(root: Path) -> tuple:
     alias = set(im.ALIAS_MANUALES.values())
     anexos = set(im.ANEXOS.values())
     for num, nombre in sorted(im.ALIAS_MANUALES.items()):
-        if not (base / nombre).is_file():
+        canonico = base / f"MANUAL {num}.md"
+        alias_path = base / nombre
+        if canonico.is_file():
+            if alias_path.is_file():
+                errores.append(
+                    f"docs/manuales/MANUAL {num}.md y docs/manuales/{nombre} "
+                    "coexisten: retira el alias historico (D-MAN-1)")
+            continue
+        if not alias_path.is_file():
             errores.append(f"docs/manuales/{nombre}: alias de Manual {num} ausente")
-        if (base / f"MANUAL {num}.md").is_file():
-            errores.append(
-                f"docs/manuales/MANUAL {num}.md y docs/manuales/{nombre} "
-                "coexisten: elegi el canonico y retira el alias (D-MAN-1)")
 
     for nombre in sorted(im.ANEXOS.values()):
         if not (base / nombre).is_file():
@@ -121,9 +125,10 @@ def verificar_nombres(root: Path) -> tuple:
             continue
         if nombre in alias:
             num = next(k for k, v in im.ALIAS_MANUALES.items() if v == nombre)
-            avisos.append(
-                f"docs/manuales/{nombre}: alias temporal de Manual {num}; "
-                "renombrar requiere D-MAN-1")
+            if not (base / f"MANUAL {num}.md").is_file():
+                avisos.append(
+                    f"docs/manuales/{nombre}: alias historico de Manual {num}; "
+                    "se prefiere el nombre canonico MANUAL {num}.md")
             continue
         if nombre in anexos:
             continue

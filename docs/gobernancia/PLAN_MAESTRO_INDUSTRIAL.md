@@ -281,7 +281,7 @@ manutención de la ley está en `docs/gobernancia/POLITICA_MANUALES.md`.
 | ME | Prioridad | Objetivo | Manual | Criterio de cierre | Depende |
 |---|---|---|---|---|---|
 | `r270_bootstrap_emision_paridad` | P0 · **CERRADO 2026-11-19 (82fb4c4)** | Unificar la emisión S1/S2 y cerrar S2==S3 | Manual 1 §6; Manual 9 §6.1, §6.2 | Bootstrap 3 etapas con diff 0; oráculo `--estricto`; sin binarios stale | — |
-| `r271_manuales_canonicos` | P0 · **PARCIAL (82fb4c4)** | Índice completo, nombres canónicos y gate de citas/encoding | Manual 2 §1.2; Manual 1 §7.4; Manual 9 §6.2 | `verificar_manuales.py --todo` rc=0; Manual 31/32 y anexos indexados o con alias aprobado; renombres D-MAN pendientes | D-MAN-1/2 |
+| `r271_manuales_canonicos` | P0 · **CERRADO 2026-11-19** | Índice completo, nombres canónicos y gate de citas/encoding | Manual 2 §1.2; Manual 1 §7.4; Manual 9 §6.2 | `verificar_manuales.py --todo` rc=0; Manual 31/32 canónicos; anexos como apoyo citable; D-MAN-1/2 opción A | — |
 | `r272_docs_encoding` | P0 | Reparar corrupción documental y normalizar UTF-8 | Manual 2 §1.2; Manual 1 §7.4 | Auditoría y docs con 0 U+FFFD/C1/doble codificación; 1.275 líneas conservadas | r271 |
 | `r273_installer_modelo_grande` | P0 | Instalador con GGUF de 873 MB sin timeout falso | Manual 9 §5.3, §5.5, §6.1; Manual 7 §6.1 | Verificación por streaming/caché; test existente pasa o deuda ambiental medida | — |
 | `r274_gates_independientes` | P0 | Gates fuera del build, con oráculos propios y mutación | Manual 9 §6.2, §6.1; Manual 1 §7.4 | Romper el sello hace fallar el gate; CI sin `--sin-oraculos` | r270 |
@@ -292,7 +292,7 @@ manutención de la ley está en `docs/gobernancia/POLITICA_MANUALES.md`.
 | `r279_suite_rapida` | P1 | Suite determinista y acotada | Manual 1 §7.2; Manual 9 §6.2 | Mismos passed/skipped/failed con tiempos medidos y 0 skips nuevos | r273, r274 |
 | `r280_codigo_encoding` | P1 | Limpiar U+FFFD/C1 en runtime/std/fuentes generadas | Manual 2 §1.2; Manual 1 §7.4 | Scan repo-wide 0; `build.py` rc=0; `generator.syn` regenerado | r271 |
 | `r281_d9_dead_code` | P2 | D-9, duplicados y código muerto | Manual 1 §7.4; Manual 2 §12 | Módulos >1200 registrados; duplicados 0; tests verdes | r279 |
-| `r282_docs_informativos` | P2 | Alinear book2/reportes con la ley | Manual 1 §7.4; Manual 9 §6.1 | Cabecera informativa, enlaces resolubles, sin contradicciones | r271 |
+| `r282_docs_informativos` | P2 | Alinear book2/reportes con la ley | Manual 1 §7.4; Manual 9 §6.1 | Barrido único de `book2` (D-MAN-3 opción A); cabecera informativa, enlaces resolubles, sin contradicciones | r271 |
 | `r283_manual_versioning` | P2 | Changelog, semver y deprecación de manuales | Manual 1 §7.4; Manual 9 §6.1 | Cambio sin changelog falla el gate; alias/índice v2 | r271, r282 |
 | `r284_observabilidad_local` | P2 | Diagnóstico local opt-in, cero red | Manual 1 §5.7; Manual 7 §7.3; Manual 32 §1.3 | Opt-in por defecto off; test de no-salida; redacción | — |
 

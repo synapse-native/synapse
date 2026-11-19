@@ -1,6 +1,6 @@
 # POLÍTICA DE MANUALES Y DOCUMENTACIÓN CANÓNICA
 
-**Estado:** propuesta operativa para ratificación del Arquitecto.
+**Estado:** ratificada por el Arquitecto el 2026-11-19 (D-MAN-1/2/3, opción A).
 **Ámbito:** `docs/manuales/` es la única fuente de verdad de producción. El
 resto de la documentación (`docs/book2-desarrollo/`, `docs/reportes/`,
 `docs/auditorias/`, `MEMORIA_PROYECTO.md`, etc.) es **informativa** y debe
@@ -17,8 +17,8 @@ La ley del proyecto vive en archivos Markdown que se editan a mano, se citan
 por sección y se indexan con `auditoria/indice_manual.py`. Esa cadena tiene
 puntos frágiles ya observados:
 
-- nombres de archivo no canónicos (`MANUAL  FASE 32 AGENTE DE CODIFICACIÓN.md`
-  tiene doble espacio y no coincide con `MANUAL N.md`);
+- nombres de archivo no canónicos (caso histórico: `MANUAL  FASE 32 AGENTE DE
+  CODIFICACIÓN.md` tenía doble espacio y no coincidía con `MANUAL N.md`);
 - manuales y anexos que no entran al índice (Manual 31, Manual 32, anexos);
 - citas `Manual N §X` que pueden apuntar a secciones inexistentes o cambiar de
   número;
@@ -52,8 +52,9 @@ el contenido de la ley: cambia cómo se conserva, se cita y se valida.
   manual.
 - Pruebas obligatorias: `MANUAL_TESTS_OBLIGATORIOS.md`.
 - Un archivo con `FASE`, doble espacio o acentos en el nombre no es canónico.
-  Se permite como alias temporal, pero debe estar declarado en el registro de
-  alias y no puede ser la única copia de la ley.
+  Los manuales 31/32 fueron renombrados a `MANUAL 31.md` y `MANUAL 32.md`
+  (D-MAN-1 opción A, 2026-11-19); sus nombres históricos quedan solo como
+  alias de trazabilidad, nunca como segunda copia de la ley.
 
 ### I3. Encoding único
 
@@ -86,8 +87,8 @@ el contenido de la ley: cambia cómo se conserva, se cita y se valida.
 - `X` debe existir en el manual vigente y en el índice.
 - Una cita sin sección (`Manual 7`) solo es válida para un requisito que
   afecta al manual completo; en la práctica se prefiere la sección puntual.
-- Las citas de manuales no indexados (hoy Manual 31/32) no pueden ser
-  verificadas por el gate; se consideran deuda hasta que el índice los cubra.
+- Todo manual numerado debe estar en el índice; una cita a un manual no
+  indexado se considera deuda hasta que el índice lo cubra.
 - Renumerar una sección exige buscar y actualizar todas las citas del
   repositorio en el mismo ME.
 
@@ -165,7 +166,7 @@ Reglas:
 
 ## 4. Gate automático propuesto
 
-El ME `r271_manuales_canonicos` implementará
+El ME `r271_manuales_canonicos` implementa
 `auditoria/verificar_manuales.py` (stdlib only, sin red) con estos comandos:
 
 ```text
@@ -235,11 +236,11 @@ Verificado con lectura de bytes, no con la consola:
   conservaron las 1.275 líneas y no quedan patrones enfermos.
 - `docs/reportes/R205.md` y `MEMORIA_PROYECTO.md`: los únicos restos eran
   ejemplos históricos literales; se reescribieron como notación U+00C2/U+00C3.
-- `docs/manuales/.indice.json`: cubre solo los manuales 1–9. Manual 31,
-  Manual 32 y los anexos no están indexados.
-- `docs/manuales/MANUAL  FASE 32 AGENTE DE CODIFICACIÓN.md`: nombre no
-  canónico (doble espacio) y no indexado. Es la fragilidad estructural más
-  importante de la ley.
+- `docs/manuales/.indice.json`: cubre 11 manuales (1–9, 31 y 32) y los tres
+  anexos declarados; 395 secciones y 1.649 oraciones citables.
+- `docs/manuales/MANUAL 31.md` y `MANUAL 32.md`: nombres canónicos desde
+  D-MAN-1 (2026-11-19). Los nombres históricos con `FASE` quedan como alias
+  de trazabilidad en el índice, sin archivo duplicado.
 - Comentarios y cadenas de producción con U+FFFD o C1: `runtime/core/axon.h`,
   `runtime/core/concurrency.c`, `runtime/core/debug.c`, `std/texto.syn`,
   `tests/validate_distillation.c` y `axon/axon_rt.c`. No se corrigen en esta
@@ -247,16 +248,17 @@ Verificado con lectura de bytes, no con la consola:
 
 ---
 
-## 7. Decisiones pendientes del Arquitecto
+## 7. Decisiones ratificadas (2026-11-19)
 
-| Id | Decisión | Recomendación |
+| Id | Decisión | Opción ratificada |
 |---|---|---|
-| D-MAN-1 | ¿Renombrar `MANUAL  FASE 32...` a `MANUAL 32.md` o mantenerlo con alias canónico? | Renombrar en un ME con alias temporal para citas históricas; el contenido no cambia. |
-| D-MAN-2 | ¿Indexar los anexos (`ANEXO-*`, `MANUAL_TESTS_OBLIGATORIOS.md`) como manuales de pleno derecho o como material de apoyo? | Indexarlos como apoyo citable, sin número de manual. |
-| D-MAN-3 | ¿Aplicar la política a `docs/book2-desarrollo/` en un barrido único o por demanda? | Barrido único en `r282_docs_informativos`, congelando el resto mientras tanto. |
+| D-MAN-1 | Nombre canónico de Manual 31/32 | **A:** renombrar a `MANUAL 31.md` y `MANUAL 32.md`, conservando el alias histórico para citas y trazabilidad; el contenido no cambia. |
+| D-MAN-2 | Estatus de los anexos | **A:** indexarlos como material de apoyo citable, sin número de manual. |
+| D-MAN-3 | Alcance del barrido de `docs/book2-desarrollo/` | **A:** barrido único en `r282_docs_informativos`; el resto queda congelado mientras tanto. |
 
-Mientras no haya ratificación, no se renombra ni se mueve ningún manual de
-producción.
+Las decisiones están ratificadas. Cualquier cambio posterior de nombre,
+numeración o alcance exige una nueva `D-MAN` y aprobación explícita del
+Arquitecto.
 
 ---
 
@@ -272,6 +274,8 @@ producción.
 6. Los documentos informativos llevan la cabecera de vigencia y no contradicen
    la ley.
 7. Cero telemetría, cero red y cero dependencias externas en el gate.
+8. Manual 31/32 usan `MANUAL N.md`; los anexos se citan por su clave, nunca
+   como `Manual N`.
 
 ---
 
