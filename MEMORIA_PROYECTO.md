@@ -1832,3 +1832,4 @@ suelta; y las keys de caché que comparan strings deben canonizar espacios
 runtime (46 .o recompilados ~90 s por pasada). -->
 | 2026-11-19 | **r274_gates_independientes** | P0 · EN PROGRESO → CERRADO | Gates fuera del build, oráculos propios, mutación | Manual 9 §6.2, §6.1; Manual 1 §7.4 | contrastar 3/3 PASS; 0 brechas | docs/reportes/R274.md | 73a24dd | 
 
+| 2026-11-19 | **r275_opensyn_e2e_bench** | P0 · EN PROGRESO | OpenSyn E2E bench con --check, transpilación Python→Syquex, benchmark de 3 intentos | Manual 9 §6.2; Manual 1 §7.4 | contrastar 3/3 PASS; 0 brechas | docs/reportes/R275.md | 9bf9e17 | 
