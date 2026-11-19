@@ -170,17 +170,27 @@ def comparar_artefactos(raiz: str, estricto: bool = False):
         h_fuente = sha256(os.path.join(raiz, fuente))
         sello = _leer_sello(raiz)
         h_sellada = (sello or {}).get("sha256_fuente", "")
-        if h_sellada and h_sellada == h_fuente:
-            lineas.append(f"[OK] sello de frescura: la fuente no cambio desde el "
-                          f"build (sha256 {h_fuente[:16]})")
-        elif h_sellada:
+        h2_sellada = (sello or {}).get("sha256_etapa2", "")
+        certifica = bool(h_sellada) and h_sellada == h_fuente
+        if h_sellada and not certifica:
             ok = False
             lineas.append(f"[FAIL] {fuente} cambio desde el build (sello "
                           f"{h_sellada[:16]} != actual {h_fuente[:16]}): "
                           f"reconstruye el bootstrap")
+        elif certifica and h2_sellada and h2_sellada != h2:
+            # El sello certifica la fuente, no el binario: si la etapa 2 no es la
+            # sellada (otra corrida la reescribió), no se puede dar por fresca
+            # sin volver a sellar y se cae al criterio conservador de mtime.
+            certifica = False
+            lineas.append(f"[WARN] {SELLO} no corresponde a la {ETAPA2} actual "
+                          f"({h2_sellada[:16]} != {h2[:16]}): vuelve a sellar")
+        if certifica:
+            lineas.append(f"[OK] sello de frescura: la fuente no cambio desde el "
+                          f"build (sha256 {h_fuente[:16]})")
         else:
-            lineas.append(f"[WARN] sin {SELLO}: se usa mtime como criterio de "
-                          f"frescura; un `build.py` lo sella")
+            if not h_sellada:
+                lineas.append(f"[WARN] sin {SELLO}: se usa mtime como criterio de "
+                              f"frescura; un `build.py` lo sella")
             if not _mas_nuevo(raiz, ETAPA2, fuente):
                 ok = False
                 lineas.append(f"[FAIL] {ETAPA2} es anterior a {fuente}: artefacto "

@@ -109,6 +109,24 @@ def test_sellar_escribe_el_hash_del_contenido(tmp_path, monkeypatch, capsys):
     )
 
 
+def test_sello_de_otro_binario_no_certifica_la_etapa2_actual(tmp_path):
+    """El sello certifica la fuente, no el binario: si la etapa 2 cambió, no vale."""
+    oraculo = _cargar()
+    fuente = _escenario(tmp_path)
+    _sellar(oraculo, tmp_path, fuente)
+    # Otra corrida reescribe la etapa 2 (mismo contenido de fuente, otro binario).
+    _escribir(tmp_path / "synapse_stage2.exe", b"otro binario")
+    _escribir(tmp_path / "synapse_stage3.exe", b"otro binario")
+    ahora = os.path.getmtime(str(fuente))
+    os.utime(str(fuente), (ahora + 3600, ahora + 3600))
+
+    ok, lineas = oraculo.comparar_artefactos(str(tmp_path))
+    assert ok is False, lineas
+    assert any("no corresponde a la synapse_stage2.exe actual" in linea
+               for linea in lineas), lineas
+    assert any("es anterior a" in linea for linea in lineas), lineas
+
+
 def test_sellar_no_certifica_un_bootstrap_que_no_pasa(tmp_path, monkeypatch):
     """El sello se escribe sólo después de verificar: nunca tapa un fallo."""
     oraculo = _cargar()
