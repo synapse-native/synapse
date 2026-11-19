@@ -12,6 +12,8 @@
 *.dll
 *.so
 *.dylib
+# Sello de frescura del bootstrap (ME r270b): artefacto de máquina
+synapse_stage2.stamp
 *.wasm
 *.gguf
 

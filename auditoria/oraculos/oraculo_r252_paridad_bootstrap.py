@@ -5,17 +5,26 @@
 # cumple Manual 9 §6.2: "La verificación del bootstrap (diff 0 bytes)."
 # cumple Manual 9 §2.3: "Verificar el bootstrap (diff 0 bytes entre Stage 2 y
 #   Stage 3)" como parte del pipeline de compilación.
+# cumple Manual 1 §6 (ME r270b, H-R252-5): la frescura de la etapa 2 se certifica
+#   por el hash del CONTENIDO de la fuente, no por su mtime.
 """Sello de bootstrap S2==S3 y guard de deriva de los binarios distribuidos.
 
 Uso:
     python auditoria/oraculos/oraculo_r252_paridad_bootstrap.py --artefactos
     python auditoria/oraculos/oraculo_r252_paridad_bootstrap.py --construir
     python auditoria/oraculos/oraculo_r252_paridad_bootstrap.py --artefactos --estricto
+    python auditoria/oraculos/oraculo_r252_paridad_bootstrap.py --artefactos --sellar
 
 - `--artefactos` (por defecto): compara hash y tamaño de los artefactos que ya
-  existen y rechaza S2/S3 anteriores a `nucleo/principal.syn` (stale). Es el
-  modo que usa `build.py` y el job `bootstrap` de CI, para que el sello tenga
-  una sola implementación.
+  existen y rechaza una etapa 2 que no corresponda a `nucleo/principal.syn`.
+  Es el modo que usa `build.py` y el job `bootstrap` de CI, para que el sello
+  tenga una sola implementación.
+  La frescura se decide por **contenido**: si existe `synapse_stage2.stamp`
+  (H-R252-5) y el SHA-256 de la fuente coincide con el sellado, tocar el
+  archivo sin cambiarlo no invalida nada; si difiere, el sello falla. Sin
+  sello se conserva el criterio de `mtime` con un aviso.
+- `--sellar`: escribe `synapse_stage2.stamp` con el hash de la fuente y de la
+  etapa 2, **sólo si la verificación ya pasó**.
 - `--construir`: lanza `build.py` (3 etapas) antes de comparar, de modo que el
   determinismo se puede reproducir desde un checkout limpio.
 - `--estricto`: además de S2==S3, exige que `synapse.exe` y
@@ -27,9 +36,11 @@ rc=0 cuando pasa, rc=1 con el motivo concreto cuando no.
 """
 
 import hashlib
+import json
 import os
 import subprocess
 import sys
+import time
 
 # La salida lleva «§» y acentos: sin esto, una consola cp1252 imprime «?» y el
 # log de CI queda ilegible justo en el mensaje del sello.
@@ -44,6 +55,10 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 ETAPA2 = "synapse_stage2.exe"
 ETAPA3 = "synapse_stage3.exe"
 DISTRIBUIDOS = ("synapse.exe", os.path.join("dist", "bin", "synapse.exe"))
+# Sello de frescura por contenido (H-R252-5): un artefacto de máquina, no se
+# versiona; lo escribe `--sellar` después de verificar.
+SELLO = "synapse_stage2.stamp"
+FUENTE = os.path.join("nucleo", "principal.syn")
 
 
 def sha256(ruta: str) -> str:
@@ -63,6 +78,36 @@ def tamano(ruta: str) -> int:
         return os.path.getsize(ruta)
     except OSError:
         return 0
+
+
+def _leer_sello(raiz: str):
+    """requiere: raiz es un directorio existente
+    garantiza: devuelve el dict del sello de frescura, o None si no existe,
+      no es JSON válido o no es un objeto
+    """
+    try:
+        with open(os.path.join(raiz, SELLO), "r", encoding="utf-8") as f:
+            datos = json.load(f)
+    except (OSError, ValueError):
+        return None
+    return datos if isinstance(datos, dict) else None
+
+
+def _escribir_sello(raiz: str, sha_fuente: str, sha_etapa2: str,
+                    bytes_etapa2: int) -> None:
+    """requiere: la verificación S2==S3 ya pasó y las etapas existen
+    garantiza: deja `synapse_stage2.stamp` con el SHA-256 del contenido de la
+      fuente que produjo la etapa 2 (H-R252-5), nunca antes de verificar
+    """
+    datos = {
+        "sha256_fuente": sha_fuente,
+        "sha256_etapa2": sha_etapa2,
+        "bytes_etapa2": bytes_etapa2,
+        "fecha": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    }
+    with open(os.path.join(raiz, SELLO), "w", encoding="utf-8") as f:
+        json.dump(datos, f, ensure_ascii=False, indent=2)
+        f.write("\n")
 
 
 def _mas_nuevo(raiz: str, artefacto: str, fuente: str) -> bool:
@@ -117,12 +162,29 @@ def comparar_artefactos(raiz: str, estricto: bool = False):
 
     # Guard de artefactos stale: un stage2 de una corrida anterior puede tener
     # el mismo hash que stage3 por casualidad y ocultar que no se reconstruyó.
-    fuente = os.path.join("nucleo", "principal.syn")
+    # cumple Manual 1 §6 (ME r270b, H-R252-5): el criterio es el CONTENIDO de la
+    # fuente que produjo la etapa 2. El mtime sólo decide cuando no hay sello,
+    # para que un checkout limpio (sin `.stamp`) siga funcionando igual que antes.
+    fuente = FUENTE
     if os.path.isfile(os.path.join(raiz, fuente)):
-        if not _mas_nuevo(raiz, ETAPA2, fuente):
+        h_fuente = sha256(os.path.join(raiz, fuente))
+        sello = _leer_sello(raiz)
+        h_sellada = (sello or {}).get("sha256_fuente", "")
+        if h_sellada and h_sellada == h_fuente:
+            lineas.append(f"[OK] sello de frescura: la fuente no cambio desde el "
+                          f"build (sha256 {h_fuente[:16]})")
+        elif h_sellada:
             ok = False
-            lineas.append(f"[FAIL] {ETAPA2} es anterior a {fuente}: artefacto "
-                          f"stale; reconstruye el bootstrap")
+            lineas.append(f"[FAIL] {fuente} cambio desde el build (sello "
+                          f"{h_sellada[:16]} != actual {h_fuente[:16]}): "
+                          f"reconstruye el bootstrap")
+        else:
+            lineas.append(f"[WARN] sin {SELLO}: se usa mtime como criterio de "
+                          f"frescura; un `build.py` lo sella")
+            if not _mas_nuevo(raiz, ETAPA2, fuente):
+                ok = False
+                lineas.append(f"[FAIL] {ETAPA2} es anterior a {fuente}: artefacto "
+                              f"stale; reconstruye el bootstrap")
         if not _mas_nuevo(raiz, ETAPA3, ETAPA2):
             ok = False
             lineas.append(f"[FAIL] {ETAPA3} es anterior a {ETAPA2}: artefacto "
@@ -170,6 +232,14 @@ def main(argv=None) -> int:
     ok, lineas = comparar_artefactos(RAIZ, estricto=estricto)
     for linea in lineas:
         print(f"[r252] {linea}")
+    if ok and "--sellar" in argv:
+        # cumple Manual 9 §6.2 / Manual 1 §6: sólo se sella lo ya verificado.
+        h_fuente = sha256(os.path.join(RAIZ, FUENTE))
+        if h_fuente:
+            ruta2 = os.path.join(RAIZ, ETAPA2)
+            _escribir_sello(RAIZ, h_fuente, sha256(ruta2), tamano(ruta2))
+            print(f"[r252] [OK] sello de frescura escrito: {SELLO} "
+                  f"(fuente sha256 {h_fuente[:16]})")
     if not ok:
         print("[r252] FAIL: sello de bootstrap NO verificado", file=sys.stderr)
         return 1

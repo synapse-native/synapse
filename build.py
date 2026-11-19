@@ -69,7 +69,11 @@ def main():
                          "oraculo_r252_paridad_bootstrap.py")
     # cumple Manual 9 §2.3: verificar el bootstrap como paso del pipeline
     # cumple Manual 1 §6: un bootstrap no determinista aborta el build
-    rc_sello = subprocess.call([py, sello, "--artefactos"], cwd=RAIZ)
+    # cumple Manual 1 §6 (ME r270b, H-R252-5): `--sellar` certifica el hash del
+    # contenido de la fuente, de modo que un `touch` o un checkout posterior no
+    # invalide la etapa 2 con el mismo contenido.
+    # cumple Manual 9 §6.2: el build verifica y sella el bootstrap en cada corrida.
+    rc_sello = subprocess.call([py, sello, "--artefactos", "--sellar"], cwd=RAIZ)
     if rc_sello != 0:
         print("[build][ERROR] sello de bootstrap S2==S3 NO verificado "
               "(Manual 1 §6 / Manual 9 §6.2)", file=sys.stderr)
