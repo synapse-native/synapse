@@ -10,7 +10,17 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
 
 ## Cola de MEs (prioridad por radio/costo, actualizable)
 
-- **H-R252-1 (CRITICO, REGISTRADO 2026-11-18 en el ME r252_bootstrap_parity):**
+- **H-R252-1 (RETIRADO 2026-11-19: FALSO POSITIVO DE MEDICIÓN), texto original conservado como registro:**
+  Medido con la cadena real (`build.py --skip-test`, rc=0), el sello PASA:
+  etapa 2 y etapa 3 son ambas salidas del emisor nativo y valen
+  `b032e2ddc78dd235` (2.558.970 B); una cuarta generación reprodujo el mismo hash.
+  El artefacto de 2.077.570 B que se había rotulado «etapa 2» era la salida de
+  `main.py` (etapa 1). Detalle y evidencia: `docs/reportes/R249.md`, sección
+  «Corrección medida». **Queda en su lugar H-R252-4:** el enlace nativo no usa
+  `-static` en win32 (`nucleo/principal.syn:764`) aunque S1 sí
+  (`pipeline.py:981`), así que un binario autoconstruido depende de las DLL del
+  toolchain; se resuelve en el frente de instalación limpia (R234).
+- **H-R252-1 (original, RETIRADO — se conserva como registro de la lección H-R252-3):**
   el bootstrap NO cierra en esta rama. Medido con el oráculo
   `auditoria/oraculos/oraculo_r252_paridad_bootstrap.py --artefactos`:
   `synapse_stage2.exe` (construido por S1) = `737a4000dabccbea`, 2.077.570 bytes;
@@ -24,13 +34,9 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   coincidan, la regla de hierro de Manual 1 §6 (diff 0 bytes entre etapa 2 y 3)
   no puede cumplirse. El sello de CI (`job bootstrap` de `ci-tests.yml`) nunca
   lo detectó porque ese job no se ha ejecutado en esta rama con el estado
-  actual. **Resolución asignada:** ME de seguimiento `r252b_emision_paridad`
-  (id libre, la numeración r219/r240-r253 está ocupada): unificar la invocación
-  de GCC de S2 con la de S1 (misma estrategia de emisión, `-static` en win32 y
-  mismos `-l*`) o, si el coste es mayor, declarar por decisión ratificada del
-  Arquitecto cuál de las dos es la canónica y alinear la otra. Oráculo de
-  aceptación: el sello r252 en modo `--artefactos` con rc=0, más
-  `--estricto` verde después de refrescar `synapse.exe` y `dist/bin/synapse.exe`.
+  actual. ~~**Resolución asignada:** ME de seguimiento `r252b_emision_paridad`~~
+  **RETIRADA**: el supuesto no se sostiene (ver el párrafo anterior). Reemplazada
+  por H-R252-4 (`-static` en el enlace nativo).
 
 - **R229-R234 / Plan de Mejoras Arquitectónicas y Cierre Fase 32 (REGISTRADO 2026-11-16):**
   Plan maestro en `docs/plan_MEJORAS_ARQUITECTURA_R229_R233.md`.
