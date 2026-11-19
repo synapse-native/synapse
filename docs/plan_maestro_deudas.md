@@ -86,8 +86,13 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   - **Encoding documental → r272_docs_encoding (P0):** reparar la auditoría
     doblemente codificada y normalizar UTF-8 sin BOM; los manuales de
     producción ya son válidos y no se reescriben.
-  - **Instalador → r273_installer_modelo_grande (P0):** el GGUF de 873 MB
-    agota el timeout de 10 s; verificación por streaming/caché y causa medida.
+  - **Instalador → r273_installer_modelo_grande (CERRADO 2026-11-19, 7cc1d91):**
+    el GGUF de 873 MB agotaba el timeout de 10 s; causa medida (9.000 ms de
+    10.300 ms en `_syn_hash_archivo`: `sha256_update` byte a byte, transform sin
+    ventana rodante y ningún digest memorizado). Cerrado con hashing por bloques
+    + ventana rodante, streaming de 1 MiB y caché por ruta+tamaño+mtime en
+    `~/.synapse/cache/hash/`: 6,5 s en frío y 0,07 s caliente; el test
+    preexistente pasa sin tocarlo. Desbloquea r275/r276/r279.
   - **Gates → r274_gates_independientes (P0):** H-R252-2 y H-CONTROL-1/2/3;
     ningún sello puede vivir solo dentro de `build.py` o de un job de CI.
   - **P1/P2:** r275 E2E real + benchmark local; r276 limpia multiplataforma y

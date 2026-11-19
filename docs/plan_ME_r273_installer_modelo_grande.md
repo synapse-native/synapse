@@ -11,7 +11,7 @@
 con `timeout=10`. Con el GGUF real local
 (`~/.opensyn/models/deepseek-coder-1.3b-Q4_K_M.gguf`, 873.582.624 B) la corrida
 completa tarda **10.3 s** de reloj y una sonda instrumentada
-(`_syn_ahora_ms`, `logs/probe_r273.syn`) aísla el coste:
+(sonda temporal con `_syn_ahora_ms` en `logs/`) aísla el coste:
 
 | etapa | ms |
 |---|---|

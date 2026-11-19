@@ -33,7 +33,7 @@ Axon Hub, y se verifica su integridad mediante SHA‑256.»
 | corrida completa del instalador, caché caliente | 10,3 s | 0,07 s |
 | `tests/opensyn/test_installer.py` (timeout 10 s) | fallaba | **PASSED** |
 
-Desglose de la medición original (`logs/probe_r273.syn`): hardware 0 ms,
+Desglose de la medición original (sonda temporal con `_syn_ahora_ms`, en `logs/`): hardware 0 ms,
 `_syn_existe_archivo` 0 ms, **hash 9.000 ms**, resto 0 ms → el coste era la
 verificación, no la detección de hardware ni la configuración.
 
