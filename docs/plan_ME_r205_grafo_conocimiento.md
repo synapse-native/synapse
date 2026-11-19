@@ -1,4 +1,4 @@
-﻿# Plan ME r205 — Grafo de conocimiento real (Fase 32.1)
+# Plan ME r205 — Grafo de conocimiento real (Fase 32.1)
 
 ## Contexto
 

@@ -12,9 +12,10 @@ Uso:
     python auditoria/oraculos/oraculo_r252_paridad_bootstrap.py --construir
     python auditoria/oraculos/oraculo_r252_paridad_bootstrap.py --artefactos --estricto
 
-- `--artefactos` (por defecto): compara los artefactos que ya existen.
-  Es el modo que usa `build.py` y el job `bootstrap` de CI, para que el sello
-  tenga una sola implementación.
+- `--artefactos` (por defecto): compara hash y tamaño de los artefactos que ya
+  existen y rechaza S2/S3 anteriores a `nucleo/principal.syn` (stale). Es el
+  modo que usa `build.py` y el job `bootstrap` de CI, para que el sello tenga
+  una sola implementación.
 - `--construir`: lanza `build.py` (3 etapas) antes de comparar, de modo que el
   determinismo se puede reproducir desde un checkout limpio.
 - `--estricto`: además de S2==S3, exige que `synapse.exe` y
@@ -56,6 +57,24 @@ def sha256(ruta: str) -> str:
     return h.hexdigest()
 
 
+def tamano(ruta: str) -> int:
+    """Tamaño en bytes, o 0 si no existe (nunca lanza)."""
+    try:
+        return os.path.getsize(ruta)
+    except OSError:
+        return 0
+
+
+def _mas_nuevo(raiz: str, artefacto: str, fuente: str) -> bool:
+    """True si el artefacto existe y no es anterior a la fuente."""
+    try:
+        return os.path.getmtime(os.path.join(raiz, artefacto)) >= os.path.getmtime(
+            os.path.join(raiz, fuente)
+        )
+    except OSError:
+        return False
+
+
 def comparar_artefactos(raiz: str, estricto: bool = False):
     """Compara stage2/stage3 (y los distribuidos si `estricto`).
 
@@ -70,6 +89,8 @@ def comparar_artefactos(raiz: str, estricto: bool = False):
     ruta3 = os.path.join(raiz, ETAPA3)
     h2 = sha256(ruta2)
     h3 = sha256(ruta3)
+    t2 = tamano(ruta2)
+    t3 = tamano(ruta3)
 
     if not h2:
         lineas.append(f"[FAIL] falta {ETAPA2}: no hay etapa 2 que sellar "
@@ -80,14 +101,32 @@ def comparar_artefactos(raiz: str, estricto: bool = False):
                       f"S2==S3 (corre `python build.py` o `--construir`)")
         return False, lineas
 
-    lineas.append(f"[i] {ETAPA2} sha256 {h2[:16]}")
-    lineas.append(f"[i] {ETAPA3} sha256 {h3[:16]}")
+    lineas.append(f"[i] {ETAPA2} sha256 {h2[:16]} ({t2} bytes)")
+    lineas.append(f"[i] {ETAPA3} sha256 {h3[:16]} ({t3} bytes)")
     if h2 != h3:
         ok = False
         lineas.append("[FAIL] Manual 1 §6 / Manual 9 §6.2 VIOLADO: "
                       "el bootstrap no es determinista (S2 != S3)")
+    elif t2 != t3:
+        ok = False
+        lineas.append(f"[FAIL] Manual 1 §6 / Manual 9 §6.2 VIOLADO: "
+                      f"S2 y S3 difieren en tamaño ({t2} != {t3} bytes)")
     else:
-        lineas.append(f"[OK] bootstrap determinista: S2==S3 (diff 0 bytes, {h2[:16]})")
+        lineas.append(f"[OK] bootstrap determinista: S2==S3 "
+                      f"(diff 0 bytes, {t2} bytes, {h2[:16]})")
+
+    # Guard de artefactos stale: un stage2 de una corrida anterior puede tener
+    # el mismo hash que stage3 por casualidad y ocultar que no se reconstruyó.
+    fuente = os.path.join("nucleo", "principal.syn")
+    if os.path.isfile(os.path.join(raiz, fuente)):
+        if not _mas_nuevo(raiz, ETAPA2, fuente):
+            ok = False
+            lineas.append(f"[FAIL] {ETAPA2} es anterior a {fuente}: artefacto "
+                          f"stale; reconstruye el bootstrap")
+        if not _mas_nuevo(raiz, ETAPA3, ETAPA2):
+            ok = False
+            lineas.append(f"[FAIL] {ETAPA3} es anterior a {ETAPA2}: artefacto "
+                          f"stale; reconstruye el bootstrap")
 
     for rel in DISTRIBUIDOS:
         hd = sha256(os.path.join(raiz, rel))

@@ -27,6 +27,19 @@ RAIZ = Path(__file__).resolve().parent.parent
 MANUALES_DIR = RAIZ / "docs" / "manuales"
 INDICE = MANUALES_DIR / ".indice.json"
 
+# cumple Manual 2 §1.2 + Manual 1 §7.4: el conjunto canonico incluye los
+# manuales numerados, los anexos y los alias temporales aprobados. Un alias
+# solo se usa si no existe su nombre canonico; renombrar requiere D-MAN-1/2.
+ALIAS_MANUALES = {
+    "31": "MANUAL  FASE 31 HERRAMIENTAS DE DESARRO.md",
+    "32": "MANUAL  FASE 32 AGENTE DE CODIFICACIÓN.md",
+}
+ANEXOS = {
+    "ANEXO-MANUALES": "ANEXO-MANUALES.md",
+    "ANEXO_INVENTARIO_ARCHIVOS": "ANEXO_INVENTARIO_ARCHIVOS.md",
+    "MTO": "MANUAL_TESTS_OBLIGATORIOS.md",
+}
+
 # Encabezados: "## 1. VISIÓN", "### 2.4. Enrutador (`router.syn`)",
 # "#### 5.1.1. Reglas de..." y encabezados sin numero ("# REGLAS DE SYNAPSE").
 RE_ENCABEZADO = re.compile(
@@ -141,54 +154,96 @@ def extraer_secciones(texto: str) -> list:
     return secciones
 
 
-def construir_indice() -> dict:
-    """Genera el indice completo de docs/manuales/MANUAL *.md."""
+def _entrada_documento(path: Path, raiz: Path, extra=None) -> dict:
+    """Indexa un documento canonico/alias; falla si no es UTF-8 valido."""
+    texto = path.read_text(encoding="utf-8")
+    datos = {
+        "archivo": path.relative_to(raiz).as_posix(),
+        "sha256": hashlib.sha256(texto.encode("utf-8")).hexdigest()[:16],
+        "secciones": extraer_secciones(texto),
+    }
+    if extra:
+        datos.update(extra)
+    return datos
+
+
+def construir_indice(manuales_dir=None, raiz=None) -> dict:
+    """Genera el indice de manuales, alias temporales y anexos.
+
+    requiere: `manuales_dir` existe o es el directorio canonico del repo.
+    garantiza: devuelve version 2 con `manuales` (numerados + alias) y
+      `anexos`; lee en UTF-8 estricto y no escribe nada.
+    """
+    base = Path(manuales_dir) if manuales_dir else MANUALES_DIR
+    root = Path(raiz) if raiz else base.parent.parent
     manuales = {}
-    for path in sorted(MANUALES_DIR.glob("MANUAL *.md")):
-        m = re.match(r"MANUAL\s+(\d+)\.md$", path.name)
+
+    for path in sorted(base.glob("MANUAL *.md")):
+        m = re.match(r"MANUAL (\d+)\.md$", path.name)
         if not m:
             continue
-        num = m.group(1)
-        texto = path.read_text(encoding="utf-8", errors="replace")
-        secciones = extraer_secciones(texto)
-        # La seccion "manual entero" (num "") existe para citas sin §N.
-        manuales[num] = {
-            "archivo": f"docs/manuales/{path.name}",
-            "sha256": hashlib.sha256(texto.encode("utf-8")).hexdigest()[:16],
-            "secciones": secciones,
-        }
-    return {"version": 1, "manuales": manuales}
+        manuales[m.group(1)] = _entrada_documento(path, root)
+
+    for num, nombre in sorted(ALIAS_MANUALES.items()):
+        if num in manuales:
+            continue
+        path = base / nombre
+        if path.is_file():
+            manuales[num] = _entrada_documento(
+                path, root,
+                {"alias": True, "nombre_canonico": f"MANUAL {num}.md"})
+
+    anexos = {}
+    for clave, nombre in sorted(ANEXOS.items()):
+        path = base / nombre
+        if path.is_file():
+            anexos[clave] = _entrada_documento(path, root)
+
+    return {"version": 2, "manuales": manuales, "anexos": anexos}
 
 
-def guardar_indice(indice: dict) -> Path:
-    INDICE.write_text(json.dumps(indice, ensure_ascii=False, indent=1),
-                      encoding="utf-8")
-    return INDICE
+def documentos_del_indice(indice: dict):
+    """Itera (tipo, clave, datos) de manuales y anexos indexados."""
+    for clave, datos in indice.get("manuales", {}).items():
+        yield "manual", clave, datos
+    for clave, datos in indice.get("anexos", {}).items():
+        yield "anexo", clave, datos
 
 
-def cargar_indice() -> dict:
-    """Carga el indice; si no existe, lo construye en memoria (nunca falla)."""
-    if INDICE.exists():
+def guardar_indice(indice: dict, destino=None) -> Path:
+    path = Path(destino) if destino else INDICE
+    path.write_text(json.dumps(indice, ensure_ascii=False, indent=1),
+                    encoding="utf-8")
+    return path
+
+
+def cargar_indice(destino=None, manuales_dir=None, raiz=None) -> dict:
+    """Carga el indice; si no existe o esta roto, lo construye en memoria."""
+    path = Path(destino) if destino else INDICE
+    if path.exists():
         try:
-            return json.loads(INDICE.read_text(encoding="utf-8"))
+            return json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             pass
-    return construir_indice()
+    return construir_indice(manuales_dir=manuales_dir, raiz=raiz)
 
 
 def buscar_seccion(indice: dict, manual: str, seccion: str) -> dict:
-    """Devuelve la seccion indexada o None.
+    """Devuelve la seccion indexada (manual o anexo) o None.
 
     `seccion` vacia = seccion contenedora del manual entero? No existe como
     tal: devuelve None y el llamador decide (para el control nuevo, una cita
     sin §N NO es admisible: obliga a seccion puntual).
     """
-    datos = indice.get("manuales", {}).get(str(manual))
-    if not datos or not seccion:
+    if not seccion:
         return None
-    for s in datos["secciones"]:
-        if s["num"] == str(seccion):
-            return s
+    for grupo in ("manuales", "anexos"):
+        datos = indice.get(grupo, {}).get(str(manual))
+        if not datos:
+            continue
+        for s in datos["secciones"]:
+            if s["num"] == str(seccion):
+                return s
     return None
 
 
@@ -271,9 +326,20 @@ def main():
         return 0
 
     indice = cargar_indice()
-    for num, datos in sorted(indice["manuales"].items(), key=lambda kv: int(kv[0])):
+
+    def _orden(kv):
+        clave = kv[0]
+        return (0, int(clave), "") if clave.isdigit() else (1, 0, clave)
+
+    for num, datos in sorted(indice["manuales"].items(), key=_orden):
         oraciones = sum(len(s["oraciones"]) for s in datos["secciones"])
-        print(f"Manual {num}: {len(datos['secciones'])} secciones, "
+        etiqueta = "Manual" if num.isdigit() else "Documento"
+        alias = " (alias temporal)" if datos.get("alias") else ""
+        print(f"{etiqueta} {num}{alias}: {len(datos['secciones'])} secciones, "
+              f"{oraciones} oraciones citables, sha={datos['sha256']}")
+    for clave, datos in sorted(indice.get("anexos", {}).items()):
+        oraciones = sum(len(s["oraciones"]) for s in datos["secciones"])
+        print(f"Anexo {clave}: {len(datos['secciones'])} secciones, "
               f"{oraciones} oraciones citables, sha={datos['sha256']}")
     return 0
 

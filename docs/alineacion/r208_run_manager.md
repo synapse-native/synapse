@@ -1,4 +1,4 @@
-﻿# Expediente de alineación r208_run_manager
+# Expediente de alineación r208_run_manager
 
 base: HEAD  # commit sobre el que se leyó el manual
 cambio_hash: 10cc67173f42e68a

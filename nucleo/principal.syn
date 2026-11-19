@@ -761,7 +761,14 @@ funcion generar_etapa(ruta: cadena, salida: cadena, modo_validar: entero) -> Res
         // cumple Manual 8 §4.1 (ME r236, H-R234-1): el comando documentado
         // `synapse <archivo>` sigue compilando a binario; solo cambia que el
         // compilador C se localiza por cercania al ejecutable en vez del PATH.
-        asm("    snprintf(_cmd, 4096, \"gcc %s %s -fno-ident -Wl,--no-insert-timestamp -Wl,--stack,8388608 -Wl,--gc-sections -I\\\"%s\\\" \\\"synapse_unity.c\\\" \\\"%s\\\\synapse_rt.c\\\"\", _gcc_opt, _gcc_flags, _rt_dir, _rt_dir);")
+        // cumple Manual 1 §6 (ME r270, H-R252-4): en win32 el enlace nativo usa
+        // -static para igualar la emision S1 y no depender de DLLs del toolchain.
+        // cumple Manual 9 §6.2 (ME r270): el enlace nativo se sella con S2==S3.
+        asm("    const char* _static_flag = \"\";")
+        asm("#ifdef _WIN32")
+        asm("    _static_flag = \"-static \";")
+        asm("#endif")
+        asm("    snprintf(_cmd, 4096, \"gcc %s %s %s-fno-ident -Wl,--no-insert-timestamp -Wl,--stack,8388608 -Wl,--gc-sections -I\\\"%s\\\" \\\"synapse_unity.c\\\" \\\"%s\\\\synapse_rt.c\\\"\", _gcc_opt, _gcc_flags, _static_flag, _rt_dir, _rt_dir);")
         asm("    {")
         asm("        char _rc_dir[1200]; snprintf(_rc_dir, 1200, \"%s\\\\runtime\\\\core\\\\\", _rt_dir);")
         asm("#ifdef _WIN32")

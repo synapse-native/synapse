@@ -244,7 +244,7 @@ HEAD `c341fc5` (R237). Leyenda: **HECHO** (entregado con reporte y oráculo),
 
 | ME | Estado | Evidencia |
 |---|---|---|
-| `r252_bootstrap_parity` | PARCIAL (`8aaab43`) | La paridad de nodos ya estaba cubierta (`tests/auditoria/test_paridad_nodos.py` 4/4: manual ↔ `parser_constantes.syn` ↔ `ast_nodos.h`). El sello S2==S3 ahora es un oráculo propio con modos `--artefactos`/`--construir`/`--estricto`, invocado por `build.py` y por el job `bootstrap` de CI. **Sin embargo el sello FALLA (H-R252-1):** etapa 2 (S1 modular, `-static`) y etapa 3 (S2 unity, sin `-static`) difieren en 480 KB, así que el bootstrap no cierra; resolución asignada al ME `r252b_emision_paridad` en `docs/plan_maestro_deudas.md` |
+| `r252_bootstrap_parity` | RESUELTO por `r270` (2026-11-19) | La paridad de nodos ya estaba cubierta (`tests/auditoria/test_paridad_nodos.py` 4/4). El sello S2==S3 es un oráculo propio con modos `--artefactos`/`--construir`/`--estricto`, invocado por `build.py` y el job `bootstrap` de CI. H-R252-1 fue un artefacto stale (etapa 1 rotulada como 2); H-R252-4 se cerró con `-static` en el enlace nativo win32. S2=S3 `30C07EF61C5F25A7…` (2.559.482 B). |
 | `r253_contracts_audit` | PARCIAL | `verificar_alineacion.py` → 0 brechas; falta la auditoría «0 funciones públicas sin `requiere`/`garantiza`» con oráculo propio |
 
 #### MEs entregados fuera de esta cartera
@@ -269,6 +269,36 @@ ids libres: **r219, r240-r253 y r218 ya no están disponibles** (colisión).
 | 7 | E2E `llama-server` + benchmark medido | ❌ (r245/r246) |
 | 8 | `doctor` + instalador en máquina limpia, release firmado y verificado | ❌ parcial (VM limpia y verificación end-to-end pendientes) |
 | 9 | `verificar_alineacion` 0 brechas, `contrastar` verde, 0 deudas sin resolución | ⚠️ primera mitad cumplida; quedan deudas abiertas en `docs/plan_maestro_deudas.md` |
+
+### 3.2 Frente H — Deuda de ecosistema, manuales y encoding (r270–r284)
+
+Cartera nacida de la auditoría crítica del 2026-11-18. No renumera los MEs
+existentes: usa ids libres r270–r284 y absorbe `r252b_emision_paridad` en
+`r270`. El detalle ejecutable, los requisitos literales y los oráculos están
+en `docs/gobernancia/PLAN_MEJORAS_ECOSISTEMA_R270_R284.md`; la política de
+manutención de la ley está en `docs/gobernancia/POLITICA_MANUALES.md`.
+
+| ME | Prioridad | Objetivo | Manual | Criterio de cierre | Depende |
+|---|---|---|---|---|---|
+| `r270_bootstrap_emision_paridad` | P0 · **CERRADO 2026-11-19** | Unificar la emisión S1/S2 y cerrar S2==S3 | Manual 1 §6; Manual 9 §6.1, §6.2 | Bootstrap 3 etapas con diff 0; oráculo `--estricto`; sin binarios stale | — |
+| `r271_manuales_canonicos` | P0 · **PARCIAL** | Índice completo, nombres canónicos y gate de citas/encoding | Manual 2 §1.2; Manual 1 §7.4; Manual 9 §6.2 | `verificar_manuales.py --todo` rc=0; Manual 31/32 y anexos indexados o con alias aprobado; renombres D-MAN pendientes | D-MAN-1/2 |
+| `r272_docs_encoding` | P0 | Reparar corrupción documental y normalizar UTF-8 | Manual 2 §1.2; Manual 1 §7.4 | Auditoría y docs con 0 U+FFFD/C1/doble codificación; 1.275 líneas conservadas | r271 |
+| `r273_installer_modelo_grande` | P0 | Instalador con GGUF de 873 MB sin timeout falso | Manual 9 §5.3, §5.5, §6.1; Manual 7 §6.1 | Verificación por streaming/caché; test existente pasa o deuda ambiental medida | — |
+| `r274_gates_independientes` | P0 | Gates fuera del build, con oráculos propios y mutación | Manual 9 §6.2, §6.1; Manual 1 §7.4 | Romper el sello hace fallar el gate; CI sin `--sin-oraculos` | r270 |
+| `r275_opensyn_e2e_bench` | P1 | E2E real local + benchmark medido | Manual 7 §7.2, §7.3, §8; Manual 9 §5.5 | Chat+tools+validación contra `llama-server`; latencia/tok-s/VRAM medidos | r273 |
+| `r276_multiplataforma_release` | P1 | Instalación limpia Windows/Linux/macOS y release firmado | Manual 9 §2.4, §2.5, §6.1–§6.3 | Matriz real ejecutada; firma/checksum y smoke por plataforma | r270, r273 |
+| `r277_contracts_audit` | P1 | 0 funciones públicas sin `requiere`/`garantiza` | Manual 2 §5.1, §12 | Escáner + tests de contrato; excepciones FFI justificadas | — |
+| `r278_ide_debugger` | P1 | Completar VS Code, comandos IA y time-travel | Manual 8 §2.3, §3.1–§3.5, §1.4, §5.1 | E2E de extensión y debugger sin skips | r275 |
+| `r279_suite_rapida` | P1 | Suite determinista y acotada | Manual 1 §7.2; Manual 9 §6.2 | Mismos passed/skipped/failed con tiempos medidos y 0 skips nuevos | r273, r274 |
+| `r280_codigo_encoding` | P1 | Limpiar U+FFFD/C1 en runtime/std/fuentes generadas | Manual 2 §1.2; Manual 1 §7.4 | Scan repo-wide 0; `build.py` rc=0; `generator.syn` regenerado | r271 |
+| `r281_d9_dead_code` | P2 | D-9, duplicados y código muerto | Manual 1 §7.4; Manual 2 §12 | Módulos >1200 registrados; duplicados 0; tests verdes | r279 |
+| `r282_docs_informativos` | P2 | Alinear book2/reportes con la ley | Manual 1 §7.4; Manual 9 §6.1 | Cabecera informativa, enlaces resolubles, sin contradicciones | r271 |
+| `r283_manual_versioning` | P2 | Changelog, semver y deprecación de manuales | Manual 1 §7.4; Manual 9 §6.1 | Cambio sin changelog falla el gate; alias/índice v2 | r271, r282 |
+| `r284_observabilidad_local` | P2 | Diagnóstico local opt-in, cero red | Manual 1 §5.7; Manual 7 §7.3; Manual 32 §1.3 | Opt-in por defecto off; test de no-salida; redacción | — |
+
+Reglas del frente H: nada de nube, telemetría, MCP, multi-proveedor ni GUI
+externa (Manual 1 §5.7; Manual 32 §1.3); tests existentes inmutables salvo
+aprobación; cada ME con su `plan_ME`, expediente, oráculo y reporte.
 
 ---
 

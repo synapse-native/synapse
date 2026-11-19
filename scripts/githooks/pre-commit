@@ -232,9 +232,28 @@ fi
 ME_ID=""
 PLAN_ACTIVO=$(echo "$PLAN_FILES" | head -1)
 if [ -n "$PLAN_ACTIVO" ]; then
-    ME_ID=$(basename "$PLAN_ACTIVO" .md | sed 's/^plan_ME_//')
-    echo "  ME activo: $ME_ID (expediente docs/alineacion/$ME_ID.md)"
-    ALINEACION_FLAGS="$ALINEACION_FLAGS --me $ME_ID"
+    PLAN_COUNT=$(echo "$PLAN_FILES" | grep -c . || true)
+    if [ "$PLAN_COUNT" -eq 1 ]; then
+        ME_ID=$(basename "$PLAN_ACTIVO" .md | sed 's/^plan_ME_//')
+    else
+        # Multi-ME: elegir el plan cuyo expediente mencione un archivo de
+        # producción staged (el primero alfabético puede ser otro ME).
+        for pf in $PLAN_FILES; do
+            CANDIDATO=$(basename "$pf" .md | sed 's/^plan_ME_//')
+            EXPEDIENTE="$RAIZ/docs/alineacion/$CANDIDATO.md"
+            [ -f "$EXPEDIENTE" ] || continue
+            for prod in $PROD_FILES; do
+                if grep -qF "$prod" "$EXPEDIENTE"; then
+                    ME_ID="$CANDIDATO"
+                    break 2
+                fi
+            done
+        done
+    fi
+    if [ -n "$ME_ID" ]; then
+        echo "  ME activo: $ME_ID (expediente docs/alineacion/$ME_ID.md)"
+        ALINEACION_FLAGS="$ALINEACION_FLAGS --me $ME_ID"
+    fi
 fi
 if (cd "$RAIZ" && $PYTHON auditoria/alineacion.py $ALINEACION_FLAGS); then
     echo "✅ Alineación manual↔código verificada (modo $ALINEACION_MODO)"
@@ -258,6 +277,16 @@ if ! (cd "$RAIZ" && $PYTHON auditoria/auditar_calidad_tests.py --solo-mto); then
     exit 1
 fi
 echo "✅ MTO verificado"
+
+# --- Gate de integridad de manuales (encoding, nombres, indice, citas) ---
+# cumple Manual 2 §1.2 + Manual 1 §7.4 + Manual 9 §6.2.
+echo "── Verificando integridad de manuales (auditoria/verificar_manuales.py) ──"
+if ! (cd "$RAIZ" && $PYTHON auditoria/verificar_manuales.py --todo); then
+    echo "❌ MANUALES INVÁLIDOS — commit bloqueado" >&2
+    echo "   Corrige encoding/nombres/índice/citas o registra la decisión D-MAN." >&2
+    exit 1
+fi
+echo "✅ Manuales verificados"
 
 # --- Regla 1: gate de lectura previa de manuales (mapa_manuales.md) ---
 echo "── Gate de lectura previa (regla 1) ──"

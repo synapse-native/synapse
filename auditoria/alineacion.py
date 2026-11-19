@@ -158,7 +158,7 @@ def indice_desactualizado(indice):
     Sin esto, validar contra el índice sería validar contra un manual viejo:
     el agente podría "citar" una sección que ya no dice eso.
     """
-    for datos in indice.get("manuales", {}).values():
+    for _tipo, _clave, datos in im.documentos_del_indice(indice):
         path = RAIZ / datos.get("archivo", "")
         if not path.exists():
             return True

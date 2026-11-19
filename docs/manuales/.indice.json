@@ -1,5 +1,5 @@
 {
- "version": 1,
+ "version": 2,
  "manuales": {
   "1": {
    "archivo": "docs/manuales/MANUAL 1.md",
@@ -8923,6 +8923,3782 @@
        "id": "788b40e222",
        "linea": 595,
        "texto": "| **Herramientas nativas (Fase 31)** | `synapse fmt --check` | 0 errores de formato en el código fuente del compil"
+      }
+     ]
+    }
+   ]
+  },
+  "31": {
+   "archivo": "docs/manuales/MANUAL  FASE 31 HERRAMIENTAS DE DESARRO.md",
+   "sha256": "6d4fe7525147da40",
+   "secciones": [
+    {
+     "num": "1",
+     "titulo": "VISIÓN GENERAL DE LA FASE 31",
+     "linea": 9,
+     "oraciones": []
+    },
+    {
+     "num": "1.1",
+     "titulo": "Objetivo",
+     "linea": 11,
+     "oraciones": [
+      {
+       "id": "3c81f4daec",
+       "linea": 13,
+       "texto": "Implementar el conjunto completo de herramientas de desarrollo (package manager, testing, linting, formateo, CI/CD) de forma nativa en Synapse/Syquex, eliminando toda dependencia de Python en la cadena de desarrollo."
+      }
+     ]
+    },
+    {
+     "num": "1.2",
+     "titulo": "Filosofía",
+     "linea": 15,
+     "oraciones": [
+      {
+       "id": "e33f9e7aa2",
+       "linea": 17,
+       "texto": "Las herramientas nativas deben ser:"
+      },
+      {
+       "id": "45e4ff893f",
+       "linea": 18,
+       "texto": "**Compiladas:** Ejecutarse como binarios autocontenidos (`synapse.exe`)."
+      },
+      {
+       "id": "df05cdcfaf",
+       "linea": 19,
+       "texto": "**Deterministas:** Producir la misma salida en cualquier máquina."
+      },
+      {
+       "id": "333bcf093b",
+       "linea": 20,
+       "texto": "**Rápidas:** Procesar el AST directamente, sin overhead de parsing repetido."
+      },
+      {
+       "id": "114793c6fa",
+       "linea": 21,
+       "texto": "**Integradas:** Usar el mismo AST canónico (`SemNodo[]`) que el compilador."
+      }
+     ]
+    },
+    {
+     "num": "1.3",
+     "titulo": "Módulos que cubre",
+     "linea": 23,
+     "oraciones": [
+      {
+       "id": "e16f778194",
+       "linea": 25,
+       "texto": "| Módulo | Descripción | Comando |"
+      },
+      {
+       "id": "7046d95492",
+       "linea": 26,
+       "texto": "|--------|-------------|---------|"
+      },
+      {
+       "id": "2142b49fe7",
+       "linea": 27,
+       "texto": "| Aislamiento de Workspaces | Axon gestiona dependencias por proyecto | `synapse fetch` |"
+      },
+      {
+       "id": "38c17ce274",
+       "linea": 28,
+       "texto": "| Testing Nativo | `lib/pruebas.syq` con sobrecarga estática | `synapse test` |"
+      },
+      {
+       "id": "1f41a4992a",
+       "linea": 29,
+       "texto": "| Linter Nativo | Procesa el AST unificado para emitir advertencias | `synapse lint` |"
+      },
+      {
+       "id": "e08622b62b",
+       "linea": 30,
+       "texto": "| Formateador Nativo | Reescribe el código fuente según reglas de estilo | `synapse fmt` |"
+      },
+      {
+       "id": "40df4f848f",
+       "linea": 31,
+       "texto": "| CI/CD Reporting | Genera reportes en formatos estándar | `synapse test --junit` |"
+      }
+     ]
+    },
+    {
+     "num": "2",
+     "titulo": "MÓDULO 31.1: AISLAMIENTO DE WORKSPACES EN AXON",
+     "linea": 35,
+     "oraciones": []
+    },
+    {
+     "num": "2.1",
+     "titulo": "Problema Actual",
+     "linea": 37,
+     "oraciones": [
+      {
+       "id": "3ea669d6e9",
+       "linea": 39,
+       "texto": "Axon actualmente gestiona dependencias en un caché global (`~/.axon/cache/`)."
+      },
+      {
+       "id": "46fe0b9cbf",
+       "linea": 39,
+       "texto": "Esto provoca colisiones cuando múltiples proyectos requieren versiones divergentes de la misma sublibrería C."
+      }
+     ]
+    },
+    {
+     "num": "2.2",
+     "titulo": "Solución: Workspace‑Local Cache",
+     "linea": 41,
+     "oraciones": [
+      {
+       "id": "6dd07261fa",
+       "linea": 43,
+       "texto": "Cada proyecto tiene su propio directorio de caché y su propio `axon.lock`."
+      },
+      {
+       "id": "09d763fbac",
+       "linea": 43,
+       "texto": "Las dependencias se resuelven localmente por proyecto, no globalmente."
+      },
+      {
+       "id": "f55da620b1",
+       "linea": 58,
+       "texto": "**Comportamiento de `synapse fetch`:**"
+      },
+      {
+       "id": "eaa65e6ae3",
+       "linea": 59,
+       "texto": "Lee `axon.toml` y resuelve dependencias (como antes)."
+      },
+      {
+       "id": "eb3a24cfca",
+       "linea": 60,
+       "texto": "Descarga las dependencias en `.axon/cache/` (no en `~/.axon/cache/`)."
+      },
+      {
+       "id": "dbb7d11501",
+       "linea": 61,
+       "texto": "Escribe el lockfile con los hashes SHA‑256 de las dependencias específicas del proyecto."
+      },
+      {
+       "id": "2030ad133c",
+       "linea": 62,
+       "texto": "Si el proyecto tiene un `axon.lock` existente, usa las versiones lockeadas (offline‑first)."
+      }
+     ]
+    },
+    {
+     "num": "2.3",
+     "titulo": "Cambios en `axon/axon_rt.c`",
+     "linea": 64,
+     "oraciones": []
+    },
+    {
+     "num": "2.4",
+     "titulo": "Cambios en `axon/axon.toml` (Esquema)",
+     "linea": 73,
+     "oraciones": []
+    },
+    {
+     "num": "2.5",
+     "titulo": "Criterios de Aceptación",
+     "linea": 85,
+     "oraciones": [
+      {
+       "id": "fc123c5c17",
+       "linea": 87,
+       "texto": "`synapse fetch` en dos proyectos diferentes descarga las mismas dependencias en directorios separados."
+      },
+      {
+       "id": "7ccaed2ec8",
+       "linea": 88,
+       "texto": "`synapse fetch` en un proyecto con lockfile no descarga nada si las dependencias ya están en `.axon/cache/`."
+      },
+      {
+       "id": "9767d2903e",
+       "linea": 89,
+       "texto": "El lockfile (`axon.lock`) registra las dependencias con sus hashes SHA‑256."
+      }
+     ]
+    },
+    {
+     "num": "3",
+     "titulo": "MÓDULO 31.2: TESTING NATIVO SIN GENÉRICOS",
+     "linea": 93,
+     "oraciones": []
+    },
+    {
+     "num": "3.1",
+     "titulo": "Problema Actual",
+     "linea": 95,
+     "oraciones": [
+      {
+       "id": "7a8cc881c3",
+       "linea": 97,
+       "texto": "El Manual 7 especifica `assert_eq<T>` con genéricos, pero el sistema de tipos Hindley‑Milner aún no soporta genéricos completos en todas las fases del bootstrap."
+      },
+      {
+       "id": "7198daf5e4",
+       "linea": 97,
+       "texto": "Esto bloquea la implementación del testing nativo."
+      }
+     ]
+    },
+    {
+     "num": "3.2",
+     "titulo": "Solución: Sobrecarga Estática Explícita",
+     "linea": 99,
+     "oraciones": [
+      {
+       "id": "54369e84e9",
+       "linea": 101,
+       "texto": "Se implementa `lib/pruebas.syq` con sobrecarga estática explícita para tipos primitivos, evitando la dependencia de genéricos."
+      }
+     ]
+    },
+    {
+     "num": "3.3",
+     "titulo": "Modo `--junit` y `--coverage`",
+     "linea": 166,
+     "oraciones": [
+      {
+       "id": "8058a412a6",
+       "linea": 168,
+       "texto": "El CLI `synapse test` se extiende con dos flags adicionales:"
+      },
+      {
+       "id": "b0d8d31e6a",
+       "linea": 170,
+       "texto": "| Flag | Descripción | Salida |"
+      },
+      {
+       "id": "c8a2d0c2f5",
+       "linea": 171,
+       "texto": "|------|-------------|--------|"
+      },
+      {
+       "id": "9493f281d2",
+       "linea": 172,
+       "texto": "| `--junit` | Genera reporte JUnit XML | `test-results.xml` |"
+      },
+      {
+       "id": "db30f02717",
+       "linea": 173,
+       "texto": "| `--coverage` | Genera informe de cobertura en HTML | `coverage.html` |"
+      },
+      {
+       "id": "0db17eed7b",
+       "linea": 174,
+       "texto": "| `--json` | Genera reporte en JSON | `test-results.json` |"
+      }
+     ]
+    },
+    {
+     "num": "3.4",
+     "titulo": "Criterios de Aceptación",
+     "linea": 176,
+     "oraciones": [
+      {
+       "id": "3868d7242b",
+       "linea": 178,
+       "texto": "`lib/pruebas.syq` existe y contiene las funciones de aserción sobrecargadas."
+      },
+      {
+       "id": "557b793cfd",
+       "linea": 179,
+       "texto": "`synapse test` ejecuta todas las funciones `test_*` en los archivos `.syq`."
+      },
+      {
+       "id": "35c6793d6a",
+       "linea": 180,
+       "texto": "`synapse test --junit` genera un archivo `test-results.xml` válido."
+      },
+      {
+       "id": "fbc98f06bd",
+       "linea": 181,
+       "texto": "`synapse test --coverage` genera un informe de cobertura con los módulos cubiertos."
+      },
+      {
+       "id": "55e30ed33a",
+       "linea": 182,
+       "texto": "Todos los tests originales (184+) siguen pasando."
+      }
+     ]
+    },
+    {
+     "num": "4",
+     "titulo": "MÓDULO 31.3: LINTER NATIVO (`synapse lint`)",
+     "linea": 186,
+     "oraciones": []
+    },
+    {
+     "num": "4.1",
+     "titulo": "Problema Actual",
+     "linea": 188,
+     "oraciones": [
+      {
+       "id": "ab7fb68ea1",
+       "linea": 190,
+       "texto": "No existe un linter nativo para Synapse/Syquex."
+      },
+      {
+       "id": "d162cd5f2f",
+       "linea": 190,
+       "texto": "El formateo y linting dependen de herramientas externas (Python)."
+      }
+     ]
+    },
+    {
+     "num": "4.2",
+     "titulo": "Solución: Linter sobre el AST Unificado",
+     "linea": 192,
+     "oraciones": [
+      {
+       "id": "8684b711a8",
+       "linea": 194,
+       "texto": "`synapse lint` procesa el AST canónico (`SemNodo[]`) y emite advertencias sobre código que no cumpla con las guías de estilo."
+      }
+     ]
+    },
+    {
+     "num": "4.3",
+     "titulo": "Reglas a Implementar (Mínimo Viable)",
+     "linea": 237,
+     "oraciones": [
+      {
+       "id": "2e07b8a6ae",
+       "linea": 239,
+       "texto": "| Regla | Tipo | Código de error |"
+      },
+      {
+       "id": "729defe275",
+       "linea": 240,
+       "texto": "|-------|------|-----------------|"
+      },
+      {
+       "id": "2aecb9e780",
+       "linea": 241,
+       "texto": "| Variables no utilizadas | Estilo | `WARN_LINT_UNUSED_VAR` |"
+      },
+      {
+       "id": "4474e925dd",
+       "linea": 242,
+       "texto": "| Funciones sin `requiere`/`garantiza` | Seguridad | `WARN_LINT_NO_CONTRACT` |"
+      },
+      {
+       "id": "7dfebbae64",
+       "linea": 243,
+       "texto": "| Indentación incorrecta | Estilo | `WARN_LINT_INDENT` |"
+      },
+      {
+       "id": "55ab220247",
+       "linea": 244,
+       "texto": "| Nombres no estándar (snake_case) | Estilo | `WARN_LINT_NAMING` |"
+      },
+      {
+       "id": "d61ef32007",
+       "linea": 245,
+       "texto": "| Código muerto (bloques inaccesibles) | Rendimiento | `WARN_LINT_DEAD_CODE` |"
+      }
+     ]
+    },
+    {
+     "num": "4.4",
+     "titulo": "Criterios de Aceptación",
+     "linea": 247,
+     "oraciones": [
+      {
+       "id": "7420840d75",
+       "linea": 249,
+       "texto": "`synapse lint` analiza archivos `.syn` y `.syq` sin errores."
+      },
+      {
+       "id": "b280d63758",
+       "linea": 250,
+       "texto": "Emite advertencias con ubicación exacta (archivo, línea, columna)."
+      },
+      {
+       "id": "52d8a09980",
+       "linea": 251,
+       "texto": "`synapse lint --fix` corrige automáticamente los errores de estilo (indentación, espacios)."
+      },
+      {
+       "id": "c2e23eb623",
+       "linea": 252,
+       "texto": "`synapse lint --check` retorna código de salida 1 si hay advertencias."
+      }
+     ]
+    },
+    {
+     "num": "5",
+     "titulo": "MÓDULO 31.4: FORMATEADOR NATIVO (`synapse fmt`)",
+     "linea": 256,
+     "oraciones": []
+    },
+    {
+     "num": "5.1",
+     "titulo": "Problema Actual",
+     "linea": 258,
+     "oraciones": [
+      {
+       "id": "c45782447f",
+       "linea": 260,
+       "texto": "No existe un formateador nativo para Synapse/Syquex."
+      },
+      {
+       "id": "55c166b25d",
+       "linea": 260,
+       "texto": "Dependencia de herramientas externas."
+      }
+     ]
+    },
+    {
+     "num": "5.2",
+     "titulo": "Solución: Formateador sobre el AST Unificado",
+     "linea": 262,
+     "oraciones": [
+      {
+       "id": "1a366824bd",
+       "linea": 264,
+       "texto": "`synapse fmt` reescribe el código fuente según las reglas de estilo (indentación de 4 espacios, espacios alrededor de operadores, etc.)."
+      },
+      {
+       "id": "03444cdc55",
+       "linea": 271,
+       "texto": "**Archivo:** `nucleo/formatter.syn`"
+      }
+     ]
+    },
+    {
+     "num": "5.3",
+     "titulo": "Reglas de Estilo (Normativas)",
+     "linea": 288,
+     "oraciones": [
+      {
+       "id": "438cc9c9c2",
+       "linea": 292,
+       "texto": "| Indentación | 4 espacios (prohibido tabs) |"
+      },
+      {
+       "id": "d6da521ee9",
+       "linea": 293,
+       "texto": "| Espacios alrededor de operadores | Sí (ej. `a + b` no `a+b`) |"
+      },
+      {
+       "id": "175da0e494",
+       "linea": 294,
+       "texto": "| Llaves de bloque | No se usan (indentación) |"
+      },
+      {
+       "id": "b5218ea8d6",
+       "linea": 295,
+       "texto": "| Comas | Un espacio después de coma (ej. `funcion(a, b)` no `funcion(a,b)`) |"
+      },
+      {
+       "id": "bc6f25d835",
+       "linea": 296,
+       "texto": "| Líneas vacías | Entre funciones, entre secciones de módulo |"
+      }
+     ]
+    },
+    {
+     "num": "5.4",
+     "titulo": "Criterios de Aceptación",
+     "linea": 298,
+     "oraciones": [
+      {
+       "id": "e1bca46727",
+       "linea": 300,
+       "texto": "`synapse fmt` reescribe el archivo en el lugar (sin cambios si ya está formateado)."
+      },
+      {
+       "id": "b634b0c7bb",
+       "linea": 301,
+       "texto": "`synapse fmt --check` retorna código de salida 1 si el archivo no está formateado."
+      },
+      {
+       "id": "fab581834e",
+       "linea": 302,
+       "texto": "`synapse fmt --dry-run` muestra los cambios sin escribir en disco."
+      }
+     ]
+    },
+    {
+     "num": "6",
+     "titulo": "MÓDULO 31.5: CI/CD REPORTING MEJORADO",
+     "linea": 306,
+     "oraciones": []
+    },
+    {
+     "num": "6.1",
+     "titulo": "Problema Actual",
+     "linea": 308,
+     "oraciones": [
+      {
+       "id": "ec6c947802",
+       "linea": 310,
+       "texto": "`synapse test` solo imprime en consola."
+      },
+      {
+       "id": "0296eb0e0e",
+       "linea": 310,
+       "texto": "No se integra con sistemas de CI/CD (GitHub Actions, Jenkins, etc.)."
+      }
+     ]
+    },
+    {
+     "num": "6.2",
+     "titulo": "Solución: Generación de Reportes Estándar",
+     "linea": 312,
+     "oraciones": [
+      {
+       "id": "72e3fac4fe",
+       "linea": 314,
+       "texto": "Se extiende `synapse test` con flags adicionales para generar reportes en formatos estándar."
+      }
+     ]
+    },
+    {
+     "num": "6.3",
+     "titulo": "Implementación en `nucleo/principal.syn`",
+     "linea": 347,
+     "oraciones": []
+    },
+    {
+     "num": "6.4",
+     "titulo": "Criterios de Aceptación",
+     "linea": 375,
+     "oraciones": [
+      {
+       "id": "51d7e1eb58",
+       "linea": 377,
+       "texto": "`synapse test --junit` genera un archivo `test-results.xml` válido para JUnit."
+      },
+      {
+       "id": "1156841beb",
+       "linea": 378,
+       "texto": "`synapse test --coverage` genera un informe HTML con cobertura de código."
+      },
+      {
+       "id": "06e34a7570",
+       "linea": 379,
+       "texto": "`synapse test --json` genera un archivo JSON con los resultados."
+      }
+     ]
+    },
+    {
+     "num": "7",
+     "titulo": "INTEGRACIÓN CON EL ROADMAP",
+     "linea": 383,
+     "oraciones": []
+    },
+    {
+     "num": "7.1",
+     "titulo": "Dependencias",
+     "linea": 385,
+     "oraciones": [
+      {
+       "id": "02e4097816",
+       "linea": 387,
+       "texto": "| Dependencia | Fase | Justificación |"
+      },
+      {
+       "id": "5c978678df",
+       "linea": 388,
+       "texto": "|-------------|------|---------------|"
+      },
+      {
+       "id": "e6a915a46a",
+       "linea": 389,
+       "texto": "| CLI unificado (`synapse`) | Fase 27 | Las herramientas se integran en el CLI |"
+      },
+      {
+       "id": "3a6b1b9234",
+       "linea": 390,
+       "texto": "| `lib/pruebas.syq` | Fase 24.B | Testing nativo depende de la biblioteca estándar |"
+      },
+      {
+       "id": "6ab4de3b61",
+       "linea": 391,
+       "texto": "| AST canónico (`SemNodo[]`) | Fase 22 | Linter y formateador procesan el AST |"
+      },
+      {
+       "id": "15872e9c8d",
+       "linea": 392,
+       "texto": "| Axon (`axon_rt.c`) | Fase 6 | Aislamiento de workspaces |"
+      }
+     ]
+    },
+    {
+     "num": "7.2",
+     "titulo": "Duración Estimada",
+     "linea": 394,
+     "oraciones": [
+      {
+       "id": "80dd932e92",
+       "linea": 398,
+       "texto": "| 31.1 Aislamiento de workspaces (Axon) | 2 |"
+      },
+      {
+       "id": "601999d330",
+       "linea": 399,
+       "texto": "| 31.2 Testing nativo (`lib/pruebas.syq`) | 1 |"
+      },
+      {
+       "id": "ce055b65fa",
+       "linea": 400,
+       "texto": "| 31.3 Linter nativo (`synapse lint`) | 2 |"
+      },
+      {
+       "id": "98b1f2d32f",
+       "linea": 401,
+       "texto": "| 31.4 Formateador nativo (`synapse fmt`) | 2 |"
+      },
+      {
+       "id": "302791dec6",
+       "linea": 402,
+       "texto": "| 31.5 CI/CD reporting mejorado | 1 |"
+      }
+     ]
+    },
+    {
+     "num": "7.3",
+     "titulo": "Hitos de la Fase 31",
+     "linea": 405,
+     "oraciones": [
+      {
+       "id": "fcbc8bcec4",
+       "linea": 407,
+       "texto": "| Hito | Entregable | Mes |"
+      },
+      {
+       "id": "a76de85b74",
+       "linea": 408,
+       "texto": "|------|------------|-----|"
+      },
+      {
+       "id": "e77f4ef6fa",
+       "linea": 409,
+       "texto": "| Hito 31.1 | `synapse fetch` con workspaces aislados | Mes 2 |"
+      },
+      {
+       "id": "166b2e8d42",
+       "linea": 410,
+       "texto": "| Hito 31.2 | `lib/pruebas.syq` y `synapse test` básico | Mes 3 |"
+      },
+      {
+       "id": "e90bc2504f",
+       "linea": 411,
+       "texto": "| Hito 31.3 | `synapse lint` funcional | Mes 5 |"
+      },
+      {
+       "id": "d0bc0f546b",
+       "linea": 412,
+       "texto": "| Hito 31.4 | `synapse fmt` funcional | Mes 7 |"
+      },
+      {
+       "id": "40fad8a655",
+       "linea": 413,
+       "texto": "| Hito 31.5 | `synapse test --junit`, `--coverage`, `--json` | Mes 8 |"
+      }
+     ]
+    },
+    {
+     "num": "8",
+     "titulo": "PRUEBAS OBLIGATORIAS PARA LA FASE 31",
+     "linea": 417,
+     "oraciones": [
+      {
+       "id": "3aba9521c2",
+       "linea": 419,
+       "texto": "| Test | Comando | Criterio |"
+      },
+      {
+       "id": "63ccb37d3b",
+       "linea": 420,
+       "texto": "|------|---------|----------|"
+      },
+      {
+       "id": "674ac7a5f7",
+       "linea": 421,
+       "texto": "| Aislamiento de workspaces | `pytest tests/axon/test_workspace.py -v` | 100% pass |"
+      },
+      {
+       "id": "005a5279b9",
+       "linea": 422,
+       "texto": "| Testing nativo (`lib/pruebas.syq`) | `pytest tests/syquex/test_pruebas.py -v` | 100% pass |"
+      },
+      {
+       "id": "cf139d0206",
+       "linea": 423,
+       "texto": "| Linter (`synapse lint`) | `pytest tests/nucleo/test_lint.py -v` | 100% pass |"
+      },
+      {
+       "id": "37e598b99c",
+       "linea": 424,
+       "texto": "| Formateador (`synapse fmt`) | `pytest tests/nucleo/test_fmt.py -v` | 100% pass |"
+      },
+      {
+       "id": "56d8f5a4c6",
+       "linea": 425,
+       "texto": "| Reportes JUnit y JSON | `pytest tests/integration/test_reports.py -v` | 100% pass |"
+      },
+      {
+       "id": "53b4782b9b",
+       "linea": 426,
+       "texto": "| Cobertura de código | `pytest tests/integration/test_coverage.py -v` | 100% pass |"
+      }
+     ]
+    },
+    {
+     "num": "9",
+     "titulo": "SIGUIENTES PASOS",
+     "linea": 430,
+     "oraciones": [
+      {
+       "id": "e9ce99ad47",
+       "linea": 432,
+       "texto": "Con la Fase 31 especificada, el siguiente paso es actualizar el ROADMAP.md para incluir esta fase y los hitos asociados."
+      },
+      {
+       "id": "90f43cded8",
+       "linea": 432,
+       "texto": "Luego, se deben modificar los manuales 4, 7, 8 y 9 para añadir referencias a las herramientas nativas cuando corresponda."
+      },
+      {
+       "id": "9c574279e4",
+       "linea": 436,
+       "texto": "*Este manual proporciona la especificación completa de las herramientas de desarrollo nativas del ecosistema."
+      },
+      {
+       "id": "9de2ccba8b",
+       "linea": 436,
+       "texto": "La implementación debe seguir estos lineamientos para eliminar la dependencia de Python y garantizar una experiencia de desarrollo completa y profesional.*"
+      }
+     ]
+    }
+   ],
+   "alias": true,
+   "nombre_canonico": "MANUAL 31.md"
+  },
+  "32": {
+   "archivo": "docs/manuales/MANUAL  FASE 32 AGENTE DE CODIFICACIÓN.md",
+   "sha256": "69cf26d42f94838b",
+   "secciones": [
+    {
+     "num": "1",
+     "titulo": "VISIÓN GENERAL DE LA FASE 32",
+     "linea": 9,
+     "oraciones": []
+    },
+    {
+     "num": "1.1",
+     "titulo": "El Diferenciador Estratégico",
+     "linea": 11,
+     "oraciones": [
+      {
+       "id": "49d16df9fa",
+       "linea": 13,
+       "texto": "OpenCode, Cursor, Claude Code y Codex compiten en velocidad de generación de código."
+      },
+      {
+       "id": "4d4679acc4",
+       "linea": 13,
+       "texto": "Ese eje es un **commodity**: la ejecución técnica (LLM → código) ya está resuelta y todos la tienen."
+      },
+      {
+       "id": "66e93e749f",
+       "linea": 15,
+       "texto": "La ventaja competitiva real está en **la capa de contexto y confianza**:"
+      },
+      {
+       "id": "6d37274fec",
+       "linea": 17,
+       "texto": "| Eje | Competidores | OpenSyn Fase 32 |"
+      },
+      {
+       "id": "dcccc851eb",
+       "linea": 18,
+       "texto": "|-----|--------------|-----------------|"
+      },
+      {
+       "id": "a4e315c7a6",
+       "linea": 19,
+       "texto": "| Velocidad de generación | Optimizado | Importante, pero no crítico |"
+      },
+      {
+       "id": "aa917978e5",
+       "linea": 20,
+       "texto": "| Contexto del sistema | Heurístico (embeddings, grep) | **Determinista desde el AST** |"
+      },
+      {
+       "id": "52e64eb65f",
+       "linea": 21,
+       "texto": "| Análisis de impacto | Aproximado (LLM) | **Exacto (grafo O(V+E))** |"
+      },
+      {
+       "id": "88641684e3",
+       "linea": 22,
+       "texto": "| Memoria entre sesiones | Limitada o nula | **Persistente y cifrada** |"
+      },
+      {
+       "id": "b63e66f4d9",
+       "linea": 23,
+       "texto": "| Verificación del código | Tests + linters externos | **Auto-refutación AOT + grafo de contratos** |"
+      },
+      {
+       "id": "fe5f354dd5",
+       "linea": 24,
+       "texto": "| Privacidad | Cloud con telemetría | **100% local, cero telemetría** |"
+      },
+      {
+       "id": "db4a5e74b0",
+       "linea": 26,
+       "texto": "**La regla de oro de la Fase 32:** ningún competidor puede replicar nuestro grafo de conocimiento porque ninguno controla el AST del compilador."
+      },
+      {
+       "id": "8d641adb40",
+       "linea": 26,
+       "texto": "Esa es nuestra ventaja estructural."
+      }
+     ]
+    },
+    {
+     "num": "1.2",
+     "titulo": "Los Cinco Componentes de la Fase 32",
+     "linea": 28,
+     "oraciones": [
+      {
+       "id": "69f9cd596e",
+       "linea": 30,
+       "texto": "| Componente | Descripción | Archivo principal |"
+      },
+      {
+       "id": "5a4de2851f",
+       "linea": 31,
+       "texto": "|------------|-------------|-------------------|"
+      },
+      {
+       "id": "3c4fdf1b2f",
+       "linea": 32,
+       "texto": "| **32.1 Grafo de Conocimiento** | Construcción de grafo de dependencias y contratos desde `SemNodo[]` | `nucleo/grafo_builder.syn` |"
+      },
+      {
+       "id": "ac48c918c2",
+       "linea": 33,
+       "texto": "| **32.2 Memoria Persistente Cifrada** | Tres capas de memoria (sesión, evolución, proyecto) con cifrado AES-XSalsa20 | `opensyn/memoria.syn` |"
+      },
+      {
+       "id": "b7f58dbc8e",
+       "linea": 34,
+       "texto": "| **32.3 Análisis de Impacto Determinista** | Algoritmos BFS/DFS/Tarjan sobre el grafo, sin LLM | `opensyn/explorer_det.syn`, `opensyn/architect_det.syn` |"
+      },
+      {
+       "id": "a7e647e0a0",
+       "linea": 35,
+       "texto": "| **32.4 Pipeline Multi-Agente Optimizado** | 2-3 inferencias máximo (Coder + Reviewer + Fixer opcional) | `opensyn/orquestador_multi.syn` |"
+      },
+      {
+       "id": "7ff015e46d",
+       "linea": 36,
+       "texto": "| **32.5 Verificación AOT con Auto-Refutación** | Casos límite autogenerados, compilados y ejecutados con timeout | `opensyn/verificacion.syn` + `runtime/core/proceso.c` |"
+      }
+     ]
+    },
+    {
+     "num": "1.3",
+     "titulo": "Alcance Explícitamente Descartado",
+     "linea": 38,
+     "oraciones": [
+      {
+       "id": "41738e09cf",
+       "linea": 40,
+       "texto": "Los siguientes elementos **NO** forman parte de la Fase 32 y se posponen indefinidamente por abrir vectores de ataque innecesarios o no aportar valor significativo:"
+      },
+      {
+       "id": "08135afa02",
+       "linea": 42,
+       "texto": "❌ Sistema de plugins (superficie de ataque)"
+      },
+      {
+       "id": "226e115169",
+       "linea": 43,
+       "texto": "❌ Soporte MCP (integración con herramientas externas)"
+      },
+      {
+       "id": "70c59d9f26",
+       "linea": 44,
+       "texto": "❌ Panel visual de grafo (mejora cosmética, no funcional)"
+      },
+      {
+       "id": "c345963345",
+       "linea": 45,
+       "texto": "❌ App GUI/escritorio (la TUI + extensión VS Code cubren el 90% del uso)"
+      },
+      {
+       "id": "67b9d69499",
+       "linea": 46,
+       "texto": "❌ Cualquier integración cloud, telemetría o gateway externo"
+      },
+      {
+       "id": "1cbcf79d0d",
+       "linea": 48,
+       "texto": "**Duración total de la Fase 32:** 8 meses (reducido de 17 según auditoría técnica)."
+      }
+     ]
+    },
+    {
+     "num": "2",
+     "titulo": "COMPONENTE 32.1: GRAFO DE CONOCIMIENTO",
+     "linea": 52,
+     "oraciones": []
+    },
+    {
+     "num": "2.1",
+     "titulo": "Objetivo",
+     "linea": 54,
+     "oraciones": [
+      {
+       "id": "8040abff6c",
+       "linea": 56,
+       "texto": "Construir un grafo dirigido de dependencias, contratos y relaciones entre todos los nodos del proyecto, **directamente desde el AST canónico (`SemNodo[]`) durante el pipeline del compilador**, sin análisis heurístico ni embeddings."
+      }
+     ]
+    },
+    {
+     "num": "2.2",
+     "titulo": "Ventaja Estructural",
+     "linea": 58,
+     "oraciones": [
+      {
+       "id": "5cf388a039",
+       "linea": 60,
+       "texto": "Al construir el grafo en el compilador:"
+      },
+      {
+       "id": "60cff9437d",
+       "linea": 61,
+       "texto": "**Cero alucinaciones:** El grafo refleja exactamente lo que el compilador ve."
+      },
+      {
+       "id": "5d8f03b43e",
+       "linea": 62,
+       "texto": "**Determinista:** El mismo AST produce el mismo grafo (hash SHA-256 idéntico)."
+      },
+      {
+       "id": "574c9b2dac",
+       "linea": 63,
+       "texto": "**Sin coste adicional:** Se genera durante cualquier compilación, no en un paso separado."
+      }
+     ]
+    },
+    {
+     "num": "2.3",
+     "titulo": "Ubicación en el Pipeline",
+     "linea": 65,
+     "oraciones": []
+    },
+    {
+     "num": "2.4",
+     "titulo": "Estructura del Grafo",
+     "linea": 83,
+     "oraciones": [
+      {
+       "id": "fe51c22460",
+       "linea": 85,
+       "texto": "**Archivo:** `nucleo/grafo_builder.syn`"
+      }
+     ]
+    },
+    {
+     "num": "2.5",
+     "titulo": "Persistencia y Caché",
+     "linea": 253,
+     "oraciones": [
+      {
+       "id": "49844791ce",
+       "linea": 255,
+       "texto": "El grafo se guarda en `~/.synapse/cache/grafo/<hash_ast>.json.gz`."
+      },
+      {
+       "id": "0fd32b810e",
+       "linea": 255,
+       "texto": "Si el AST no cambia (mismo hash), el grafo se reutiliza."
+      }
+     ]
+    },
+    {
+     "num": "2.6",
+     "titulo": "Criterios de Aceptación",
+     "linea": 257,
+     "oraciones": [
+      {
+       "id": "331bf5337a",
+       "linea": 259,
+       "texto": "Construir grafo de un proyecto de 1,000 archivos en < 100 ms."
+      },
+      {
+       "id": "04f3f0ed0d",
+       "linea": 260,
+       "texto": "Grafo es determinista: mismo AST → mismo hash SHA-256."
+      },
+      {
+       "id": "6373c00fc7",
+       "linea": 261,
+       "texto": "Sin fugas de memoria (ASan)."
+      },
+      {
+       "id": "764ca2f47c",
+       "linea": 262,
+       "texto": "Persistencia funciona: cargar grafo cacheado es < 10 ms."
+      }
+     ]
+    },
+    {
+     "num": "3",
+     "titulo": "COMPONENTE 32.2: MEMORIA PERSISTENTE CIFRADA",
+     "linea": 266,
+     "oraciones": []
+    },
+    {
+     "num": "3.1",
+     "titulo": "Objetivo",
+     "linea": 268,
+     "oraciones": [
+      {
+       "id": "a310f2d664",
+       "linea": 270,
+       "texto": "Implementar tres capas de memoria persistente **cifradas en reposo**, usando exclusivamente las primitivas criptográficas del ecosistema (TweetNaCl/XSalsa20-Poly1305), sin dependencias externas."
+      }
+     ]
+    },
+    {
+     "num": "3.2",
+     "titulo": "Las Tres Capas",
+     "linea": 272,
+     "oraciones": [
+      {
+       "id": "21f828edd8",
+       "linea": 274,
+       "texto": "| Capa | Persistencia | Contenido | Cifrado |"
+      },
+      {
+       "id": "992e876ab3",
+       "linea": 275,
+       "texto": "|------|--------------|-----------|---------|"
+      },
+      {
+       "id": "99f1238b4f",
+       "linea": 276,
+       "texto": "| **Sesión** | RAM, volátil | Contexto actual, turnos, referencias | No (efímero) |"
+      },
+      {
+       "id": "60f18cff8e",
+       "linea": 277,
+       "texto": "| **Evolución** | SQLite cifrado | Patrones, fallos, aprendizajes | AES-XSalsa20-Poly1305 |"
+      },
+      {
+       "id": "8688a5c74b",
+       "linea": 278,
+       "texto": "| **Proyecto** | JSON cifrado | Estructura, dependencias, historial | AES-XSalsa20-Poly1305 |"
+      }
+     ]
+    },
+    {
+     "num": "3.3",
+     "titulo": "Derivación de Clave",
+     "linea": 280,
+     "oraciones": [
+      {
+       "id": "8759fdadc4",
+       "linea": 282,
+       "texto": "**Archivo:** `runtime/core/key_derivation.c`"
+      }
+     ]
+    },
+    {
+     "num": "3.4",
+     "titulo": "Estructura de la Memoria Cifrada",
+     "linea": 332,
+     "oraciones": [
+      {
+       "id": "942e451427",
+       "linea": 334,
+       "texto": "**Archivo:** `opensyn/memoria.syn`"
+      }
+     ]
+    },
+    {
+     "num": "3.5",
+     "titulo": "Integración con el Pipeline RAG",
+     "linea": 580,
+     "oraciones": [
+      {
+       "id": "2b5c5071db",
+       "linea": 582,
+       "texto": "**Modificación en `synapse_rag.c`:**"
+      }
+     ]
+    },
+    {
+     "num": "3.6",
+     "titulo": "Ciclo de Feedback Automático",
+     "linea": 627,
+     "oraciones": [
+      {
+       "id": "a1b0e9935c",
+       "linea": 629,
+       "texto": "Cuando el usuario corrige el código generado por OpenSyn:"
+      }
+     ]
+    },
+    {
+     "num": "3.7",
+     "titulo": "Criterios de Aceptación",
+     "linea": 653,
+     "oraciones": [
+      {
+       "id": "b7d548f4d3",
+       "linea": 655,
+       "texto": "`strings ~/.opensyn/memoria.db` no muestra texto legible."
+      },
+      {
+       "id": "9dc5038cf8",
+       "linea": 656,
+       "texto": "La clave nunca se escribe a disco, logs ni archivos temporales."
+      },
+      {
+       "id": "11bda73c7f",
+       "linea": 657,
+       "texto": "El descifrado de 100 entradas tarda < 50 ms (con índice en RAM)."
+      },
+      {
+       "id": "2d21980632",
+       "linea": 658,
+       "texto": "Derivación de clave con Argon2id tarda < 500 ms."
+      },
+      {
+       "id": "dcf6cecd68",
+       "linea": 659,
+       "texto": "Al reiniciar OpenSyn sin passphrase, la memoria no es accesible."
+      }
+     ]
+    },
+    {
+     "num": "4",
+     "titulo": "COMPONENTE 32.3: ANÁLISIS DE IMPACTO DETERMINISTA",
+     "linea": 663,
+     "oraciones": []
+    },
+    {
+     "num": "4.1",
+     "titulo": "Objetivo",
+     "linea": 665,
+     "oraciones": [
+      {
+       "id": "1c428a8553",
+       "linea": 667,
+       "texto": "Implementar el análisis de impacto **sin LLM**, usando algoritmos de teoría de grafos sobre el grafo de conocimiento (32.1)."
+      },
+      {
+       "id": "e108bc48fc",
+       "linea": 667,
+       "texto": "Esto elimina alucinaciones y reduce la latencia de segundos a milisegundos."
+      }
+     ]
+    },
+    {
+     "num": "4.2",
+     "titulo": "Regla Arquitectónica",
+     "linea": 669,
+     "oraciones": [
+      {
+       "id": "2486989397",
+       "linea": 671,
+       "texto": "| Fase del pipeline | Herramienta | Coste |"
+      },
+      {
+       "id": "fac0c3a541",
+       "linea": 672,
+       "texto": "|-------------------|-------------|-------|"
+      },
+      {
+       "id": "85234f7353",
+       "linea": 673,
+       "texto": "| Explorer (encontrar archivos relevantes) | BFS sobre grafo | O(V+E), < 1 ms |"
+      },
+      {
+       "id": "9cafff3e99",
+       "linea": 674,
+       "texto": "| Architect (análisis de impacto) | DFS invertido + Tarjan | O(V+E), < 5 ms |"
+      },
+      {
+       "id": "39cbf26998",
+       "linea": 675,
+       "texto": "| Coder (escribir código) | LLM | ~10 s |"
+      },
+      {
+       "id": "ddca9c0826",
+       "linea": 676,
+       "texto": "| Reviewer (criticar) | LLM | ~10 s |"
+      },
+      {
+       "id": "23c6bfaa59",
+       "linea": 677,
+       "texto": "| Fixer (corregir) | LLM (solo si Reviewer falla) | ~10 s |"
+      },
+      {
+       "id": "2fe0ea2aa6",
+       "linea": 679,
+       "texto": "**Total:** 2-3 inferencias máximo, ~20-30 segundos por ciclo."
+      }
+     ]
+    },
+    {
+     "num": "4.3",
+     "titulo": "Explorer Determinista",
+     "linea": 681,
+     "oraciones": [
+      {
+       "id": "0efa8f2f27",
+       "linea": 683,
+       "texto": "**Archivo:** `opensyn/explorer_det.syn`"
+      }
+     ]
+    },
+    {
+     "num": "4.4",
+     "titulo": "Architect Determinista",
+     "linea": 767,
+     "oraciones": [
+      {
+       "id": "6770129f73",
+       "linea": 769,
+       "texto": "**Archivo:** `opensyn/architect_det.syn`"
+      }
+     ]
+    },
+    {
+     "num": "4.5",
+     "titulo": "Integración en el Prompt",
+     "linea": 884,
+     "oraciones": []
+    },
+    {
+     "num": "4.6",
+     "titulo": "Criterios de Aceptación",
+     "linea": 912,
+     "oraciones": [
+      {
+       "id": "2eeace0ee6",
+       "linea": 914,
+       "texto": "BFS de dependencias: < 1 ms en proyecto de 1,000 archivos."
+      },
+      {
+       "id": "7779953c6b",
+       "linea": 915,
+       "texto": "Análisis de impacto completo: < 5 ms."
+      },
+      {
+       "id": "2c96f4659e",
+       "linea": 916,
+       "texto": "Detección de ciclos: O(V+E), correcta según Tarjan."
+      },
+      {
+       "id": "9931b9ee39",
+       "linea": 917,
+       "texto": "Cero falsos positivos en 100 proyectos de prueba."
+      }
+     ]
+    },
+    {
+     "num": "5",
+     "titulo": "COMPONENTE 32.4: PIPELINE MULTI-AGENTE OPTIMIZADO",
+     "linea": 921,
+     "oraciones": []
+    },
+    {
+     "num": "5.1",
+     "titulo": "Objetivo",
+     "linea": 923,
+     "oraciones": [
+      {
+       "id": "5aa5a18c7f",
+       "linea": 925,
+       "texto": "Implementar un pipeline multi-agente **secuencial con 2-3 inferencias máximo**, donde los roles deterministas (Explorer, Architect) se resuelven con el grafo (32.3) y solo los roles creativos (Coder, Reviewer, Fixer) usan LLM."
+      }
+     ]
+    },
+    {
+     "num": "5.2",
+     "titulo": "Los Tres Roles con LLM",
+     "linea": 927,
+     "oraciones": [
+      {
+       "id": "5a7438a40b",
+       "linea": 929,
+       "texto": "| Rol | Propósito | Cuándo se ejecuta |"
+      },
+      {
+       "id": "d4f1734937",
+       "linea": 930,
+       "texto": "|-----|-----------|-------------------|"
+      },
+      {
+       "id": "4a3dd98bb7",
+       "linea": 931,
+       "texto": "| **Coder** | Implementar el cambio | Siempre |"
+      },
+      {
+       "id": "7a94c48e67",
+       "linea": 932,
+       "texto": "| **Reviewer** | Criticar el código generado | Siempre |"
+      },
+      {
+       "id": "b825ab5e4c",
+       "linea": 933,
+       "texto": "| **Fixer** | Corregir basándose en críticas | Solo si Reviewer detecta problemas |"
+      }
+     ]
+    },
+    {
+     "num": "5.3",
+     "titulo": "Pipeline Completo",
+     "linea": 935,
+     "oraciones": [
+      {
+       "id": "5d87938eef",
+       "linea": 937,
+       "texto": "**Archivo:** `opensyn/orquestador_multi.syn`"
+      }
+     ]
+    },
+    {
+     "num": "5.4",
+     "titulo": "Modos de Operación",
+     "linea": 1084,
+     "oraciones": [
+      {
+       "id": "064c224006",
+       "linea": 1086,
+       "texto": "Los modos determinan qué fases del pipeline se ejecutan:"
+      },
+      {
+       "id": "c51111ce97",
+       "linea": 1088,
+       "texto": "| Modo | Fases activas | Herramientas permitidas |"
+      },
+      {
+       "id": "d49516eb25",
+       "linea": 1089,
+       "texto": "|------|---------------|-------------------------|"
+      },
+      {
+       "id": "9fa1907344",
+       "linea": 1090,
+       "texto": "| **Ask** | Solo LLM explicativo | Lectura |"
+      },
+      {
+       "id": "a2017a2092",
+       "linea": 1091,
+       "texto": "| **Plan** | Explorer + Architect | Lectura + escritura de plan |"
+      },
+      {
+       "id": "3fe0a385dd",
+       "linea": 1092,
+       "texto": "| **Code** | Pipeline completo | Edición + validación |"
+      },
+      {
+       "id": "606acf0229",
+       "linea": 1093,
+       "texto": "| **Debug** | Explorer + Coder + Reviewer | Lectura + edición limitada |"
+      },
+      {
+       "id": "f757a4b386",
+       "linea": 1094,
+       "texto": "| **Orchestrator** | Explorer + Architect + delegación | Solo coordinación |"
+      }
+     ]
+    },
+    {
+     "num": "5.5",
+     "titulo": "Criterios de Aceptación",
+     "linea": 1096,
+     "oraciones": [
+      {
+       "id": "e4e4efec1d",
+       "linea": 1098,
+       "texto": "Ciclo completo: 2-3 inferencias máximo."
+      },
+      {
+       "id": "c7cc6668e2",
+       "linea": 1099,
+       "texto": "Tiempo total: < 30 segundos en hardware medio."
+      },
+      {
+       "id": "34d90ab616",
+       "linea": 1100,
+       "texto": "Tasa de corrección exitosa en ≤3 intentos: > 95%."
+      },
+      {
+       "id": "0ce5f4302e",
+       "linea": 1101,
+       "texto": "Latencia de fases deterministas (Explorer + Architect): < 6 ms."
+      }
+     ]
+    },
+    {
+     "num": "6",
+     "titulo": "COMPONENTE 32.5: VERIFICACIÓN AOT CON AUTO-REFUTACIÓN",
+     "linea": 1105,
+     "oraciones": []
+    },
+    {
+     "num": "6.1",
+     "titulo": "Objetivo",
+     "linea": 1107,
+     "oraciones": [
+      {
+       "id": "d2a9157a66",
+       "linea": 1109,
+       "texto": "Expandir el bucle de validación actual (`synapse check --no-emit`) con **auto-refutación**: generar casos límite, compilarlos y ejecutarlos para verificar que el código es robusto."
+      }
+     ]
+    },
+    {
+     "num": "6.2",
+     "titulo": "Aclaración sobre Ejecución",
+     "linea": 1111,
+     "oraciones": [
+      {
+       "id": "2dcf79ece4",
+       "linea": 1113,
+       "texto": "**Synapse es AOT, no interpretado.** La validación de casos límite **debe** pasar por el pipeline completo: compilar → enlazar → ejecutar."
+      },
+      {
+       "id": "a2692597aa",
+       "linea": 1113,
+       "texto": "No existe un REPL o intérprete dinámico."
+      }
+     ]
+    },
+    {
+     "num": "6.3",
+     "titulo": "Pipeline AOT Asíncrono",
+     "linea": 1115,
+     "oraciones": [
+      {
+       "id": "fe69322132",
+       "linea": 1117,
+       "texto": "**Archivo:** `opensyn/verificacion.syn`"
+      }
+     ]
+    },
+    {
+     "num": "6.4",
+     "titulo": "Ejecución Asíncrona con Timeout",
+     "linea": 1254,
+     "oraciones": [
+      {
+       "id": "a57ef007f3",
+       "linea": 1256,
+       "texto": "**Archivo:** `runtime/core/proceso.c`"
+      }
+     ]
+    },
+    {
+     "num": "6.5",
+     "titulo": "Coste y Mitigación",
+     "linea": 1345,
+     "oraciones": [
+      {
+       "id": "a808194381",
+       "linea": 1353,
+       "texto": "Máximo 5 casos por verificación."
+      },
+      {
+       "id": "64fc10e63d",
+       "linea": 1354,
+       "texto": "Ejecución en paralelo (fibras del runtime)."
+      },
+      {
+       "id": "126126f2b7",
+       "linea": 1355,
+       "texto": "Caché de compilaciones: si el código base no cambió, reutilizar binario."
+      },
+      {
+       "id": "7fb4707031",
+       "linea": 1357,
+       "texto": "**Total añadido:** ~3 segundos, ejecutado en paralelo con el Reviewer."
+      }
+     ]
+    },
+    {
+     "num": "6.6",
+     "titulo": "Criterios de Aceptación",
+     "linea": 1359,
+     "oraciones": [
+      {
+       "id": "108d040347",
+       "linea": 1361,
+       "texto": "Compilación de caso límite: < 1 s."
+      },
+      {
+       "id": "353d3d66bb",
+       "linea": 1362,
+       "texto": "Ejecución con timeout: funciona correctamente."
+      },
+      {
+       "id": "128f5dcf75",
+       "linea": 1363,
+       "texto": "Ejecución paralela de 5 casos: < 3 s."
+      },
+      {
+       "id": "7fbd5d7b8e",
+       "linea": 1364,
+       "texto": "Detección de bucles infinitos: timeout de 5 s funciona."
+      }
+     ]
+    },
+    {
+     "num": "7",
+     "titulo": "MODOS DE OPERACIÓN DEL AGENTE",
+     "linea": 1368,
+     "oraciones": []
+    },
+    {
+     "num": "7.1",
+     "titulo": "Los Cinco Modos",
+     "linea": 1370,
+     "oraciones": [
+      {
+       "id": "1789f8da5b",
+       "linea": 1372,
+       "texto": "OpenSyn opera en cinco modos especializados, inspirados en Kilo y Claude Code, pero reescritos de forma determinista y local."
+      },
+      {
+       "id": "c03a4e6434",
+       "linea": 1374,
+       "texto": "| Modo | Propósito | Herramientas permitidas | LLM |"
+      },
+      {
+       "id": "aa521452e5",
+       "linea": 1375,
+       "texto": "|------|-----------|-------------------------|-----|"
+      },
+      {
+       "id": "d189848200",
+       "linea": 1376,
+       "texto": "| **Ask** | Preguntas sobre el código | Lectura, búsqueda | Explicativo |"
+      },
+      {
+       "id": "dbebb3c071",
+       "linea": 1377,
+       "texto": "| **Plan** | Diseñar un cambio antes de ejecutarlo | Lectura + escritura de plan | Planificador |"
+      },
+      {
+       "id": "8fb7a9aff7",
+       "linea": 1378,
+       "texto": "| **Code** | Implementar un cambio | Edición + validación | Coder + Reviewer |"
+      },
+      {
+       "id": "89c46b8a5b",
+       "linea": 1379,
+       "texto": "| **Debug** | Diagnosticar y corregir errores | Lectura + edición limitada | Diagnóstico + Coder |"
+      },
+      {
+       "id": "37dd036ebc",
+       "linea": 1380,
+       "texto": "| **Orchestrator** | Descomponer tareas complejas en subtareas | Coordinación (sin herramientas directas) | Descomponedor |"
+      }
+     ]
+    },
+    {
+     "num": "7.2",
+     "titulo": "Implementación en `principal.syn`",
+     "linea": 1382,
+     "oraciones": []
+    },
+    {
+     "num": "7.3",
+     "titulo": "Criterios de Aceptación",
+     "linea": 1441,
+     "oraciones": [
+      {
+       "id": "2f46f6a1b8",
+       "linea": 1443,
+       "texto": "Cambiar de modo con `/ask`, `/plan`, `/code`, `/debug`, `/orchestrator`."
+      },
+      {
+       "id": "5180fb9a9f",
+       "linea": 1444,
+       "texto": "Cada modo solo permite las herramientas especificadas."
+      },
+      {
+       "id": "3520a959a4",
+       "linea": 1445,
+       "texto": "El pipeline se ejecuta según las fases del modo."
+      }
+     ]
+    },
+    {
+     "num": "8",
+     "titulo": "REQUISITOS DE HARDWARE Y CONFIGURACIÓN",
+     "linea": 1449,
+     "oraciones": []
+    },
+    {
+     "num": "8.1",
+     "titulo": "Hardware Mínimo",
+     "linea": 1451,
+     "oraciones": [
+      {
+       "id": "2691691b15",
+       "linea": 1453,
+       "texto": "| Componente | Mínimo | Recomendado |"
+      },
+      {
+       "id": "129a08340b",
+       "linea": 1454,
+       "texto": "|------------|--------|-------------|"
+      },
+      {
+       "id": "694daf4a3b",
+       "linea": 1455,
+       "texto": "| CPU | 4 núcleos | 8 núcleos |"
+      },
+      {
+       "id": "c1ac29bf98",
+       "linea": 1458,
+       "texto": "| Disco | 20 GB libres | 50 GB libres |"
+      }
+     ]
+    },
+    {
+     "num": "8.2",
+     "titulo": "Modelo Base",
+     "linea": 1460,
+     "oraciones": [
+      {
+       "id": "429ca7144b",
+       "linea": 1462,
+       "texto": "**DeepSeek Coder 6.7B** (Q4_K_M, ~4 GB) para hardware medio."
+      },
+      {
+       "id": "873c08cbea",
+       "linea": 1463,
+       "texto": "**CodeLlama 7B** (Q5_K_M, ~5 GB) para hardware con 8 GB VRAM."
+      },
+      {
+       "id": "7808d41fd7",
+       "linea": 1464,
+       "texto": "**CodeLlama 13B** (Q4_K_M, ~7 GB) para hardware de alta gama."
+      }
+     ]
+    },
+    {
+     "num": "8.3",
+     "titulo": "Archivo de Configuración",
+     "linea": 1466,
+     "oraciones": []
+    },
+    {
+     "num": "9",
+     "titulo": "PRUEBAS OBLIGATORIAS PARA LA FASE 32",
+     "linea": 1506,
+     "oraciones": [
+      {
+       "id": "3aba9521c2",
+       "linea": 1508,
+       "texto": "| Test | Comando | Criterio |"
+      },
+      {
+       "id": "63ccb37d3b",
+       "linea": 1509,
+       "texto": "|------|---------|----------|"
+      },
+      {
+       "id": "a9339d8eb4",
+       "linea": 1510,
+       "texto": "| Grafo de conocimiento | `pytest tests/opensyn/test_grafo.py -v` | 100% pass, determinista |"
+      },
+      {
+       "id": "2c217a3cb2",
+       "linea": 1511,
+       "texto": "| Construcción de grafo en 1000 archivos | `pytest tests/opensyn/test_grafo_perf.py -v` | < 100 ms |"
+      },
+      {
+       "id": "d901b0b627",
+       "linea": 1512,
+       "texto": "| Memoria cifrada | `pytest tests/opensyn/test_memoria_cifrada.py -v` | 100% pass, `strings` no legible |"
+      },
+      {
+       "id": "358838cee9",
+       "linea": 1513,
+       "texto": "| Derivación de clave | `pytest tests/opensyn/test_key_derivation.py -v` | < 500 ms |"
+      },
+      {
+       "id": "a1073609b1",
+       "linea": 1514,
+       "texto": "| Explorer determinista | `pytest tests/opensyn/test_explorer_det.py -v` | < 1 ms en 1000 archivos |"
+      },
+      {
+       "id": "98f01f1227",
+       "linea": 1515,
+       "texto": "| Architect determinista | `pytest tests/opensyn/test_architect_det.py -v` | < 5 ms |"
+      },
+      {
+       "id": "2ed8208daa",
+       "linea": 1516,
+       "texto": "| Detección de ciclos | `pytest tests/opensyn/test_tarjan.py -v` | 0 falsos positivos |"
+      },
+      {
+       "id": "79ee9b195e",
+       "linea": 1517,
+       "texto": "| Pipeline multi-agente | `pytest tests/integration/test_pipeline_32.py -v` | 2-3 inferencias máximo |"
+      },
+      {
+       "id": "7e515a5b16",
+       "linea": 1518,
+       "texto": "| Verificación AOT | `pytest tests/opensyn/test_verificacion_aot.py -v` | < 3 s para 5 casos |"
+      },
+      {
+       "id": "d40e329105",
+       "linea": 1519,
+       "texto": "| Modos de operación | `pytest tests/opensyn/test_modos.py -v` | 100% pass |"
+      },
+      {
+       "id": "47e30d30a4",
+       "linea": 1520,
+       "texto": "| Ciclo completo end-to-end | `pytest tests/e2e/test_agente_completo.py -v` | < 30 s |"
+      }
+     ]
+    },
+    {
+     "num": "10",
+     "titulo": "INTEGRACIÓN CON FASES ANTERIORES",
+     "linea": 1524,
+     "oraciones": []
+    },
+    {
+     "num": "10.1",
+     "titulo": "Dependencias",
+     "linea": 1526,
+     "oraciones": [
+      {
+       "id": "682c93f03c",
+       "linea": 1528,
+       "texto": "| Componente | Fase requerida | Justificación |"
+      },
+      {
+       "id": "5972862259",
+       "linea": 1529,
+       "texto": "|------------|----------------|---------------|"
+      },
+      {
+       "id": "cf0d7a6649",
+       "linea": 1530,
+       "texto": "| AST canónico | Fase 22 | Base del grafo de conocimiento |"
+      },
+      {
+       "id": "638f0b7055",
+       "linea": 1531,
+       "texto": "| Compilador funcional | Fase 5 | Necesario para validación AOT |"
+      },
+      {
+       "id": "67c2bd323c",
+       "linea": 1532,
+       "texto": "| LSP con `--check` | Fase 26.1 | Necesario para el bucle de validación |"
+      },
+      {
+       "id": "28cb41d634",
+       "linea": 1533,
+       "texto": "| OpenSyn base | Fase 26 | Punto de partida del agente |"
+      },
+      {
+       "id": "9df503a0ec",
+       "linea": 1534,
+       "texto": "| Runtime de fibras | Fase 4 | Necesario para ejecución paralela |"
+      }
+     ]
+    },
+    {
+     "num": "10.2",
+     "titulo": "Impacto en el Ecosistema",
+     "linea": 1536,
+     "oraciones": [
+      {
+       "id": "f1f68d0c2c",
+       "linea": 1538,
+       "texto": "**Synapse:** El grafo de conocimiento se construye desde el AST, aprovechando la arquitectura existente."
+      },
+      {
+       "id": "772dd053ef",
+       "linea": 1539,
+       "texto": "**Syquex:** Se beneficia del grafo (análisis de impacto en código de alto nivel)."
+      },
+      {
+       "id": "47498bb52f",
+       "linea": 1540,
+       "texto": "**OpenSyn:** Se transforma de asistente a agente autónomo."
+      },
+      {
+       "id": "ed9d5c898a",
+       "linea": 1541,
+       "texto": "**LSP:** Se extiende con comandos para los modos y la memoria."
+      }
+     ]
+    },
+    {
+     "num": "11",
+     "titulo": "CRONOGRAMA DETALLADO (8 MESES)",
+     "linea": 1545,
+     "oraciones": [
+      {
+       "id": "157d6ac58e",
+       "linea": 1547,
+       "texto": "| Mes | Hito | Entregable | Criterio de Aceptación |"
+      },
+      {
+       "id": "7fa4297145",
+       "linea": 1548,
+       "texto": "|-----|------|------------|------------------------|"
+      },
+      {
+       "id": "515dcda4cb",
+       "linea": 1549,
+       "texto": "| 1 | Grafo desde SemNodo[] | `nucleo/grafo_builder.syn` | Grafo determinista en 1000 archivos < 100 ms |"
+      },
+      {
+       "id": "8075aee523",
+       "linea": 1550,
+       "texto": "| 2 | Algoritmos de grafo | `opensyn/explorer_det.syn`, `opensyn/architect_det.syn` | BFS < 1 ms, DFS < 5 ms, Tarjan correcto |"
+      },
+      {
+       "id": "0a19ca990e",
+       "linea": 1551,
+       "texto": "| 3 | Memoria cifrada (XSalsa20) | `opensyn/memoria.syn` | `strings` no legible, clave nunca en disco |"
+      },
+      {
+       "id": "bfdfc28456",
+       "linea": 1552,
+       "texto": "| 4 | Derivación de clave (Argon2id) | `runtime/core/key_derivation.c` | < 500 ms, funciona en 3 SO |"
+      },
+      {
+       "id": "6414c60357",
+       "linea": 1553,
+       "texto": "| 5 | Verificación AOT | `runtime/core/proceso.c`, `opensyn/verificacion.syn` | Compilación < 1 s, ejecución con timeout |"
+      },
+      {
+       "id": "3dee9676fe",
+       "linea": 1554,
+       "texto": "| 6 | Integración RAG con memoria | Modificación de `synapse_rag.c` | Prompt incluye patrones y fallos |"
+      },
+      {
+       "id": "7407f821d3",
+       "linea": 1555,
+       "texto": "| 7 | Pipeline multi-agente | `opensyn/orquestador_multi.syn` | 2-3 inferencias, < 30 s ciclo |"
+      },
+      {
+       "id": "cc15f9a936",
+       "linea": 1556,
+       "texto": "| 8 | Certificación y benchmark | Suite completa + benchmark vs OpenCode | Tasa éxito > 95%, latencia < 30 s |"
+      }
+     ]
+    },
+    {
+     "num": "11.1",
+     "titulo": "Hitos Acumulativos",
+     "linea": 1558,
+     "oraciones": [
+      {
+       "id": "59da0cc802",
+       "linea": 1560,
+       "texto": "| Hito | Mes | Entregable |"
+      },
+      {
+       "id": "0ca6370064",
+       "linea": 1561,
+       "texto": "|------|-----|------------|"
+      },
+      {
+       "id": "8129339951",
+       "linea": 1562,
+       "texto": "| Hito 32.1 | 1 | Grafo de conocimiento funcional |"
+      },
+      {
+       "id": "9f9f8f3a17",
+       "linea": 1563,
+       "texto": "| Hito 32.2 | 2 | Explorer + Architect deterministas |"
+      },
+      {
+       "id": "7c11405961",
+       "linea": 1564,
+       "texto": "| Hito 32.3 | 3 | Memoria cifrada operativa |"
+      },
+      {
+       "id": "ebdcf3cfa0",
+       "linea": 1565,
+       "texto": "| Hito 32.4 | 4 | Derivación de clave con Argon2id |"
+      },
+      {
+       "id": "b040458827",
+       "linea": 1566,
+       "texto": "| Hito 32.5 | 5 | Verificación AOT con auto-refutación |"
+      },
+      {
+       "id": "0aa1357260",
+       "linea": 1567,
+       "texto": "| Hito 32.6 | 6 | RAG con memoria persistente |"
+      },
+      {
+       "id": "008dbe239a",
+       "linea": 1568,
+       "texto": "| Hito 32.7 | 7 | Pipeline multi-agente optimizado |"
+      },
+      {
+       "id": "1976a9505d",
+       "linea": 1569,
+       "texto": "| Hito 32.8 | 8 | Certificación de la Fase 32 |"
+      }
+     ]
+    },
+    {
+     "num": "12",
+     "titulo": "DIFERENCIADOR FINAL VS COMPETIDORES",
+     "linea": 1573,
+     "oraciones": [
+      {
+       "id": "e59d7ae7b3",
+       "linea": 1575,
+       "texto": "| Capacidad | OpenCode | Kilo | Claude Code | Codex | Cursor | **OpenSyn Fase 32** |"
+      },
+      {
+       "id": "cececbcf49",
+       "linea": 1576,
+       "texto": "|-----------|----------|------|-------------|-------|--------|---------------------|"
+      },
+      {
+       "id": "bbda79a22b",
+       "linea": 1577,
+       "texto": "| Análisis de impacto | Heurístico | Heurístico | Heurístico | Heurístico | Heurístico | **Determinista (AST)** |"
+      },
+      {
+       "id": "114bd260f6",
+       "linea": 1578,
+       "texto": "| Memoria entre sesiones | ❌ | ⚠️ Limitada | ⚠️ Limitada | ❌ | ❌ | **✅ Cifrada 3 capas** |"
+      },
+      {
+       "id": "3ffe89353c",
+       "linea": 1579,
+       "texto": "| Memoria negativa | ❌ | ❌ | ❌ | ❌ | ❌ | **✅ Registro de fallos** |"
+      },
+      {
+       "id": "f7408802da",
+       "linea": 1580,
+       "texto": "| Auto-refutación | ❌ | ❌ | ❌ | ❌ | ❌ | **✅ Casos límite AOT** |"
+      },
+      {
+       "id": "7e36a9eda9",
+       "linea": 1581,
+       "texto": "| Multi-agente | ❌ | ✅ (cloud) | ✅ (cloud) | ✅ (cloud) | ⚠️ | **✅ Determinista local** |"
+      },
+      {
+       "id": "6cea462a03",
+       "linea": 1582,
+       "texto": "| Privacidad | ❌ Cloud | ❌ Cloud | ❌ Cloud | ❌ Cloud | ❌ Cloud | **✅ 100% local** |"
+      },
+      {
+       "id": "b66c011be7",
+       "linea": 1583,
+       "texto": "| Latencia por ciclo | ~10 s | ~15 s | ~20 s | ~15 s | ~8 s | **~30 s (calidad > velocidad)** |"
+      },
+      {
+       "id": "cacb2090dc",
+       "linea": 1584,
+       "texto": "| Coste | Suscripción | Suscripción | Suscripción | Suscripción | Suscripción | **Gratis (open-source)** |"
+      }
+     ]
+    },
+    {
+     "num": "13",
+     "titulo": "CONCLUSIÓN",
+     "linea": 1588,
+     "oraciones": [
+      {
+       "id": "e958719691",
+       "linea": 1590,
+       "texto": "La Fase 32 transforma a OpenSyn en un **agente de codificación de grado industrial** que:"
+      },
+      {
+       "id": "2f4f82c098",
+       "linea": 1592,
+       "texto": "**Entiende el sistema** mediante el grafo de conocimiento construido desde el AST."
+      },
+      {
+       "id": "589559a220",
+       "linea": 1593,
+       "texto": "**Aprende de cada interacción** mediante la memoria persistente cifrada."
+      },
+      {
+       "id": "a40d15004f",
+       "linea": 1594,
+       "texto": "**Analiza el impacto** de cada cambio de forma determinista, sin alucinaciones."
+      },
+      {
+       "id": "b3908cf137",
+       "linea": 1595,
+       "texto": "**Verifica su propio trabajo** generando y ejecutando casos límite."
+      },
+      {
+       "id": "7121646a82",
+       "linea": 1596,
+       "texto": "**Respeta la privacidad** manteniendo todo local, sin telemetría."
+      },
+      {
+       "id": "1e4ed00b6d",
+       "linea": 1598,
+       "texto": "El diferencial no es la velocidad de generación de código (commodity), sino la **capa de contexto y confianza** que ningún competidor puede replicar porque ninguno controla el AST del compilador."
+      },
+      {
+       "id": "1d8e1459bc",
+       "linea": 1600,
+       "texto": "**Regla de hierro:** Ninguna capacidad de la Fase 32 debe romper el bootstrap ni violar los principios de El Pacto (Manual 1)."
+      },
+      {
+       "id": "4104d7f7eb",
+       "linea": 1604,
+       "texto": "*Este manual proporciona la especificación completa de la Fase 32."
+      },
+      {
+       "id": "6a4dee6333",
+       "linea": 1604,
+       "texto": "La implementación debe seguir estos lineamientos para transformar a OpenSyn en el agente de codificación definitivo.*"
+      }
+     ]
+    }
+   ],
+   "alias": true,
+   "nombre_canonico": "MANUAL 32.md"
+  }
+ },
+ "anexos": {
+  "ANEXO-MANUALES": {
+   "archivo": "docs/manuales/ANEXO-MANUALES.md",
+   "sha256": "bf0c52611481edea",
+   "secciones": [
+    {
+     "num": "1",
+     "titulo": "RECTIFICACIONES Y AJUSTES AL MATERIAL PREVIO",
+     "linea": 1,
+     "oraciones": []
+    },
+    {
+     "num": "1.1",
+     "titulo": "Módulo `lib/web.syq` – Adecuación al modelo de fibras (Manual 5)",
+     "linea": 3,
+     "oraciones": [
+      {
+       "id": "d4e36f1c3a",
+       "linea": 5,
+       "texto": "El servidor HTTP debe ser **no bloqueante** y utilizar el scheduler de fibras para manejar múltiples conexiones simultáneas sin bloquear el hilo principal."
+      },
+      {
+       "id": "d68f4ac7a1",
+       "linea": 5,
+       "texto": "La especificación anterior era demasiado simple."
+      },
+      {
+       "id": "23f9d25abb",
+       "linea": 62,
+       "texto": "**Esta corrección alinea el servidor web con el modelo de concurrencia M:N del Manual 5 y con el uso de `lanzar` para fibras.**"
+      }
+     ]
+    },
+    {
+     "num": "1.2",
+     "titulo": "Módulo `lib/dom.syq` – Coherencia con arenas de componente (Manual 4, §3)",
+     "linea": 66,
+     "oraciones": [
+      {
+       "id": "cd9922c3a6",
+       "linea": 68,
+       "texto": "Los elementos DOM creados en Syquex deben asignarse en la arena de componente correspondiente."
+      },
+      {
+       "id": "1f59bd62e6",
+       "linea": 68,
+       "texto": "La especificación debe reflejar que el `Elemento` es un puntero a un objeto JS que vive en la memoria lineal de WASM, y que su ciclo de vida está vinculado a la arena de componente."
+      }
+     ]
+    },
+    {
+     "num": "1.3",
+     "titulo": "Reglas de inferencia de tipos para la transpilación (F26)",
+     "linea": 108,
+     "oraciones": [
+      {
+       "id": "ac7f12338e",
+       "linea": 110,
+       "texto": "Deben insertarse en el Manual 7, §5.1, después de la tabla de mapeo Python → Syquex."
+      },
+      {
+       "id": "231b68e45d",
+       "linea": 112,
+       "texto": "**Reglas de inferencia (texto normativo):**"
+      },
+      {
+       "id": "ffd77ad52a",
+       "linea": 114,
+       "texto": "**Inferencia de tipos básicos:**"
+      },
+      {
+       "id": "1d13c305e9",
+       "linea": 115,
+       "texto": "Enteros literales (`42`) → `entero`."
+      },
+      {
+       "id": "e51ea37e52",
+       "linea": 116,
+       "texto": "Flotantes literales (`3.14`) → `decimal`."
+      },
+      {
+       "id": "f37b34801e",
+       "linea": 117,
+       "texto": "Cadenas (`\"hola\"`) → `texto`."
+      },
+      {
+       "id": "eac61ec654",
+       "linea": 118,
+       "texto": "Listas homogéneas (`[1,2,3]`) → `Lista<entero>`."
+      },
+      {
+       "id": "fccc6572c2",
+       "linea": 119,
+       "texto": "Diccionarios homogéneos (`{\"a\":1}`) → `Mapa<texto, entero>`."
+      },
+      {
+       "id": "c30d948a79",
+       "linea": 122,
+       "texto": "Si el cuerpo de la función usa operadores aritméticos con operandos del mismo tipo, se infiere ese tipo para los parámetros y el retorno."
+      },
+      {
+       "id": "f6e35d4dba",
+       "linea": 123,
+       "texto": "Si el cuerpo usa operaciones de concatenación de cadenas, se infiere `texto`."
+      },
+      {
+       "id": "d053addcf1",
+       "linea": 124,
+       "texto": "Si el cuerpo usa `raise`, el tipo de retorno se infiere como `Resultado<T, texto>` donde T es el tipo de los retornos exitosos."
+      },
+      {
+       "id": "803af57a6b",
+       "linea": 125,
+       "texto": "Si no se puede inferir un tipo, se usa `Objeto` (genérico) y se emite una advertencia. El usuario puede anotar manualmente."
+      },
+      {
+       "id": "d0997ea46a",
+       "linea": 127,
+       "texto": "**Regla de fallback:** cualquier variable o parámetro sin tipo explícito y sin inferencia clara se declara como `Objeto` (equivalente a `any` en TypeScript). El compilador de Syquex acepta `Objeto` con operaciones dinámicas en tiempo de ejecución (similar a la reflexión)."
+      }
+     ]
+    },
+    {
+     "num": "1.4",
+     "titulo": "Esquemas de comandos LSP (F26) – ubicación exacta en Manual 7, §4.1",
+     "linea": 131,
+     "oraciones": [
+      {
+       "id": "7059250fd0",
+       "linea": 133,
+       "texto": "Deben añadirse inmediatamente después de la tabla de comandos:"
+      },
+      {
+       "id": "862d7fca53",
+       "linea": 135,
+       "texto": "**Esquemas JSON de comandos LSP (normativos):**"
+      },
+      {
+       "id": "94b50a65e4",
+       "linea": 138,
+       "texto": "Petición: `{ textDocument: { uri: string }, position: { line: number, character: number }, context?: string }`"
+      },
+      {
+       "id": "127fe0c9d1",
+       "linea": 139,
+       "texto": "Respuesta: `{ completions: [{ texto: string, tipo: \"linea\" | \"bloque\", rango: { start: { line, character }, end: { line, character } } }] }`"
+      },
+      {
+       "id": "09e7d3343d",
+       "linea": 142,
+       "texto": "Petición: `{ textDocument: { uri: string }, diagnostic: { code: string, message: string, range: { start: { line, character }, end: { line, character } } } }`"
+      },
+      {
+       "id": "52e85626ec",
+       "linea": 143,
+       "texto": "Respuesta: `{ sugerencia: string, codigo_corregido: string }`"
+      },
+      {
+       "id": "fb238c122c",
+       "linea": 146,
+       "texto": "Petición: `{ textDocument: { uri: string }, from: \"python\", to: \"syquex\" }`"
+      },
+      {
+       "id": "f716c68e50",
+       "linea": 147,
+       "texto": "Respuesta: `{ codigo: string }`"
+      }
+     ]
+    },
+    {
+     "num": "1.5",
+     "titulo": "Módulo `std/os.syn` (F29) – API final",
+     "linea": 151,
+     "oraciones": [
+      {
+       "id": "1026b67877",
+       "linea": 179,
+       "texto": "**Placeholder de modelos:** El instalador de OpenSyn (Manual 7 §2.5) debe leer un archivo `modelos.toml` que contiene las URLs y hashes SHA-256 de los modelos."
+      },
+      {
+       "id": "a72d4f3d40",
+       "linea": 179,
+       "texto": "Este archivo se distribuye junto con el instalador y se actualiza periódicamente."
+      }
+     ]
+    },
+    {
+     "num": "2",
+     "titulo": "RESOLUCIÓN DE CONTRADICCIONES IDENTIFICADAS",
+     "linea": 183,
+     "oraciones": []
+    },
+    {
+     "num": "2.1",
+     "titulo": "Circularidad F26 ↔ F27 (flag `--check`)",
+     "linea": 185,
+     "oraciones": [
+      {
+       "id": "53296cf3e0",
+       "linea": 187,
+       "texto": "**Decisión:** Adelantar `--check` a la Fase 26."
+      },
+      {
+       "id": "3d7fafd694",
+       "linea": 187,
+       "texto": "Se añade al roadmap como subfase 26.1."
+      },
+      {
+       "id": "ce8a28c007",
+       "linea": 187,
+       "texto": "El Manual 8 §4.2 ya lo especifica; solo se adelanta su implementación en el cronograma."
+      }
+     ]
+    },
+    {
+     "num": "2.2",
+     "titulo": "Tabla de traducción M6 §1.3",
+     "linea": 189,
+     "oraciones": [
+      {
+       "id": "5bcaa94ef4",
+       "linea": 191,
+       "texto": "**Corrección:** Eliminar la entrada `Intento → try en C (via FFI)`."
+      },
+      {
+       "id": "de1e0fcd7a",
+       "linea": 191,
+       "texto": "Sustituir por una nota que indique que `intentar` se traduce al modelo de `Resultado` y `?` (Manual 3 §7)."
+      },
+      {
+       "id": "ccb15c3810",
+       "linea": 191,
+       "texto": "El `intentar`/`atrapar` solo se usa para interoperar con código C que lanza excepciones (FFI), pero no es el modelo principal de Syquex."
+      },
+      {
+       "id": "4791b6a08c",
+       "linea": 193,
+       "texto": "**Texto normativo (insertar en M6 §1.3):**"
+      },
+      {
+       "id": "37d086ceba",
+       "linea": 194,
+       "texto": "> \"El manejo de errores en Syquex se basa en `Resultado<T,E>` y el operador `?`."
+      },
+      {
+       "id": "34d2a9cf04",
+       "linea": 194,
+       "texto": "La construcción `intentar`/`atrapar` está reservada exclusivamente para envolver llamadas FFI a bibliotecas C que puedan lanzar excepciones o señales (ej. `setjmp`/`longjmp`)."
+      },
+      {
+       "id": "058af076ce",
+       "linea": 194,
+       "texto": "En código nativo Syquex, se prefiere siempre `Resultado`.\""
+      }
+     ]
+    },
+    {
+     "num": "2.3",
+     "titulo": "Serialización duplicada (M5 §6.3 vs M6 §5.1)",
+     "linea": 196,
+     "oraciones": [
+      {
+       "id": "a4d3673b77",
+       "linea": 198,
+       "texto": "**Decisión normativa:** El formato oficial es el de M5 §6.3 (Formato de serialización para canales remotos)."
+      },
+      {
+       "id": "f1169ef80b",
+       "linea": 198,
+       "texto": "M6 §5.1 se considera un borrador anterior."
+      },
+      {
+       "id": "d06bde6a18",
+       "linea": 198,
+       "texto": "Se añade una nota en M6 §5.1 indicando que la especificación definitiva está en M5 §6.3 y que M6 §5.1 debe ignorarse o eliminarse en futuras revisiones."
+      }
+     ]
+    },
+    {
+     "num": "2.4",
+     "titulo": "Vocabulario inconsistente",
+     "linea": 200,
+     "oraciones": [
+      {
+       "id": "6abd2c08d0",
+       "linea": 203,
+       "texto": "Usar siempre `débil` (con tilde) para referencias débiles."
+      },
+      {
+       "id": "f4dae81ca3",
+       "linea": 204,
+       "texto": "Usar `Lista<T>` y `Mapa<K,V>` con mayúscula inicial."
+      },
+      {
+       "id": "3377bf91ed",
+       "linea": 205,
+       "texto": "En todos los ejemplos de los manuales, reemplazar las formas en minúscula o sin tilde por estas."
+      },
+      {
+       "id": "b685725898",
+       "linea": 207,
+       "texto": "**Instrucción para el equipo:** Se realizará una revisión editorial de los manuales 2–6 para corregir estas inconsistencias en la próxima versión."
+      }
+     ]
+    },
+    {
+     "num": "3",
+     "titulo": "MATERIAL COMPLETO PARA INCORPORAR A CADA MANUAL",
+     "linea": 211,
+     "oraciones": []
+    },
+    {
+     "num": "3.1",
+     "titulo": "Manual 3 (Sintaxis y Semántica de Syquex) – añadir en §???",
+     "linea": 213,
+     "oraciones": [
+      {
+       "id": "0c2ee36fa4",
+       "linea": 215,
+       "texto": "**Sección 12:** \"Biblioteca estándar de Syquex (`lib/`)\". Describir la estructura de módulos y dar ejemplos de uso, pero sin detallar todas las APIs (que están en F24). Añadir una nota: \"Las APIs específicas de cada módulo se especifican en los archivos `.syq` de la biblioteca estándar, cuyo diseño se detalla en la documentación de la Fase 24.\""
+      }
+     ]
+    },
+    {
+     "num": "3.2",
+     "titulo": "Manual 4 (Modelo de Memoria de Syquex) – añadir en §6",
+     "linea": 217,
+     "oraciones": [
+      {
+       "id": "a2d23b81eb",
+       "linea": 219,
+       "texto": "**Sección 6.4:** \"Arenas de componente para WASM\". Ampliar la descripción para incluir cómo se asignan los objetos DOM en la memoria lineal y cómo se vinculan a las arenas. (Ya lo he incluido en la corrección de `lib/dom.syq`.)"
+      }
+     ]
+    },
+    {
+     "num": "3.3",
+     "titulo": "Manual 7 (OpenSyn) – modificaciones",
+     "linea": 221,
+     "oraciones": [
+      {
+       "id": "10c2c767f6",
+       "linea": 223,
+       "texto": "**§2.3:** Añadir el bloque de inyección de contexto estático (ya presente en v8.1.0). Verificar que está actualizado."
+      },
+      {
+       "id": "777b661664",
+       "linea": 224,
+       "texto": "**§5.1:** Añadir las reglas de inferencia de tipos para la transpilación (ver punto 1.3)."
+      },
+      {
+       "id": "394aac53c1",
+       "linea": 225,
+       "texto": "**§4.1:** Añadir los esquemas JSON de los comandos LSP (ver punto 1.4)."
+      },
+      {
+       "id": "a54229d7b2",
+       "linea": 226,
+       "texto": "**§6.3:** Añadir el bucle de validación (ya presente). Verificar que hace referencia al flag `--check` (que se adelanta a F26)."
+      },
+      {
+       "id": "8a27943267",
+       "linea": 227,
+       "texto": "**§2.5:** Reemplazar los placeholders `...` por una referencia al archivo `modelos.toml` que se distribuye con el instalador."
+      }
+     ]
+    },
+    {
+     "num": "3.4",
+     "titulo": "Manual 8 (Herramientas de Desarrollo) – modificaciones",
+     "linea": 229,
+     "oraciones": [
+      {
+       "id": "9976339fb7",
+       "linea": 231,
+       "texto": "**§4.2:** El flag `--check` ya está especificado. Se adelanta su implementación a F26, pero la especificación queda en M8."
+      },
+      {
+       "id": "aba37ce576",
+       "linea": 232,
+       "texto": "**§5.1:** Añadir que el LSP orquesta el bucle de validación (3 intentos) y que usa el flag `--check` para la validación."
+      }
+     ]
+    },
+    {
+     "num": "3.5",
+     "titulo": "Manual 9 (Instalación) – añadir en §5",
+     "linea": 234,
+     "oraciones": [
+      {
+       "id": "5f1a9c8dfc",
+       "linea": 236,
+       "texto": "**§5.1:** Especificar que el instalador de OpenSyn lee el archivo `modelos.toml` para obtener las URLs y hashes de los modelos. Incluir un ejemplo del formato de `modelos.toml`."
+      }
+     ]
+    },
+    {
+     "num": "4",
+     "titulo": "VERIFICACIÓN FINAL DE COMPLETITUD",
+     "linea": 248,
+     "oraciones": [
+      {
+       "id": "baa6e6d0ad",
+       "linea": 250,
+       "texto": "Tras incorporar el material anterior, las fases 22–30 quedan completamente especificadas:"
+      },
+      {
+       "id": "b704022740",
+       "linea": 252,
+       "texto": "| Fase | Estado | Acción tomada |"
+      },
+      {
+       "id": "663f53ff9d",
+       "linea": 253,
+       "texto": "|------|--------|---------------|"
+      },
+      {
+       "id": "2d5b772980",
+       "linea": 254,
+       "texto": "| 22 | ✅ Cubierto (M3 + M6 §1.3) | Sin cambios |"
+      },
+      {
+       "id": "699c76d5ba",
+       "linea": 255,
+       "texto": "| 23 | ✅ Cubierto (M4) | Sin cambios |"
+      },
+      {
+       "id": "de07cedb2f",
+       "linea": 256,
+       "texto": "| 24 | ✅ AHORA CUBIERTO | Añadidas APIs de `lib/io`, `lib/web`, `lib/json`, `lib/lista`, `lib/db` |"
+      },
+      {
+       "id": "373c6cd166",
+       "linea": 257,
+       "texto": "| 25 | ✅ AHORA CUBIERTO | Añadida especificación de WASM ABI, glue JS, y API DOM con arenas de componente |"
+      },
+      {
+       "id": "bbcbcc8384",
+       "linea": 258,
+       "texto": "| 26 | ✅ AHORA CUBIERTO | Añadidas reglas de inferencia, esquemas de comandos LSP, y bucle de validación con `--check` |"
+      },
+      {
+       "id": "ae2850f3a0",
+       "linea": 259,
+       "texto": "| 27 | ✅ Cubierto (M8) | Sin cambios (solo adelanto de `--check` a F26) |"
+      },
+      {
+       "id": "632cfed64b",
+       "linea": 260,
+       "texto": "| 28 | ✅ Cubierto (pruebas dispersas + benchmarks) | Añadida nota en roadmap sobre benchmarks vs Python/Go (ya está en roadmap) |"
+      },
+      {
+       "id": "196ee11638",
+       "linea": 261,
+       "texto": "| 29 | ✅ AHORA CUBIERTO | Añadida API de `std/os.syn` y referencia a `modelos.toml` |"
+      },
+      {
+       "id": "8633d7f3fa",
+       "linea": 262,
+       "texto": "| 30 | ✅ Cubierto (M9) | Sin cambios |"
+      },
+      {
+       "id": "ea4199d735",
+       "linea": 264,
+       "texto": "**Contradicciones resueltas:**"
+      },
+      {
+       "id": "14f8777f85",
+       "linea": 265,
+       "texto": "F26↔F27 circularidad: adelanto de `--check` a F26."
+      },
+      {
+       "id": "eb8f2757ca",
+       "linea": 266,
+       "texto": "Tabla de traducción M6 §1.3: corregida."
+      },
+      {
+       "id": "425cc62344",
+       "linea": 267,
+       "texto": "Serialización duplicada: se declara M5 §6.3 como normativa."
+      },
+      {
+       "id": "1ca00c4972",
+       "linea": 268,
+       "texto": "Vocabulario inconsistente: se establecen términos normativos."
+      }
+     ]
+    },
+    {
+     "num": "5",
+     "titulo": "INSTRUCCIONES PARA EL EQUIPO DE IMPLEMENTACIÓN",
+     "linea": 272,
+     "oraciones": [
+      {
+       "id": "beadc6c9fa",
+       "linea": 274,
+       "texto": "**Incorporar el material proporcionado** en las secciones correspondientes de los manuales (ver puntos 3.1–3.5)."
+      },
+      {
+       "id": "9bc5b1c152",
+       "linea": 275,
+       "texto": "**Actualizar el roadmap** para reflejar el adelanto de `--check` a la Fase 26 (subfase 26.1)."
+      },
+      {
+       "id": "6e3164a8b7",
+       "linea": 276,
+       "texto": "**Revisar editorialmente** los manuales 2–6 para unificar el vocabulario según la norma."
+      },
+      {
+       "id": "8bd527680e",
+       "linea": 277,
+       "texto": "**Crear el archivo `modelos.toml`** con los modelos soportados, y distribuirlo junto con el instalador (Fase 30)."
+      },
+      {
+       "id": "977ca6e1df",
+       "linea": 279,
+       "texto": "**Con esto, los manuales v8.1.0 quedan completos y libres de ambigüedades, permitiendo la implementación de las fases 22–30 sin más investigación.**"
+      }
+     ]
+    }
+   ]
+  },
+  "ANEXO_INVENTARIO_ARCHIVOS": {
+   "archivo": "docs/manuales/ANEXO_INVENTARIO_ARCHIVOS.md",
+   "sha256": "cb67ff6f8ae62365",
+   "secciones": [
+    {
+     "num": "1",
+     "titulo": "NÚCLEO DEL COMPILADOR (`/nucleo/`)",
+     "linea": 11,
+     "oraciones": [
+      {
+       "id": "d5ed07a1dd",
+       "linea": 13,
+       "texto": "Estos son el corazón del compilador."
+      },
+      {
+       "id": "aeb1bc3a4d",
+       "linea": 13,
+       "texto": "Están escritos en Synapse **por definición**"
+      },
+      {
+       "id": "4a863598aa",
+       "linea": 16,
+       "texto": "| Archivo | Manual de referencia | Propósito |"
+      },
+      {
+       "id": "9259df082c",
+       "linea": 17,
+       "texto": "|---------|----------------------|-----------|"
+      },
+      {
+       "id": "ecb09a178f",
+       "linea": 18,
+       "texto": "| `nucleo/lexer.syn` | M2 §3 | Tokenizador e inyector de indentación (INDENT/DEDENT). |"
+      },
+      {
+       "id": "289e75b32b",
+       "linea": 19,
+       "texto": "| `nucleo/parser.syn` | M2 §4 | Parser de descenso recursivo."
+      },
+      {
+       "id": "86f77014a0",
+       "linea": 19,
+       "texto": "Construye el AST enlazado. |"
+      },
+      {
+       "id": "2d0e5d72b4",
+       "linea": 20,
+       "texto": "| `nucleo/ast_nodes.syn` | M2 §5 | Definición de los nodos del AST (`SemNodo[]` ABI v1). |"
+      },
+      {
+       "id": "cb896320c3",
+       "linea": 21,
+       "texto": "| `nucleo/tokens.syn` | M2 §3.3 | Definición de `TokenID` y diccionarios multi‑idioma (es, en, fr, pt). |"
+      },
+      {
+       "id": "cbcfcc8d36",
+       "linea": 22,
+       "texto": "| `nucleo/tabla_simbolos.syn` | M3 §2 | Gestión de scopes, símbolos y búsqueda léxica. |"
+      },
+      {
+       "id": "d123d10885",
+       "linea": 23,
+       "texto": "| `nucleo/analizador_semantico.syn` | M3 §6 | Motor de análisis de 3 pasadas (estructuras → firmas → cuerpos). |"
+      },
+      {
+       "id": "529a6a4ef9",
+       "linea": 24,
+       "texto": "| `nucleo/errores.syn` | M3 §10 | Taxonomía de errores del compilador. |"
+      },
+      {
+       "id": "8a8d115271",
+       "linea": 25,
+       "texto": "| `nucleo/generator.syn` | M4 §2 | Generador de código C (emisor). |"
+      },
+      {
+       "id": "d0a7fc937e",
+       "linea": 26,
+       "texto": "| `nucleo/llvm_backend.syn` | M8 §1 | Backend LLVM IR (opcional, pero especificado en Synapse). |"
+      },
+      {
+       "id": "e12edd0745",
+       "linea": 27,
+       "texto": "| `nucleo/wasm_backend.syn` | M8 §2 | Backend WebAssembly (WAT/WASM). |"
+      },
+      {
+       "id": "5617495dd7",
+       "linea": 28,
+       "texto": "| `nucleo/verificador_formal.syn` | M3 §8 | Motor de contratos (`requiere`/`garantiza`) y ATP básico. |"
+      },
+      {
+       "id": "6047d0159d",
+       "linea": 29,
+       "texto": "| `nucleo/lifetimes.syn` | M4 §4.3 | Análisis de tiempos de vida (lifetimes). |"
+      },
+      {
+       "id": "7f2c8316b0",
+       "linea": 30,
+       "texto": "| `nucleo/cache.syn` | M8 §3 | Sistema de caché incremental (SHA‑256). |"
+      },
+      {
+       "id": "9ecfdc2d49",
+       "linea": 31,
+       "texto": "| `nucleo/principal.syn` | M1 §3, M9 §1 | Punto de entrada del compilador (orquesta el pipeline). |"
+      },
+      {
+       "id": "93a6fad38b",
+       "linea": 32,
+       "texto": "| `nucleo/lsp.syn` | M8 §1 | Servidor LSP nativo. |"
+      },
+      {
+       "id": "175b028573",
+       "linea": 33,
+       "texto": "| `nucleo/ast_abi.syn` | M6 §1.2, Roadmap F22.B | Especificación de la ABI del AST (versionado). |"
+      },
+      {
+       "id": "34af08a636",
+       "linea": 34,
+       "texto": "| `nucleo/builtins.syn` | M8 §5 | Funciones integradas (ej. `a_texto`, `leer_bytes`). |"
+      }
+     ]
+    },
+    {
+     "num": "2",
+     "titulo": "FRONTEND DE SYQUEX (`/syquex/`)",
+     "linea": 38,
+     "oraciones": [
+      {
+       "id": "8598c54290",
+       "linea": 40,
+       "texto": "Estos archivos definen el lenguaje hermano de alto nivel."
+      },
+      {
+       "id": "41273cb6d7",
+       "linea": 41,
+       "texto": "en Synapse puro porque el compilador de Syquex está escrito en Synapse."
+      },
+      {
+       "id": "4a863598aa",
+       "linea": 43,
+       "texto": "| Archivo | Manual de referencia | Propósito |"
+      },
+      {
+       "id": "9259df082c",
+       "linea": 44,
+       "texto": "|---------|----------------------|-----------|"
+      },
+      {
+       "id": "4dc74596f5",
+       "linea": 45,
+       "texto": "| `syquex/lexer.syq` | M3 §3 | Tokenizador de Syquex (soporta `#lang`, palabras clave de alto nivel). |"
+      },
+      {
+       "id": "2a8a8579e7",
+       "linea": 46,
+       "texto": "| `syquex/parser.syq` | M3 §4 | Parser de Syquex (descenso recursivo, gramática EBNF). |"
+      },
+      {
+       "id": "d39c7cb737",
+       "linea": 47,
+       "texto": "| `syquex/traductor.syq` | M3 §11 | Traducción del AST de Syquex a `SemNodo[]` de Synapse. |"
+      },
+      {
+       "id": "6d1850d56e",
+       "linea": 48,
+       "texto": "| `syquex/analizador_alcance.syq` | M4 §5 | Análisis de alcance para liberación automática de memoria (Cleanup Blocks). |"
+      },
+      {
+       "id": "61278ead4f",
+       "linea": 49,
+       "texto": "| `syquex/ffi_marshaling.syq` | M4 §5 | Marshaling automático para FFI (conversión de tipos a C). |"
+      },
+      {
+       "id": "18172b6d34",
+       "linea": 50,
+       "texto": "| `syquex/arena_componente.syq` | M4 §6 | Gestión de arenas de componente para GUI/DOM. |"
+      },
+      {
+       "id": "79e1747520",
+       "linea": 51,
+       "texto": "| `syquex/builtins.syq` | M3 §5 | Funciones integradas de Syquex (ej. `escribir_linea`). |"
+      },
+      {
+       "id": "f84d9a7821",
+       "linea": 52,
+       "texto": "| `syquex/syquex.syn` | M3 §1 | Compilador de Syquex (orquesta lexer → parser → traductor). |"
+      }
+     ]
+    },
+    {
+     "num": "3",
+     "titulo": "BIBLIOTECA ESTÁNDAR DE SYNAPSE (`/std/`)",
+     "linea": 56,
+     "oraciones": [
+      {
+       "id": "fe2b342b3d",
+       "linea": 58,
+       "texto": "Estos módulos están escritos en Synapse puro y proporcionan funcionalidades"
+      },
+      {
+       "id": "c8de369a05",
+       "linea": 59,
+       "texto": "básicas al lenguaje de sistemas."
+      },
+      {
+       "id": "4a863598aa",
+       "linea": 61,
+       "texto": "| Archivo | Manual de referencia | Propósito |"
+      },
+      {
+       "id": "9259df082c",
+       "linea": 62,
+       "texto": "|---------|----------------------|-----------|"
+      },
+      {
+       "id": "317999f5cf",
+       "linea": 63,
+       "texto": "| `std/io.syn` | M1 §4.3 | Entrada/salida básica (log, lectura/escritura de archivos). |"
+      },
+      {
+       "id": "f20dd32398",
+       "linea": 64,
+       "texto": "| `std/math.syn` | M1 §4.3 | Matemáticas y tensores. |"
+      },
+      {
+       "id": "919909d7cd",
+       "linea": 65,
+       "texto": "| `std/net.syn` | M5 §5 | Concurrencia distribuida (`std.cluster`). |"
+      },
+      {
+       "id": "fbafeec3c1",
+       "linea": 66,
+       "texto": "| `std/concurrencia.syn` | M5 §3 | Canales tipados (`Canal<T>`) y fibras. |"
+      },
+      {
+       "id": "7e0e1576c6",
+       "linea": 67,
+       "texto": "| `std/debug.syn` | M8 §3 | Depuración time‑travel y trazas. |"
+      },
+      {
+       "id": "2297bbb087",
+       "linea": 68,
+       "texto": "| `std/os.syn` | M7 §2.5, M9 §5 | Sistema (detección de hardware, memoria, CPU). |"
+      },
+      {
+       "id": "e7291f0b27",
+       "linea": 69,
+       "texto": "| `std/federated.syn` | M5 §6 | Aprendizaje federado (FedAvg). |"
+      },
+      {
+       "id": "ad520ffc37",
+       "linea": 70,
+       "texto": "| `std/quantum.syn` | M5 §7 | Computación cuántica (qubits, puertas, QEC). |"
+      },
+      {
+       "id": "88887a4000",
+       "linea": 71,
+       "texto": "| `std/modelo.syn` | M7 §3 | Carga y ejecución de modelos GGUF (IA). |"
+      }
+     ]
+    },
+    {
+     "num": "4",
+     "titulo": "BIBLIOTECA ESTÁNDAR DE SYQUEX (`/lib/`)",
+     "linea": 75,
+     "oraciones": [
+      {
+       "id": "6a771ed343",
+       "linea": 77,
+       "texto": "Estos módulos están escritos en **Synapse puro** (extensión `.syq`) y"
+      },
+      {
+       "id": "99c9496130",
+       "linea": 78,
+       "texto": "proporcionan el ecosistema de alto nivel para Syquex."
+      },
+      {
+       "id": "4a863598aa",
+       "linea": 80,
+       "texto": "| Archivo | Manual de referencia | Propósito |"
+      },
+      {
+       "id": "9259df082c",
+       "linea": 81,
+       "texto": "|---------|----------------------|-----------|"
+      },
+      {
+       "id": "dcc38b3173",
+       "linea": 82,
+       "texto": "| `lib/io.syq` | M9 §2.2, Material F24 | Entrada/salida de consola y archivos. |"
+      },
+      {
+       "id": "0db55621fa",
+       "linea": 83,
+       "texto": "| `lib/math.syq` | M9 §2.2 | Funciones matemáticas y estadísticas. |"
+      },
+      {
+       "id": "00d6b7f56b",
+       "linea": 84,
+       "texto": "| `lib/texto.syq` | M9 §2.2 | Manipulación avanzada de cadenas. |"
+      },
+      {
+       "id": "4070b020e0",
+       "linea": 85,
+       "texto": "| `lib/lista.syq` | M9 §2.2 | Operaciones funcionales con listas (map, filter, reduce). |"
+      },
+      {
+       "id": "1a81f2faef",
+       "linea": 86,
+       "texto": "| `lib/mapa.syq` | M9 §2.2 | Operaciones con mapas/diccionarios. |"
+      },
+      {
+       "id": "a6ae60a823",
+       "linea": 87,
+       "texto": "| `lib/json.syq` | M9 §2.2, Material F24 | Serialización/deserialización JSON. |"
+      },
+      {
+       "id": "efbae273d7",
+       "linea": 88,
+       "texto": "| `lib/web.syq` | M9 §2.2, Material F24 | Servidor HTTP con fibras. |"
+      },
+      {
+       "id": "0db272bff4",
+       "linea": 89,
+       "texto": "| `lib/gui.syq` | M9 §2.2 | Bindings a GTK (con arenas de componente). |"
+      },
+      {
+       "id": "11c6ee4123",
+       "linea": 90,
+       "texto": "| `lib/dom.syq` | M9 §2.2, Material F25 | Manipulación del DOM (WASM). |"
+      },
+      {
+       "id": "d63b8dd812",
+       "linea": 91,
+       "texto": "| `lib/db.syq` | M9 §2.2 | Conexión a SQLite y PostgreSQL. |"
+      },
+      {
+       "id": "0123f35db1",
+       "linea": 92,
+       "texto": "| `lib/tiempo.syq` | M9 §2.2 | Fechas y tiempos. |"
+      },
+      {
+       "id": "3e4e5eff33",
+       "linea": 93,
+       "texto": "| `lib/pruebas.syq` | M9 §2.2 | Framework de testing. |"
+      },
+      {
+       "id": "0fd1e19c9e",
+       "linea": 94,
+       "texto": "| `lib/ia.syq` | M9 §2.2 | Integración con OpenSyn. |"
+      },
+      {
+       "id": "0bc44d65cf",
+       "linea": 95,
+       "texto": "| `lib/ffi.syq` | M4 §5 | Marshaling automático (extensión). |"
+      }
+     ]
+    },
+    {
+     "num": "5",
+     "titulo": "ASISTENTE IA OPENSYN (`/opensyn/`)",
+     "linea": 99,
+     "oraciones": [
+      {
+       "id": "38195e222c",
+       "linea": 101,
+       "texto": "Estos archivos están escritos en Synapse puro porque OpenSyn es una"
+      },
+      {
+       "id": "fc16f8eacf",
+       "linea": 102,
+       "texto": "aplicación del ecosistema."
+      },
+      {
+       "id": "4a863598aa",
+       "linea": 104,
+       "texto": "| Archivo | Manual de referencia | Propósito |"
+      },
+      {
+       "id": "9259df082c",
+       "linea": 105,
+       "texto": "|---------|----------------------|-----------|"
+      },
+      {
+       "id": "4362b4258d",
+       "linea": 106,
+       "texto": "| `opensyn/router.syn` | M7 §2.4 | Enrutador de peticiones de IA. |"
+      },
+      {
+       "id": "fb0c2b6967",
+       "linea": 107,
+       "texto": "| `opensyn/installer.syn` | M7 §2.5 | Instalador de OpenSyn (detección HW, descarga de modelos). |"
+      },
+      {
+       "id": "e25c7b5b09",
+       "linea": 108,
+       "texto": "| `opensyn/transpiler.syn` | M7 §5.1 | Transpilación Python → Syquex. |"
+      },
+      {
+       "id": "0fc4fa9f6e",
+       "linea": 109,
+       "texto": "| `opensyn/synapse_rag.syn` | M7 §2.3 | Pipeline RAG (inyección de contexto). |"
+      }
+     ]
+    },
+    {
+     "num": "6",
+     "titulo": "HERRAMIENTAS DE DESARROLLO (`/vscode-synapse/`)",
+     "linea": 113,
+     "oraciones": [
+      {
+       "id": "7d8c60e6bc",
+       "linea": 115,
+       "texto": "La extensión VS Code está escrita en **TypeScript/JavaScript**, no en Synapse."
+      },
+      {
+       "id": "b8157db912",
+       "linea": 116,
+       "texto": "Sin embargo, el servidor LSP (`nucleo/lsp.syn`) está en Synapse puro."
+      }
+     ]
+    },
+    {
+     "num": "7",
+     "titulo": "EJEMPLOS (`/examples/`)",
+     "linea": 120,
+     "oraciones": [
+      {
+       "id": "5bd0e641e3",
+       "linea": 122,
+       "texto": "Estos archivos son código de usuario escrito en Synapse puro (`.syn`) o"
+      },
+      {
+       "id": "6eeba324ba",
+       "linea": 123,
+       "texto": "No son parte del compilador, pero son fundamentales para la"
+      },
+      {
+       "id": "4a863598aa",
+       "linea": 126,
+       "texto": "| Archivo | Manual de referencia | Propósito |"
+      },
+      {
+       "id": "9259df082c",
+       "linea": 127,
+       "texto": "|---------|----------------------|-----------|"
+      },
+      {
+       "id": "f83582ff25",
+       "linea": 128,
+       "texto": "| `examples/synapse/01_basico.syn` | M1 | Hola Mundo en Synapse. |"
+      },
+      {
+       "id": "e9b9d1875d",
+       "linea": 129,
+       "texto": "| `examples/synapse/02_estructuras.syn` | M2 | Uso de estructuras y métodos. |"
+      },
+      {
+       "id": "cd74b4c114",
+       "linea": 130,
+       "texto": "| `examples/synapse/03_tensores_ia.syn` | M7 | Tensores y operaciones de IA. |"
+      },
+      {
+       "id": "c5feaa52f3",
+       "linea": 131,
+       "texto": "| `examples/syquex/01_basico.syq` | M3 | Hola Mundo en Syquex. |"
+      },
+      {
+       "id": "45cd38f9dd",
+       "linea": 132,
+       "texto": "| `examples/syquex/02_web.syq` | M9 | Servidor web en Syquex. |"
+      },
+      {
+       "id": "d62a06aa2f",
+       "linea": 133,
+       "texto": "| `examples/syquex/03_gui.syq` | M9 | GUI con GTK en Syquex. |"
+      }
+     ]
+    },
+    {
+     "num": "8",
+     "titulo": "TESTS (`/tests/`)",
+     "linea": 137,
+     "oraciones": [
+      {
+       "id": "df964e38a8",
+       "linea": 139,
+       "texto": "Los tests están escritos en múltiples lenguajes según el manual:"
+      },
+      {
+       "id": "a84afb1eb3",
+       "linea": 141,
+       "texto": "**Python**: `tests/unit/`, `tests/integration/` (para pruebas del compilador)."
+      },
+      {
+       "id": "4852276be5",
+       "linea": 142,
+       "texto": "**C**: `tests/validate_*.c` (para pruebas del runtime)."
+      },
+      {
+       "id": "3af01731c2",
+       "linea": 143,
+       "texto": "**Synapse puro**: `tests/micro_bootstrap/`, `tests/syquex/` (para pruebas de"
+      },
+      {
+       "id": "9d0889a7eb",
+       "linea": 144,
+       "texto": "integración de los lenguajes)."
+      }
+     ]
+    },
+    {
+     "num": "",
+     "titulo": "📊 RESUMEN POR CATEGORÍA",
+     "linea": 148,
+     "oraciones": [
+      {
+       "id": "a3d4d3ad01",
+       "linea": 150,
+       "texto": "| Categoría | Archivos .syn/.syq | % del total |"
+      },
+      {
+       "id": "b1d4dd9001",
+       "linea": 151,
+       "texto": "|-----------|-------------------|-------------|"
+      },
+      {
+       "id": "e4f91de371",
+       "linea": 152,
+       "texto": "| Núcleo del compilador (`nucleo/`) | 18 | 30% |"
+      },
+      {
+       "id": "8238d196ea",
+       "linea": 153,
+       "texto": "| Frontend Syquex (`syquex/`) | 8 | 13% |"
+      },
+      {
+       "id": "f9bdf19089",
+       "linea": 154,
+       "texto": "| Biblioteca estándar Synapse (`std/`) | 9 | 15% |"
+      },
+      {
+       "id": "f5a16076ef",
+       "linea": 155,
+       "texto": "| Biblioteca estándar Syquex (`lib/`) | 14 | 23% |"
+      },
+      {
+       "id": "d4e5d299fc",
+       "linea": 156,
+       "texto": "| OpenSyn (`opensyn/`) | 4 | 7% |"
+      },
+      {
+       "id": "97185bd9d1",
+       "linea": 157,
+       "texto": "| Ejemplos (`examples/`) | 6 | 10% |"
+      },
+      {
+       "id": "5bcc55aaa4",
+       "linea": 158,
+       "texto": "| **Total** | **59 archivos** | **100%** |"
+      }
+     ]
+    },
+    {
+     "num": "",
+     "titulo": "🛠️ EXCEPCIONES: CÓDIGO QUE NO ES SYNAPSE PURO",
+     "linea": 162,
+     "oraciones": [
+      {
+       "id": "acd76a0e3f",
+       "linea": 164,
+       "texto": "Según los manuales, estos componentes **no están escritos en Synapse puro**:"
+      },
+      {
+       "id": "5ededc3714",
+       "linea": 166,
+       "texto": "| Componente | Lenguaje | Razón |"
+      },
+      {
+       "id": "4af6a81a06",
+       "linea": 167,
+       "texto": "|------------|----------|-------|"
+      },
+      {
+       "id": "a14f7902e9",
+       "linea": 168,
+       "texto": "| Runtime (`runtime/`) | C | Interacción con el sistema operativo y hardware. |"
+      },
+      {
+       "id": "6b03ffb383",
+       "linea": 169,
+       "texto": "| Axon (`axon/`) | C | Gestión de paquetes y criptografía Ed25519. |"
+      },
+      {
+       "id": "992bc3b647",
+       "linea": 170,
+       "texto": "| OpenSyn server (`opensyn/*.c`) | C | Orquestación de `llama-server`. |"
+      },
+      {
+       "id": "ebe3505210",
+       "linea": 171,
+       "texto": "| Extensión VS Code (`vscode-synapse/`) | TypeScript/JS | Integración con el editor. |"
+      },
+      {
+       "id": "a52c169433",
+       "linea": 172,
+       "texto": "| Tests Python (`tests/unit/`, `tests/integration/`) | Python | Bootstrap y validación del compilador. |"
+      },
+      {
+       "id": "9812d1f763",
+       "linea": 173,
+       "texto": "| Bindings generados (`bindings/`) | Python, Java, TS | Código generado, no escrito manualmente. |"
+      }
+     ]
+    },
+    {
+     "num": "",
+     "titulo": "🔍 VERIFICACIÓN CON LOS MANUALES",
+     "linea": 177,
+     "oraciones": [
+      {
+       "id": "e4ba53416f",
+       "linea": 179,
+       "texto": "He cotejado esta lista con:"
+      },
+      {
+       "id": "2f094c7e87",
+       "linea": 181,
+       "texto": "**Manual 1** (Estructura del repositorio)"
+      },
+      {
+       "id": "f7e3654209",
+       "linea": 182,
+       "texto": "**Manual 2** (Sintaxis de Synapse)"
+      },
+      {
+       "id": "542184f299",
+       "linea": 183,
+       "texto": "**Manual 3** (Sintaxis de Syquex)"
+      },
+      {
+       "id": "9c1f17a2c1",
+       "linea": 184,
+       "texto": "**Manual 4** (Modelo de memoria)"
+      },
+      {
+       "id": "48521905dd",
+       "linea": 192,
+       "texto": "**Resultado:** La lista NO es exhaustiva y presenta las desviaciones señaladas en"
+      },
+      {
+       "id": "10e7ab5696",
+       "linea": 193,
+       "texto": "Coincide parcialmente con los manuales v8.1.0, pero debe reconciliarse"
+      },
+      {
+       "id": "e1358410cd",
+       "linea": 194,
+       "texto": "con el árbol real antes de usarse como fuente de verdad (el código es fuente de verdad;"
+      },
+      {
+       "id": "4342091c9c",
+       "linea": 195,
+       "texto": "ver `MEMORIA_PROYECTO.md`, decisión **D-F22-A**)."
+      }
+     ]
+    },
+    {
+     "num": "6",
+     "titulo": "ADENDUM DE CORRECCIÓN DE VIGENCIA (2026-08-27)",
+     "linea": 199,
+     "oraciones": [
+      {
+       "id": "8f146cd8c7",
+       "linea": 201,
+       "texto": "Este inventario fue auditado contra el árbol real (`glob` de `**/*.syn`/`**/*.syq`)."
+      },
+      {
+       "id": "0a000533c7",
+       "linea": 202,
+       "texto": "No es exhaustivo y presenta las desviaciones siguientes."
+      },
+      {
+       "id": "980cc7d289",
+       "linea": 202,
+       "texto": "El código existente es la"
+      },
+      {
+       "id": "27bb7b749f",
+       "linea": 203,
+       "texto": "fuente de verdad; los nombres del manual se corrigen aquí hacia la práctica ratificada."
+      },
+      {
+       "id": "017ed6b295",
+       "linea": 205,
+       "texto": "| Ítem del inventario | Estado real | Reemplazo / nota |"
+      },
+      {
+       "id": "1cec253ad0",
+       "linea": 207,
+       "texto": "| `syquex/lexer.syq`, `parser.syq`, `traductor.syq` | Renombrados | `syquex/lexer.syn`, `parser.syn`, `traductor.syn` — extensión `.syn` por **D-F22-A** (frontend en Synapse). |"
+      },
+      {
+       "id": "70d5fd3cb8",
+       "linea": 208,
+       "texto": "| `syquex/syquex.syn` | Renombrado | `syquex/syq_main.syn` (entry CLI del frontend; orquesta lexer→parser→traductor). |"
+      },
+      {
+       "id": "912e71b936",
+       "linea": 209,
+       "texto": "| `nucleo/builtins.syn` | No existe | Builtins (`a_texto`, `leer_bytes`, `escribir`…) embebidas en el codegen (`librerias/compiler/generator.c`) y runtime. |"
+      },
+      {
+       "id": "67c6d37e6b",
+       "linea": 210,
+       "texto": "| `syquex/builtins.syq` | No existe | Builtins de Syquex embebidas en el compiler/librerías. |"
+      },
+      {
+       "id": "ceb3e65e94",
+       "linea": 211,
+       "texto": "| `syquex/arena_componente.syq` | No existe | API de arenas en `lib/dom.syq` (FFI `_arena_componente_*`). |"
+      },
+      {
+       "id": "7006e3d7ca",
+       "linea": 212,
+       "texto": "| `lib/json.syq` | No existe | JSON en `std/json.syn` (ADT, no en `lib/`). |"
+      },
+      {
+       "id": "dceb0e4a83",
+       "linea": 213,
+       "texto": "| `lib/ia.syq` | No existe | Integración OpenSyn en `std/ai.syn` + `std/modelo.syn`. |"
+      },
+      {
+       "id": "a67d3de0b8",
+       "linea": 214,
+       "texto": "| `lib/ffi.syq` | No existe | Marshaling en `syquex/ffi_marshaling.syq` + `lib/runtime_bindings.syq`. |"
+      },
+      {
+       "id": "0b2de082ad",
+       "linea": 215,
+       "texto": "| `lib/gui.syq` | No existe | Pendiente (bindings GTK no implementados). |"
+      },
+      {
+       "id": "be54bf1822",
+       "linea": 216,
+       "texto": "| `std/os.syn` | No implementado | Pendiente Fase 29; detección HW hoy en `runtime/core/detect_hardware.c` (FFI). |"
+      },
+      {
+       "id": "1e630ef4d1",
+       "linea": 217,
+       "texto": "| `opensyn/installer.syn` | No existe | Instalador en `.github/workflows/build-installer.yml` + `instaladores/windows/synapse.iss` (Inno Setup/PowerShell). |"
+      },
+      {
+       "id": "5a7f80caad",
+       "linea": 218,
+       "texto": "| `opensyn/transpiler.syn` | Renombrado | `opensyn/transpiler.syq`. |"
+      },
+      {
+       "id": "4fb0c10fc9",
+       "linea": 219,
+       "texto": "| `opensyn/synapse_rag.syn` | No existe | Pipeline RAG en C: `nucleo/synapse_rag.c` + `opensyn/router.syn`. |"
+      },
+      {
+       "id": "55c70d4596",
+       "linea": 220,
+       "texto": "| `examples/synapse/01_basico.syn` | Renombrado | `examples/synapse/00_hola_mundo/main.syn`. |"
+      },
+      {
+       "id": "fabf0411a6",
+       "linea": 221,
+       "texto": "| `examples/synapse/02_estructuras.syn` | Renombrado | `examples/synapse/02_estructuras/main.syn`. |"
+      },
+      {
+       "id": "2aaedac636",
+       "linea": 222,
+       "texto": "| `examples/synapse/03_tensores_ia.syn` | No existe (hay `03_concurrencia`) | Ejemplo de tensores/IA pendiente. |"
+      },
+      {
+       "id": "b34a816a4a",
+       "linea": 223,
+       "texto": "| `examples/syquex/01_basico.syq` | Renombrado | `examples/syquex/counter/test_counter.syq`, `examples/syquex/python_pipeline/fibonacci.syq`. |"
+      },
+      {
+       "id": "d0a3b39bce",
+       "linea": 224,
+       "texto": "| `examples/syquex/02_web.syq`, `03_gui.syq` | No existen | Ejemplos web/GUI pendientes (los módulos `lib/web.syq`/`lib/dom.syq` sí existen). |"
+      },
+      {
+       "id": "8fb0054b87",
+       "linea": 226,
+       "texto": "Además, el árbol real contiene muchos más archivos `.syn/.syq` no listados"
+      },
+      {
+       "id": "a60d0e3a87",
+       "linea": 227,
+       "texto": "(p.ej. `nucleo/generador/*`, `std/wasm.syn`, `std/tensor.syn`, `std/toml.syn`,"
+      },
+      {
+       "id": "c639feb772",
+       "linea": 228,
+       "texto": "`syquex/expr.syn`, `syquex/syq_json.syn`, `opensyn/principal.syn`,"
+      },
+      {
+       "id": "d4f58a3b63",
+       "linea": 229,
+       "texto": "`opensyn/validation_loop.syn`, `lib/runtime_bindings.syq`)."
+      },
+      {
+       "id": "698484bc13",
+       "linea": 229,
+       "texto": "El recuento \"59 archivos\""
+      },
+      {
+       "id": "0219aaf4e9",
+       "linea": 230,
+       "texto": "Asimismo, `librerias/` (std embebidas en C) es otra excepción"
+      },
+      {
+       "id": "7e0b36d008",
+       "linea": 231,
+       "texto": "de lenguaje no contemplada en §6 del presente Anexo."
+      }
+     ]
+    }
+   ]
+  },
+  "MTO": {
+   "archivo": "docs/manuales/MANUAL_TESTS_OBLIGATORIOS.md",
+   "sha256": "e4422169853edd0d",
+   "secciones": [
+    {
+     "num": "",
+     "titulo": "M1 — Fundamentos del lenguaje",
+     "linea": 17,
+     "oraciones": [
+      {
+       "id": "6df0601a27",
+       "linea": 18,
+       "texto": "OBL-M1-01 | Manual 1 §2 | Estructura de directorios de tests conforme a M1 §2 | integración | GREEN"
+      },
+      {
+       "id": "078d443933",
+       "linea": 19,
+       "texto": "OBL-M1-02 | Manual 1 §4 | Sintaxis core (tipos, funciones) parsea y compila | unit | GREEN"
+      }
+     ]
+    },
+    {
+     "num": "",
+     "titulo": "M2 — Tipos, contratos e inferencia HM",
+     "linea": 21,
+     "oraciones": [
+      {
+       "id": "5f12b7ad53",
+       "linea": 22,
+       "texto": "OBL-M2-01 | Manual 2 §4.2 | Inferencia HM identidad `identidad(x: T) -> T` | unit | GREEN"
+      },
+      {
+       "id": "9d518050d2",
+       "linea": 23,
+       "texto": "OBL-M2-02 | Manual 2 §5 | Contratos `requiere`/`garantiza` observables en runtime | unit | GREEN"
+      },
+      {
+       "id": "47d6ff6764",
+       "linea": 24,
+       "texto": "OBL-M2-03 | Manual 2 §8.2 | Tipos ADT anidados en firmas | unit | GREEN"
+      },
+      {
+       "id": "0fe0e4c6c6",
+       "linea": 25,
+       "texto": "OBL-M2-05 | Manual 2 §12 | Tipos de datos: ctor de struct con aridad validada paridad S1↔nativo (H-R153-4/4b; R179 alinea test r27 y restaura check nativo) | integración | GREEN"
+      }
+     ]
+    },
+    {
+     "num": "",
+     "titulo": "M3 — Syquex (frontend / F28 certificación)",
+     "linea": 27,
+     "oraciones": [
+      {
+       "id": "61dd911d4c",
+       "linea": 28,
+       "texto": "OBL-M3-01 | Manual 3 §3 | Frontend Syquex parsea y traduce conforme al manual | unit | GREEN"
+      },
+      {
+       "id": "5fb973ec16",
+       "linea": 29,
+       "texto": "OBL-M3-02 | Manual 3 §5 | Analizador de alcance (arena/rc/arc/débil) | unit | GREEN"
+      },
+      {
+       "id": "26b9e3ec3f",
+       "linea": 30,
+       "texto": "OBL-M3-03 | Manual 3 §6 | Métodos con self por puntero (no by-value) | unit | GREEN"
+      },
+      {
+       "id": "c07208251f",
+       "linea": 31,
+       "texto": "OBL-M3-04 | Manual 3 §3 (certificación) | **Certificación Syquex v1.0 (Hito 7)** | TDD | GREEN"
+      },
+      {
+       "id": "7e8877ebe3",
+       "linea": 32,
+       "texto": "OBL-M3-05 | Manual 3 §3 (fuzzing) | **Fuzzing Syquex: compilador nunca crashea con entradas invalidas** | TDD | GREEN"
+      },
+      {
+       "id": "0e49a685a4",
+       "linea": 33,
+       "texto": "OBL-M3-06 | Manual 3 §3 | `patron ::= ... | numero`: patrón literal y wildcard `_` en `coincidir` sobre primitivos, paridad S1↔nativo (R180: parser nativo + emisor `case`/`default` sobre valor + test r11 alineado) | TDD | GREEN"
+      },
+      {
+       "id": "7ebce24635",
+       "linea": 34,
+       "texto": "OBL-M3-07 | Manual 3 §3 | `caso ::= patron \"=>\" ( sentencia | NEWLINE INDENT bloque DEDENT )`: 2+ casos con cuerpo-bloque seguidos en nativo, ADT ok/err, cierre en medio de función, dentro de `si`; paridad S1↔nativo (R183: flag `caso_parseado` en `parsear_coincidir`, el anti-cuelgue ya no consume el DESINDENTAR/patrón tras un caso parseado) | TDD | GREEN"
+      }
+     ]
+    },
+    {
+     "num": "",
+     "titulo": "M4 — Gestión de memoria (RAII / alcance)",
+     "linea": 36,
+     "oraciones": [
+      {
+       "id": "6f99169ff5",
+       "linea": 37,
+       "texto": "OBL-M4-01 | Manual 4 §2 | Arena allocator (bump O(1), cascada) | unit | GREEN"
+      },
+      {
+       "id": "d117f597ad",
+       "linea": 38,
+       "texto": "OBL-M4-02 | Manual 4 §3.2/§3.3 | rc<T> / arc<T> reference counting | unit | GREEN"
+      },
+      {
+       "id": "99ad567458",
+       "linea": 39,
+       "texto": "OBL-M4-03 | Manual 4 §4.2 | débil<T> WeakRef + upgrade | unit | GREEN"
+      },
+      {
+       "id": "ab0e4e0543",
+       "linea": 40,
+       "texto": "OBL-M4-04 | Manual 4 §5 | Cleanup blocks / CFG / rc_flag | unit | GREEN"
+      }
+     ]
+    },
+    {
+     "num": "",
+     "titulo": "M5 — Concurrencia y canales",
+     "linea": 42,
+     "oraciones": [
+      {
+       "id": "81d0424461",
+       "linea": 43,
+       "texto": "OBL-M5-01 | Manual 5 §3.4 | Canales: `canal(...)`, `ch <-`, `ch ->` en runtime | unit | GREEN"
+      },
+      {
+       "id": "5e6cd1b9c5",
+       "linea": 44,
+       "texto": "OBL-M5-02 | Manual 5 §6.2/§6.4/§6.5 | Cluster: conectar/enviar/recibir, raft, multicast | integración | GREEN"
+      },
+      {
+       "id": "0d4064372e",
+       "linea": 45,
+       "texto": "OBL-M5-03 | Manual 5 §9 | Cluster remoto (handshake Ed25519 + crypto_kx) | integración | GREEN"
+      }
+     ]
+    },
+    {
+     "num": "",
+     "titulo": "M6 — ABI / puente AST",
+     "linea": 47,
+     "oraciones": [
+      {
+       "id": "d7eda25545",
+       "linea": 48,
+       "texto": "OBL-M6-01 | Manual 6 §1.2 | SemNodo ABI plano de 10 campos | unit | GREEN"
+      },
+      {
+       "id": "0d0054d4db",
+       "linea": 49,
+       "texto": "OBL-M6-02 | Manual 6 §1.3 | NOMBRE_NODO cubre los 58 nodos | unit | GREEN"
+      },
+      {
+       "id": "ad23ac344f",
+       "linea": 50,
+       "texto": "OBL-M6-03 | Manual 6 §5.1/§5.3 | Axon: serialización/deserialización etiquetada | integración | GREEN"
+      }
+     ]
+    },
+    {
+     "num": "",
+     "titulo": "M7 — OpenSyn (IA / RAG / validación)",
+     "linea": 52,
+     "oraciones": [
+      {
+       "id": "70794b8e45",
+       "linea": 53,
+       "texto": "OBL-M7-01 | Manual 7 §2.3 | Inyección de contexto estático (reglas Syquex) en prompt | integración | GREEN"
+      },
+      {
+       "id": "946dc3ecc3",
+       "linea": 54,
+       "texto": "OBL-M7-02 | Manual 7 §4.2 | Bucle de validación 3 intentos | integración | GREEN"
+      },
+      {
+       "id": "8037074ad0",
+       "linea": 55,
+       "texto": "OBL-M7-03 | Manual 6 §6.2 | Transpilación Python→Syquex: el .syq generado COMPILA | integración | GREEN"
+      },
+      {
+       "id": "118d3d981c",
+       "linea": 56,
+       "texto": "OBL-M7-04 | Manual 7 §7.3 / Manual 2 §12 | Memoria persistente cifrada (PatronAprendido/MemoriaNegativa/EntradaCifrada; contratos requiere/garantiza) | TDD | GREEN ← Etapa 32.3"
+      },
+      {
+       "id": "5f8dd8a7b7",
+       "linea": 57,
+       "texto": "OBL-M7-05 | Manual 7 §2 / Manual 2 §12 | Pipeline multi-agente (fases deterministas; contratos requiere/garantiza) | TDD | GREEN ← Etapa 32.4"
+      },
+      {
+       "id": "a073ca206a",
+       "linea": 58,
+       "texto": "OBL-M7-06 | Manual 7 §4.2 / Manual 2 §12 | Verificación AOT con auto-refutación (CasosLimite ejecutados en real; contratos requiere/garantiza) | TDD | GREEN ← Etapa 32.5"
+      }
+     ]
+    },
+    {
+     "num": "",
+     "titulo": "M8 — HERRAMIENTAS DE DESARROLLO (F27, ACTIVO)",
+     "linea": 60,
+     "oraciones": [
+      {
+       "id": "974345091f",
+       "linea": 61,
+       "texto": "OBL-M8-01 | Manual 8 §1.2 | LSP initialize/initialized/shutdown | integración | GREEN"
+      },
+      {
+       "id": "dd623a54ca",
+       "linea": 62,
+       "texto": "OBL-M8-02 | Manual 8 §1.4 | hover / completion / definition reales | integración | GREEN (52/52)"
+      },
+      {
+       "id": "c3f5a66f8a",
+       "linea": 63,
+       "texto": "OBL-M8-03 | Manual 8 §1.4 | codeAction + formatting + signatureHelp | TDD | GREEN (commit previo + verificacion 2026-08-31)"
+      },
+      {
+       "id": "90476ec31a",
+       "linea": 64,
+       "texto": "OBL-M8-04 | Manual 8 §1.4 | workspace/didChangeConfiguration | TDD | GREEN (test_lsp_workspace.py PASS, 2026-08-31)"
+      },
+      {
+       "id": "86171953bf",
+       "linea": 65,
+       "texto": "OBL-M8-05 | Manual 8 §2.3 | VS Code aiStatus / aiTranspile / aiBindings | TDD | GREEN (test_lsp_ai_dispatch.py 5/5 PASS, 2026-08-31)"
+      },
+      {
+       "id": "bca428700f",
+       "linea": 66,
+       "texto": "OBL-M8-06 | Manual 8 §5.2/§5.3/§5.4 | Debugger time-travel + breakpoints reversibles | TDD | GREEN (C tests 206/206 PASS + pytest 9/9 PASS, 2026-08-31)"
+      },
+      {
+       "id": "356ffc6902",
+       "linea": 67,
+       "texto": "OBL-M8-07 | Manual 8 §4.2/§5/§7 | CLI run / debug / opensyn | TDD | GREEN (test_cli_run_debug.py 16/16 PASS, 2026-08-31)"
+      },
+      {
+       "id": "87fedf0d78",
+       "linea": 68,
+       "texto": "OBL-M8-08 | Manual 8 §1.4 | completion_symbols real (gap FFI RAII) | TDD | GREEN (verificado 2026-08-31)"
+      },
+      {
+       "id": "2ebb96f134",
+       "linea": 69,
+       "texto": "OBL-M8-09 | Manual 8 §5.4 / Manual 7 §4.2 | Bucle de validación integrado en LSP | integración | GREEN"
+      },
+      {
+       "id": "652404f1df",
+       "linea": 70,
+       "texto": "OBL-M8-10 | Manual 6 §5 | Aislamiento de workspaces en Axon (.axon/cache/, lockfile SHA-256) | integración | GREEN"
+      },
+      {
+       "id": "28f58e1b4b",
+       "linea": 71,
+       "texto": "OBL-M8-11 | Manual 3 §12 | Framework de testing nativo lib/pruebas.syq (assert, test, suite) | integración | GREEN"
+      },
+      {
+       "id": "a1d5afa82f",
+       "linea": 72,
+       "texto": "OBL-M8-12 | Manual 2 §12 | Linter nativo nucleo/lint.syn (5 reglas WARN_LINT_*) | integración | GREEN"
+      },
+      {
+       "id": "b9f409c0a7",
+       "linea": 73,
+       "texto": "OBL-M8-13 | Manual 2 §12 | Formateador nativo nucleo/formatter.syn (reglas de estilo) | integración | GREEN"
+      },
+      {
+       "id": "0b92777d25",
+       "linea": 74,
+       "texto": "OBL-M8-14 | Manual 9 §6.2 | Reportes CI/CD: JUnit XML + JSON en nucleo/principal.syn | integración | GREEN"
+      },
+      {
+       "id": "3341a8930e",
+       "linea": 75,
+       "texto": "OBL-M8-15 | Manual 9 §6.2 | Reporte de cobertura HTML en nucleo/principal.syn | integración | GREEN"
+      }
+     ]
+    },
+    {
+     "num": "",
+     "titulo": "M9 — Distribución / F29 / F30",
+     "linea": 77,
+     "oraciones": [
+      {
+       "id": "2e9c472193",
+       "linea": 78,
+       "texto": "OBL-M9-01 | Manual 9 §5.7 / F29 | Detección de hardware `std/os.syn` | TDD | GREEN (ME-1 commit acd7bf8, 5/5 PASS)"
+      },
+      {
+       "id": "3357543970",
+       "linea": 79,
+       "texto": "OBL-M9-02 | Manual 9 §5.2 §5.3 / F29 | Installer OpenSyn (`opensyn/installer.syn`) | TDD | RED ← ME_29_T2"
+      },
+      {
+       "id": "a611ada81e",
+       "linea": 80,
+       "texto": "OBL-M9-03 | Manual 9 §5.6 / F29 | Gestión de modelos OpenSyn | TDD | RED ← ME_29_T3"
+      },
+      {
+       "id": "deb52bcd61",
+       "linea": 81,
+       "texto": "OBL-M9-04 | Manual 9 §2.5 / F30 | Instaladores .iss/.sh/.dmg unificados | TDD | RED ← ME_30_T1"
+      },
+      {
+       "id": "268c66f86a",
+       "linea": 82,
+       "texto": "OBL-M9-05 | Manual 9 §2.3 / F30 | Makefile / build.py reproducible | TDD | RED ← ME_30_T2"
+      },
+      {
+       "id": "5a35c0a2dd",
+       "linea": 83,
+       "texto": "OBL-M9-06 | Manual 9 §4.1 / F30 | Distribución final empaquetada y firmada | TDD | RED ← ME_30_T3"
+      },
+      {
+       "id": "2c916ff886",
+       "linea": 84,
+       "texto": "OBL-M9-07 | Manual 9 §4.1 / F30 / Hito 8 | Release unificado (lanzamiento público) | TDD | RED ← ME_30_T4"
+      }
+     ]
+    },
+    {
+     "num": "",
+     "titulo": "MCTRL — Sistema de control de gobernanza (auditoría)",
+     "linea": 88,
+     "oraciones": [
+      {
+       "id": "e9cc6a74cc",
+       "linea": 89,
+       "texto": "OBL-MCTRL-01 | Manual 7 §2.3 | El gate MTS ejecuta los oráculos del plan en modo release; SKIP/vacío/fallo no es evidencia (contrastar.py) | integración | GREEN"
+      },
+      {
+       "id": "6a5bfee507",
+       "linea": 90,
+       "texto": "OBL-MCTRL-02 | Manual 2 §12 | Trazabilidad anti-fabricación: citas 'cumple Manual' a secciones reales y vinculadas al plan; D-9 cubre .syn/.py/.c; .syq es producción; base CI nunca vacía (verificar_alineacion.py) | integración | GREEN"
+      },
+      {
+       "id": "4d2d56168d",
+       "linea": 91,
+       "texto": "OBL-MCTRL-03 | Manual 7 §2.3 | El MTO se autentica: entradas OBL con Manual § real, secciones fabricadas visibles, estados GREEN trazados (auditar_calidad_tests.py --solo-mto) | integración | GREEN"
+      },
+      {
+       "id": "ed9615cf45",
+       "linea": 92,
+       "texto": "OBL-MCTRL-04 | Manual 6 §5 | La evidencia queda atada al contenido: cambio_hash bloqueante, sello de lectura con frescura, evidencia comiteada exigida en CI (alineacion.py) | integración | GREEN"
+      }
+     ]
+    },
+    {
+     "num": "",
+     "titulo": "Notas de mantenimiento",
+     "linea": 96,
+     "oraciones": [
+      {
+       "id": "1b7f0b8f19",
+       "linea": 97,
+       "texto": "Toda entrada nueva de test debe añadir su `OBL-*` aquí y citar el `Manual §` en el archivo."
+      },
+      {
+       "id": "032ab9affa",
+       "linea": 98,
+       "texto": "`auditoria/auditar_calidad_tests.py --mto` verifica que cada `OBL-*` tenga test y cita."
+      },
+      {
+       "id": "326877c340",
+       "linea": 99,
+       "texto": "Las entradas `RED`/`TDD` se cierran cuando su ME de implementación correspondiente las vuelve `GREEN`."
       }
      ]
     }

@@ -16,10 +16,11 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   `b032e2ddc78dd235` (2.558.970 B); una cuarta generación reprodujo el mismo hash.
   El artefacto de 2.077.570 B que se había rotulado «etapa 2» era la salida de
   `main.py` (etapa 1). Detalle y evidencia: `docs/reportes/R249.md`, sección
-  «Corrección medida». **Queda en su lugar H-R252-4:** el enlace nativo no usa
-  `-static` en win32 (`nucleo/principal.syn:764`) aunque S1 sí
-  (`pipeline.py:981`), así que un binario autoconstruido depende de las DLL del
-  toolchain; se resuelve en el frente de instalación limpia (R234).
+  «Corrección medida». **H-R252-4 RESUELTO 2026-11-19 (ME r270):** el enlace
+  nativo no usaba `-static` en win32 (`nucleo/principal.syn:764`) aunque S1 sí
+  (`pipeline.py:981`); se añadió `_static_flag` para win32 y el bootstrap
+  reconstruido sella S2=S3 en `30C07EF61C5F25A7…` (2.559.482 B), con
+  `synapse.exe` y `dist/bin/synapse.exe` al día (`--estricto` PASS).
 - **H-R252-1 (original, RETIRADO — se conserva como registro de la lección H-R252-3):**
   el bootstrap NO cierra en esta rama. Medido con el oráculo
   `auditoria/oraculos/oraculo_r252_paridad_bootstrap.py --artefactos`:
@@ -49,6 +50,31 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
     - **Paso 1 ENTREGADO:** `tests/e2e/test_smoke_usuario_final.py` 7/7 sobre solo `dist/bin` (versión y `check` con PATH sin Python ni GCC, compilación + ejecución `.syn` y `.syq`, `opensyn --version`/`status`, LSP nativo `initialize`). `docs/reportes/FASE_32_CERTIFICACION.md` con la tabla de evidencia; requisitos Manual 9 §7 y Manual 7 §7.3 marcados NO CUMPLE (parcial) en `docs/verificacion_ME_r234_certificacion_usuario_final.md`.
     - **H-R234-1 (ALTO) RESUELTO 2026-11-17 (ME r236_toolchain_gcc):** `nucleo/principal.syn` resuelve el compilador C antes de invocarlo (`SYNAPSE_GCC` → `gcc.exe` junto al binario → `tools\mingw64\bin` → `mingw64\bin` → `..\toolchain_gcc12\mingw64\bin` → `..\..\toolchain_gcc12\mingw64\bin` → PATH) y antepone su directorio al PATH del hijo, así que compilar ya no depende de que el usuario configure MinGW. Oráculo nuevo `tests/auditoria/test_oraculos_r236_toolchain_gcc.py` 3/3 (checkout sin gcc en PATH, layout de instalador, precedencia de `SYNAPSE_GCC`); evidencia `4871e66aeb5e856c`; `contrastar` PASS; `nucleo/principal.syn` registrado en D-9 (1244 líneas). Reporte: `docs/reportes/R236.md`. **Seguimiento H-R234-2 (RESUELTO 2026-11-17, ME r237_instalador_toolchain):** `instaladores/windows/synapse.iss` gana el componente `toolchain` que copia `dist\toolchain_gcc12\mingw64\*` a `{app}\toolchain_gcc12\mingw64` (el directorio que el resolver busca desde `{app}\bin`); el subset lo prepara `instaladores/windows/empaquetar_toolchain.py` (3836 archivos, 300 MB de los 936 del toolchain completo) y `install.ps1` verifica el toolchain incluido. Oráculo `tests/auditoria/test_oraculos_r237_instalador_toolchain.py` 4/4; ISCC compiló el `.iss` y la instalación silenciosa `/COMPONENTS=toolchain` dejó un `gcc` que compila sin PATH del sistema; evidencia `7b4be78d842ad19e`; reporte `docs/reportes/R237.md`. **Queda abierto el paso 2 de R234:** la VM Windows realmente limpia (instalación silenciosa completa + `synapse --version` + compilación).
     - **Pendiente:** `instaladores/test_instalador_silencioso.py` (instalación desatendida en VM limpia), Manual 7 §7.3 (monitoreo de conexiones salientes + permisos mínimos) e informe final con las cuatro cláusulas en CUMPLE.
+
+- **FRENTE H — Deuda de ecosistema, manuales y encoding (REGISTRADO 2026-11-18):**
+  Cartera completa en `docs/gobernancia/PLAN_MEJORAS_ECOSISTEMA_R270_R284.md` y
+  política en `docs/gobernancia/POLITICA_MANUALES.md`. No usa ids ocupados
+  (r218/r219, r240–r253, r256); `r252b_emision_paridad` queda absorbido por
+  `r270_bootstrap_emision_paridad`.
+  - **H-R252-1/H-R252-4 → r270_bootstrap_emision_paridad (RESUELTO 2026-11-19):**
+    stage2 stale descartado y enlace nativo win32 con `-static`; S2=S3
+    `30C07EF61C5F25A7…` (2.559.482 B), `--estricto` PASS. Sin deuda abierta.
+  - **Manuales → r271_manuales_canonicos (P0):** Manual 31/32 y anexos fuera de
+    `.indice.json`; `MANUAL  FASE 32...` no canónico; sin gate de encoding ni
+    de citas. Implementar `auditoria/verificar_manuales.py`.
+  - **Encoding documental → r272_docs_encoding (P0):** reparar la auditoría
+    doblemente codificada y normalizar UTF-8 sin BOM; los manuales de
+    producción ya son válidos y no se reescriben.
+  - **Instalador → r273_installer_modelo_grande (P0):** el GGUF de 873 MB
+    agota el timeout de 10 s; verificación por streaming/caché y causa medida.
+  - **Gates → r274_gates_independientes (P0):** H-R252-2 y H-CONTROL-1/2/3;
+    ningún sello puede vivir solo dentro de `build.py` o de un job de CI.
+  - **P1/P2:** r275 E2E real + benchmark local; r276 limpia multiplataforma y
+    release firmado; r277 contratos (r253); r278 VS Code/debugger
+    (r240/r241); r279 suite acotada; r280 encoding de código; r281 D-9 y
+    duplicados; r282 docs informativos; r283 versionado de manuales; r284
+    diagnóstico local opt-in. Todo sin nube, telemetría ni MCP (Manual 1 §5.7;
+    Manual 32 §1.3).
 
 - **R220/ME r220_harness_runtime_path (CERRADO 2026-11-15, commit 1319d82):**
   harness de tests con PATH/CPATH canonico. Antepone `toolchain_gcc12/mingw64/bin`
