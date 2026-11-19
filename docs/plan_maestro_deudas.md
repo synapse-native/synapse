@@ -97,7 +97,7 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
     + ventana rodante, streaming de 1 MiB y caché por ruta+tamaño+mtime en
     `~/.synapse/cache/hash/`: 6,5 s en frío y 0,07 s caliente; el test
     preexistente pasa sin tocarlo. Desbloquea r275/r276/r279.
-  - **Gates → r274_gates_independientes (P0):** H-R252-2 y H-CONTROL-1/2/3;
+  - **Gates → r274_gates_independientes (P0 · EN PROGRESO):** H-R252-2 y H-CONTROL-1/2/3;
     ningún sello puede vivir solo dentro de `build.py` o de un job de CI.
   - **P1/P2:** r275 E2E real + benchmark local; r276 limpia multiplataforma y
     release firmado; r277 contratos (r253); r278 VS Code/debugger
