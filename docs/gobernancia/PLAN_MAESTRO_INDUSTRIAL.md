@@ -282,7 +282,7 @@ manutención de la ley está en `docs/gobernancia/POLITICA_MANUALES.md`.
 |---|---|---|---|---|---|
 | `r270_bootstrap_emision_paridad` | P0 · **CERRADO 2026-11-19 (82fb4c4)** | Unificar la emisión S1/S2 y cerrar S2==S3 | Manual 1 §6; Manual 9 §6.1, §6.2 | Bootstrap 3 etapas con diff 0; oráculo `--estricto`; sin binarios stale | — |
 | `r271_manuales_canonicos` | P0 · **CERRADO 2026-11-19 (d3613bb)** | Índice completo, nombres canónicos y gate de citas/encoding | Manual 2 §1.2; Manual 1 §7.4; Manual 9 §6.2 | `verificar_manuales.py --todo` rc=0; Manual 31/32 canónicos; anexos como apoyo citable; D-MAN-1/2 opción A | — |
-| `r272_docs_encoding` | P0 | Reparar corrupción documental y normalizar UTF-8 | Manual 2 §1.2; Manual 1 §7.4 | Auditoría y docs con 0 U+FFFD/C1/doble codificación; 1.275 líneas conservadas | r271 |
+| `r272_docs_encoding` | P0 · **CERRADO 2026-11-19 (b3720d3)** | Encoding documental verificado y cabecera informativa | Manual 2 §1.2; Manual 1 §7.4 | Auditoría y docs con 0 U+FFFD/C1/doble codificación; 1.275 líneas conservadas | r271 |
 | `r273_installer_modelo_grande` | P0 · **CERRADO 2026-11-19 (7cc1d91)** | Instalador con GGUF de 873 MB sin timeout falso | Manual 9 §5.3, §5.5, §6.1; Manual 7 §6.1 | Verificación por streaming/caché; test existente pasa o deuda ambiental medida | — |
 | `r274_gates_independientes` | P0 | Gates fuera del build, con oráculos propios y mutación | Manual 9 §6.2, §6.1; Manual 1 §7.4 | Romper el sello hace fallar el gate; CI sin `--sin-oraculos` | r270 |
 | `r275_opensyn_e2e_bench` | P1 | E2E real local + benchmark medido | Manual 7 §7.2, §7.3, §8; Manual 9 §5.5 | Chat+tools+validación contra `llama-server`; latencia/tok-s/VRAM medidos | r273 |

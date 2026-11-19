@@ -83,9 +83,13 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
     como apoyo citable sin número (D-MAN-2 A); `.indice.json` cubre 11 manuales
     y 3 anexos; gate `verificar_manuales.py --todo` cableado en pre-commit/CI.
     D-MAN-3 A fija el barrido único de `book2` en r282.
-  - **Encoding documental → r272_docs_encoding (P0):** reparar la auditoría
-    doblemente codificada y normalizar UTF-8 sin BOM; los manuales de
-    producción ya son válidos y no se reescriben.
+  - **Encoding documental → r272_docs_encoding (CERRADO 2026-11-19, b3720d3):**
+    `verificar_manuales.py --encoding --docs` recorre todo `docs/` y rechaza BOM,
+    U+FFFD, C1 y doble codificación; la auditoría canónica y `R205.md` declaran
+    ser documento informativo frente a `docs/manuales/` y conservan su contenido
+    (≥1.275 líneas en la auditoría). Los manuales de producción ya eran válidos y
+    no se reescribieron. Oráculo nuevo `test_docs_encoding_r272.py` 3/3;
+    `contrastar` 2/2 PASS; sin archivos de producción (sin expediente).
   - **Instalador → r273_installer_modelo_grande (CERRADO 2026-11-19, 7cc1d91):**
     el GGUF de 873 MB agotaba el timeout de 10 s; causa medida (9.000 ms de
     10.300 ms en `_syn_hash_archivo`: `sha256_update` byte a byte, transform sin
