@@ -77,6 +77,18 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   (`test_installer` de r273 + `verificar_release_limpio.py` en la VM) y
   actualizar el reporte con la evidencia real. Cierre cuando las cuatro
   plataformas tengan `PASS` publicado y la VM limpia tenga log adjunto.
+- **H-R277-1 (ABIERTO 2026-11-20, MEDIO — deuda medida):** la primera medición
+  de contratos del ME `r277_contracts_audit` (commit `3eff2fa`) cuenta **600
+  funciones públicas sin `requiere` + `garantiza`** en 68 archivos (de 1.161
+  auditadas; 561 declaraciones `externo` exentas), de las que `nucleo/generator.syn`
+  (36), `nucleo/analizador_semantico.syn` (34) y `nucleo/lexer.syn` (26) son
+  las mayores. El gate `auditoria/verificar_contratos.py` ya impide que la
+  deuda **crezca** (ratchet contra `auditoria/contratos_baseline.txt`) y está
+  cableado al CI. **Resolución asignada:** quemar la deuda por archivo,
+  empezando por el núcleo del compilador y bajando el baseline en cada ME;
+  contratos con semántica real verificable, nunca `verdadero` de relleno.
+  Cierre cuando `python auditoria/verificar_contratos.py --estricto` dé rc=0 con
+  `auditoria/contratos_baseline.txt` sin entradas (sólo cabecera).
 - **H-R252-1 (RETIRADO 2026-11-19: FALSO POSITIVO DE MEDICIÓN), texto original conservado como registro:**
   Medido con la cadena real (`build.py --skip-test`, rc=0), el sello PASA:
   etapa 2 y etapa 3 son ambas salidas del emisor nativo y valen
