@@ -1830,7 +1830,7 @@ enlace se arma en DOS caminos del pipeline, la paridad debe ser COMPLETA
 suelta; y las keys de caché que comparan strings deben canonizar espacios
 (' '.join(s.split())) — el doble espacio con flags vacíos vaciaba el HIT del
 runtime (46 .o recompilados ~90 s por pasada). -->
-| 2026-11-20 | **r274_gates_independientes** | P0 · CERRADO (corregido) | Cita fabricada de M9 §6.2 sustituida por citas literales; --mutar ya no toca el árbol; oráculo cableado en CI | Manual 9 §6.1, §6.2; Manual 1 §7.4 | contrastar 3/3 PASS con oráculos ejecutados; H-R274-1 abierto (firmas Ed25519) | docs/reportes/R274.md | 65a79c7 | 
+| 2026-11-20 | **r274_gates_independientes** | P0 · CERRADO (corregido) | Cita fabricada de M9 §6.2 sustituida por citas literales; --mutar ya no toca el árbol; oráculo cableado en CI | Manual 9 §6.1, §6.2; Manual 1 §7.4 | contrastar 4/4 PASS; H-R274-1 resuelto (firmas Ed25519 verificadas) | docs/reportes/R274.md | 65a79c7, 8fbd0ce | 
 
 | 2026-11-20 | **r275_opensyn_e2e_bench** | P0 · CERRADO | E2E real con llama-server+GGUF, benchmark medido, sandbox y privacidad de red; runner como oráculo único | Manual 7 §7.2, §7.3, §8; Manual 9 §5.5 | contrastar 4/4 PASS con oráculos ejecutados; E2E 4/4; H-R275-1 abierto | docs/reportes/R275.md | 251ddc4 | 
 | 2026-11-19 | **r276_hardware_detector** | P0 · EN PROGRESO | OpenSyn detección de hardware y gestión de modelos codec (Fase 29): detección CPU/Memoria/VRAM/Arquitectura, selección modelo GGUF, caché SHA-256, configuración llama-server | Manual 9 §5.3; Manual 9 §6.1 | contrastar 3/3 PASS; 0 brechas | docs/reportes/R276.md | 0426ab4 | 
