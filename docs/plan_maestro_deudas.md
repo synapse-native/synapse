@@ -52,6 +52,20 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   defecto de fondo, S2 resolvía módulos y fuentes del runtime sólo desde el cwd
   del proceso (el E2E compila en `tmp_path`): `nucleo/principal.syn` los busca
   ahora junto al ejecutable y sus padres, conservando el orden previo.
+- **H-R276-1 (RETIRADO 2026-11-20, ALTO — gate vacuo):** el ME
+  `r276_hardware_detector` (plan + oráculo, commits `0426ab4`/`1518eb4`) no
+  entregó código de producción y su oráculo no verificaba nada: devolvía
+  `[OK]` y rc=0 aun sin `dist/bin/synapse.exe` ni `synapse_stage2.stamp`
+  (`[OK] [r276] --estricto: Artifact consistency check passed (no stale stamp)`),
+  `--mutar` era `[INFO]` y `--e2e` un «placeholder»; el `--sellar` escribía un
+  sello con hash de ceros. Su fila de memoria citaba `docs/reportes/R276.md`,
+  que nunca existió. **Resolución aplicada:** plan y oráculo eliminados (un gate
+  que siempre dice OK es peor que ninguno), fila falsa retirada de
+  `MEMORIA_PROYECTO.md`. La funcionalidad real de detección de hardware y
+  selección de modelo vive desde Fase 29 (`runtime/core/detect_hardware.c`,
+  `opensyn/installer.syn`, `std/os.syn`) y la cubre
+  `tests/opensyn/test_installer.py` (1 passed). El id `r276` queda para
+  `r276_multiplataforma_release`.
 - **H-R252-1 (RETIRADO 2026-11-19: FALSO POSITIVO DE MEDICIÓN), texto original conservado como registro:**
   Medido con la cadena real (`build.py --skip-test`, rc=0), el sello PASA:
   etapa 2 y etapa 3 son ambas salidas del emisor nativo y valen
