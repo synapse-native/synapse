@@ -99,8 +99,64 @@ jobs:
           path: instaladores/dist/distribucion/
           if-no-files-found: error
 
-  create_release:
+  # Gate de release "industrial" (Manual 9 §6.1/§6.3): cada plataforma
+  # verifica lo que el usuario descarga — artefactos obligatorios, SHA-256,
+  # firmas Ed25519 de cada artefacto y smoke real (--version, compilar y
+  # ejecutar un programa, opensyn). Un release no se publica si este gate falla.
+  smoke_release_limpio:
     needs: release_matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            plataforma: linux_x64
+            binario: synapse-linux_x64
+          - os: ubuntu-24.04-arm
+            plataforma: linux_arm64
+            binario: synapse-linux_arm64
+          - os: macos-latest
+            plataforma: darwin_arm64
+            binario: synapse-darwin_arm64
+          - os: windows-latest
+            plataforma: win_x64
+            binario: synapse-win_x64.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Download release bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.binario }}
+          path: instaladores/dist/distribucion
+
+      - name: Smoke de release limpio
+        shell: bash
+        run: |
+          set -e
+          chmod +x "instaladores/dist/distribucion/${{ matrix.binario }}" || true
+          python scripts/verificar_release_limpio.py --dist instaladores/dist/distribucion --binario "${{ matrix.binario }}" --json "docs/reportes/release_${{ matrix.plataforma }}.json" | tee smoke.txt
+          grep -q '^PASS: release limpio' smoke.txt
+
+      - name: Upload smoke evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-${{ matrix.plataforma }}
+          path: docs/reportes/release_${{ matrix.plataforma }}.json
+          if-no-files-found: error
+
+  create_release:
+    needs: [release_matrix, smoke_release_limpio]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
