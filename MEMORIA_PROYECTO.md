@@ -191,8 +191,8 @@ Frente H (2026-11-19): r272_docs_encoding COMPLETADO (b3720d3) — el encoding
                    tests/opensyn/test_installer.py (timeout 10 s) PASA sin
                    tocarlo; oraculo nuevo 17/17; S2==S3 49d7c51ac63e28a6.
                    Antes r270b (84f67ba/8e2c41f) cerro H-R252-5. Siguiente
-                   del frente: r274_gates_independientes (P0); r273 desbloquea
-                   r275, r276 y r279.
+                   del frente: r276_multiplataforma_release (P0); r274 y
+                   r275 cerrados el 2026-11-20 (65a79c7, 251ddc4).
 Fase roadmap:      POST-FASE 33 - DEUDA CERO. **2026-11-13 sesión:** R219
                    COMPLETADO (26e4cf8): ME r219_verificacion_aot - verificación
                    AOT con auto-refutación real (`synapse check --no-emit` y
@@ -1830,7 +1830,7 @@ enlace se arma en DOS caminos del pipeline, la paridad debe ser COMPLETA
 suelta; y las keys de caché que comparan strings deben canonizar espacios
 (' '.join(s.split())) — el doble espacio con flags vacíos vaciaba el HIT del
 runtime (46 .o recompilados ~90 s por pasada). -->
-| 2026-11-19 | **r274_gates_independientes** | P0 · EN PROGRESO → CERRADO | Gates fuera del build, oráculos propios, mutación | Manual 9 §6.2, §6.1; Manual 1 §7.4 | contrastar 3/3 PASS; 0 brechas | docs/reportes/R274.md | 73a24dd | 
+| 2026-11-20 | **r274_gates_independientes** | P0 · CERRADO (corregido) | Cita fabricada de M9 §6.2 sustituida por citas literales; --mutar ya no toca el árbol; oráculo cableado en CI | Manual 9 §6.1, §6.2; Manual 1 §7.4 | contrastar 3/3 PASS con oráculos ejecutados; H-R274-1 abierto (firmas Ed25519) | docs/reportes/R274.md | 65a79c7 | 
 
-| 2026-11-19 | **r275_opensyn_e2e_bench** | P0 · EN PROGRESO | OpenSyn E2E bench con --check, transpilación Python→Syquex, benchmark de 3 intentos | Manual 9 §6.2; Manual 1 §7.4 | contrastar 3/3 PASS; 0 brechas | docs/reportes/R275.md | 9bf9e17 | 
+| 2026-11-20 | **r275_opensyn_e2e_bench** | P0 · CERRADO | E2E real con llama-server+GGUF, benchmark medido, sandbox y privacidad de red; runner como oráculo único | Manual 7 §7.2, §7.3, §8; Manual 9 §5.5 | contrastar 4/4 PASS con oráculos ejecutados; E2E 4/4; H-R275-1 abierto | docs/reportes/R275.md | 251ddc4 | 
 | 2026-11-19 | **r276_hardware_detector** | P0 · EN PROGRESO | OpenSyn detección de hardware y gestión de modelos codec (Fase 29): detección CPU/Memoria/VRAM/Arquitectura, selección modelo GGUF, caché SHA-256, configuración llama-server | Manual 9 §5.3; Manual 9 §6.1 | contrastar 3/3 PASS; 0 brechas | docs/reportes/R276.md | 0426ab4 | 
