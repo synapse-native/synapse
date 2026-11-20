@@ -589,6 +589,25 @@ jobs:
           # El verificador sale rc=1 con brechas; pipefail impide que el tee
           # enmascare el código de salida. Sin brechas => rc=0 => gate verde.
 
+  contratos:
+    # Gate r277 (Manual 2 §5.1/§12): ninguna función pública NUEVA sin
+    # `requiere` + `garantiza`. La deuda histórica se mide contra
+    # auditoria/contratos_baseline.txt; --estricto es la meta (deuda 0).
+    runs-on: ubuntu-latest
+    needs: lint-and-check
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Auditar contratos requiere/garantiza
+        run: |
+          set -o pipefail
+          python auditoria/verificar_contratos.py --resumen 2>&1 | tee contratos.log
+
   mts-contraste:
     # Gate MTS (docs/METODO_TRABAJO.md): exige plan_ME_*.md para toda modificación
     # productiva y ejecuta contrastar.py (citación textual ↔ código ↔ oráculo).
