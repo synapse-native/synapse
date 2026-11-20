@@ -315,6 +315,13 @@ jobs:
           python auditoria/oraculos/oraculo_r252_paridad_bootstrap.py --artefactos --sellar
           echo "✅ Bootstrap sellado: S2==S3 byte-idénticos (oráculo r252)"
 
+      # cumple Manual 9 §6.2: "El pipeline de CI/CD ejecuta automáticamente:
+      # ... La verificación del bootstrap (diff 0 bytes)". El gate corre en su
+      # propio paso y con su propio oráculo (ME r274), fuera de build.py.
+      - name: Gate independiente de bootstrap (oráculo r274)
+        run: |
+          python auditoria/oraculos/oraculo_r274_gates_independientes.py
+
       - name: Verificar micro-tests (bootstrap nativo)
         run: |
           python scripts/run_micro_tests.py 2>&1 | tee micro.log

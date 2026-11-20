@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 # Oráculo del ME r274_gates_independientes — gates fuera del build, con oráculos propios y mutación.
-# cumple Manual 9 §6.2: "Validación Cruzada en CI/CD"
-# cumple Manual 1 §7.4: Definition of Done checklist para gates
-# fulfills Manual 9 §6.1: Checklist de Verificación Final (por referencia en plan)
-# cuele Manual 1 §7.4: Definition of Done checklist (por referencia en plan)
-# cuele Manual 9 §6.1: Checklist de Verificación Final (por referencia en plan)
+# cumple Manual 9 §6.1: "en cada target, el proceso de bootstrap de 3 etapas produce
+#   `diff 0 bytes` entre Stage 2 y Stage 3"
+# cumple Manual 9 §6.2: "El pipeline de CI/CD ejecuta automáticamente: ...
+#   La verificación del bootstrap (diff 0 bytes)"
+# cumple Manual 1 §7.4: bootstrapped determinista (`diff 0 bytes` entre Stage 2
+#   y Stage 3) + "Generación automática de hash SHA‑256"
 
 """Sello de gates independientes: oráculos propios, deterministas, fuera del build.
 
@@ -22,9 +23,10 @@ Uso:
   `dist/bin/synapse.exe` coincidan con la etapa 2. Sin esta bandera una deriva
   se reporta como `[WARN]`, porque en un checkout de trabajo el binario puede
   ser anterior a la última edición de `nucleo/`.
-- `--mutar`: aplica una mutación menor (commentario añadido, cambio de whitespace
-  sin significado funcional) y verifica que el oracle siga pasando; si falla,
-  el gate es frágil y debe reportarse.
+- `--mutar`: prueba que el guard del sello discrimina de verdad: muta el
+  contenido de la fuente **en un archivo temporal** y verifica que el sello
+  detecte el cambio (es decir, que romper el sello haga fallar el gate).
+  Nunca escribe en `nucleo/principal.syn`. Exige un sello previo (`--sellar`).
 
 rc=0 cuando pasa, rc=1 con el motivo concreto cuando no.
 """
@@ -32,9 +34,9 @@ rc=0 cuando pasa, rc=1 con el motivo concreto cuando no.
 import hashlib
 import json
 import os
-import re
 import subprocess
 import sys
+import tempfile
 import time
 
 # La salida lleva «§» y acentos: sin esto, una consola cp1252 imprime «?» y el
@@ -52,12 +54,6 @@ ETAPA3 = "synapse_stage3.exe"
 DISTRIBUIDOS = ("synapse.exe", os.path.join("dist", "bin", "synapse.exe"))
 SELLO = "synapse_stage2.stamp"
 FUENTE = os.path.join("nucleo", "principal.syn")
-
-# Palabras clave que simulan una "mutación menor" sin cambiar comportamiento
-MUTATION_PATTERNS = [
-    (r'#\s*mutacion.*test', '# Mutación de prueba insertada'),
-    (r'#\s*test.*mutacion', '# Mutación de prueba insertada'),
-]
 
 def sha256(ruta: str) -> str:
     """sha256 del archivo, o cadena vacía si no existe."""
@@ -101,32 +97,6 @@ def _escribir_sello(raiz: str, sha_fuente: str, sha_etapa2: str,
     with open(os.path.join(raiz, SELLO), "w", encoding="utf-8") as f:
         json.dump(datos, f, ensure_ascii=False, indent=2)
         f.write("\n")
-
-def _aplicar_mutacion(raiz: str, fuente: str) -> bool:
-    """Aplica una mutación menor al archivo de fuente y devuelve True si la
-    mutación no cambia el SHA-256 (solo whitespace/comentarios sin significado).
-    Si el SHA-256 cambia, la mutación es significativa y falla."""
-    try:
-        with open(fuente, "r", encoding="utf-8") as f:
-            contenido = f.read()
-        # Guardar hash original
-        hash_original = sha256(fuente)
-        # Aplicar mutaciones: añadir comentario al final si no está ya
-        mutado = re.sub(
-            r'(\n\s*#\s*.*?synapse.*)?$',
-            '\n# Mutación de prueba: gates independientes',
-            contenido,
-            flags=re.MULTILINE
-        )
-        # Si el contenido no cambió el hash, la mutación fue "inofensiva"
-        hash_mutado = sha256_mutado = hashlib.sha256(mutado.encode("utf-8")).hexdigest()
-        if hash_mutado != hash_original:
-            # La mutación cambió el hash, lo cual es esperado para una mutación real
-            # Pero queremos verificar que el oracle siga pasando a pesar de ello
-            pass
-        return True
-    except OSError:
-        return False
 
 def comparar_artefactos(raiz: str, estricto: bool = False):
     """Compara stage2/stage3 (y los distribuidos si `estricto`).
@@ -243,65 +213,42 @@ def _mas_nuevo(raiz: str, artefacto: str, fuente: str) -> bool:
         return False
 
 def mutar_y_verificar(raiz: str, fuente: str) -> tuple:
-    """Aplica una mutación menor y verifica que el oracle siga pasando.
+    """Prueba que el guard del sello detecte una mutación de contenido.
 
-    retorna (ok, detalle) donde ok es True si la mutación no rompe el gate.
+    La mutación se escribe en un temporal: el árbol de trabajo NO se toca
+    (un `--mutar` que reescribe `nucleo/principal.syn` puede corromperlo si la
+    corrida se interrumpe).
+
+    requiere: existe sello con `sha256_fuente` y la fuente sigue siendo la sellada.
+    garantiza: (ok, detalle); ok=True sólo si el hash mutado difiere del sellado
+      (es decir, el gate fallaría al romper el sello).
     """
-    # Guardar estado actual
-    h_fuente_antes = sha256(os.path.join(raiz, fuente))
-    resultado_antes = comparar_artefactos(raiz, estricto=False)
-
-    # Aplicar mutación menor (commentario)
+    ruta_fuente = os.path.join(raiz, fuente)
+    sello = _leer_sello(raiz)
+    h_sellada = (sello or {}).get("sha256_fuente", "")
+    if not h_sellada:
+        return False, ("[FAIL] --mutar exige sello previo (--sellar): sin sello "
+                       "no hay guard que probar")
+    h_actual = sha256(ruta_fuente)
+    if h_actual != h_sellada:
+        return False, ("[FAIL] la fuente ya difiere del sello "
+                       f"({h_sellada[:16]} != {h_actual[:16]}): vuelve a sellar")
     try:
-        with open(os.path.join(raiz, fuente), "r", encoding="utf-8") as f:
+        with open(ruta_fuente, "r", encoding="utf-8") as f:
             contenido = f.read()
-        mutado = re.sub(
-            r'(\n\s*#\s*.*?synapse.*)?$',
-            '\n# Mutación de prueba: gates independientes',
-            contenido,
-            flags=re.MULTILINE
-        )
-        with open(os.path.join(raiz, fuente), "w", encoding="utf-8") as f:
-            f.write(mutado)
-    except OSError:
-        return True, "[WARN] no se pudo aplicar mutación"
+    except OSError as exc:
+        return False, f"[FAIL] no se pudo leer {fuente}: {exc}"
 
-    # Verificar después de mutación
-    h_fuente_despues = sha256(os.path.join(raiz, fuente))
-    resultado_despues = comparar_artefactos(raiz, estricto=False)
+    with tempfile.TemporaryDirectory() as tmp:
+        copia = os.path.join(tmp, "principal_mutado.syn")
+        with open(copia, "w", encoding="utf-8") as f:
+            f.write(contenido + "\n# Mutación de prueba: gates independientes\n")
+        h_mutada = sha256(copia)
 
-    # Restaurar archivo original
-    try:
-        with open(os.path.join(raiz, fuente), "r", encoding="utf-8") as f:
-            contenido_original = f.read()
-        # Si el contenido tiene nuestra mutación, removerla
-        if "# Mutación de prueba: gates independientes" in contenido_original:
-            # Remover la mutación (buscar la línea y quitarla)
-            lineas = contenido_original.split("\n")
-            lineas_sin_mutar = [l for l in lineas if "# Mutación de prueba: gates independientes" not in l]
-            with open(os.path.join(raiz, fuente), "w", encoding="utf-8") as f:
-                f.write("\n".join(lineas_sin_mutar))
-    except OSError:
-        pass
-
-    # Determinar si la mutación rompió el gate
-    # Si el hash cambió, la mutación fue significativa; si no, fue inofensiva
-    ok = True
-    if h_fuente_antes != h_fuente_despues:
-        # La mutación cambió el hash - verificar si el gate aún pasa
-        if not resultado_despues[0]:
-            ok = False
-            detalle = "[FAIL] La mutación menor rompió el gate (S2!=S3 después de mutar)"
-        else:
-            # El gate sigue pasando a pesar de la mutación - bueno
-            ok = True
-            detalle = "[OK] Mutación menor no rompe el gate (hash cambió pero S2==S3)"
-    else:
-        # Hash unchanged, mutación fue inofensiva
-        ok = True
-        detalle = "[OK] Mutación menor inofensiva (hash unchanged)"
-
-    return ok, detalle
+    if h_mutada == h_sellada:
+        return False, "[FAIL] el sello no distingue el contenido mutado: gate frágil"
+    return True, ("[OK] mutación de contenido detectada por el sello "
+                  f"({h_sellada[:16]} -> {h_mutada[:16]}): romper el sello falla")
 
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
