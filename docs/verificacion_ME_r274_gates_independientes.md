@@ -50,12 +50,32 @@ $ python auditoria/oraculos/oraculo_r274_gates_independientes.py --mutar
 `--mutar` trabaja sobre un archivo temporal: `git status --short
 nucleo/principal.syn` queda vacío (el árbol no se toca).
 
-## Límite declarado
+## Manual 9 §6.3 CUMPLE — firma `.sig` y hash por artefacto
 
-Manual 9 §6.1 exige además «Firmas Ed25519: todos los artefactos distribuidos
-están firmados y verificados». El oráculo **no** lo verifica (hoy sólo existe
-`synapse.spdx.json.sig`); se registra como H-R274-1 en
-`docs/plan_maestro_deudas.md` en lugar de declararlo cumplido.
+Cita literal: "Archivo de firma (`.sig`) para cada binario/instalador." /
+"Archivo `.sha256` con el hash del artefacto."
+
+Evidencia (resuelve H-R274-1):
+
+```
+$ python distribuir.py --requerir-firma
+[distribuir] firma verificada: synapse.exe.sig
+[distribuir] firma verificada: MANIFEST.sha256.sig
+[distribuir] OK 19 artefactos … SIGNATURE_VALID=YES
+
+$ python auditoria/oraculos/oraculo_r274_gates_independientes.py --firmas
+[r274] [OK] firmas Ed25519 verificadas: 6 artefactos distribuidos
+[r274] PASS: firmas Ed25519 de la distribución verificadas (Manual 9 §6.1, §6.3)
+
+$ printf 'X' >> instaladores/dist/distribucion/install.sh  # manipulación
+$ python … --firmas
+[r274] [FAIL] firma Ed25519 INVÁLIDA: install.sh                       (rc=1)
+```
+
+Manual 9 §6.1 («Firmas Ed25519: todos los artefactos distribuidos están
+firmados y verificados») queda cubierto por `--firmas`, incluido en
+`--estricto`. Regresión: `tests/auditoria/test_oraculo_r274_firmas.py` 4/4
+(firmada, manipulada, sin firma, sin distribución).
 
 ## Evidencia de gates
 

@@ -6,6 +6,9 @@
 #   La verificación del bootstrap (diff 0 bytes)"
 # cumple Manual 1 §7.4: bootstrapped determinista (`diff 0 bytes` entre Stage 2
 #   y Stage 3) + "Generación automática de hash SHA‑256"
+# cumple Manual 9 §6.1: "Firmas Ed25519: todos los artefactos distribuidos están
+#   firmados y verificados"
+# cumple Manual 9 §6.3: "Archivo de firma (`.sig`) para cada binario/instalador"
 
 """Sello de gates independientes: oráculos propios, deterministas, fuera del build.
 
@@ -20,9 +23,12 @@ Uso:
 - `--sellar`: escribe `synapse_stage2.stamp` con el hash de la fuente y de la etapa 2,
   **sólo si la verificación ya pasó**.
 - `--estricto`: además de S2==S3, exige que `synapse.exe` y
-  `dist/bin/synapse.exe` coincidan con la etapa 2. Sin esta bandera una deriva
-  se reporta como `[WARN]`, porque en un checkout de trabajo el binario puede
-  ser anterior a la última edición de `nucleo/`.
+  `dist/bin/synapse.exe` coincidan con la etapa 2 y verifica las firmas Ed25519
+  de todos los artefactos de `instaladores/dist/distribucion/`. Sin esta
+  bandera una deriva se reporta como `[WARN]`, porque en un checkout de trabajo
+  el binario puede ser anterior a la última edición de `nucleo/`.
+- `--firmas`: sólo verifica las firmas Ed25519 de la distribución (Manual 9
+  §6.1/§6.3); falla si falta la distribución o alguna firma.
 - `--mutar`: prueba que el guard del sello discrimina de verdad: muta el
   contenido de la fuente **en un archivo temporal** y verifica que el sello
   detecte el cambio (es decir, que romper el sello haga fallar el gate).
@@ -54,6 +60,7 @@ ETAPA3 = "synapse_stage3.exe"
 DISTRIBUIDOS = ("synapse.exe", os.path.join("dist", "bin", "synapse.exe"))
 SELLO = "synapse_stage2.stamp"
 FUENTE = os.path.join("nucleo", "principal.syn")
+DIST = os.path.join("instaladores", "dist", "distribucion")
 
 def sha256(ruta: str) -> str:
     """sha256 del archivo, o cadena vacía si no existe."""
@@ -194,6 +201,61 @@ def comparar_artefactos(raiz: str, estricto: bool = False):
 
     return ok, lineas
 
+def _es_artefacto_firmable(nombre: str) -> bool:
+    """Mismo criterio que distribuir.py: todo lo que no es firma/hash/clave."""
+    return not nombre.endswith((".sig", ".sha256", ".pub"))
+
+
+def verificar_firmas_distribucion(raiz: str) -> tuple:
+    """Verifica las firmas Ed25519 de los artefactos distribuidos.
+
+    requiere: existe `instaladores/dist/distribucion/` con `synapse.pub`.
+    garantiza: (ok, lineas); ok=True sólo si TODO artefacto firmable tiene su
+      `.sig` y la firma verifica con la clave pública publicada. Una firma
+      ausente o inválida es fallo (Manual 9 §6.1: «todos… firmados y verificados»).
+    """
+    dist = os.path.join(raiz, DIST)
+    if not os.path.isdir(dist):
+        return False, [f"[FAIL] falta la distribución firmada {DIST} "
+                       f"(corre `python distribuir.py --requerir-firma`)"]
+    publica = os.path.join(dist, "synapse.pub")
+    if not os.path.isfile(publica):
+        return False, [f"[FAIL] falta {DIST}/synapse.pub: no hay clave con la que verificar"]
+
+    sys.path.insert(0, raiz)
+    try:
+        from instaladores.common.verificar_firma import verificar_archivo
+    except Exception as exc:  # entorno sin cryptography
+        return False, [f"[FAIL] no se pudo cargar el verificador de firmas: {exc}"]
+
+    lineas = []
+    ok = True
+    verificados = 0
+    for nombre in sorted(os.listdir(dist)):
+        ruta = os.path.join(dist, nombre)
+        if not os.path.isfile(ruta) or not _es_artefacto_firmable(nombre):
+            continue
+        firma = ruta + ".sig"
+        if not os.path.isfile(firma):
+            ok = False
+            lineas.append(f"[FAIL] {nombre} sin firma (.sig): todo artefacto "
+                          f"distribuido debe estar firmado")
+            continue
+        if not verificar_archivo(ruta, firma, publica):
+            ok = False
+            lineas.append(f"[FAIL] firma Ed25519 INVÁLIDA: {nombre}")
+        else:
+            verificados += 1
+
+    if verificados == 0 and ok:
+        return False, [f"[FAIL] {DIST} no contiene artefactos firmados: "
+                       f"no hay evidencia que verificar"]
+    if ok:
+        lineas.append(f"[OK] firmas Ed25519 verificadas: {verificados} "
+                      f"artefactos distribuidos (clave {DIST}/synapse.pub)")
+    return ok, lineas
+
+
 def construir(raiz: str) -> int:
     """Lanza build.py --skip-test (3 etapas) y devuelve su rc."""
     build = os.path.join(raiz, "build.py")
@@ -260,12 +322,20 @@ def main(argv=None) -> int:
             print(f"[FAIL] build.py termino con rc={rc}: no hay artefactos que sellar",
                   file=sys.stderr)
             return rc
-    ok, lineas = comparar_artefactos(RAIZ, estricto=estricto)
-    if mutar:
-        # Aplicar mutación y verificar
-        ok_mut, detalle_mut = mutar_y_verificar(RAIZ, FUENTE)
-        ok = ok and ok_mut
-        lineas.append(detalle_mut)
+    firmas = "--firmas" in argv
+    solo_firmas = firmas and not estricto and not mutar and "--construir" not in argv
+    if solo_firmas:
+        ok, lineas = verificar_firmas_distribucion(RAIZ)
+    else:
+        ok, lineas = comparar_artefactos(RAIZ, estricto=estricto)
+        if mutar:
+            ok_mut, detalle_mut = mutar_y_verificar(RAIZ, FUENTE)
+            ok = ok and ok_mut
+            lineas.append(detalle_mut)
+        if estricto or firmas:
+            ok_firmas, lineas_firmas = verificar_firmas_distribucion(RAIZ)
+            ok = ok and ok_firmas
+            lineas += lineas_firmas
     for linea in lineas:
         print(f"[r274] {linea}")
     if ok and "--sellar" in argv:
@@ -279,9 +349,15 @@ def main(argv=None) -> int:
     if not ok:
         print("[r274] FAIL: gate NO verificado", file=sys.stderr)
         return 1
-    print("[r274] PASS: gate determinista verificado (Manual 1 §7.4, Manual 9 §6.2)")
-    if estricto:
-        print("[r274] PASS: los binarios distribuidos corresponden a la etapa 2")
+    if solo_firmas:
+        print("[r274] PASS: firmas Ed25519 de la distribución verificadas "
+              "(Manual 9 §6.1, §6.3)")
+    else:
+        print("[r274] PASS: gate determinista verificado (Manual 1 §7.4, Manual 9 §6.2)")
+        if estricto:
+            print("[r274] PASS: los binarios distribuidos corresponden a la etapa 2")
+        if estricto or firmas:
+            print("[r274] PASS: firmas Ed25519 de los artefactos distribuidos verificadas")
     return 0
 
 if __name__ == "__main__":

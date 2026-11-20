@@ -10,17 +10,18 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
 
 ## Cola de MEs (prioridad por radio/costo, actualizable)
 
-- **H-R274-1 (ABIERTO 2026-11-20, MEDIO):** Manual 9 §6.1 exige «Firmas
+- **H-R274-1 (RESUELTO 2026-11-20, MEDIO):** Manual 9 §6.1 exige «Firmas
   Ed25519: todos los artefactos distribuidos están firmados y verificados» y
-  §6.3 detalla `.sig` por artefacto. Hoy el repo sólo tiene
-  `synapse.spdx.json.sig`; el oráculo r274 verifica determinismo del bootstrap
-  y SHA-256, **no** las firmas de los binarios distribuidos. Se deja registrado
-  en vez de declararlo cumplido (la cita fabricada que lo afirmaba se corrigió
-  el 2026-11-20). **Resolución asignada:** firmar `synapse.exe`,
-  `dist/bin/synapse.exe` e instaladores en `distribuir.py` (Manual 9 §6.3) y
-  añadir la verificación de firma al oráculo r274; oráculo de cierre:
-  `oraculo_r274_gates_independientes.py --estricto` debe verificar las firmas
-  junto al hash. Evidencia: `docs/verificacion_ME_r274_gates_independientes.md`.
+  §6.3 detalla `.sig` por artefacto; el oráculo r274 sólo verificaba
+  determinismo y SHA-256. **Resolución aplicada:** `distribuir.py
+  --requerir-firma` firma y autoverifica cada artefacto (el pipeline de release
+  ya lo invoca así) y el oráculo incorpora `--firmas`, incluido en
+  `--estricto`: verifica con `synapse.pub` que todo artefacto distribuido tenga
+  `.sig` válida y falla si falta la distribución, si falta una firma o si un
+  byte cambió. Oráculo de cierre ejecutado: `--estricto` rc=0 y `--firmas`
+  rc=1 tras manipular un artefacto; regresión
+  `tests/auditoria/test_oraculo_r274_firmas.py` 4/4. Evidencia:
+  `docs/verificacion_ME_r274_gates_independientes.md`.
 - **H-R275-1 (ABIERTO 2026-11-20, MEDIO):** el emisor nativo S2
   (`dist/bin/synapse.exe`) no compila `opensyn/permisos.syn`: emite
   `str_eq(car_sep, ...)` con `car_sep` como `int64_t` en `es_ruta_workspace`
