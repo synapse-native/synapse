@@ -1,6 +1,8 @@
 # cumple Manual 9 §4/§6.3: matrix de release multi-plataforma y sellado real.
 # Genera binario + .sha256 + .sig por artefacto, SBOM SPDX, attestation SLSA,
 # verifica cada firma y solo publica en GitHub Releases para tags v*.
+# cumple Manual 9 §6.1: tras publicar, `verify_release` baja los assets del
+# release y les exige firmas Ed25519 válidas (oráculo r274 `--firmas`).
 name: Release Matrix
 
 on:
@@ -48,7 +50,8 @@ jobs:
         run: python build.py
 
       - name: Validate platform target
-        run: python -c "print('target validado: ${{ matrix.plataforma }}')"
+        run: |
+          python -c "print('target validado: ${{ matrix.plataforma }}')"
 
       # La firma la ejecuta distribuir.py con nucleo.ed25519_signer (firmar_archivo).
       - name: Package and Sign binary with Ed25519 (Manual 9 §6.3)
@@ -129,3 +132,44 @@ jobs:
           files: artifacts/**
           generate_release_notes: true
           draft: false
+
+  # Post-publicación: no se firma ni se reconstruye nada aquí. Se descargan los
+  # assets del release recién creado (lo que realmente recibe el usuario) y el
+  # oráculo r274 verifica que cada artefacto tenga su `.sig` válida con
+  # `synapse.pub` publicado (Manual 9 §6.1/§6.3).
+  verify_release:
+    needs: create_release
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Download published release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          mkdir -p instaladores/dist/distribucion
+          gh release download "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --dir instaladores/dist/distribucion --clobber
+          ls -la instaladores/dist/distribucion
+
+      - name: Verify Ed25519 signatures of published artifacts (Manual 9 §6.1)
+        shell: bash
+        run: |
+          set -e
+          python auditoria/oraculos/oraculo_r274_gates_independientes.py --firmas | tee firmas.txt
+          grep -q 'PASS: firmas Ed25519' firmas.txt
