@@ -1,7 +1,7 @@
 # Expediente de alineación r275b_str_eq_texto_indexado
 
 base: HEAD  # commit sobre el que se leyó el manual
-cambio_hash:
+cambio_hash: d41891ec4639a785
 
 > Una ancla por requisito. `estado:` CUMPLE | DESVIACION.
 > CUMPLE exige `evidencia: archivo:linea` con el comentario

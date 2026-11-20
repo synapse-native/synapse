@@ -22,7 +22,7 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   rc=1 tras manipular un artefacto; regresión
   `tests/auditoria/test_oraculo_r274_firmas.py` 4/4. Evidencia:
   `docs/verificacion_ME_r274_gates_independientes.md`.
-- **H-R275-1 (ABIERTO 2026-11-20, MEDIO):** el emisor nativo S2
+- **H-R275-1 (RESUELTO 2026-11-20, commit aa83822, MEDIO):** el emisor nativo S2
   (`dist/bin/synapse.exe`) no compila `opensyn/permisos.syn`: emite
   `str_eq(car_sep, ...)` con `car_sep` como `int64_t` en `es_ruta_workspace`
   (comparación sobre texto indexado). S1 (`main.py`) sí lo compila, así que la
@@ -33,6 +33,25 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   comparación de `permisos.syn` a `subcadena(...)`; oráculo de cierre:
   `python auditoria/oraculos/oraculo_r275_opensyn_e2e_bench.py` debe reportar
   `[OK]` sin el `[R275][WARN]` de compilación S1. Evidencia: `docs/reportes/R275.md`.
+  **Resolución aplicada:** la divergencia estaba en el emisor, no en el fuente:
+  `texto[i]` se emitía como `int64_t` en las tres rutas de valor y en la rama de
+  **declaración** de `gen_visitar_declaracion` (`nucleo/generator.syn`), así que
+  `let c = s[3]` quedaba tipado entero y `str_eq` no compilaba. Se infiere y
+  emite `CadenaSegura` en las cuatro rutas (Manual 2 §4.1, §8.2) y se mantiene la
+  comparación de `permisos.syn` como estaba. Oráculo de cierre: nuevo
+  `auditoria/oraculos/oraculo_r275b_texto_indexado.py` rc=0 y `oraculo_r275`
+  rc=0 **sin** `[R275][WARN]` con el GGUF local; sonda del test E2E compilada
+  con S2 (`compilador = S2`). Evidencia: `docs/reportes/R275b.md`.
+- **H-R275-2 (RESUELTO 2026-11-20, commit aa83822, ALTO):** el sello de frescura
+  del bootstrap (`oraculo_r252_paridad_bootstrap.py`) quedaba en punto muerto
+  para cualquier edición de `nucleo/principal.syn`: no certificaba y `--sellar`
+  no re-sellaba, de modo que el núcleo no podía reconstruirse con sello válido.
+  **Resolución aplicada:** con `--sellar`, re-sella si la etapa 2 es posterior a
+  la fuente y `S2 == S3`; un artefacto stale sigue fallando. Regresión nueva
+  `tests/auditoria/test_oraculo_r252_resellado.py` (3 casos). Y, en el mismo
+  defecto de fondo, S2 resolvía módulos y fuentes del runtime sólo desde el cwd
+  del proceso (el E2E compila en `tmp_path`): `nucleo/principal.syn` los busca
+  ahora junto al ejecutable y sus padres, conservando el orden previo.
 - **H-R252-1 (RETIRADO 2026-11-19: FALSO POSITIVO DE MEDICIÓN), texto original conservado como registro:**
   Medido con la cadena real (`build.py --skip-test`, rc=0), el sello PASA:
   etapa 2 y etapa 3 son ambas salidas del emisor nativo y valen
