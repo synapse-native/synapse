@@ -10,6 +10,28 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
 
 ## Cola de MEs (prioridad por radio/costo, actualizable)
 
+- **H-R274-1 (ABIERTO 2026-11-20, MEDIO):** Manual 9 §6.1 exige «Firmas
+  Ed25519: todos los artefactos distribuidos están firmados y verificados» y
+  §6.3 detalla `.sig` por artefacto. Hoy el repo sólo tiene
+  `synapse.spdx.json.sig`; el oráculo r274 verifica determinismo del bootstrap
+  y SHA-256, **no** las firmas de los binarios distribuidos. Se deja registrado
+  en vez de declararlo cumplido (la cita fabricada que lo afirmaba se corrigió
+  el 2026-11-20). **Resolución asignada:** firmar `synapse.exe`,
+  `dist/bin/synapse.exe` e instaladores en `distribuir.py` (Manual 9 §6.3) y
+  añadir la verificación de firma al oráculo r274; oráculo de cierre:
+  `oraculo_r274_gates_independientes.py --estricto` debe verificar las firmas
+  junto al hash. Evidencia: `docs/verificacion_ME_r274_gates_independientes.md`.
+- **H-R275-1 (ABIERTO 2026-11-20, MEDIO):** el emisor nativo S2
+  (`dist/bin/synapse.exe`) no compila `opensyn/permisos.syn`: emite
+  `str_eq(car_sep, ...)` con `car_sep` como `int64_t` en `es_ruta_workspace`
+  (comparación sobre texto indexado). S1 (`main.py`) sí lo compila, así que la
+  sonda E2E del sandbox de r275 se compila con S1 y deja el aviso
+  `[R275][WARN]`; `check --no-emit` sí usa el binario nativo real. Medido en la
+  corrida E2E del 2026-11-20 (4/4 PASS, sonda S1). **Resolución asignada:**
+  alinear la emisión de `str_eq` para texto indexado en S2 o cambiar la
+  comparación de `permisos.syn` a `subcadena(...)`; oráculo de cierre:
+  `python auditoria/oraculos/oraculo_r275_opensyn_e2e_bench.py` debe reportar
+  `[OK]` sin el `[R275][WARN]` de compilación S1. Evidencia: `docs/reportes/R275.md`.
 - **H-R252-1 (RETIRADO 2026-11-19: FALSO POSITIVO DE MEDICIÓN), texto original conservado como registro:**
   Medido con la cadena real (`build.py --skip-test`, rc=0), el sello PASA:
   etapa 2 y etapa 3 son ambas salidas del emisor nativo y valen

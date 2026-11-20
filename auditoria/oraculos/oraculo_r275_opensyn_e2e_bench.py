@@ -1,182 +1,144 @@
 #!/usr/bin/env python3
-"""Oracle r275: OpenSyn E2E bench with --construir --sellar --estricto --mutar --e2e"""
+"""Oráculo r275 — E2E real y privacidad de red de OpenSyn.
 
-import subprocess
-import hashlib
+cumple Manual 7 §7.2, §7.3, §8; Manual 9 §5.5.
+
+Oráculo único del plan `docs/plan_ME_r275_opensyn_e2e_bench.md`:
+
+  tests/integration/test_opensyn_sin_red.py    (siempre; sin red ni modelo)
+  tests/integration/test_opensyn_e2e_local.py  (E2E real con modelo local)
+
+El E2E es opt-in en el test (`OPENSYN_E2E=1`) para que un CI sin modelo no
+finga verde. Este runner resuelve la capacidad real del entorno (binario
+`llama-server` + GGUF) y exporta el opt-in él mismo: si hay modelo, la
+evidencia se ejecuta; si no lo hay, termina rc=1 con la causa concreta
+(`contrastar.py` trata el SKIP como ausencia de evidencia, así que devolver 0
+sin haber medido nada sería un falso verde).
+
+Flags:
+  --sin-red : sólo el gate estático de privacidad.
+  --e2e     : sólo el E2E local (exige modelo; falla si no lo hay).
+  (sin flags): ambos, con detección automática de capacidad.
+"""
+import glob
 import os
+import subprocess
 import sys
-import time
-import json
+from pathlib import Path
 
-EXECUTABLE = os.path.join("dist", "bin", "synapse.exe")
-STAMP = "synapse_e2e_stage2.stamp"
-STAMP2 = "synapse_stage2.stamp"
+RAIZ = Path(__file__).resolve().parents[2]
+ESTATICO = "tests/integration/test_opensyn_sin_red.py"
+E2E = "tests/integration/test_opensyn_e2e_local.py"
 
-
-def sha256_file(path):
-    """Compute SHA256 hex digest of a file."""
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
-            h.update(chunk)
-    return h.hexdigest()
-
-
-def fmt_ok(s):
-    return "[OK] " + s
-
-
-def fmt_warn(s):
-    return "[WARN] " + s
+# Mismos candidatos que el test E2E (evita dos fuentes de verdad divergentes).
+SERVIDORES = (
+    RAIZ / "dist" / "opensyn" / "ia" / "llama-server.exe",
+    RAIZ / "dist" / "ia" / "llama-server.exe",
+    Path.home() / ".opensyn" / "ia" / "llama-server.exe",
+    RAIZ / "dist" / "opensyn" / "ia" / "llama-server",
+    RAIZ / "dist" / "ia" / "llama-server",
+    Path.home() / ".opensyn" / "ia" / "llama-server",
+)
+DIRECTORIOS_MODELO = (
+    Path.home() / ".opensyn" / "models",
+    RAIZ / "dist" / "opensyn" / "models",
+    RAIZ / "dist" / "ia",
+    RAIZ / "models",
+)
 
 
-def fmt_fail(s):
-    return "[FAIL] " + s
+def _opt_in():
+    return os.environ.get("OPENSYN_E2E", "").strip().lower() in (
+        "1", "true", "yes", "si",
+    )
 
 
-def check_existing():
-    """Check consistency of existing artifacts without rebuilding."""
-    results = []
-
-    # Check if exe exists
-    if os.path.exists(EXECUTABLE):
-        exe_hash = sha256_file(EXECUTABLE)
-        results.append(fmt_ok("synapse.exe exists: " + exe_hash))
-    else:
-        results.append(fmt_warn("synapse.exe not found"))
-
-    # Check stage2 stamp
-    if os.path.exists(STAMP2):
-        try:
-            with open(STAMP2, "r") as f:
-                content = f.read()
-            results.append(fmt_ok("synapse_stage2.stamp exists: " + content[:80]))
-        except Exception:
-            results.append(fmt_warn("synapse_stage2.stamp read error"))
-    else:
-        results.append(fmt_warn("synapse_stage2.stamp not found"))
-
-    # Check e2e stamp
-    if os.path.exists(STAMP):
-        try:
-            with open(STAMP, "r") as f:
-                content = f.read()
-            results.append(fmt_ok("synapse_e2e_stage2.stamp exists: " + content[:80]))
-        except Exception:
-            results.append(fmt_warn("synapse_e2e_stage2.stamp read error"))
-
-    # Check consistency: exe hash vs stage2 stamp
-    if os.path.exists(EXECUTABLE) and os.path.exists(STAMP2):
-        exe_hash = sha256_file(EXECUTABLE)
-        try:
-            with open(STAMP2, "r") as f:
-                stamp_data = json.loads(f.read())
-            stage2_hash_from_stamp = stamp_data.get("sha256_etapa2", "")
-            match = exe_hash == stage2_hash_from_stamp
-            results.append(fmt_ok("exe hash matches stage2: " + str(match)))
-        except Exception as e:
-            results.append(fmt_warn("Could not compare: " + str(e)[:50]))
-
-    return results
+def _servidor():
+    if os.environ.get("OPENSYN_LLAMA_SERVER"):
+        ruta = Path(os.environ["OPENSYN_LLAMA_SERVER"])
+        if ruta.is_file():
+            return ruta
+    for ruta in SERVIDORES:
+        if ruta.is_file():
+            return ruta
+    return None
 
 
-def run_seal():
-    """Write the e2e stage2 stamp with source hash."""
-    source_path = os.path.join("nucleo", "principal.syn")
-    if os.path.exists(source_path):
-        h = sha256_file(source_path)
-        data = {
-            "sha256_fuente": h,
-            "sha256_etapa2": sha256_file("synapse_stage2.stamp") if os.path.exists("synapse_stage2.stamp") else "n/a",
-            "bytes_etapa2": 2573663,
-            "fecha": time.strftime("%Y-%m-%dT%H:%M:%S")
-        }
-        with open(STAMP, "w") as f:
-            json.dump(data, f, indent=2)
-            f.write("\n")
-        return True, "Stamp " + STAMP + " escrito con hash de " + source_path
-    else:
-        if os.path.exists(STAMP2):
-            with open(STAMP, "w") as f:
-                with open(STAMP2, "r") as g:
-                    f.write(g.read())
-            return True, "Stamp " + STAMP + " copiado de " + STAMP2
-        return False, "No source file found"
+def _modelo():
+    if os.environ.get("OPENSYN_GGUF"):
+        ruta = Path(os.environ["OPENSYN_GGUF"])
+        if ruta.is_file():
+            return ruta
+    for directorio in DIRECTORIOS_MODELO:
+        if directorio.is_dir():
+            encontrados = sorted(glob.glob(str(directorio / "*.gguf")))
+            if encontrados:
+                return Path(encontrados[0])
+    return None
 
 
-def run_e2e_benchmark():
-    """Run the E2E benchmark if it exists."""
-    benchmark = os.path.join("tests", "integration", "test_opensyn_e2e_bench.py")
-    if not os.path.exists(benchmark):
-        return True, "No E2E benchmark yet - placeholder active"
-    try:
-        result = subprocess.run(
-            [sys.executable, benchmark, "--check"],
-            capture_output=True, text=True, timeout=30
-        )
-        return True, "E2E benchmark exit code: " + str(result.returncode)
-    except Exception as e:
-        return True, "E2E benchmark error: " + str(e)[:50]
+def _capacidad_e2e():
+    """Devuelve (hay_capacidad, motivo)."""
+    if _opt_in():
+        return True, "OPENSYN_E2E ya exportado"
+    servidor = _servidor()
+    if servidor is None:
+        return False, ("no hay llama-server (OPENSYN_LLAMA_SERVER / "
+                       "dist/opensyn/ia)")
+    modelo = _modelo()
+    if modelo is None:
+        return False, "no hay GGUF (OPENSYN_GGUF / ~/.opensyn/models/*.gguf)"
+    return True, f"llama-server={servidor.name} modelo={modelo.name}"
+
+
+def ejecutar(ruta, env_extra=None):
+    """Ejecuta un test del plan y devuelve (rc, salida)."""
+    cmd = [sys.executable, "-m", "pytest", ruta, "-q", "--no-header",
+           "-p", "no:cacheprovider"]
+    env = dict(os.environ)
+    if env_extra:
+        env.update(env_extra)
+    res = subprocess.run(cmd, cwd=str(RAIZ), capture_output=True, text=True,
+                         encoding="utf-8", errors="replace", timeout=900,
+                         env=env)
+    salida = (res.stdout or "") + (res.stderr or "")
+    return res.returncode, salida
+
+
+def _fallo(etiqueta, rc, salida):
+    print(f"[FAIL] {etiqueta} (rc={rc})")
+    print("\n".join(salida.strip().splitlines()[-12:]))
 
 
 def main():
-    argc = len(sys.argv)
-    flags = sys.argv[1:] if argc > 1 else []
+    flags = set(sys.argv[1:])
+    correr_estatico = "--e2e" not in flags or "--sin-red" in flags
+    correr_e2e = "--sin-red" not in flags
 
-    construir = "--construir" in flags
-    sellar = "--sellar" in flags
-    estricto = "--estricto" in flags
-    mutar = "--mutar" in flags
-    e2e = "--e2e" in flags
+    if correr_estatico:
+        rc, salida = ejecutar(ESTATICO)
+        if rc != 0:
+            _fallo("r275 gate estático", rc, salida)
+            return 1
+        print("[OK] r275 sin-red: endpoints locales y cero telemetría verificados")
 
-    results = []
+    if correr_e2e:
+        capacidad, motivo = _capacidad_e2e()
+        if not capacidad:
+            print(f"[FAIL] r275 E2E local: sin capacidad de ejecución — {motivo}")
+            print("       instala el modelo con el instalador (Manual 9 §5.3) o "
+                  "define OPENSYN_GGUF; un SKIP no es evidencia.")
+            return 1
+        print(f"[INFO] r275 E2E local: {motivo}")
+        rc, salida = ejecutar(E2E, {"OPENSYN_E2E": "1"})
+        if rc != 0:
+            _fallo("r275 E2E local", rc, salida)
+            return 1
+        print("[OK] r275 E2E local: chat, validación, sandbox y red verificados")
 
-    # Always check existing state first
-    results.extend(check_existing())
-
-    if construir:
-        # With existing artifacts, just verify consistency
-        ok = True
-        msg = "Using existing artifacts (build stamp already present)"
-        results.append(fmt_ok(msg) if ok else fmt_fail(msg))
-
-    if sellar:
-        ok, msg = run_seal()
-        status = "OK" if ok else "FAIL"
-        results.append("[" + status + "] [r275] --sellar: " + msg)
-
-    if estricto:
-        # Check consistency without rebuild
-        exe_ok = os.path.exists(EXECUTABLE)
-        stamp_ok = os.path.exists(STAMP2)
-        exe_str = "exe OK" if exe_ok else "exe missing"
-        stamp_str = "stamp OK" if stamp_ok else "stamp missing"
-        results.append("[" + ("OK" if (exe_ok and stamp_ok) else "INFO") + "] [r275] --estricto: " + exe_str + ", " + stamp_str)
-        # Verify exe matches stage2 if both exist
-        if exe_ok and stamp_ok:
-            try:
-                with open(STAMP2, "r") as f:
-                    stamp_data = json.loads(f.read())
-                exe_hash = sha256_file(EXECUTABLE)
-                stage2_hash = stamp_data.get("sha256_etapa2", "")
-                match = exe_hash == stage2_hash
-                results.append(fmt_ok("exe vs stage2 hash: " + str(match)))
-            except Exception:
-                results.append(fmt_warn("Could not compare hashes"))
-
-    if mutar:
-        results.append("[INFO] [r275] --mutar: mutation test identified (gates must resist minor source mutations)")
-
-    if e2e:
-        ok, msg = run_e2e_benchmark()
-        status = "OK" if ok else "FAIL"
-        results.append("[" + status + "] [r275] --e2e: " + msg)
-
-    for r in results:
-        print(r)
-
-    print("[OK] [r275] All flags processed RC=0")
+    print("[OK] r275 gates ejecutados")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
