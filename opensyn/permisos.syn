@@ -117,7 +117,8 @@ funcion es_ruta_en_workspace(ruta: texto, workspace: texto) -> booleano:
         retornar verdadero
     // cumple Manual 7 §1.1: el sandbox valida rutas dentro del workspace del usuario (agente local, sin nube).
     // cumple Manual 2 §3: 'siguiente' es palabra reservada (T_SIGUIENTE); se renombra el identificador.
-    // cumple Manual 7 §2.3: reglas de sintaxis estricta de Synapse en el agente (indexar texto produce texto; comparar contra caracter, no contra codigo ASCII).
+    // cumple Manual 7 §7.3: el sandbox compara el separador con un texto de un
+    // carácter (Manual 2 §4.1: indexar `texto` produce `texto`, no un código).
     car_sep = ruta[longitud_ws]
     si car_sep == "/" o car_sep == "\\":
         retornar verdadero

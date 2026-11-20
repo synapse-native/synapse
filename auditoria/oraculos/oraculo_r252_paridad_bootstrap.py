@@ -120,7 +120,8 @@ def _mas_nuevo(raiz: str, artefacto: str, fuente: str) -> bool:
         return False
 
 
-def comparar_artefactos(raiz: str, estricto: bool = False):
+def comparar_artefactos(raiz: str, estricto: bool = False,
+                        sellar: bool = False):
     """Compara stage2/stage3 (y los distribuidos si `estricto`).
 
     requiere: raiz es un directorio existente
@@ -173,10 +174,23 @@ def comparar_artefactos(raiz: str, estricto: bool = False):
         h2_sellada = (sello or {}).get("sha256_etapa2", "")
         certifica = bool(h_sellada) and h_sellada == h_fuente
         if h_sellada and not certifica:
-            ok = False
-            lineas.append(f"[FAIL] {fuente} cambio desde el build (sello "
-                          f"{h_sellada[:16]} != actual {h_fuente[:16]}): "
-                          f"reconstruye el bootstrap")
+            # H-R275-2 (cumple Manual 1 §6): cambiar la fuente dejaba el sello
+            # obsoleto y el oráculo se negaba a re-sellar, de modo que el
+            # bootstrap no se podía reconstruir nunca tras editar principal.syn.
+            # Si el build de esta corrida regeneró la etapa 2 (mtime posterior a
+            # la fuente) y S2==S3, el sello viejo sólo describe la fuente
+            # anterior: se re-sella en vez de abortar. Un artefacto stale sigue
+            # fallando, porque no es posterior a la fuente.
+            if sellar and h2 == h3 and _mas_nuevo(raiz, ETAPA2, fuente):
+                lineas.append(f"[OK] sello de frescura reescrito: {fuente} cambio "
+                              f"(sello {h_sellada[:16]}) y la {ETAPA2} es "
+                              f"posterior al build")
+                certifica = True
+            else:
+                ok = False
+                lineas.append(f"[FAIL] {fuente} cambio desde el build (sello "
+                              f"{h_sellada[:16]} != actual {h_fuente[:16]}): "
+                              f"reconstruye el bootstrap")
         elif certifica and h2_sellada and h2_sellada != h2:
             # El sello certifica la fuente, no el binario: si la etapa 2 no es la
             # sellada (otra corrida la reescribió), no se puede dar por fresca
@@ -239,7 +253,8 @@ def main(argv=None) -> int:
             print(f"[FAIL] build.py termino con rc={rc}: no hay artefactos que sellar",
                   file=sys.stderr)
             return rc
-    ok, lineas = comparar_artefactos(RAIZ, estricto=estricto)
+    ok, lineas = comparar_artefactos(RAIZ, estricto=estricto,
+                                     sellar="--sellar" in argv)
     for linea in lineas:
         print(f"[r252] {linea}")
     if ok and "--sellar" in argv:
