@@ -66,6 +66,17 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   `opensyn/installer.syn`, `std/os.syn`) y la cubre
   `tests/opensyn/test_installer.py` (1 passed). El id `r276` queda para
   `r276_multiplataforma_release`.
+- **H-R276-2 (ABIERTO 2026-11-20, MEDIO):** la certificación de release quedó
+  medida sólo en Windows local. El gate `scripts/verificar_release_limpio.py` y
+  el job `smoke_release_limpio` de `release_matrix.yml` ya cubren integridad,
+  firmas y smoke en cuatro plataformas, pero **no se ejecutó** la matriz ni una
+  VM Windows limpia desde esta sesión: sin run de CI no hay evidencia de
+  Linux x64/ARM64 ni de macOS. **Resolución asignada:** ejecutar la matriz en
+  CI sobre el tag del release y adjuntar los artefactos `smoke-<plataforma>` a
+  `docs/reportes/R276.md`; después, instalación silenciosa en VM Windows limpia
+  (`test_installer` de r273 + `verificar_release_limpio.py` en la VM) y
+  actualizar el reporte con la evidencia real. Cierre cuando las cuatro
+  plataformas tengan `PASS` publicado y la VM limpia tenga log adjunto.
 - **H-R252-1 (RETIRADO 2026-11-19: FALSO POSITIVO DE MEDICIÓN), texto original conservado como registro:**
   Medido con la cadena real (`build.py --skip-test`, rc=0), el sello PASA:
   etapa 2 y etapa 3 son ambas salidas del emisor nativo y valen
