@@ -169,11 +169,14 @@ jobs:
           pip install pytest pytest-cov pytest-md pytest-emoji
           pip install -r requirements.txt
 
-      - name: Shard ${{ matrix.shard }} (sin red)
+      - name: Shard ${{ matrix.shard }} (sin red, en paralelo)
         env:
           PYTHONHASHSEED: '0'
           PYTHONPATH: ${{ github.workspace }}
-        run: python -m pytest tests/${{ matrix.shard }} -q -m "not network"
+        # `--dist loadfile`: cada archivo cae en un solo worker, porque varios
+        # tests escriben rutas fijas (tests/fixtures, dist/bin). Medido en
+        # Windows: syquex 112,96 s -> 75,25 s con los mismos 281 passed/1 skipped.
+        run: python -m pytest tests/${{ matrix.shard }} -q -m "not network" -n auto --dist loadfile
 
   suite-ratchet:
     # cumple Manual 1 §7.2: composición de la suite con ratchet contra
