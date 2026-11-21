@@ -177,6 +177,7 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
     `~/.synapse/cache/hash/`: 6,5 s en frío y 0,07 s caliente; el test
     preexistente pasa sin tocarlo. Desbloquea r275/r276/r279.
   - **Encoding de código → r280_codigo_encoding (CERRADO 2026-11-20, 38ba6f9):** gate `auditoria/verificar_encoding.py` (U+FFFD, C1, mojibake, UTF-8 inválido y BOM nuevo) con ratchet; 2307 archivos, 0 defectos de pérdida, 46 BOM históricos congelados (**H-R280-2 abierto**, cierre con `--estricto`) y 2 fixtures UTF-16 exentos (**H-R280-3**). Correcciones en axon/runtime/std sin cambio de semántica; tests 6/6 + 5/5 + 17/17 + 4/4; build rc=0.
+  - **Suite acotada → r279_suite_rapida (CERRADO 2026-11-21, ec85c17):** gate `auditoria/verificar_suite.py` con ratchet de composición (3078 tests recolectados, 243 skips declarados en 10 suites) y medición cronometrada por suite; `network` opt-in en `pytest.ini`; jobs `suite-rapida` (shards) y `suite-ratchet` en CI, conservando la suite completa por target. Medido: `e2e` 8 passed/0 skipped/0 failed en 271,98 s; gate 4/4; `contrastar` 2/2. **H-R279-1 abierto:** la corrida cronometrada completa de las diez suites no se ejecutó desde esta máquina (integración >2 h); cierre cuando el run de CI publique `--medir --comparar` para las diez suites sin skips nuevos.
   - **Gates → r274_gates_independientes (P0 · EN PROGRESO):** H-R252-2 y H-CONTROL-1/2/3;
     ningún sello puede vivir solo dentro de `build.py` o de un job de CI.
   - **P1/P2:** r275 E2E real + benchmark local; r276 limpia multiplataforma y
