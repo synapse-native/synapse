@@ -144,6 +144,62 @@ jobs:
         run: |
           echo "## ✅ Tests completados para ${{ matrix.os }} / Python ${{ matrix.python-version }}" >> $GITHUB_STEP_SUMMARY
 
+  suite-rapida:
+    # cumple Manual 1 §7.2 + Manual 9 §6.2: la suite completa se ejecuta por
+    # shards acotados para dar señal temprana (la suite entera tarda horas) y
+    # los tests de red quedan fuera: `network` es opt-in. El job `test`
+    # conserva la suite completa en cada target, que es la ley del Manual 9 §6.2.
+    needs: lint-and-check
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [unit, integration, auditoria, opensyn, syquex, e2e]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov pytest-md pytest-emoji
+          pip install -r requirements.txt
+
+      - name: Shard ${{ matrix.shard }} (sin red)
+        env:
+          PYTHONHASHSEED: '0'
+          PYTHONPATH: ${{ github.workspace }}
+        run: python -m pytest tests/${{ matrix.shard }} -q -m "not network"
+
+  suite-ratchet:
+    # cumple Manual 1 §7.2: composición de la suite con ratchet contra
+    # auditoria/suite_baseline.json — una suite no puede perder tests ni ganar
+    # skips sin que la línea base lo registre. Es barato (sólo recolección).
+    needs: lint-and-check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+          pip install -r requirements.txt
+
+      - name: Ratchet de composición de la suite
+        env:
+          PYTHONHASHSEED: '0'
+        run: python auditoria/verificar_suite.py --resumen
+
   matriz-compilacion:
     # Oráculo matriz std↔runtime (OBL-R150-MATRIZ, Manual 1 §3, D-R150-7):
     # TODO std/*.syn compila con ENLACE COMPLETO via pipeline (no check_only)
