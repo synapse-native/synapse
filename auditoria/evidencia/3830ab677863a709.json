@@ -1,0 +1,20 @@
+{
+ "cambio_hash": "3830ab677863a709",
+ "expediente": "docs/alineacion/r280_codigo_encoding.md",
+ "fecha": "2026-11-20",
+ "archivos": [
+  "axon/axon_rt.c",
+  "runtime/core/axon.h",
+  "runtime/core/concurrency.c",
+  "runtime/core/debug.c",
+  "std/texto.syn"
+ ],
+ "oraculos": {
+  "auditoria/verificar_encoding.py": true,
+  "tests/auditoria/test_oraculos_r222_std_texto.py": true,
+  "tests/integration/test_axon_e2e.py": true,
+  "tests/integration/test_concurrency_10.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

@@ -1,4 +1,5 @@
-﻿// cumple Manual 6 §5: axon runtime
+// cumple Manual 2 §1.2: fuente UTF-8 sin BOM (r280).
+// cumple Manual 6 §5: axon runtime
 // runtime/core/axon.h — Axon: HTTP download + TAR extraction + SHA-256 Lock
 // D-9(d) corte 11: extraído de synapse_rt.c (modularización, patrón toml.c R64)
 // Manual 8 §4.3-4.4 (gestor de paquetes Axon); path traversal protection
@@ -26,9 +27,9 @@ int _syn_axon_workspace_resolver(const char* ruta_proyecto, const char* lock_pat
 
 #endif /* SYNAPSE_AXON_H */
 
-// R84 � Serializaci�n binaria de valores (Manual 6 �5.2; tabla Manual 5 �6.3)
-// Nombres del manual: serializar_valor / deserializar_valor (convenci�n _syn_axon_).
-// ESTRUCTURA (0x08) no soportada por la API gen�rica (sin esquema en manuales).
+// R84 — Serialización binaria de valores (Manual 6 §5.2; tabla Manual 5 §6.3)
+// Nombres del manual: serializar_valor / deserializar_valor (convención _syn_axon_).
+// ESTRUCTURA (0x08) no soportada por la API genérica (sin esquema en manuales).
 #define AXON_T_ENTERO8   0x00
 #define AXON_T_ENTERO16  0x01
 #define AXON_T_ENTERO32  0x02

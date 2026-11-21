@@ -1,8 +1,9 @@
+// cumple Manual 2 §1.2: fuente UTF-8 sin BOM (r280).
 // cumple Manual 5 §2.1: runtime de concurrencia
-// synapse_rt_concurrency.c �?" Concurrency module for Synapse runtime
+// synapse_rt_concurrency.c — Concurrency module for Synapse runtime
 // Extracted from synapse_rt.c: channels, thread tracker (thread-safe console
 // I/O moved to runtime/core/io.c, F3-1)
-// F4.1: fibras ligeras y scheduler M:N (Manual 5 §2.6) �?" Win32 Fiber API en
+// F4.1: fibras ligeras y scheduler M:N (Manual 5 §2.6) — Win32 Fiber API en
 // Windows, ucontext_t en POSIX.
 // Compilar: gcc -c synapse_rt_concurrency.c -o synapse_rt_concurrency.o -lpthread
 
@@ -434,7 +435,7 @@ void canal_destruir(CanalConcurrencia* canal) {
 }
 
 // ============================================================
-// F4.1 �?" Fibras ligeras y Scheduler M:N (Manual 5 §2.6)
+// F4.1 — Fibras ligeras y Scheduler M:N (Manual 5 §2.6)
 // ============================================================
 // El modelo del manual: un hilo de usuario ultraligero con pila propia
 // (64 KB por defecto), contexto de ejecución e identificador único, que se
@@ -442,7 +443,7 @@ void canal_destruir(CanalConcurrencia* canal) {
 // y API según Manual 5 §2.6 (Fibra, Scheduler, fibra_crear/fibra_esperar/
 // fibra_terminar/scheduler_iniciar/scheduler_detener).
 //
-// Implementación: cooperativa por worker �?" cada fibra corre hasta que
+// Implementación: cooperativa por worker — cada fibra corre hasta que
 // retorna (la trampolina llama fibra_terminar) o llama fibra_terminar
 // explícitamente; al terminar cede el control al worker, que libera pila y
 // contexto.
@@ -644,7 +645,7 @@ static void __stdcall _fibras_trampoline_win(void* param) {
 #else
 static void _fibras_trampoline_posix(int lo, int hi) {
     // makecontext recibe ints; el puntero a Fibra viaja partido en 2 ints
-    // (patr�n est�ndar para 64-bit, evita truncar el puntero).
+    // (patrón estándar para 64-bit, evita truncar el puntero).
     uintptr_t p = ((uintptr_t)(unsigned int)hi << 32) | (unsigned int)lo;
     Fibra* f = (Fibra*)p;
     f->func(f->arg);
@@ -766,7 +767,7 @@ void fibra_crear(void (*func)(void*), void* arg, size_t stack_size) {
     }
 #else
     // POSIX: el puntero a Fibra viaja partido en 2 ints de makecontext
-    // (patr�n est�ndar para 64-bit, evita truncar el puntero).
+    // (patrón estándar para 64-bit, evita truncar el puntero).
     uintptr_t _p = (uintptr_t)f;
     f->stack = malloc(stack_size);
     if (!f->stack) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en fibra_crear (stack)\n"); free(f); pthread_mutex_unlock(&g_sched_mutex); exit(1); }

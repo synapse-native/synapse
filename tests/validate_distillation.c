@@ -191,7 +191,7 @@ static void test_add_pairs(void) {
     idx = kd_agregar_par_n(sesion, lt, ls, 10, -1, 1.0f);
     test_assert("Target -1 falla", idx == -1);
 
-    // 4.5 Agregar a sesi��n NULL
+    // 4.5 Agregar a sesión NULL
     idx = kd_agregar_par_n(NULL, lt, ls, 10, 0, 1.0f);
     test_assert("Session NULL falla", idx == -1);
 

@@ -1,4 +1,5 @@
-﻿// axon_rt.c — Axon package manager runtime
+// cumple Manual 2 §1.2: fuente UTF-8 sin BOM (r280).
+// axon_rt.c — Axon package manager runtime
 //
 // Fase 6.1: TOML, TAR, SHA-256, Ed25519, SemVer, lock.
 // Manual 8 §4.3-4.4 (gestor de paquetes Axon); Manual 6 §5.1 (axon runtime);
@@ -75,7 +76,7 @@ extern int _syn_axon_buscar_local(const char* paquete, const char* version,
                                    char* extract_dir, int ext_sz);
 
 // ============================================================
-// SemVer helpers (static â€” local to this TU)
+// SemVer helpers (static — local to this TU)
 // ============================================================
 
 /* _syn_parse_ver: parse "x.y.z" version string into components */
@@ -201,8 +202,8 @@ int _syn_axon_validar_manifiesto(const char* toml_path) {
             }
         }
 
-        // Optional: [dependencias] section â€” no validation required
-        // Optional: [parametros] section â€” no validation required
+        // Optional: [dependencias] section — no validation required
+        // Optional: [parametros] section — no validation required
     }
 
     if (!has_paquete) { fprintf(stderr, "[Axon] ERR_MANIFEST: falta seccion [paquete]\n"); valid = 0; }
@@ -264,7 +265,7 @@ unsigned char* _syn_ed25519_firmar(CadenaSegura mensaje,
 /* _syn_axon_verificar_paquete: download (or use local) + verify a package.
  * Steps:
  *   1. Buscar localmente (cache/oficiales/AXON_PATH)
- *   2. Si no estÃ¡, HTTP download (host, puerto, ruta â†’ .tar)
+ *   2. Si no está, HTTP download (host, puerto, ruta → .tar)
  *   3. Verify SHA-256 hash against expected (or compute + write lock)
  *   4. Verify Ed25519 signature (if clave_publica_hex provided)
  *   5. Extract TAR (con path traversal protection)
@@ -294,7 +295,7 @@ int _syn_axon_verificar_paquete(const char* paquete, const char* version,
             fprintf(stderr, "[Axon] ERR_FETCH: fallo download HTTP para '%s'\n", paquete);
             return -1;
         }
-        fprintf(stderr, "[Axon] Download: %s â†’ %s\n", ruta_http, tar_path);
+        fprintf(stderr, "[Axon] Download: %s → %s\n", ruta_http, tar_path);
     } else {
         fprintf(stderr, "[Axon] Local: encontrado (rc=%d) en %s\n", local_rc, tar_path);
     }
@@ -332,10 +333,10 @@ int _syn_axon_verificar_paquete(const char* paquete, const char* version,
     // 4. Extract TAR (path traversal protection inside)
     int trc = _syn_tar_extraer(tar_path, extract_dir);
     if (trc != 0) {
-        fprintf(stderr, "[Axon] ERR_TAR: fallo extracciÃ³n de %s\n", tar_path);
+        fprintf(stderr, "[Axon] ERR_TAR: fallo extracción de %s\n", tar_path);
         return -1;
     }
-    fprintf(stderr, "[Axon] Paquete instalado: %s v%s â†’ %s\n", paquete, version, extract_dir);
+    fprintf(stderr, "[Axon] Paquete instalado: %s v%s → %s\n", paquete, version, extract_dir);
     return 0;
 }
 

@@ -1,5 +1,6 @@
+// cumple Manual 2 §1.2: fuente UTF-8 sin BOM (r280).
 // cumple Manual 6 8: debug runtime
-// runtime/core/debug.c  Debug/Trace module (M9.0-M9.4): time-travel debug
+// runtime/core/debug.c — Debug/Trace module (M9.0-M9.4): time-travel debug
 // (trace session base, deterministic recording, reversible breakpoints,
 // memory snapshots & diff) + distributed multi-node debugging (M9.4).
 // Extracted from synapse_rt.c (D-9(d) corte 5, patron cluster.c R40).
@@ -30,9 +31,9 @@
 #endif
 
 // ============================================================
-// Debug / Trace System  Time-Travel Debugging Support
+// Debug / Trace System — Time-Travel Debugging Support
 // ============================================================// (Tipos TraceEventTag/TraceEvent/TraceSession + TRACE_MAX_EVENTS/TRACE_DIR
-//  movidos a runtime/core/debug.h en D-9(d) corte 5  los usan los prototipos.)
+//  movidos a runtime/core/debug.h en D-9(d) corte 5 — los usan los prototipos.)
 
 
 
@@ -508,7 +509,7 @@ TraceSession _syn_debug_obtener_sesion(void) {
 
 // =========================================================================
 
-// M9.1  Deterministic Execution Recording (rr-style Time-Travel Debug)
+// M9.1 — Deterministic Execution Recording (rr-style Time-Travel Debug)
 
 // =========================================================================
 
@@ -974,7 +975,7 @@ int tr_total_eventos(void) {
 
 // =========================================================================
 
-// M9.2  Reversible Breakpoints & Historical Snapshot Inspection
+// M9.2 — Reversible Breakpoints & Historical Snapshot Inspection
 
 // =========================================================================
 
@@ -1584,7 +1585,7 @@ int rp_buscar_cambio_variable(CadenaSegura nombre, int valor) {
 
 // =========================================================================
 
-// M9.3  Memory Snapshots & Historical State Diff
+// M9.3 — Memory Snapshots & Historical State Diff
 
 // =========================================================================
 
@@ -1604,11 +1605,11 @@ int rp_buscar_cambio_variable(CadenaSegura nombre, int valor) {
 
 // Diff format (prefix identifies change type):
 
-//     +name|tipo|val           added in B
+//     +name|tipo|val          — added in B
 
-//     -name|tipo|val           removed in B
+//     -name|tipo|val          — removed in B
 
-//     ~name|tipo_a|val_a|tipo_b|val_b   changed
+//     ~name|tipo_a|val_a|tipo_b|val_b  — changed
 
 // =========================================================================
 
@@ -2150,7 +2151,7 @@ CadenaSegura ms_snapshot_contiene(CadenaSegura snapshot, CadenaSegura nombre) {
 
 // ============================================================
 
-// M9.4  Distributed Multi-Node Debugging
+// M9.4 — Distributed Multi-Node Debugging
 
 // ============================================================
 
