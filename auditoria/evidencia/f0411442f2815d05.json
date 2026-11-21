@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "f0411442f2815d05",
+ "expediente": "docs/alineacion/r281_cache_runtime_nativa.md",
+ "fecha": "2026-11-21",
+ "archivos": [
+  "nucleo/principal.syn"
+ ],
+ "oraculos": {
+  "auditoria/oraculos/oraculo_r281_cache_nativa.py": true,
+  "tests/unit/test_r3_param_adt.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}
