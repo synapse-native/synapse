@@ -91,3 +91,7 @@ oraculo: tests/integration/test_installer_modelo_grande.py
 - El digest se calcula con el mismo `sha256_transform` (FIPS 180-4): el cambio
   es de recorrido de buffer, no de algoritmo. Se contrasta con `hashlib` en el
   oráculo.
+
+## Registro de ejecución
+
+Aplicado el 2026-11-22: `cfg.timeout` 30 → 120 en `generar_config` (opensyn/installer.syn).

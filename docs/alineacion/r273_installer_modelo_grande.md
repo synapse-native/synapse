@@ -1,7 +1,7 @@
 # Expediente de alineación r273_installer_modelo_grande
 
-base: HEAD 4b91439  # commit sobre el que se leyó el manual
-cambio_hash: e71dee4a8e127026
+base: HEAD  # commit sobre el que se leyó el manual
+cambio_hash: 34acda07a2556d43
 
 > Una ancla por requisito. `estado:` CUMPLE | DESVIACION.
 > CUMPLE exige `evidencia: archivo:linea` con el comentario
@@ -42,63 +42,3 @@ cambio_hash: e71dee4a8e127026
   evidencia: opensyn/installer.syn:8
   oraculo: tests/integration/test_installer_modelo_grande.py
 
-## runtime/core/axon.c
-- manual: 8
-  seccion: 4.3
-  cita: "El comando `synapse init` crea la siguiente estructura:"
-  tipo: comportamiento
-  estado: CUMPLE
-  evidencia: runtime/core/axon.c:6
-  oraculo: tests/unit/test_axon_crypto.py
-
-- manual: 6
-  seccion: 5.1
-  cita: "El formato de serialización para canales remotos es un subconjunto de MessagePack, optimizado para velocidad. **Especificación normativa:** el formato definitivo está en el Manual 5, §6.3."
-  tipo: comportamiento
-  estado: CUMPLE
-  evidencia: runtime/core/axon.c:9
-  oraculo: tests/unit/test_axon_crypto.py
-
-- manual: 9
-  seccion: 5.3
-  cita: "El modelo se descarga desde Hugging Face o Axon Hub, y se verifica su integridad mediante SHA‑256."
-  tipo: comportamiento
-  estado: CUMPLE
-  evidencia: runtime/core/axon.c:47
-  oraculo: tests/integration/test_installer_modelo_grande.py
-
-## runtime/core/cripto.c
-- manual: 9
-  seccion: 5.3
-  cita: "El modelo se descarga desde Hugging Face o Axon Hub, y se verifica su integridad mediante SHA‑256."
-  tipo: comportamiento
-  estado: CUMPLE
-  evidencia: runtime/core/cripto.c:119
-  oraculo: tests/integration/test_installer_modelo_grande.py
-
-## runtime/core/hash_cache.c
-- manual: 9
-  seccion: 5.3
-  cita: "El modelo se descarga desde Hugging Face o Axon Hub, y se verifica su integridad mediante SHA‑256."
-  tipo: comportamiento
-  estado: CUMPLE
-  evidencia: runtime/core/hash_cache.c:1
-  oraculo: tests/integration/test_installer_modelo_grande.py
-
-## runtime/core/hash_cache.h
-- manual: 9
-  seccion: 5.3
-  cita: "El modelo se descarga desde Hugging Face o Axon Hub, y se verifica su integridad mediante SHA‑256."
-  tipo: comportamiento
-  estado: CUMPLE
-  evidencia: runtime/core/hash_cache.h:1
-  oraculo: tests/integration/test_installer_modelo_grande.py
-
-## runtime/core/modelo.c
-- manual: 9
-  seccion: 5.3
-  cita: "El modelo se descarga desde Hugging Face o Axon Hub, y se verifica su integridad mediante SHA‑256."
-  tipo: comportamiento
-  estado: CUMPLE
-  evidencia: runtime/core/modelo.c:988
-  oraculo: tests/integration/test_installer_modelo_grande.py

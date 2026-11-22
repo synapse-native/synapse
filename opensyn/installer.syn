@@ -279,7 +279,7 @@ funcion generar_config(hw: HardwareInfo, modelo: ModeloInfo, ruta_modelo: texto)
     cfg.n_gpu_layers = seleccionar_capas_gpu(hw.vram_total)
     cfg.puerto = 8088
     cfg.host = "127.0.0.1"
-    cfg.timeout = 30
+    cfg.timeout = 120
     retornar cfg
 
 # cumple Manual 9 §5.4 — escribir_config: escribe ~/.opensyn/config.toml
