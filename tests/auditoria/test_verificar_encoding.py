@@ -3,7 +3,8 @@
 
 El gate sólo sirve si falla: se comprueba en un repositorio git sintético que
 detecta BOM, U+FFFD, controles C1 y doble codificación, que deja pasar el UTF-8
-correcto con acentos y que `--estricto` audita también las exenciones.
+correcto con acentos, que el baseline congela la deuda y que `--estricto` la
+exige en cero.
 """
 from __future__ import annotations
 
@@ -58,6 +59,14 @@ def test_falla_con_fffd_c1_y_mojibake(tmp_path, capsys):
     assert _cargar().main(["--raiz", str(raiz)]) == 1
     salida = capsys.readouterr().out
     assert "FFFD" in salida and "C1" in salida and "MOJIBAKE" in salida
+
+
+def test_falla_con_mojibake_de_raya_y_flecha(tmp_path, capsys):
+    raiz = _repo(tmp_path, {
+        "axon/axon_rt.c": "// a \u00e2\u20ac\u201d b \u00e2\u2020\u2019 c\n".encode(),
+    })
+    assert _cargar().main(["--raiz", str(raiz)]) == 1
+    assert "MOJIBAKE" in capsys.readouterr().out
 
 
 def test_falla_con_utf8_invalido(tmp_path, capsys):

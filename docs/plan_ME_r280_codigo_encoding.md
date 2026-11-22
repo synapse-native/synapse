@@ -35,7 +35,7 @@ oraculo: tests/integration/test_concurrency_10.py
 
 1. `python auditoria/verificar_encoding.py` → `OK: encoding ... 0 U+FFFD, 0 C1,
    0 doble codificación, 0 BOM nuevos` sobre el árbol versionado.
-2. `pytest tests/auditoria/test_verificar_encoding.py` 6/6 y regresión dirigida
+2. `pytest tests/auditoria/test_verificar_encoding.py` 7/7 y regresión dirigida
    (`test_axon_e2e.py` 5/5, `test_concurrency_10.py` 17/17,
    `test_oraculos_r222_std_texto.py` 4/4).
 3. `python build.py --skip-test` rc=0 (los cambios no alteran semántica).

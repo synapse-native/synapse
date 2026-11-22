@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import indice_manual as im  # noqa: E402
 
-RE_MOJIBAKE = re.compile(r"[\u00c2\u00c3][\u0080-\u00bf]|â€[\u0080-\u00bf]|ï»¿")
+RE_MOJIBAKE = re.compile(r"[\u00c2\u00c3][\u0080-\u00bf]|\u00e2\u20ac[\u0080-\u00bf]|ï»¿")
 RE_CITA = re.compile(
     r"cumple\s+Manual\s+(\d+)\s*(?:\u00a7\s*)?(\d+(?:\.\d+){0,3})?",
     re.IGNORECASE,

@@ -12,12 +12,12 @@ cambios de semántica; gate repo-wide con ratchet de BOM.
   nuevos`; quedan 46 BOM históricos congelados en
   `auditoria/encoding_bom_baseline.txt` (H-R280-2) y 2 fixtures UTF-16 exentos
   (H-R280-3). Evidencia: `auditoria/verificar_encoding.py`,
-  `tests/auditoria/test_verificar_encoding.py` 6/6.
+  `tests/auditoria/test_verificar_encoding.py` 7/7.
 - Manual 1 §7.4 — CUMPLE: regresión dirigida sin regresiones:
   `tests/integration/test_axon_e2e.py` 5/5,
   `tests/integration/test_concurrency_10.py` 17/17,
   `tests/auditoria/test_oraculos_r222_std_texto.py` 4/4 y
-  `tests/auditoria/test_verificar_encoding.py` 6/6. `build.py --skip-test`
+  `tests/auditoria/test_verificar_encoding.py` 7/7. `build.py --skip-test`
   rc=0, S2==S3 `644ec933740c921a` (2.574.175 B), sello de frescura OK. La
   suite completa sigue siendo el gate de CI.
 - Manual 5 §2.1 — CUMPLE: `runtime/core/concurrency.c` solo normaliza
@@ -27,7 +27,7 @@ cambios de semántica; gate repo-wide con ratchet de BOM.
 ## Gates ejecutados
 
 - `python auditoria/verificar_encoding.py --resumen` → `OK: encoding ...`.
-- `python -m pytest tests/auditoria/test_verificar_encoding.py -q` → 6 passed.
+- `python -m pytest tests/auditoria/test_verificar_encoding.py -q` → 7 passed.
 - `python -m pytest tests/integration/test_axon_e2e.py -q` → 5 passed.
 - `python -m pytest tests/integration/test_concurrency_10.py -q` → 17 passed.
 - `python -m pytest tests/auditoria/test_oraculos_r222_std_texto.py -q` → 4 passed.

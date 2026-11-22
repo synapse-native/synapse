@@ -61,7 +61,7 @@ EXENCIONES = (
 # La clase empieza en escapes para que este archivo no contenga él mismo el
 # patrón que detecta (un auditor que se autoinculpa no sirve).
 MOJIBAKE_LATIN1 = re.compile(
-    "[ÃÂ]"
+    "[\u00c3\u00c2\u00e2\u00f0]"
     "[\u0080-\u00bf\u0152\u0153\u0160\u0161\u0178\u017d\u017e\u0192\u02c6\u02dc"
     "[–—‘’‚“”„†‡•…‰"
     "[‹›€™]")
