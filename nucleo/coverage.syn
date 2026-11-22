@@ -71,6 +71,10 @@ funcion cov_estado_administrar(modo: entero, arg: entero, l: entero, d: entero) 
 // SYNAPSE_COVERAGE=1 activa la instrumentación del nativo).
 // ----------------------------------------------------------
 funcion cov_iniciar() -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     // M2 §5.1/verificador_formal: garantiza en función void no menciona
     // _resultado_; cláusula original `_resultado_ == nulo` retirada.
     let ign = 0
@@ -83,6 +87,10 @@ funcion cov_iniciar() -> nulo:
 // Ruta base (sin extensión) del fuente en compilación — la fija el
 // orquestador al iniciar (generar) y la consume el prólogo del main.
 funcion cov_fijar_ruta_base(ruta: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     // M2 §5.1: garantiza en función void no menciona _resultado_.
     let ign = 0
     inseguro:

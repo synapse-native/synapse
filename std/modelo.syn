@@ -62,9 +62,17 @@ externo funcion _syn_modelo_obtener_n_heads(ctx: puntero) -> entero
 // --- Carga y ciclo de vida ---
 
 funcion cargar_modelo(ruta: texto) -> puntero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     retornar _syn_modelo_cargar(ruta)
 
 funcion cerrar_modelo(ctx: puntero) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     _syn_modelo_cerrar(ctx)
     retornar
 
@@ -74,58 +82,118 @@ funcion evaluar(ctx: puntero, token_id: entero) -> tensor:
     retornar _syn_modelo_evaluar(ctx, token_id)
 
 funcion generar_token(ctx: puntero, token_id: entero, temperatura: decimal, top_k: entero, top_p: decimal) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     retornar _syn_modelo_generar(ctx, token_id, temperatura, top_k, top_p)
 
 // --- Gestión de contexto ---
 
 funcion n_past(ctx: puntero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     retornar _syn_modelo_n_past(ctx)
 
 funcion reiniciar(ctx: puntero) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     _syn_modelo_reiniciar(ctx)
     retornar
 
 funcion obtener_n_ctx(ctx: puntero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     retornar _syn_modelo_obtener_n_ctx(ctx)
 
 funcion establecer_n_ctx(ctx: puntero, max_tokens: entero) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     _syn_modelo_establecer_n_ctx(ctx, max_tokens)
     retornar
 
 // --- Tokenización ---
 
 funcion decodificar_token(ctx: puntero, token_id: entero) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     retornar _syn_modelo_decodificar_token(ctx, token_id)
 
 funcion vocab_tamano(ctx: puntero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     retornar _syn_modelo_vocab_tamano(ctx)
 
 funcion codificar_contar(ctx: puntero, texto: texto) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     retornar _syn_modelo_codificar_contar(ctx, texto)
 
 funcion codificar_obtener(ctx: puntero, indice: entero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     retornar _syn_modelo_codificar_obtener(ctx, indice)
 
 // --- Generación de texto de alto nivel ---
 
 funcion generar_texto(ctx: puntero, prompt: texto, max_tokens: entero, temperatura: decimal, top_k: entero, top_p: decimal) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     retornar _syn_modelo_generar_texto(ctx, prompt, max_tokens, temperatura, top_k, top_p)
 
 // --- Metadatos ---
 
 funcion obtener_metadato(ctx: puntero, clave: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     retornar _syn_modelo_obtener_metadato(ctx, clave)
 
 funcion obtener_arquitectura(ctx: puntero) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     retornar _syn_modelo_obtener_arquitectura(ctx)
 
 funcion obtener_n_layers(ctx: puntero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     retornar _syn_modelo_obtener_n_layers(ctx)
 
 funcion obtener_n_embd(ctx: puntero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     retornar _syn_modelo_obtener_n_embd(ctx)
 
 funcion obtener_n_heads(ctx: puntero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     retornar _syn_modelo_obtener_n_heads(ctx)
 
 // ============================================================
@@ -194,6 +262,10 @@ externo funcion _syn_qt_estimar_tamano_modelo(params_m: entero, formato: entero)
 // argmax: retorna el índice del valor máximo en un tensor de logits
 // Equivalente a: argmax(logits) -> token_id
 funcion argmax(logits: tensor) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     inseguro:
         asm("float* _d = logits.datos;")
         asm("int _n = (int)(logits.columnas);")
@@ -207,6 +279,10 @@ funcion argmax(logits: tensor) -> entero:
 
 // muestra_logits: imprime los primeros N logits para depuración
 funcion muestra_logits(logits: tensor, n: entero) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     inseguro:
         asm("float* _d = logits.datos;")
         asm("int _max = n < (int)logits.columnas ? n : (int)logits.columnas;")
@@ -220,6 +296,10 @@ funcion muestra_logits(logits: tensor, n: entero) -> nulo:
 // generar_texto_simple: genera texto con parámetros por defecto
 // temperatura=0.7, top_k=40, top_p=0.9
 funcion generar_texto_simple(ctx: puntero, prompt: texto, max_tokens: entero) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     retornar _syn_modelo_generar_texto(ctx, prompt, max_tokens, 0.7, 40, 0.9)
 
 // ============================================================

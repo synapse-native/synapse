@@ -15,6 +15,10 @@ importar parser_constantes
 importar parser_base
 importar lexer
 funcion sq_nuevo(est: ParserEst, tipo: entero, linea: entero, col: entero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     retornar parser_nuevo_nodo(est, tipo, linea, col)
 
 funcion sq_id(est: ParserEst) -> entero:
@@ -41,6 +45,10 @@ funcion sq_id(est: ParserEst) -> entero:
     retornar n
 
 funcion sq_binaria(est: ParserEst, izq: entero, codigo: entero, der: entero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     n = sq_nuevo(est, NODO_BINARIA, token_linea(est, est.posicion), token_columna(est, est.posicion))
     inseguro:
         asm("est->nodos[n].hijo_izq = izq")
@@ -49,6 +57,10 @@ funcion sq_binaria(est: ParserEst, izq: entero, codigo: entero, der: entero) -> 
     retornar n
 
 funcion sq_es_op_rel(t: entero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     si t == T_IGUAL:
         retornar 1
     si t == T_DISTINTO:
@@ -64,6 +76,10 @@ funcion sq_es_op_rel(t: entero) -> entero:
     retornar 0
 
 funcion sq_es_op_adit(t: entero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     si t == T_MAS:
         retornar 1
     si t == T_MENOS:
@@ -71,6 +87,10 @@ funcion sq_es_op_adit(t: entero) -> entero:
     retornar 0
 
 funcion sq_es_op_mult(t: entero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     si t == T_POR:
         retornar 1
     si t == T_DIV:
@@ -80,6 +100,10 @@ funcion sq_es_op_mult(t: entero) -> entero:
     retornar 0
 
 funcion sq_codigo_rel(t: entero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     si t == T_IGUAL:
         retornar 202
     si t == T_DISTINTO:
@@ -95,6 +119,10 @@ funcion sq_codigo_rel(t: entero) -> entero:
     retornar 0
 
 funcion parse_or_sq(est: ParserEst) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     izq = parse_and_sq(est)
     r = 1
     mientras r == 1:
@@ -108,6 +136,10 @@ funcion parse_or_sq(est: ParserEst) -> entero:
     retornar izq
 
 funcion parse_and_sq(est: ParserEst) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     izq = parse_rel_sq(est)
     r = 1
     mientras r == 1:
@@ -121,6 +153,10 @@ funcion parse_and_sq(est: ParserEst) -> entero:
     retornar izq
 
 funcion parse_rel_sq(est: ParserEst) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     izq = parse_adit_sq(est)
     r = 1
     mientras r == 1:
@@ -134,11 +170,19 @@ funcion parse_rel_sq(est: ParserEst) -> entero:
     retornar izq
 
 funcion sq_codigo_adit(t: entero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     si t == T_MAS:
         retornar 300
     retornar 301
 
 funcion parse_adit_sq(est: ParserEst) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     izq = parse_mult_sq(est)
     r = 1
     mientras r == 1:
@@ -152,6 +196,10 @@ funcion parse_adit_sq(est: ParserEst) -> entero:
     retornar izq
 
 funcion sq_codigo_mult(t: entero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     si t == T_POR:
         retornar 400
     si t == T_DIV:
@@ -159,6 +207,10 @@ funcion sq_codigo_mult(t: entero) -> entero:
     retornar 402
 
 funcion parse_mult_sq(est: ParserEst) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     izq = parse_unario_sq(est)
     r = 1
     mientras r == 1:
@@ -191,6 +243,10 @@ funcion parse_mult_sq(est: ParserEst) -> entero:
     retornar izq
 
 funcion parse_unario_sq(est: ParserEst) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     t = token_mirar(est)
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)

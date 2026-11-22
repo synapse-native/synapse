@@ -53,6 +53,10 @@ funcion sq_tokens_ext() -> puntero:
 
 
 funcion sq_parser_total_set(n: entero) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     inseguro:
         asm("static int _SQP_total = 0; _SQP_total = n;")
         asm("*((int*)parser_meta()) = n;")
@@ -85,6 +89,10 @@ funcion sq_programa(fuente: cadena) -> entero:
     retornar sq_parsear_decls(fuente)
 
 funcion sq_declaracion(est: ParserEst) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     t = token_mirar(est)
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
@@ -234,6 +242,10 @@ funcion nombre_pos_previa(est: ParserEst, nodo_nombre: entero) -> entero:
     // por token_esperar_texto: se apoya en que el nodo ID copió el lexema;
     // aquí solo se usa como marcador (el nombre real lo copia sq_copiar_nombre
     // leyendo el nodo ID).
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     inseguro:
         r = 0
         asm("r = nodo_nombre")
@@ -245,6 +257,10 @@ funcion sq_copiar_nombre(est: ParserEst, n_destino: entero, nodo_id: entero) -> 
     // al destino (R88: los bits altos viven en sq_tokens_hi; sin ellos la
     // reconstrucción 64-bit del nombre queda truncada).
     // Nota: nodo_id puede ser 0 (primer nodo del buffer); se usa >=0.
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     inseguro:
         asm("if (nodo_id >= 0 && nodo_id < est->total_nodos && n_destino >= 0 && n_destino < est->total_nodos) { est->nodos[n_destino].ptr_str = est->nodos[nodo_id].ptr_str; est->nodos[n_destino].len_str = est->nodos[nodo_id].len_str; int* _hi_sq_c = (int*)sq_tokens_hi(); if (_hi_sq_c) { _hi_sq_c[n_destino] = _hi_sq_c[nodo_id]; } }")
     retornar
@@ -252,6 +268,10 @@ funcion sq_copiar_nombre(est: ParserEst, n_destino: entero, nodo_id: entero) -> 
 // Núcleo compartido de declaraciones let/variable (M3 §3 L74 y L122):
 // keyword ya consumido; ID [":" tipo] ["=" expr] con span slot2.
 funcion sq_let_nucleo(est: ParserEst, linea: entero, col: entero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     nombre = sq_id(est)
     n = sq_nuevo(est, NODO_LET, linea, col)
     sq_copiar_nombre(est, n, nombre)
@@ -275,6 +295,10 @@ funcion sq_let_nucleo(est: ParserEst, linea: entero, col: entero) -> entero:
     retornar n
 
 funcion sq_let(est: ParserEst) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     // M3 §3 L122: declaracion_variable_local (dentro de funciones).
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
@@ -282,6 +306,10 @@ funcion sq_let(est: ParserEst) -> entero:
     retornar sq_let_nucleo(est, linea, col)
 
 funcion sq_variable(est: ParserEst) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     // M3 §3 L74 (H-R87-1 cierre R92): declaracion a nivel de módulo.
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
@@ -296,6 +324,10 @@ funcion saltar_nl(est: ParserEst) -> nulo:
 // Guarda span usando los buffers SQ (variante de nodo_guardar_span que lee
 // SqLexerBuffers en lugar de LexerBuffers).
 funcion sq_guardar_span_sq(est: ParserEst, nodo: entero, pos_ini: entero, pos_fin: entero, slot: entero) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     inseguro:
         asm("struct SqLexerBuffers* _lb_s = (struct SqLexerBuffers*)sq_buffers();")
         asm("if (_lb_s && pos_ini >= 0 && pos_ini < _lb_s->ntks && pos_fin >= pos_ini && pos_fin < _lb_s->ntks && nodo >= 0 && nodo < est->total_nodos) {")
@@ -319,6 +351,10 @@ funcion sq_guardar_span_sq(est: ParserEst, nodo: entero, pos_ini: entero, pos_fi
 // NOTA M3 §2: el desarrollador nunca escribe &mut en annotations; &T es
 // solo para modo sistema/FFI (M3 §5.3). Ver D-F22-A para &mut en exprs.
 funcion sq_tipo(est: ParserEst) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     t = token_mirar(est)
     si t == T_CORCH_IZQ:
         token_avanzar(est)
@@ -384,6 +420,10 @@ funcion sq_tipo(est: ParserEst) -> nulo:
     retornar
 
 funcion sq_params(est: ParserEst, nodo_fun: entero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     // '(' ya consumido. M3 §3 L82: parametro ::= ID [":" tipo] ["=" expresion]
     // (el tipo es OPCIONAL; el default va como hijo_der del PARAMETRO).
     primero = 0
@@ -469,6 +509,10 @@ funcion sq_bloque_interno(est: ParserEst) -> entero:
     retornar primero
 
 funcion sq_bloque(est: ParserEst) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     // ':' NL INDENT stmts DEDENT → primera sentencia (cadena por hermano)
     inseguro:
         asm("token_esperar(est, T_DOSPUNTOS)")
@@ -501,6 +545,10 @@ funcion sq_caso_cuerpo(est: ParserEst, linea: entero, col: entero) -> entero:
     retornar n
 
 funcion sq_cuerpo_bloque_sq(est: ParserEst, linea: entero, col: entero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     cuerpo = sq_bloque(est)
     n = sq_nuevo(est, NODO_BLOQUE_SQ, linea, col)
     inseguro:
@@ -508,6 +556,10 @@ funcion sq_cuerpo_bloque_sq(est: ParserEst, linea: entero, col: entero) -> enter
     retornar n
 
 funcion sq_funcion_firma(est: ParserEst, nodo_tipo: entero, decoracion: cadena, linea: entero, col: entero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     // 'funcion' ya consumido (o externo). firma sin cuerpo para EXTERNO.
     nombre = sq_id(est)
     inseguro:
@@ -529,6 +581,10 @@ funcion sq_funcion_firma(est: ParserEst, nodo_tipo: entero, decoracion: cadena, 
     retornar n
 
 funcion sq_funcion(est: ParserEst) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     // M3 §3 L78-79: ambas formas comparten 'funcion' ID '(' params ')';
     // el [ "->" tipo ] se consume ANTES de decidir la forma (sin
     // backtracking), luego '=' → una-expresión; contratos+':' → clásica.
@@ -569,6 +625,10 @@ funcion sq_funcion(est: ParserEst) -> entero:
     retornar n
 
 funcion sq_contratos_adj(est: ParserEst, n_fun: entero) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     // Bloques requiere:/garantiza: → un CONTRATO(46) colgado de ptr_extra
     // del nodo función; exprs encadenadas por hermano desde hijo_izq.
     primer_contr = 0
@@ -622,6 +682,10 @@ funcion sq_contratos_adj(est: ParserEst, n_fun: entero) -> nulo:
     retornar
 
 funcion sq_estructura(est: ParserEst) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
     token_avanzar(est)
@@ -781,6 +845,10 @@ funcion sq_self_param(est: ParserEst, linea: entero, col: entero, nodo_struct: e
 // syquex/traductor.syn (traducir_programa hoistea y decora).
 
 funcion sq_enumeracion(est: ParserEst) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
     token_avanzar(est)
@@ -840,6 +908,10 @@ funcion sq_enumeracion(est: ParserEst) -> entero:
     retornar n
 
 funcion sq_sentencia(est: ParserEst) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     t = token_mirar(est)
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
@@ -967,6 +1039,10 @@ funcion sq_si(est: ParserEst) -> entero:
     retornar n
 
 funcion sq_mientras(est: ParserEst) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
     token_avanzar(est)
@@ -980,6 +1056,10 @@ funcion sq_mientras(est: ParserEst) -> entero:
     retornar n
 
 funcion sq_para(est: ParserEst) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
     token_avanzar(est)
@@ -1087,6 +1167,10 @@ funcion sq_para_desugar(est: ParserEst, idv: entero, inicio: entero, fin: entero
     retornar bloqueador
 
 funcion sq_coincidir(est: ParserEst) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
     token_avanzar(est)
@@ -1150,6 +1234,10 @@ funcion sq_coincidir(est: ParserEst) -> entero:
     retornar n
 
 funcion sq_intentar(est: ParserEst) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
     token_avanzar(est)

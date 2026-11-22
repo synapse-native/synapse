@@ -92,7 +92,7 @@ def test_instalador_silencioso_compile_run():
     test_file = os.path.join(tempfile.gettempdir(), "hola.syn")
     try:
         with open(test_file, "w", encoding="utf-8") as f:
-            f.write("#lang synapse\nHola Mundo\n")
+            f.write("#lang: es\nfuncion principal() -> nulo:\n    escribir_linea(\"Hola Mundo\")\n")
 
         result = _run_exe([test_file], timeout=30)
         # Debe compilar y ejecutar, imprimiendo "Hola Mundo" o similar

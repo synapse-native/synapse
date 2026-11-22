@@ -84,11 +84,25 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   (36), `nucleo/analizador_semantico.syn` (34) y `nucleo/lexer.syn` (26) son
   las mayores. El gate `auditoria/verificar_contratos.py` ya impide que la
   deuda **crezca** (ratchet contra `auditoria/contratos_baseline.txt`) y está
-  cableado al CI. **Resolución asignada:** quemar la deuda por archivo,
-  empezando por el núcleo del compilador y bajando el baseline en cada ME;
-  contratos con semántica real verificable, nunca `verdadero` de relleno.
-  Cierre cuando `python auditoria/verificar_contratos.py --estricto` dé rc=0 con
+  cableado al CI. **Resolución asignada:** Plan Maestro formalizado en
+  `docs/plan_QUEMA_CONTRATOS_H_R277_1.md` estructurado en 5 bloques de MEs
+  secuenciales (`r286_contratos_std_util`, `r287_contratos_std_avanzado`,
+  `r288_contratos_syquex`, `r289_contratos_nucleo_front` y `r290_contratos_nucleo_codegen`),
+  combinando contratos con semántica real verificable (nunca `verdadero` de
+  relleno) y privatización con prefijo `_` de funciones internas. Cierre cuando
+  `python auditoria/verificar_contratos.py --estricto` dé rc=0 con
   `auditoria/contratos_baseline.txt` sin entradas (sólo cabecera).
+- **H-PARIDAD-S1-S2 (ABIERTO 2026-11-21, ALTO — divergencia dual de compiladores):**
+  Actualmente coexisten dos implementaciones del compilador: S1 en Python
+  (`compilador/*.py`) y S2 nativo en Synapse (`nucleo/*.syn`), con 89 tests
+  invocando a `main.py` de forma directa en lugar del binario nativo, lo que
+  oculta defectos en S2 hasta fases tardías. **Resolución asignada:** Plan
+  Maestro formalizado en `docs/plan_MIGRACION_PARIDAD_S2_SEED.md` en 3 MEs:
+  `r291_congelamiento_s1_harness_s2` (congelamiento de `compilador/` y fixture
+  canónica de tests hacia `dist/bin/synapse.exe`), `r292_semilla_c_bootstrap_nativo`
+  (emisión de `bootstrap/seed/synapse_stage0.c` para bootstrap nativo sin
+  Python) y `r293_jubilacion_s1_fuente_unica` (archivo de S1 a histórico y
+  consagración de S2 como única fuente viva de verdad).
 - **H-R252-1 (RETIRADO 2026-11-19: FALSO POSITIVO DE MEDICIÓN), texto original conservado como registro:**
   Medido con la cadena real (`build.py --skip-test`, rc=0), el sello PASA:
   etapa 2 y etapa 3 son ambas salidas del emisor nativo y valen
@@ -178,7 +192,7 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
     preexistente pasa sin tocarlo. Desbloquea r275/r276/r279.
   - **Encoding de código → r280_codigo_encoding (CERRADO 2026-11-20, 38ba6f9):** gate `auditoria/verificar_encoding.py` (U+FFFD, C1, mojibake, UTF-8 inválido y BOM nuevo) con ratchet; 2307 archivos, 0 defectos de pérdida, 46 BOM históricos congelados (**H-R280-2 abierto**, cierre con `--estricto`) y 2 fixtures UTF-16 exentos (**H-R280-3**). Correcciones en axon/runtime/std sin cambio de semántica; tests 6/6 + 5/5 + 17/17 + 4/4; build rc=0.
   - **Suite acotada → r279_suite_rapida (CERRADO 2026-11-21, ec85c17):** gate `auditoria/verificar_suite.py` con ratchet de composición (3078 tests recolectados, 243 skips declarados en 10 suites) y medición cronometrada por suite; `network` opt-in en `pytest.ini`; jobs `suite-rapida` (shards) y `suite-ratchet` en CI, conservando la suite completa por target. Medido: `e2e` 8 passed/0 skipped/0 failed en 271,98 s; gate 4/4; `contrastar` 2/2. **H-R279-1 abierto:** la corrida cronometrada completa de las diez suites no se ejecutó desde esta máquina (integración >2 h); cierre cuando el run de CI publique `--medir --comparar` para las diez suites sin skips nuevos.
-  - **H-R279-2 (ABIERTO 2026-11-21, MEDIO — preexistente):** `tests/unit/test_r3_param_adt.py::test_r3_param_adt_s1` y `::test_r3_param_adt_s2` fallan con `subprocess.TimeoutExpired` a los 120 s al compilar con `synapse_stage1.exe` / `synapse_stage2.exe`; reproducido en aislamiento (2 failed en 250,41 s) y también tras `r279b_suite_paralela` (los dos tests viven en el mismo archivo, mismo worker), así que no es interferencia del paralelismo. **Resolución asignada:** medir el tiempo real de `synapse_stage2.exe tests/fixtures/tmp_r3_s2.syn -o tmp_r3_s2.exe` y decidir con evidencia —si la ruta nativa tarda >120 s por defecto real, corregir la causa en el producto (p. ej. recompilación de runtime por invocación); el test es inmutable, no se sube el timeout sin medición—. Cierre cuando el test pase en aislamiento sin tocar su aserción.
+  - **H-R279-2 (CERRADO 2026-11-21 — commit `339b794`):** `test_r3_param_adt_s1/s2` fallaban por `subprocess.TimeoutExpired` a 120 s. Medición: el enlace nativo tardaba 93,18 s porque recompilaba ~50 fuentes del runtime en cada invocación; no era el test. Fix en `nucleo/principal.syn`: enlaza los `.o` de `~/.synapse/cache/runtime_obj/` si el SHA-256 del fuente coincide con su sidecar y el compilador es el mismo toolchain, con fallback a fuentes y solo con `-O2`. Resultado: 93,18 s → 1,25 s, el test (inmutable) pasa en 24,54 s y `tests/unit` baja de 537,82 s a 207,19 s. Reporte: `docs/reportes/R281.md`.
   - **Gates → r274_gates_independientes (P0 · EN PROGRESO):** H-R252-2 y H-CONTROL-1/2/3;
     ningún sello puede vivir solo dentro de `build.py` o de un job de CI.
   - **P1/P2:** r275 E2E real + benchmark local; r276 limpia multiplataforma y

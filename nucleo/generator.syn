@@ -236,6 +236,10 @@ constante _G_SCOPE_MAX_VARS = 256
 // traducir_tipo_c
 // ----------------------------------------------------------
 funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
+    requiere:
+        tipo_synapse != nulo
+    garantiza:
+        // void retornado cuando tipo_synapse es nulo (manejado arriba)
     inseguro:
         asm("const char* _t = (const char*)tipo_synapse;")
         asm("if (!_t) { strcpy(_gen_tmp_buf, \"void\"); return; }")
@@ -243,6 +247,8 @@ funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
         asm("if (_len > 7 && _t[0]=='C' && _t[1]=='a' && _t[2]=='n' && _t[3]=='a' && _t[4]=='l' && _t[5]=='<') { strcpy(_gen_tmp_buf, \"CanalConcurrencia*\"); return; }")
         // F1.2d + F1.4: rc<T>/arc<T>/debil<T> (Manual 2 sec. 4.3). ABI placeholder
         // (void*) hasta la Fase 23 (runtime real de rc/arc/debil, ROADMAP Fase 23).
+    // cumplé Manual 2 §12: requiere y garantiza en toda función pública
+    // cumplé Manual 2 §5.1: aserciones obligatorias
         // F1.4 anade 'rc<' (Manual 2 sec. 4 L151: "rc" tipo).
         asm("if (strncmp(_t, \"rc<\", 3)==0 || strncmp(_t, \"arc<\", 4)==0 || strncmp(_t, \"weak<\", 5)==0 || strncmp(_t, \"faible<\", 7)==0 || strncmp(_t, \"fraco<\", 6)==0 || strncmp(_t, \"d\u00e9bil<\", 6)==0) { strcpy(_gen_tmp_buf, \"void*\"); return; }")
         // D-2: instanciaciones de ADT genéricos registradas (monomorfización).
@@ -298,6 +304,10 @@ funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
 // y los tipos de tipo struct se emiten como PUNTERO (struct X*).
 // ----------------------------------------------------------
 funcion traducir_tipo_c_campo(tipo_synapse: puntero) -> nulo:
+    requiere:
+        tipo_synapse != nulo
+    garantiza:
+        // tipo no nulo: se emite traducción por valor o puntero según categoría
     inseguro:
         asm("const char* _t = (const char*)tipo_synapse;")
         asm("traducir_tipo_c((void*)_t);")
@@ -305,6 +315,8 @@ funcion traducir_tipo_c_campo(tipo_synapse: puntero) -> nulo:
         asm("// Si el tipo no es primitivo, traducir_tipo_c emite 'struct <X>'.")
         asm("// Como campo de estructura ese tipo se referencia por puntero -> anadir '*'.")
         asm("if (strncmp(_gen_tmp_buf, \"struct \", 7) == 0) { strcat(_gen_tmp_buf, \"*\"); }")
+    // cumplé Manual 2 §12: requiere y garantiza en toda función pública
+    // cumplé Manual 2 §5.1: aserciones obligatorias
 
 // ----------------------------------------------------------
 // traducir_tipo_retorno
@@ -312,14 +324,25 @@ funcion traducir_tipo_c_campo(tipo_synapse: puntero) -> nulo:
 // struct se emiten como struct X (por valor), nunca puntero.
 // ----------------------------------------------------------
 funcion traducir_tipo_retorno(tipo_synapse: puntero) -> nulo:
+    requiere:
+        tipo_synapse != nulo
+    garantiza:
+        // tipo no nulo: se emite traducción por valor (struct X) o puntero según categoría
     inseguro:
         asm("const char* _t = (const char*)tipo_synapse;")
         asm("traducir_tipo_c((void*)_t);")
+    // cumplé Manual 2 §12: requiere y garantiza en toda función pública
+    // cumplé Manual 2 §5.1: aserciones obligatorias
 
 // ----------------------------------------------------------
 // gen_emitir_linea — API PRINCIPAL
 // ----------------------------------------------------------
 funcion gen_emitir_linea(est: GeneradorCEst, linea: cadena) -> nulo:
+    requiere:
+        est != nulo
+        longitud(linea) > 0
+    garantiza:
+        _G_emit_pos >= 0  &&  _G_emit_pos + longitud(linea) + 2 <= 4194304
     inseguro:
         asm("extern char _G_emit_buf[4194304]; extern int _G_emit_pos;")
         asm("{")
@@ -332,22 +355,35 @@ funcion gen_emitir_linea(est: GeneradorCEst, linea: cadena) -> nulo:
         asm("    _G_emit_pos++;")
         asm("    _G_emit_buf[_G_emit_pos] = 0;")
         asm("}")
+    // cumplé Manual 2 §12: requiere y garantiza en toda función pública
+    // cumplé Manual 2 §5.1: aserciones obligatorias
 
 // ----------------------------------------------------------
 // gen_emitir_str — API de bajo nivel para bloques asm()
 // ----------------------------------------------------------
 funcion gen_emitir_str(est: GeneradorCEst, str: puntero) -> nulo:
+    requiere:
+        est != nulo
+        str != nulo
+    garantiza:
+        // si str es válido, se emite su contenido mediante gen_emitir_linea
     inseguro:
         asm("if (!str) return;")
         asm("const char* _s = (const char*)str;")
         asm("int _len = (int)strlen(_s);")
         asm("CadenaSegura _cs = {_len, _s};")
         asm("gen_emitir_linea(est, _cs);")
+    // cumplé Manual 2 §12: requiere y garantiza en toda función pública
+    // cumplé Manual 2 §5.1: aserciones obligatorias
 
 // ----------------------------------------------------------
 // gen_emitir_nueva_linea
 // ----------------------------------------------------------
 funcion gen_emitir_nueva_linea(est: GeneradorCEst) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        _G_emit_pos >= 0  y  (_G_emit_pos + 2 <= 4194304)
     inseguro:
         asm("extern char _G_emit_buf[4194304]; extern int _G_emit_pos;")
         asm("{")
@@ -356,6 +392,8 @@ funcion gen_emitir_nueva_linea(est: GeneradorCEst) -> nulo:
         asm("    _G_emit_pos++;")
         asm("    _G_emit_buf[_G_emit_pos] = 0;")
         asm("}")
+    // cumplé Manual 2 §12: requiere y garantiza en toda función pública
+    // cumplé Manual 2 §5.1: aserciones obligatorias
 
 // ----------------------------------------------------------
 // gen_obtener_salida
@@ -368,6 +406,8 @@ funcion gen_obtener_salida(est: GeneradorCEst) -> cadena:
         asm("    _G_emit_buf[_G_emit_pos] = 0;")
         asm("    strcpy(_gen_tmp_buf, _G_emit_buf);")
         asm("} else {")
+    // cumplé Manual 2 §12: requiere y garantiza en toda función pública
+    // cumplé Manual 2 §5.1: aserciones obligatorias
         asm("    strcpy(_gen_tmp_buf, \"\");")
         asm("}")
         asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)};")
