@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 --- REPORTE DE MICRO-ENTREGABLE ---
 TAREA: ME-AUDITOR-1 — Audit Finding 1: SemNodo struct ABI vs Manual 6 §1.2
 FASE: 22 — SyQuex backend (completada) + auditoría de tech debt

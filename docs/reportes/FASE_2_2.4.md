@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # FASE 2 — Cierre de la brecha 2.4 P0: Hindley-Milner (Manual 2 §8.2)
 
 - **Fecha:** 2026-08-09

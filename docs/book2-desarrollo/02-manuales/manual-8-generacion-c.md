@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # MANUAL 8: HERRAMIENTAS DE DESARROLLO
 
 **Archivo:** `08_HERRAMIENTAS_DESARROLLO.md`  

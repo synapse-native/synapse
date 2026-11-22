@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # BENCHMARK_RESULTS.md — Synapse v5.0 Final Benchmark Report
 
 > **Clasificación:** M11.5 — Métricas de benchmark finales (Cierre del Roadmap v5.0)

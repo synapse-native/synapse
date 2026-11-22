@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # INFORME DE AUDITORÍA PROFUNDA — FASE 23 (Modelo de Memoria Syquex)
 
 **Fecha:** 2026-08-23

@@ -3,107 +3,107 @@
  "manuales": {
   "1": {
    "archivo": "docs/manuales/MANUAL 1.md",
-   "sha256": "17e04f4a4841091b",
+   "sha256": "805f6ee9ffe83c34",
    "secciones": [
     {
      "num": "1",
      "titulo": "INTRODUCCIÓN Y VISIÓN GENERAL",
-     "linea": 9,
+     "linea": 11,
      "oraciones": []
     },
     {
      "num": "1.1",
      "titulo": "¿Qué es el Ecosistema Synapse?",
-     "linea": 11,
+     "linea": 13,
      "oraciones": [
       {
        "id": "cf3e8d5a10",
-       "linea": 13,
+       "linea": 15,
        "texto": "El ecosistema Synapse es una **plataforma de desarrollo de software completa y unificada** que abarca desde el metal desnudo hasta la capa de aplicación, integrando tres componentes fundamentales que funcionan en perfecta armonía:"
       },
       {
        "id": "480125a141",
-       "linea": 15,
+       "linea": 17,
        "texto": "| Componente | Nivel | Propósito | Analogía |"
       },
       {
        "id": "9e620e208d",
-       "linea": 16,
+       "linea": 18,
        "texto": "|------------|-------|-----------|----------|"
       },
       {
        "id": "f7a0493605",
-       "linea": 17,
+       "linea": 19,
        "texto": "| **Synapse** | Bajo / Sistemas | Lenguaje de sistemas, control total de memoria, rendimiento extremo | \"El motor\" |"
       },
       {
        "id": "ec0b22a031",
-       "linea": 18,
+       "linea": 20,
        "texto": "| **Syquex** | Alto / Productividad | Lenguaje de scripting, aplicaciones, GUI, web, prototipado | \"La carrocería\" |"
       },
       {
        "id": "cff23c6a5f",
-       "linea": 19,
+       "linea": 21,
        "texto": "| **OpenSyn** | IA / Asistencia | Asistente de IA local, generación de código, explicaciones, transpilación | \"El copiloto\" |"
       },
       {
        "id": "e9fa04d648",
-       "linea": 21,
+       "linea": 23,
        "texto": "**Synapse** es el lenguaje de programación nativo, compilado y de grado de sistemas que sirve como cimiento para sistemas operativos, motores de bases de datos, infraestructura de red y aplicaciones Edge AI."
       },
       {
        "id": "4ab51bbb58",
-       "linea": 21,
+       "linea": 23,
        "texto": "Opera sin recolector de basura, sin dependencias opacas y sin telemetría forzada."
       },
       {
        "id": "6ad3345e37",
-       "linea": 23,
+       "linea": 25,
        "texto": "**Syquex** es el lenguaje de alto nivel hermano de Synapse, diseñado para la productividad del desarrollador: scripting, aplicaciones de escritorio, backends web, frontend (via WASM), prototipado rápido y automatización."
       },
       {
        "id": "0847971907",
-       "linea": 23,
+       "linea": 25,
        "texto": "Ofrece una sintaxis limpia y natural, gestión de memoria automática sin GC (basada en arenas y análisis de alcance), y una biblioteca estándar «baterías incluidas»."
       },
       {
        "id": "4a3cc6f04f",
-       "linea": 25,
+       "linea": 27,
        "texto": "**OpenSyn** es el asistente de inteligencia artificial local del ecosistema."
       },
       {
        "id": "8552ec8646",
-       "linea": 25,
+       "linea": 27,
        "texto": "Actúa como un compañero de programación inteligente que corre íntegramente en la máquina del desarrollador, sin depender de servicios en la nube."
       },
       {
        "id": "2a3d4fee81",
-       "linea": 26,
+       "linea": 28,
        "texto": "Se ejecuta en la terminal de VS Code (o cualquier editor que soporte LSP)."
       },
       {
        "id": "a1d9f5219e",
-       "linea": 27,
+       "linea": 29,
        "texto": "Utiliza modelos de lenguaje especializados en código (codec), descargados y optimizados localmente."
       },
       {
        "id": "65dec4e8e1",
-       "linea": 28,
+       "linea": 30,
        "texto": "Es capaz de **aprender Synapse y Syquex**, y también domina otros lenguajes (Python, JavaScript, C, C++, Rust, etc.)."
       },
       {
        "id": "97d9b2bba3",
-       "linea": 29,
+       "linea": 31,
        "texto": "Proporciona explicaciones de código, generación automática, autocompletado contextual, refactorización asistida y corrección de errores."
       },
       {
        "id": "927b2ff961",
-       "linea": 30,
+       "linea": 32,
        "texto": "Al instalarse, detecta automáticamente los recursos de hardware (RAM, VRAM, CPU) y selecciona el modelo codec más adecuado."
       },
       {
        "id": "d50b305ff7",
-       "linea": 31,
+       "linea": 33,
        "texto": "Puede instalarse como un complemento opcional junto con Synapse y Syquex."
       }
      ]
@@ -111,61 +111,61 @@
     {
      "num": "1.2",
      "titulo": "Público Objetivo",
-     "linea": 33,
+     "linea": 35,
      "oraciones": [
       {
        "id": "d616de1dde",
-       "linea": 36,
+       "linea": 38,
        "texto": "Ingenieros de sistemas y desarrolladores de kernels."
       },
       {
        "id": "53827ee66b",
-       "linea": 37,
+       "linea": 39,
        "texto": "Arquitectos de infraestructura que requieren máximo rendimiento y control."
       },
       {
        "id": "e71d172b17",
-       "linea": 38,
+       "linea": 40,
        "texto": "Equipos de Edge AI y sistemas embebidos."
       },
       {
        "id": "5b95d5273f",
-       "linea": 39,
+       "linea": 41,
        "texto": "Desarrolladores que buscan un lenguaje productivo pero con garantías de memoria y concurrencia."
       },
       {
        "id": "7eafa52272",
-       "linea": 42,
+       "linea": 44,
        "texto": "Desarrolladores que buscan productividad similar a Python pero con mejor rendimiento."
       },
       {
        "id": "d2f3069164",
-       "linea": 43,
+       "linea": 45,
        "texto": "Equipos que necesitan construir aplicaciones completas (web, escritorio, CLI) con un solo lenguaje."
       },
       {
        "id": "76162a79b3",
-       "linea": 44,
+       "linea": 46,
        "texto": "Desarrolladores que quieren aprovechar Synapse para el núcleo pesado sin salir del ecosistema."
       },
       {
        "id": "9f90cc204c",
-       "linea": 45,
+       "linea": 47,
        "texto": "Comunidad hispanohablante (sintaxis multilingüe)."
       },
       {
        "id": "8c072d547d",
-       "linea": 48,
+       "linea": 50,
        "texto": "Programadores de todos los niveles que deseen acelerar su flujo de trabajo con asistencia inteligente local."
       },
       {
        "id": "b56b0b1858",
-       "linea": 49,
+       "linea": 51,
        "texto": "Equipos que quieran mantener su código y datos privados, sin depender de la nube."
       },
       {
        "id": "3147ee5f52",
-       "linea": 50,
+       "linea": 52,
        "texto": "Educadores y estudiantes que quieran aprender Synapse o Syquex de forma interactiva."
       }
      ]
@@ -173,81 +173,81 @@
     {
      "num": "2",
      "titulo": "LOS PILARES DEL ECOSISTEMA (El Pacto Extendido)",
-     "linea": 54,
+     "linea": 56,
      "oraciones": [
       {
        "id": "91f75f0ed4",
-       "linea": 56,
+       "linea": 58,
        "texto": "El ecosistema Synapse se rige por un conjunto de principios que denominamos **«El Pacto»**."
       },
       {
        "id": "327af97962",
-       "linea": 56,
+       "linea": 58,
        "texto": "Estos son innegociables y deben ser respetados por el compilador, el runtime y toda la cadena de herramientas."
       },
       {
        "id": "2c5c79918c",
-       "linea": 56,
+       "linea": 58,
        "texto": "Se aplican a Synapse, Syquex y OpenSyn en la medida que corresponde."
       },
       {
        "id": "94fa5a8e7d",
-       "linea": 58,
+       "linea": 60,
        "texto": "| Principio | Synapse | Syquex | OpenSyn | Implementación |"
       },
       {
        "id": "f40835f658",
-       "linea": 59,
+       "linea": 61,
        "texto": "|-----------|---------|--------|---------|----------------|"
       },
       {
        "id": "d1c7857ddf",
-       "linea": 60,
+       "linea": 62,
        "texto": "| **Rendimiento Nativo** | Compilación a C/LLVM | Compilación a C/LLVM | Inferencia local optimizada | Backend compartido (GCC/Clang/LLVM/emcc) |"
       },
       {
        "id": "2dbded2666",
-       "linea": 61,
+       "linea": 63,
        "texto": "| **Seguridad de Memoria** | Ownership + Borrowing | Arenas + RC + Análisis de alcance | N/A (aplicación) | Modelo de memoria determinista sin GC |"
       },
       {
        "id": "4c1aaf6b45",
-       "linea": 62,
+       "linea": 64,
        "texto": "| **Cero Telemetría** | ✅ | ✅ | ✅ | Sin conexiones en red ocultas, sin recolección de datos |"
       },
       {
        "id": "9c9703b8cf",
-       "linea": 63,
+       "linea": 65,
        "texto": "| **Cero Dependencias** | Binario monolítico | Binario monolítico | Modelos descargables | `synapse.exe` autocontenido |"
       },
       {
        "id": "06280d59f1",
-       "linea": 64,
+       "linea": 66,
        "texto": "| **Multilingüe** | `#lang: es/en/fr/pt` | `#lang: es/en/fr/pt` | Respuestas en el idioma del usuario | Diccionario de tokens universales (AST canónico) |"
       },
       {
        "id": "10efdf4d96",
-       "linea": 65,
+       "linea": 67,
        "texto": "| **Reproducibilidad** | SHA-256 + diff 0 bytes | Heredado de Synapse | N/A | `axon.lock` + bootstrap de 3 etapas |"
       },
       {
        "id": "74647923dd",
-       "linea": 66,
+       "linea": 68,
        "texto": "| **Verificación Formal** | ATP + Proof Bridge | Heredado de Synapse | N/A | Motor ATP integrado, exportación a Coq/Lean |"
       },
       {
        "id": "57f6b09343",
-       "linea": 67,
+       "linea": 69,
        "texto": "| **Tipado Estricto Inferido** | Hindley-Milner | Hindley-Milner | N/A | Unificación con occurs check |"
       },
       {
        "id": "33ec52b982",
-       "linea": 68,
+       "linea": 70,
        "texto": "| **Algebraic Error Handling** | `Resultado<T,E>`, `Opcion<T>` | `Resultado<T,E>`, `Opcion<T>` | N/A | Exhaustividad de match en tiempo de compilación |"
       },
       {
        "id": "96ac085063",
-       "linea": 69,
+       "linea": 71,
        "texto": "| **Soberanía del Usuario** | ✅ | ✅ | ✅ | El usuario controla todos los datos y procesos locales |"
       }
      ]
@@ -255,17 +255,17 @@
     {
      "num": "3",
      "titulo": "ARQUITECTURA DEL COMPILADOR UNIFICADO",
-     "linea": 73,
+     "linea": 75,
      "oraciones": []
     },
     {
      "num": "3.1",
      "titulo": "El Pipeline de Compilación",
-     "linea": 75,
+     "linea": 77,
      "oraciones": [
       {
        "id": "15dca62894",
-       "linea": 77,
+       "linea": 79,
        "texto": "El compilador unificado procesa código fuente de Synapse (.syn), Syquex (.syq) e incluso prompts en lenguaje natural (via OpenSyn) a través de un pipeline compartido:"
       }
      ]
@@ -273,131 +273,131 @@
     {
      "num": "3.2",
      "titulo": "Componentes del Compilador",
-     "linea": 134,
+     "linea": 136,
      "oraciones": [
       {
        "id": "5bafb94b84",
-       "linea": 136,
+       "linea": 138,
        "texto": "Lexer (`lexer.syn` / `lexer.syq`):**"
       },
       {
        "id": "2ed7716dfd",
-       "linea": 137,
+       "linea": 139,
        "texto": "Lee caracteres e inyecta tokens de indentación (INDENT/DEDENT)."
       },
       {
        "id": "3ba8017ab1",
-       "linea": 138,
+       "linea": 140,
        "texto": "Detecta la directiva `#lang:` y selecciona el diccionario multi-idioma."
       },
       {
        "id": "21f16eafcf",
-       "linea": 139,
+       "linea": 141,
        "texto": "Salida: flujo de tokens (TokenID + valor + ubicación)."
       },
       {
        "id": "c3899a8b98",
-       "linea": 141,
+       "linea": 143,
        "texto": "Parser (`parser.syn` / `parser.syq`):**"
       },
       {
        "id": "e1fd30d9b3",
-       "linea": 142,
+       "linea": 144,
        "texto": "Descenso recursivo puro sin backtracking."
       },
       {
        "id": "0881b51b32",
-       "linea": 143,
+       "linea": 145,
        "texto": "Construye el AST (Árbol de Sintaxis Abstracta) como una lista enlazada."
       },
       {
        "id": "036ee135e7",
-       "linea": 146,
+       "linea": 148,
        "texto": "Traductor de Syquex (`traductor.syq`):**"
       },
       {
        "id": "c54a0c517b",
-       "linea": 147,
+       "linea": 149,
        "texto": "Convierte el AST de Syquex (alto nivel) al AST canónico `SemNodo[]` de Synapse."
       },
       {
        "id": "319542bc4a",
-       "linea": 148,
+       "linea": 150,
        "texto": "Preserva la metadata de depuración (archivo, línea, columna originales)."
       },
       {
        "id": "a637830b54",
-       "linea": 149,
+       "linea": 151,
        "texto": "Permite que Syquex herede todo el backend de Synapse sin duplicación."
       },
       {
        "id": "35bfe4d71b",
-       "linea": 151,
+       "linea": 153,
        "texto": "Analizador Semántico (Compartido):**"
       },
       {
        "id": "251f058dc2",
-       "linea": 152,
+       "linea": 154,
        "texto": "**Pasada 1:** Registro de estructuras y tipos globales."
       },
       {
        "id": "d17c6f0a0b",
-       "linea": 153,
+       "linea": 155,
        "texto": "**Pasada 2:** Registro de firmas de funciones."
       },
       {
        "id": "65e312a412",
-       "linea": 154,
+       "linea": 156,
        "texto": "**Pasada 3:** Análisis de cuerpos de funciones, inferencia de tipos (Hindley-Milner), verificación de ownership/borrowing, análisis de alcance (para Syquex), y motor ATP (modo `--safe`)."
       },
       {
        "id": "6d51477ece",
-       "linea": 155,
+       "linea": 157,
        "texto": "**Salida:** AST anotado con tipos y tabla de símbolos."
       },
       {
        "id": "e849f4f86e",
-       "linea": 158,
+       "linea": 160,
        "texto": "Traduce el AST validado a código intermedio: C (C99/C11), LLVM IR o WAT (WASM)."
       },
       {
        "id": "2ffea27754",
-       "linea": 159,
+       "linea": 161,
        "texto": "Emite funciones en orden alfabético (determinismo)."
       },
       {
        "id": "c4721baa0c",
-       "linea": 160,
+       "linea": 162,
        "texto": "Inyecta contratos como aserciones o `llvm.assume`."
       },
       {
        "id": "541e33798d",
-       "linea": 161,
+       "linea": 163,
        "texto": "Inserta liberaciones de memoria (RAII, Cleanup Blocks)."
       },
       {
        "id": "c67843a9de",
-       "linea": 162,
+       "linea": 164,
        "texto": "Salida: `synapse_unity.c`, `.ll` o `.wat`."
       },
       {
        "id": "e115dfd3a9",
-       "linea": 165,
+       "linea": 167,
        "texto": "**C:** GCC/Clang con flags de optimización (PGO, LTO, sanitizadores)."
       },
       {
        "id": "136edab676",
-       "linea": 166,
+       "linea": 168,
        "texto": "**LLVM:** Generación de IR, optimización y JIT."
       },
       {
        "id": "9f315ac8c1",
-       "linea": 167,
+       "linea": 169,
        "texto": "**WASM:** `emcc` para generar WebAssembly."
       },
       {
        "id": "bdff1e3bcd",
-       "linea": 168,
+       "linea": 170,
        "texto": "**Enlace:** Runtime modular (memory, concurrency, io, net, quantum, ml, federated)."
       }
      ]
@@ -405,11 +405,11 @@
     {
      "num": "4",
      "titulo": "ESTRUCTURA DEL REPOSITORIO (Monorepo)",
-     "linea": 172,
+     "linea": 174,
      "oraciones": [
       {
        "id": "3d7c6856d9",
-       "linea": 174,
+       "linea": 176,
        "texto": "El repositorio está organizado de manera modular para desacoplar el compilador, el runtime, el gestor de paquetes, el LSP, OpenSyn y los dos lenguajes."
       }
      ]
@@ -417,27 +417,27 @@
     {
      "num": "5",
      "titulo": "FILOSOFÍA DE DISEÑO",
-     "linea": 324,
+     "linea": 326,
      "oraciones": []
     },
     {
      "num": "5.1",
      "titulo": "Legibilidad Absoluta (El espíritu de Python)",
-     "linea": 326,
+     "linea": 328,
      "oraciones": [
       {
        "id": "271a7dc752",
-       "linea": 327,
+       "linea": 329,
        "texto": "El código debe leerse casi como un lenguaje natural estructurado."
       },
       {
        "id": "48487a778a",
-       "linea": 327,
+       "linea": 329,
        "texto": "Synapse y Syquex eliminan la «basura visual» (llaves, paréntesis redundantes y símbolos esotéricos)."
       },
       {
        "id": "e8620db1e4",
-       "linea": 327,
+       "linea": 329,
        "texto": "Utilizan **indentación estricta** (4 espacios) para definir bloques lógicos, obligando a crear un código limpio y estandarizado por defecto."
       }
      ]
@@ -445,21 +445,21 @@
     {
      "num": "5.2",
      "titulo": "Rendimiento de Metal Desnudo (El motor de C/C++)",
-     "linea": 329,
+     "linea": 331,
      "oraciones": [
       {
        "id": "dbfd49b27f",
-       "linea": 330,
+       "linea": 332,
        "texto": "La simplicidad visual no debe costar milisegundos."
       },
       {
        "id": "d271dd21b0",
-       "linea": 330,
+       "linea": 332,
        "texto": "Synapse y Syquex no se interpretan; se **compilan directamente a código máquina** optimizado (via C/LLVM)."
       },
       {
        "id": "e5b11f868f",
-       "linea": 330,
+       "linea": 332,
        "texto": "Se ejecutan tan cerca del hardware que son ideales para desarrollar desde inteligencia artificial hasta sistemas operativos completos."
       }
      ]
@@ -467,16 +467,16 @@
     {
      "num": "5.3",
      "titulo": "Seguridad Inteligente (El escudo de Rust, sin el dolor)",
-     "linea": 332,
+     "linea": 334,
      "oraciones": [
       {
        "id": "f7c1a96884",
-       "linea": 333,
+       "linea": 335,
        "texto": "Synapse introduce un **compilador predictivo** que usa análisis estático avanzado para inferir el tiempo de vida de las variables y gestionar la memoria automáticamente en tiempo de compilación (ownership + borrowing)."
       },
       {
        "id": "c0b4738b2d",
-       "linea": 333,
+       "linea": 335,
        "texto": "Syquex hereda esta seguridad mediante **análisis de alcance** + **arenas** + **conteo de referencias**, eliminando la necesidad de un GC."
       }
      ]
@@ -484,16 +484,16 @@
     {
      "num": "5.4",
      "titulo": "Concurrencia Orgánica (El flujo de Go)",
-     "linea": 335,
+     "linea": 337,
      "oraciones": [
       {
        "id": "6bfe8ec9a1",
-       "linea": 336,
+       "linea": 338,
        "texto": "El hardware moderno tiene múltiples núcleos, pero programar hilos sigue siendo un dolor de cabeza."
       },
       {
        "id": "fc5ee9f2fc",
-       "linea": 336,
+       "linea": 338,
        "texto": "Synapse y Syquex ofrecen concurrencia **nativa** mediante **fibras** (procesos ultraligeros) que se comunican a través de **canales tipados** (`Canal<T>`), permitiendo ejecutar miles de tareas en paralelo con una sola palabra clave (`lanzar` o `spawn`)."
       }
      ]
@@ -501,21 +501,21 @@
     {
      "num": "5.5",
      "titulo": "IA como Ciudadano de Primera Clase",
-     "linea": 338,
+     "linea": 340,
      "oraciones": [
       {
        "id": "ffa0b5781c",
-       "linea": 339,
+       "linea": 341,
        "texto": "Los lenguajes antiguos fueron creados antes de la revolución de la inteligencia artificial."
       },
       {
        "id": "3933bb195a",
-       "linea": 339,
+       "linea": 341,
        "texto": "Synapse incluye **tensores nativos** y soporte para modelos GGUF, tratándolos como tipos de datos primitivos."
       },
       {
        "id": "7b887e40a2",
-       "linea": 339,
+       "linea": 341,
        "texto": "OpenSyn proporciona asistencia de IA local integrada, sin dependencia de la nube."
       }
      ]
@@ -523,21 +523,21 @@
     {
      "num": "5.6",
      "titulo": "Multilingüismo Natural",
-     "linea": 341,
+     "linea": 343,
      "oraciones": [
       {
        "id": "02e69a5967",
-       "linea": 342,
+       "linea": 344,
        "texto": "La programación ha estado secuestrada por el inglés técnico desde los años 50."
       },
       {
        "id": "4904e214cf",
-       "linea": 342,
+       "linea": 344,
        "texto": "Synapse y Syquex eliminan esa barrera mediante **diccionarios de tokens universales** y la directiva `#lang:`."
       },
       {
        "id": "0fedafffd4",
-       "linea": 342,
+       "linea": 344,
        "texto": "Los desarrolladores pueden escribir código en español, inglés, francés, portugués, etc., y el compilador lo procesa de forma idéntica."
       }
      ]
@@ -545,21 +545,21 @@
     {
      "num": "5.7",
      "titulo": "Cero Telemetría y Soberanía del Usuario",
-     "linea": 344,
+     "linea": 346,
      "oraciones": [
       {
        "id": "d214059b9b",
-       "linea": 345,
+       "linea": 347,
        "texto": "Los binarios compilados y las herramientas del ecosistema no realizan ninguna conexión en red oculta, recolección de datos de uso ni analíticas."
       },
       {
        "id": "bbc34af8b0",
-       "linea": 345,
+       "linea": 347,
        "texto": "La soberanía del entorno del usuario es inviolable."
       },
       {
        "id": "0f55047785",
-       "linea": 345,
+       "linea": 347,
        "texto": "Las capacidades de IA mediante OpenSyn operan bajo un estricto principio de activación voluntaria (*opt-in*), ejecutándose exclusivamente de manera local sin exportar contexto fuera del hardware del usuario."
       }
      ]
@@ -567,71 +567,71 @@
     {
      "num": "6",
      "titulo": "HOJA DE RUTA TÉCNICA (Resumen de Evolución)",
-     "linea": 349,
+     "linea": 351,
      "oraciones": [
       {
        "id": "8724b28bc0",
-       "linea": 351,
+       "linea": 353,
        "texto": "La evolución del ecosistema sigue una hoja de ruta clara, documentada en el ROADMAP.md:"
       },
       {
        "id": "4de91c8d31",
-       "linea": 353,
+       "linea": 355,
        "texto": "| Fase | Versión | Entregable clave |"
       },
       {
        "id": "da9ce221e5",
-       "linea": 354,
+       "linea": 356,
        "texto": "|------|---------|------------------|"
       },
       {
        "id": "669aee7752",
-       "linea": 355,
+       "linea": 357,
        "texto": "| **Fundación** | v1.x | Compilador en Python, sintaxis básica, bootstrap manual. |"
       },
       {
        "id": "64bc072bfe",
-       "linea": 356,
+       "linea": 358,
        "texto": "| **Auto‑hospedaje** | v2.x | Compilador nativo en Synapse (`nucleo/*.syn`)."
       },
       {
        "id": "48fd15cd96",
-       "linea": 356,
+       "linea": 358,
        "texto": "Fin de la dependencia Python para producción. |"
       },
       {
        "id": "729ea0ba91",
-       "linea": 357,
+       "linea": 359,
        "texto": "| **Concurrencia y Seguridad** | v3.x | Ownership completo, canales `Canal<T>`, contratos `requiere`/`garantiza`. |"
       },
       {
        "id": "d502f06e89",
-       "linea": 358,
+       "linea": 360,
        "texto": "| **Ecosistema** | v4.x | Axon (Ed25519), LSP nativo, integración VS Code, Edge AI (Ollama). |"
       },
       {
        "id": "ae22fd820b",
-       "linea": 359,
+       "linea": 361,
        "texto": "| **Revolución Cognitiva + Certificación Industrial** | v5.1.1‑industrial | Caché incremental SHA‑256, Time‑Travel Debugging, Sandbox (`seccomp`), LLVM Backend (IR/JIT), WASM, Axon Hub (IPFS), IA Nativa (`llama.cpp`), Motor ATP y Verificación Formal, Aprendizendo Federado (`std::federated`), Simulación Cuántica (`std::quantum`), Runtime modularizado, Asignador con TLC. |"
       },
       {
        "id": "749fa127e3",
-       "linea": 360,
+       "linea": 362,
        "texto": "| **Frontend de Productividad (Syquex)** | v6.0 | Lenguaje de alto nivel con arenas, análisis de alcance, biblioteca estándar (web, GUI, DB), WASM para frontend. |"
       },
       {
        "id": "cf9aab44ce",
-       "linea": 361,
+       "linea": 363,
        "texto": "| **Asistente IA Universal (OpenSyn)** | v7.0 | OpenSyn como asistente multilenguaje (Synapse, Syquex, Python, JS, etc.), transpilación, generación automática de bindings C, instalación unificada. |"
       },
       {
        "id": "b10e9aae05",
-       "linea": 363,
+       "linea": 365,
        "texto": "**Regla de hierro:** Ninguna característica nueva puede romper el *bootstrap* (etapas 0→1→2→3 con diff binario 0)."
       },
       {
        "id": "6d219c3373",
-       "linea": 363,
+       "linea": 365,
        "texto": "El determinismo se verifica obligatoriamente en la CI mediante la comparación de los hashes SHA‑256 de las etapas 2 y 3."
       }
      ]
@@ -639,32 +639,32 @@
     {
      "num": "7",
      "titulo": "GUÍAS DE CONTRIBUCIÓN Y ESTÁNDARES DE CALIDAD",
-     "linea": 367,
+     "linea": 369,
      "oraciones": []
     },
     {
      "num": "7.1",
      "titulo": "Estilo de Código",
-     "linea": 369,
+     "linea": 371,
      "oraciones": [
       {
        "id": "3da5716647",
-       "linea": 371,
+       "linea": 373,
        "texto": "**Indentación:** 4 espacios, prohibido el uso de tabuladores (`\\t`)."
       },
       {
        "id": "8218c6075e",
-       "linea": 372,
+       "linea": 374,
        "texto": "**Comentarios:** `//` para línea y `/* */` para bloque."
       },
       {
        "id": "11de1515c7",
-       "linea": 373,
+       "linea": 375,
        "texto": "**Nombres:** en español para el código fuente de Synapse y Syquex; en inglés para el código C del runtime (por convención)."
       },
       {
        "id": "ebfbe0ccfb",
-       "linea": 374,
+       "linea": 376,
        "texto": "**Orden alfabético:** todas las funciones globales, estructuras y variables estáticas deben emitirse en orden alfabético en el archivo C generado."
       }
      ]
@@ -672,36 +672,36 @@
     {
      "num": "7.2",
      "titulo": "Pruebas",
-     "linea": 376,
+     "linea": 378,
      "oraciones": [
       {
        "id": "a2902b803a",
-       "linea": 378,
+       "linea": 380,
        "texto": "Todo cambio debe pasar la suite completa de pruebas:"
       },
       {
        "id": "2d5d82d8e4",
-       "linea": 380,
+       "linea": 382,
        "texto": "`pytest tests/unit/` (184+ tests)."
       },
       {
        "id": "f6911c5343",
-       "linea": 381,
+       "linea": 383,
        "texto": "`pytest tests/integration/` (17 archivos)."
       },
       {
        "id": "a0313604c6",
-       "linea": 382,
+       "linea": 384,
        "texto": "Ejecución de los tests nativos en C (`validate_*.c`)."
       },
       {
        "id": "b68d2e55df",
-       "linea": 383,
+       "linea": 385,
        "texto": "Fuzzing destructivo (`tests/fuzz/fuzz_engine.py` con 500+ iteraciones, 0 crashes)."
       },
       {
        "id": "129d332be4",
-       "linea": 384,
+       "linea": 386,
        "texto": "Pruebas de estrés de concurrencia y memoria."
       }
      ]
@@ -709,26 +709,26 @@
     {
      "num": "7.3",
      "titulo": "Seguridad y Privacidad",
-     "linea": 386,
+     "linea": 388,
      "oraciones": [
       {
        "id": "47b3184592",
-       "linea": 388,
+       "linea": 390,
        "texto": "**Cero telemetría:** ningún binario realiza conexiones en red ocultas."
       },
       {
        "id": "10e48f38bf",
-       "linea": 389,
+       "linea": 391,
        "texto": "**Opt‑in de IA:** OpenSyn solo se activa explícitamente; nunca envía datos fuera del equipo."
       },
       {
        "id": "1a31c5d667",
-       "linea": 390,
+       "linea": 392,
        "texto": "**Firma criptográfica:** todos los artefactos distribuidos deben estar firmados con Ed25519."
       },
       {
        "id": "95b260f68e",
-       "linea": 391,
+       "linea": 393,
        "texto": "**Reporte de vulnerabilidades:** `seguridad@synapse-lang.org` (PGP cifrado)."
       }
      ]
@@ -736,113 +736,133 @@
     {
      "num": "7.4",
      "titulo": "Definition of Done (Checklist de Calidad)",
-     "linea": 393,
+     "linea": 395,
      "oraciones": [
       {
        "id": "6c758d824f",
-       "linea": 395,
+       "linea": 397,
        "texto": "Para considerar cualquier nuevo módulo, característica o refactorización como **completada y lista para producción**, el código debe superar los siguientes controles innegociables:"
       },
       {
        "id": "85f3d06f0f",
-       "linea": 397,
+       "linea": 399,
        "texto": "**Cumplimiento Léxico y Sintáctico:**"
       },
       {
        "id": "1dab230966",
-       "linea": 398,
+       "linea": 400,
        "texto": "Archivo encabezado con la directiva obligatoria `#lang: es` (o el idioma correspondiente)."
       },
       {
        "id": "1ccfb951cb",
-       "linea": 399,
+       "linea": 401,
        "texto": "Indentación estricta a 4 espacios sin un solo caracter de tabulación (`\\t`)."
       },
       {
        "id": "5228b9c037",
-       "linea": 401,
+       "linea": 403,
        "texto": "**Verificación de Seguridad de Memoria:**"
       },
       {
        "id": "2cfe5c8ee2",
-       "linea": 402,
+       "linea": 404,
        "texto": "Cero uso de `malloc`/`free` manual en código de usuario (Synapse y Syquex)."
       },
       {
        "id": "02f221c145",
-       "linea": 403,
+       "linea": 405,
        "texto": "Superación de análisis semántico contra *Use-After-Move* sin advertencias."
       },
       {
        "id": "14e93c0e13",
-       "linea": 404,
+       "linea": 406,
        "texto": "Ausencia de fugas de memoria o accesos inválidos verificados mediante `AddressSanitizer` (`-fsanitize=address,undefined`)."
       },
       {
        "id": "ede88b32d9",
-       "linea": 406,
+       "linea": 408,
        "texto": "**Concurrencia e Integración:**"
       },
       {
        "id": "9609453567",
-       "linea": 407,
+       "linea": 409,
        "texto": "Cero variables globales mutables compartidas entre hilos."
       },
       {
        "id": "d25c5d5244",
-       "linea": 408,
+       "linea": 410,
        "texto": "Comunicación aislada mediante canales tipados (`Canal<T>`)."
       },
       {
        "id": "bda11aa723",
-       "linea": 410,
+       "linea": 412,
        "texto": "**Validación de la Suite de Pruebas:**"
       },
       {
        "id": "fc1972a204",
-       "linea": 411,
+       "linea": 413,
        "texto": "Aprobación del 100% de los tests unitarios, de integración y fuzzing sin regresiones."
       },
       {
        "id": "c862cd4bf2",
-       "linea": 412,
+       "linea": 414,
        "texto": "En caso de modificaciones en el compilador base, verificación de bootstrapped determinista (`diff 0 bytes` entre Stage 2 y Stage 3)."
       },
       {
        "id": "f234cf463e",
-       "linea": 414,
+       "linea": 416,
        "texto": "**Seguridad en la Cadena de Suministro:**"
       },
       {
        "id": "e2384af336",
-       "linea": 415,
+       "linea": 417,
        "texto": "Generación automática de hash SHA‑256."
       },
       {
        "id": "0afd3a6dc2",
-       "linea": 416,
+       "linea": 418,
        "texto": "Validación de firma criptográfica **Ed25519** en el pipeline de CI/CD para la distribución en Axon Hub."
       },
       {
        "id": "33e9b1a4bd",
-       "linea": 419,
+       "linea": 421,
        "texto": "Actualización de los manuales correspondientes."
       },
       {
        "id": "b69b76599d",
-       "linea": 420,
+       "linea": 422,
        "texto": "Ejemplos de uso en la carpeta `examples/`."
+      },
+      {
+       "id": "99cc9f3bce",
+       "linea": 423,
+       "texto": "**r283: Anexo de versionado y changelog** — Cada actualización debe registrar: número de versión, fecha, ME relacionado, y cambios significativos en el fichero `CHANGELOG.md` del proyecto."
+      },
+      {
+       "id": "f0fdfb5fcd",
+       "linea": 425,
+       "texto": "**Definition of Done (Checklist de Calidad) — r283 actualizado:**"
+      },
+      {
+       "id": "a69806fbb5",
+       "linea": 426,
+       "texto": "Todos los manuales afectados deben tener su versión actualizada y reflejar los cambios en el changelog."
+      },
+      {
+       "id": "06b90183ed",
+       "linea": 427,
+       "texto": "Debe verificarse que el gate de changelog pasa (change without changelog fails the gate)."
       }
      ]
     },
     {
      "num": "8",
      "titulo": "DIAGRAMA DE FLUJO END‑TO‑END",
-     "linea": 424,
+     "linea": 431,
      "oraciones": [
       {
        "id": "84c27e5300",
-       "linea": 426,
+       "linea": 433,
        "texto": "El siguiente diagrama ilustra el flujo completo desde el código fuente hasta el binario ejecutable, incluyendo la interacción con OpenSyn:"
       }
      ]
@@ -850,26 +870,26 @@
     {
      "num": "9",
      "titulo": "SIGUIENTES PASOS",
-     "linea": 455,
+     "linea": 462,
      "oraciones": [
       {
        "id": "20da4f3d44",
-       "linea": 457,
+       "linea": 464,
        "texto": "Este manual sienta las bases conceptuales y arquitectónicas del ecosistema Synapse + Syquex + OpenSyn."
       },
       {
        "id": "b77340cd4d",
-       "linea": 457,
+       "linea": 464,
        "texto": "El siguiente manual (Manual 2) se adentrará en los detalles del compilador de Synapse: su sintaxis, semántica, lexer, parser y AST."
       },
       {
        "id": "45dadfb2a9",
-       "linea": 461,
+       "linea": 468,
        "texto": "*Este documento es la piedra angular del proyecto."
       },
       {
        "id": "6241a7928d",
-       "linea": 461,
+       "linea": 468,
        "texto": "Todas las contribuciones, refactorizaciones y desarrollos deben alinearse con los principios aquí expuestos.*"
       }
      ]
@@ -10063,96 +10083,96 @@
   },
   "9": {
    "archivo": "docs/manuales/MANUAL 9.md",
-   "sha256": "b168afaafdeb332a",
+   "sha256": "b7850abdaada0605",
    "secciones": [
     {
      "num": "1",
      "titulo": "FILOSOFÍA DE INSTALACIÓN Y DISTRIBUCIÓN",
-     "linea": 9,
+     "linea": 11,
      "oraciones": [
       {
        "id": "533668b7a1",
-       "linea": 11,
+       "linea": 13,
        "texto": "El ecosistema Synapse sigue los siguientes principios de distribución:"
       },
       {
        "id": "168142ecc9",
-       "linea": 13,
+       "linea": 15,
        "texto": "| Principio | Descripción |"
       },
       {
        "id": "f575ec2095",
-       "linea": 14,
+       "linea": 16,
        "texto": "|-----------|-------------|"
       },
       {
        "id": "6f61034334",
-       "linea": 15,
+       "linea": 17,
        "texto": "| **Instalación de un solo clic** | El usuario descarga un instalador (o ejecuta un script) y, en pocos pasos, tiene Synapse (y opcionalmente Syquex y OpenSyn) listo para usar. |"
       },
       {
        "id": "abfeb7267c",
-       "linea": 16,
+       "linea": 18,
        "texto": "| **Cero dependencias externas** | Los binarios (`synapse.exe`, `synapse_lsp.exe`, etc.) son autocontenidos."
       },
       {
        "id": "569d22c5ab",
-       "linea": 16,
+       "linea": 18,
        "texto": "No requieren Python, Node.js, ni otros entornos. |"
       },
       {
        "id": "fdf0decc92",
-       "linea": 17,
+       "linea": 19,
        "texto": "| **Detección automática de hardware** | Al instalar OpenSyn, el sistema detecta RAM, VRAM y CPU para seleccionar y descargar el modelo codec más adecuado. |"
       },
       {
        "id": "8442018ec6",
-       "linea": 18,
+       "linea": 20,
        "texto": "| **Seguridad de la cadena de suministro** | Todos los artefactos están firmados con Ed25519."
       },
       {
        "id": "d42ed7cbd2",
-       "linea": 18,
+       "linea": 20,
        "texto": "Se verifican firmas e integridad (SHA‑256) antes de la instalación. |"
       },
       {
        "id": "e881761bd9",
-       "linea": 19,
+       "linea": 21,
        "texto": "| **Actualizaciones sencillas** | El sistema puede actualizarse a nuevas versiones con un solo comando (`synapse update`). |"
       },
       {
        "id": "5f01519517",
-       "linea": 20,
+       "linea": 22,
        "texto": "| **Offline‑first** | Los paquetes y modelos se descargan una vez y se almacenan en caché local (`~/.synapse/cache/`, `~/.opensyn/models/`). |"
       },
       {
        "id": "b3750cb047",
-       "linea": 21,
+       "linea": 23,
        "texto": "| **Opt‑in para IA** | OpenSyn solo se instala si el usuario lo elige explícitamente."
       },
       {
        "id": "e08d1272ba",
-       "linea": 21,
+       "linea": 23,
        "texto": "Nunca se activa sin consentimiento. |"
       },
       {
        "id": "8df3eb84c4",
-       "linea": 22,
+       "linea": 24,
        "texto": "| **Herramientas nativas incluidas** | Los binarios `synapse lint`, `synapse fmt` y el framework `lib/pruebas.syq` (Fase 31) se incluyen en el paquete base y no requieren instalación adicional. |"
       },
       {
        "id": "9c4903f82e",
-       "linea": 24,
+       "linea": 26,
        "texto": "> **Nota (ubicación de la caché incremental):** Toda caché del compilador —objetos del runtime (`synapse_rt.c`, `runtime/core/*`, `axon/tweetnacl.c`, `vendor/sqlite3/sqlite3.c`, módulos cuánticos/IA) y código de usuario compilado incrementalmente— se almacena **bajo `~/.synapse/cache/`** (coherente con Manual 1 §4: `cache.syn` = \"Sistema de caché incremental SHA‑256\")."
       },
       {
        "id": "50b004d942",
-       "linea": 24,
+       "linea": 26,
        "texto": "Los directorios de build del repositorio (`build/`, artefactos `*.o` en la raíz) son **efímeros** y se limpian en cada commit (hook \"Limpiando artefactos de build\"); por tanto **no** deben usarse para caches persistentes, o se pierde el beneficio entre commits."
       },
       {
        "id": "412b3ded07",
-       "linea": 24,
+       "linea": 26,
        "texto": "La clave de caché incluye el hash SHA‑256 de la fuente, el compilador y los flags, de modo que el `.o` cacheado es byte‑idéntico al recién compilado y no rompe el bootstrap (Manual 1 §6, Regla de hierro)."
       }
      ]
@@ -10160,52 +10180,52 @@
     {
      "num": "2",
      "titulo": "EMPAQUETADO MULTI‑TARGET",
-     "linea": 28,
+     "linea": 30,
      "oraciones": []
     },
     {
      "num": "2.1",
      "titulo": "Artefactos Generados",
-     "linea": 30,
+     "linea": 32,
      "oraciones": [
       {
        "id": "3d9ccf510f",
-       "linea": 32,
+       "linea": 34,
        "texto": "El proceso de empaquetado genera artefactos para las plataformas soportadas:"
       },
       {
        "id": "72786f4cab",
-       "linea": 34,
+       "linea": 36,
        "texto": "| Plataforma | Formato | Contenido |"
       },
       {
        "id": "c8dc14c35c",
-       "linea": 35,
+       "linea": 37,
        "texto": "|------------|---------|-----------|"
       },
       {
        "id": "40f5d87f38",
-       "linea": 36,
+       "linea": 38,
        "texto": "| **Windows (x86_64)** | Instalador `.exe` (Inno Setup) | `synapse.exe`, `synapse_lsp.exe`, runtime (`.dll`), bibliotecas estándar, OpenSyn (opcional), extensión VS Code (`.vsix`), herramientas nativas (Fase 31). |"
       },
       {
        "id": "eaa4f2bfeb",
-       "linea": 37,
+       "linea": 39,
        "texto": "| **Linux (x86_64, ARM64)** | Paquete `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL), AppImage | `synapse`, `synapse_lsp`, runtime (`.so`), bibliotecas estándar, OpenSyn (opcional), herramientas nativas (Fase 31). |"
       },
       {
        "id": "b6b61d9b8d",
-       "linea": 38,
+       "linea": 40,
        "texto": "| **macOS (ARM64, x86_64)** | `.dmg` (para distribución), `.pkg` (para instalación) | `synapse`, `synapse_lsp`, runtime (`.dylib`), bibliotecas estándar, OpenSyn (opcional), herramientas nativas (Fase 31). |"
       },
       {
        "id": "094ff0c36b",
-       "linea": 39,
+       "linea": 41,
        "texto": "| **WASM** | `.wasm` y `.wat` | Compilador `synapse` compilado a WASM (para uso en navegador). |"
       },
       {
        "id": "a936d8900a",
-       "linea": 40,
+       "linea": 42,
        "texto": "| **VS Code Extension** | `.vsix` | Extensión VS Code empaquetada con soporte para comandos de linting, formateo y testing (Fase 31). |"
       }
      ]
@@ -10213,11 +10233,11 @@
     {
      "num": "2.2",
      "titulo": "Estructura del Instalador",
-     "linea": 42,
+     "linea": 44,
      "oraciones": [
       {
        "id": "94dd8c32c3",
-       "linea": 44,
+       "linea": 46,
        "texto": "El instalador unificado incluye los siguientes directorios y archivos:"
       }
      ]
@@ -10225,86 +10245,86 @@
     {
      "num": "2.3",
      "titulo": "Pipeline de Compilación (CI/CD)",
-     "linea": 118,
+     "linea": 120,
      "oraciones": [
       {
        "id": "1342a615d9",
-       "linea": 120,
+       "linea": 122,
        "texto": "El pipeline se ejecuta en GitHub Actions y sigue estos pasos:"
       },
       {
        "id": "1c31e62d6b",
-       "linea": 122,
+       "linea": 124,
        "texto": "**Build de los binarios** (para cada target):"
       },
       {
        "id": "0e3884e255",
-       "linea": 123,
+       "linea": 125,
        "texto": "Compilar `synapse` y `synapse_lsp` con GCC/Clang."
       },
       {
        "id": "56c53e1fbc",
-       "linea": 124,
+       "linea": 126,
        "texto": "Compilar el runtime y enlazar estáticamente."
       },
       {
        "id": "9199a62053",
-       "linea": 125,
+       "linea": 127,
        "texto": "Generar `synapse.wasm` para WebAssembly (usando emcc)."
       },
       {
        "id": "d71781c89f",
-       "linea": 126,
+       "linea": 128,
        "texto": "Generar la extensión VS Code (`.vsix`)."
       },
       {
        "id": "5272a981de",
-       "linea": 127,
+       "linea": 129,
        "texto": "**Nuevo (Fase 31):** Compilar `nucleo/lint.syn` y `nucleo/formatter.syn` como parte del binario `synapse`."
       },
       {
        "id": "a2517e6a7b",
-       "linea": 130,
+       "linea": 132,
        "texto": "Ejecutar la suite de tests completa para cada target."
       },
       {
        "id": "d251c245c3",
-       "linea": 131,
+       "linea": 133,
        "texto": "Verificar el bootstrap (diff 0 bytes entre Stage 2 y Stage 3)."
       },
       {
        "id": "28f2a0e8bd",
-       "linea": 132,
+       "linea": 134,
        "texto": "**Nuevo (Fase 31):** Ejecutar `synapse lint` y `synapse fmt --check` sobre el código fuente del compilador para verificar que el linter y formateador funcionan correctamente."
       },
       {
        "id": "dc5efec03b",
-       "linea": 133,
+       "linea": 135,
        "texto": "**Nuevo (Fase 31):** Ejecutar `synapse test --junit --coverage` para generar reportes de tests y cobertura."
       },
       {
        "id": "adf09cfeaf",
-       "linea": 136,
+       "linea": 138,
        "texto": "**Windows:** Instalador `.exe` generado con Inno Setup."
       },
       {
        "id": "be0c967166",
-       "linea": 137,
+       "linea": 139,
        "texto": "**Linux:** Paquete `.deb` y `.rpm`, AppImage."
       },
       {
        "id": "adfa51c497",
-       "linea": 139,
+       "linea": 141,
        "texto": "**WASM:** Archivo `.wasm` y su correspondiente `.wat`."
       },
       {
        "id": "da0d0a4b05",
-       "linea": 142,
+       "linea": 144,
        "texto": "**Firma de artefactos**: Cada artefacto se firma con Ed25519 (clave privada del proyecto). Se generan archivos `.sig` y `.sha256`."
       },
       {
        "id": "21bc270961",
-       "linea": 144,
+       "linea": 146,
        "texto": "**Publicación**: Los artefactos se suben a GitHub Releases y al Axon Hub."
       }
      ]
@@ -10312,46 +10332,46 @@
     {
      "num": "2.4",
      "titulo": "Script de Instalación (Linux/macOS)",
-     "linea": 146,
+     "linea": 148,
      "oraciones": [
       {
        "id": "6cb2da063d",
-       "linea": 148,
+       "linea": 150,
        "texto": "El instalador para Unix es un script Bash que:"
       },
       {
        "id": "8692c6eaca",
-       "linea": 150,
+       "linea": 152,
        "texto": "Detecta la arquitectura y el sistema operativo."
       },
       {
        "id": "7491b05233",
-       "linea": 151,
+       "linea": 153,
        "texto": "Descarga el paquete apropiado desde GitHub Releases (si no se ejecuta desde el paquete local)."
       },
       {
        "id": "88a044329b",
-       "linea": 152,
+       "linea": 154,
        "texto": "Extrae los binarios en `/usr/local/bin/` (o `~/.local/bin/` para instalación de usuario)."
       },
       {
        "id": "27162b2b55",
-       "linea": 153,
+       "linea": 155,
        "texto": "Configura las variables de entorno (PATH)."
       },
       {
        "id": "df6df3ec8f",
-       "linea": 154,
+       "linea": 156,
        "texto": "Pregunta si instalar OpenSyn."
       },
       {
        "id": "0209511e7e",
-       "linea": 155,
+       "linea": 157,
        "texto": "Si se elige OpenSyn, ejecuta `opensyn/install.sh` para detectar hardware y descargar el modelo."
       },
       {
        "id": "5349cf3d70",
-       "linea": 156,
+       "linea": 158,
        "texto": "**Nuevo (Fase 31):** Verifica que `synapse lint` y `synapse fmt` están disponibles en el PATH."
       }
      ]
@@ -10359,11 +10379,11 @@
     {
      "num": "2.5",
      "titulo": "Configuración de Inno Setup (Windows)",
-     "linea": 260,
+     "linea": 262,
      "oraciones": [
       {
        "id": "230b1b6862",
-       "linea": 262,
+       "linea": 264,
        "texto": "El script `installer.iss` de Inno Setup para Windows:"
       }
      ]
@@ -10371,27 +10391,27 @@
     {
      "num": "3",
      "titulo": "SISTEMA DE ACTUALIZACIÓN",
-     "linea": 309,
+     "linea": 311,
      "oraciones": []
     },
     {
      "num": "3.1",
      "titulo": "Comando `synapse update`",
-     "linea": 311,
+     "linea": 313,
      "oraciones": [
       {
        "id": "b2b3ad88a5",
-       "linea": 317,
+       "linea": 319,
        "texto": "Sin argumentos: actualiza a la última versión disponible."
       },
       {
        "id": "05d1c7cec8",
-       "linea": 318,
+       "linea": 320,
        "texto": "`--version <version>`: actualiza a una versión específica."
       },
       {
        "id": "b5ef029c7f",
-       "linea": 319,
+       "linea": 321,
        "texto": "`--check`: solo verifica si hay actualizaciones disponibles, sin instalarlas."
       }
      ]
@@ -10399,41 +10419,41 @@
     {
      "num": "3.2",
      "titulo": "Pipeline de Actualización",
-     "linea": 321,
+     "linea": 323,
      "oraciones": [
       {
        "id": "d872fc9f6c",
-       "linea": 323,
+       "linea": 325,
        "texto": "**Verificación de versión**: Consulta el endpoint de versiones en GitHub Releases (o Axon Hub)."
       },
       {
        "id": "656a7a66f3",
-       "linea": 324,
+       "linea": 326,
        "texto": "**Descarga de la nueva versión**: Descarga el instalador o los binarios actualizados."
       },
       {
        "id": "85c32db405",
-       "linea": 325,
+       "linea": 327,
        "texto": "**Verificación de firma**: Comprueba la firma Ed25519 del artefacto."
       },
       {
        "id": "6e2e0ebb37",
-       "linea": 326,
+       "linea": 328,
        "texto": "**Backup de la versión anterior**: Guarda la versión actual en `~/.synapse/backup/`."
       },
       {
        "id": "fe12e674f6",
-       "linea": 327,
+       "linea": 329,
        "texto": "**Instalación de la nueva versión**: Reemplaza los binarios y archivos."
       },
       {
        "id": "f3a23d93db",
-       "linea": 328,
+       "linea": 330,
        "texto": "**Re‑instalación de OpenSyn** (si procede): Si OpenSyn está instalado, se verifica que el modelo siga siendo compatible y se re‑configura (o se actualiza)."
       },
       {
        "id": "602d971761",
-       "linea": 329,
+       "linea": 331,
        "texto": "**Nuevo (Fase 31):** Verifica que las herramientas nativas (`synapse lint`, `synapse fmt`, `synapse test`) estén actualizadas y funcionen correctamente."
       }
      ]
@@ -10441,16 +10461,16 @@
     {
      "num": "3.3",
      "titulo": "Compatibilidad Hacia Atrás",
-     "linea": 331,
+     "linea": 333,
      "oraciones": [
       {
        "id": "370ddfa7d2",
-       "linea": 333,
+       "linea": 335,
        "texto": "Las nuevas versiones de Synapse deben ser compatibles con el código fuente de versiones anteriores (a menos que se indique explícitamente un cambio incompatible)."
       },
       {
        "id": "26f53407d6",
-       "linea": 333,
+       "linea": 335,
        "texto": "El sistema de actualización verifica la compatibilidad y advierte al usuario antes de instalar una versión que pueda romper su código."
       }
      ]
@@ -10458,52 +10478,52 @@
     {
      "num": "4",
      "titulo": "DISTRIBUCIÓN",
-     "linea": 337,
+     "linea": 339,
      "oraciones": []
     },
     {
      "num": "4.1",
      "titulo": "GitHub Releases",
-     "linea": 339,
+     "linea": 341,
      "oraciones": [
       {
        "id": "5163c5c08c",
-       "linea": 341,
+       "linea": 343,
        "texto": "Los artefactos se publican en la sección **Releases** del repositorio de GitHub."
       },
       {
        "id": "46d3414d25",
-       "linea": 343,
+       "linea": 345,
        "texto": "Notas de la versión (cambios, mejoras, correcciones de seguridad)."
       },
       {
        "id": "ef2587d6ee",
-       "linea": 344,
+       "linea": 346,
        "texto": "Archivos de instalación para Windows, Linux, macOS y WASM."
       },
       {
        "id": "1da0c84abc",
-       "linea": 345,
+       "linea": 347,
        "texto": "Archivos de firma (`.sig`) y checksums (`.sha256`)."
       },
       {
        "id": "111760975b",
-       "linea": 346,
+       "linea": 348,
        "texto": "El SBOM (Software Bill of Materials) en formato SPDX 2.3."
       },
       {
        "id": "30459aff9c",
-       "linea": 347,
+       "linea": 349,
        "texto": "La attestación SLSA Level 3."
       },
       {
        "id": "d99f1b0706",
-       "linea": 348,
+       "linea": 350,
        "texto": "**Nuevo (Fase 31):** Reportes de `synapse test --junit` y `synapse lint --check` generados durante el CI/CD, para verificar la calidad del código antes del lanzamiento."
       },
       {
        "id": "62dffb7277",
-       "linea": 350,
+       "linea": 352,
        "texto": "**Comando de creación de release** (automatizado en CI):"
       }
      ]
@@ -10511,36 +10531,36 @@
     {
      "num": "4.2",
      "titulo": "Axon Hub (IPFS)",
-     "linea": 359,
+     "linea": 361,
      "oraciones": [
       {
        "id": "ba40bbd7ea",
-       "linea": 361,
+       "linea": 363,
        "texto": "Los paquetes (bibliotecas, modelos, aplicaciones) se publican en el Axon Hub (descentralizado en IPFS)."
       },
       {
        "id": "ef9b586327",
-       "linea": 361,
+       "linea": 363,
        "texto": "El comando `synapse axon publish`:"
       },
       {
        "id": "fb36c82589",
-       "linea": 363,
+       "linea": 365,
        "texto": "Empaqueta el código en un archivo TAR."
       },
       {
        "id": "355e0cd0a0",
-       "linea": 364,
+       "linea": 366,
        "texto": "Firma el TAR con la clave privada del autor."
       },
       {
        "id": "5c6837e995",
-       "linea": 365,
+       "linea": 367,
        "texto": "Publica el TAR y el manifiesto en IPFS."
       },
       {
        "id": "8379067c8a",
-       "linea": 366,
+       "linea": 368,
        "texto": "Actualiza el índice distribuido."
       }
      ]
@@ -10548,21 +10568,21 @@
     {
      "num": "4.3",
      "titulo": "VS Code Marketplace",
-     "linea": 368,
+     "linea": 370,
      "oraciones": [
       {
        "id": "9502473765",
-       "linea": 370,
+       "linea": 372,
        "texto": "La extensión VS Code se publica en el Marketplace de VS Code."
       },
       {
        "id": "60f061cc4e",
-       "linea": 372,
+       "linea": 374,
        "texto": "Construye el paquete `.vsix`."
       },
       {
        "id": "6eed7de44b",
-       "linea": 374,
+       "linea": 376,
        "texto": "Publica en el Marketplace usando el token de acceso del editor."
       }
      ]
@@ -10570,16 +10590,16 @@
     {
      "num": "4.4",
      "titulo": "Repositorio de Modelos (OpenSyn)",
-     "linea": 382,
+     "linea": 384,
      "oraciones": [
       {
        "id": "264ee6c7ed",
-       "linea": 384,
+       "linea": 386,
        "texto": "Los modelos codec se distribuyen a través del Axon Hub (IPFS) y también se puede proporcionar un espejo en Hugging Face."
       },
       {
        "id": "1c54709c7a",
-       "linea": 384,
+       "linea": 386,
        "texto": "El instalador de OpenSyn intenta descargar primero desde el Axon Hub, y si falla, desde Hugging Face."
       }
      ]
@@ -10587,17 +10607,17 @@
     {
      "num": "5",
      "titulo": "INSTALACIÓN DE OPENSYN (DETALLE)",
-     "linea": 388,
+     "linea": 390,
      "oraciones": []
     },
     {
      "num": "5.1",
      "titulo": "Detección de Hardware",
-     "linea": 390,
+     "linea": 392,
      "oraciones": [
       {
        "id": "1121ce03d6",
-       "linea": 392,
+       "linea": 394,
        "texto": "El instalador de OpenSyn (`opensyn/installer.syn`) detecta hardware mediante `std.os`:"
       }
      ]
@@ -10605,51 +10625,51 @@
     {
      "num": "5.2",
      "titulo": "Selección de Modelo",
-     "linea": 404,
+     "linea": 406,
      "oraciones": [
       {
        "id": "c2c477958d",
-       "linea": 406,
+       "linea": 408,
        "texto": "Según la VRAM detectada, selecciona la cuantización más adecuada:"
       },
       {
        "id": "79d170df13",
-       "linea": 408,
+       "linea": 410,
        "texto": "| VRAM | Modelo | Cuantización | Tamaño aprox. |"
       },
       {
        "id": "8b6e1ac7b4",
-       "linea": 409,
+       "linea": 411,
        "texto": "|------|--------|--------------|---------------|"
       },
       {
        "id": "9218962b6e",
-       "linea": 410,
+       "linea": 412,
        "texto": "| < 4 GB | DeepSeek Coder 1.3B | Q4_K_M | ~1 GB |"
       },
       {
        "id": "a42ff5a359",
-       "linea": 411,
+       "linea": 413,
        "texto": "| 4-6 GB | CodeLlama 7B | Q4_K_M | ~4 GB |"
       },
       {
        "id": "877853a5ea",
-       "linea": 412,
+       "linea": 414,
        "texto": "| 6-8 GB | CodeLlama 7B | Q5_K_M | ~5 GB |"
       },
       {
        "id": "9fa5b202e7",
-       "linea": 413,
+       "linea": 415,
        "texto": "| 8-12 GB | CodeLlama 13B | Q4_K_M | ~7 GB |"
       },
       {
        "id": "e05a54080c",
-       "linea": 414,
+       "linea": 416,
        "texto": "| 12+ GB | CodeLlama 34B | Q4_K_M | ~18 GB |"
       },
       {
        "id": "8a8fe24066",
-       "linea": 415,
+       "linea": 417,
        "texto": "| Con GPU NVIDIA (CUDA) | Opt for `--n-gpu-layers` = all | - | - |"
       }
      ]
@@ -10657,11 +10677,11 @@
     {
      "num": "5.3",
      "titulo": "Descarga y Verificación",
-     "linea": 417,
+     "linea": 419,
      "oraciones": [
       {
        "id": "cda73b749a",
-       "linea": 419,
+       "linea": 421,
        "texto": "El modelo se descarga desde Hugging Face o Axon Hub, y se verifica su integridad mediante SHA‑256."
       }
      ]
@@ -10669,11 +10689,11 @@
     {
      "num": "5.4",
      "titulo": "Configuración de `llama-server`",
-     "linea": 438,
+     "linea": 440,
      "oraciones": [
       {
        "id": "6ccf5e212c",
-       "linea": 440,
+       "linea": 442,
        "texto": "El instalador configura `llama-server` con los parámetros óptimos:"
       }
      ]
@@ -10681,11 +10701,11 @@
     {
      "num": "5.5",
      "titulo": "Prueba de Humo",
-     "linea": 461,
+     "linea": 463,
      "oraciones": [
       {
        "id": "39f690bbd3",
-       "linea": 463,
+       "linea": 465,
        "texto": "El instalador ejecuta una consulta simple al modelo para verificar que todo funciona:"
       }
      ]
@@ -10693,21 +10713,21 @@
     {
      "num": "5.6",
      "titulo": "Archivo `modelos.toml`",
-     "linea": 475,
+     "linea": 477,
      "oraciones": [
       {
        "id": "96a46eff5e",
-       "linea": 477,
+       "linea": 479,
        "texto": "El instalador de OpenSyn lee el archivo `modelos.toml` para obtener las URLs, hashes SHA‑256 y tamaños de los modelos disponibles."
       },
       {
        "id": "a72d4f3d40",
-       "linea": 477,
+       "linea": 479,
        "texto": "Este archivo se distribuye junto con el instalador y se actualiza periódicamente."
       },
       {
        "id": "8f0f6e78bb",
-       "linea": 477,
+       "linea": 479,
        "texto": "Permite al instalador seleccionar el modelo apropiado según el hardware detectado sin modificar el código del instalador."
       }
      ]
@@ -10715,26 +10735,26 @@
     {
      "num": "5.7",
      "titulo": "API de `std/os.syn`",
-     "linea": 489,
+     "linea": 491,
      "oraciones": [
       {
        "id": "2fdfefabb1",
-       "linea": 491,
+       "linea": 493,
        "texto": "El módulo `std/os.syn` proporciona funciones de detección de hardware y sistema utilitarias, utilizadas por el instalador de OpenSyn (ver §5.1)."
       },
       {
        "id": "06892d5497",
-       "linea": 491,
+       "linea": 493,
        "texto": "Estas funciones están implementadas mediante FFI a llamadas del sistema operativo."
       },
       {
        "id": "d9d6825f07",
-       "linea": 493,
+       "linea": 495,
        "texto": "> **Nota de implementación (2026-08-27):** `std/os.syn` está especificado pero aún no implementado como módulo Synapse; su funcionalidad (detección de HW) vive hoy en `runtime/core/detect_hardware.c` vía FFI."
       },
       {
        "id": "3b8b556571",
-       "linea": 493,
+       "linea": 495,
        "texto": "No debe crearse un archivo `std/os.syn` ficticio: la fuente de verdad es el runtime hasta esa fase."
       }
      ]
@@ -10742,97 +10762,97 @@
     {
      "num": "6",
      "titulo": "CERTIFICACIÓN DE PRODUCCIÓN Y HARDENING FINAL",
-     "linea": 523,
+     "linea": 525,
      "oraciones": []
     },
     {
      "num": "6.1",
      "titulo": "Checklist de Verificación Final (Definition of Done)",
-     "linea": 525,
+     "linea": 527,
      "oraciones": [
       {
        "id": "6c0e6a0783",
-       "linea": 527,
+       "linea": 529,
        "texto": "□ **Compilación sin errores**: todos los targets (Windows, Linux, macOS, WASM) compilan sin errores ni warnings."
       },
       {
        "id": "7b28e4e175",
-       "linea": 529,
+       "linea": 531,
        "texto": "□ **Bootstrap exitoso**: en cada target, el proceso de bootstrap de 3 etapas produce `diff 0 bytes` entre Stage 2 y Stage 3."
       },
       {
        "id": "a31e457aeb",
-       "linea": 531,
+       "linea": 533,
        "texto": "□ **Tests**: 184/184 tests Python pasan; 34/34 tests C nativos pasan; fuzzing: 500+ iteraciones, 0 crashes."
       },
       {
        "id": "68a4310541",
-       "linea": 533,
+       "linea": 535,
        "texto": "□ **Sanitizadores**: ASan/UBSan/TSan no reportan errores (en los targets que lo soportan)."
       },
       {
        "id": "09007d4072",
-       "linea": 535,
+       "linea": 537,
        "texto": "□ **SBOM y SLSA**: generados y firmados correctamente."
       },
       {
        "id": "22e2de7acf",
-       "linea": 537,
+       "linea": 539,
        "texto": "□ **Documentación**: todos los manuales versionados y empaquetados (incluyendo el Manual 31)."
       },
       {
        "id": "9fa16c7b45",
-       "linea": 539,
+       "linea": 541,
        "texto": "□ **Instalador unificado**: probado en sistemas limpios (sin instalación previa) y funciona correctamente."
       },
       {
        "id": "e49170c1ec",
-       "linea": 541,
+       "linea": 543,
        "texto": "□ **OpenSyn**: detección de hardware, descarga de modelo y consulta de prueba exitosas."
       },
       {
        "id": "ced192619c",
-       "linea": 543,
+       "linea": 545,
        "texto": "□ **Extensión VS Code**: instalación y comandos básicos funcionan (incluyendo comandos de Fase 31)."
       },
       {
        "id": "bfaf882ab2",
-       "linea": 545,
+       "linea": 547,
        "texto": "□ **Firmas Ed25519**: todos los artefactos distribuidos están firmados y verificados."
       },
       {
        "id": "4f8670a09d",
-       "linea": 547,
+       "linea": 549,
        "texto": "□ **Migración de proyectos**: scripts de migración desde versiones anteriores funcionan."
       },
       {
        "id": "628365ce69",
-       "linea": 549,
+       "linea": 551,
        "texto": "□ **Herramientas nativas (Fase 31)**:"
       },
       {
        "id": "20815de180",
-       "linea": 550,
+       "linea": 552,
        "texto": "`synapse lint` funciona y detecta errores de estilo."
       },
       {
        "id": "d51aa52e94",
-       "linea": 551,
+       "linea": 553,
        "texto": "`synapse fmt` formatea correctamente el código."
       },
       {
        "id": "12b13703e1",
-       "linea": 552,
+       "linea": 554,
        "texto": "`synapse test --junit` genera reportes JUnit válidos."
       },
       {
        "id": "e81c15ef7b",
-       "linea": 553,
+       "linea": 555,
        "texto": "`synapse test --coverage` genera informes de cobertura."
       },
       {
        "id": "76fe9a332a",
-       "linea": 554,
+       "linea": 556,
        "texto": "`lib/pruebas.syq` está incluido y funciona correctamente."
       }
      ]
@@ -10840,46 +10860,46 @@
     {
      "num": "6.2",
      "titulo": "Validación Cruzada en CI/CD",
-     "linea": 556,
+     "linea": 558,
      "oraciones": [
       {
        "id": "ad883ab167",
-       "linea": 558,
+       "linea": 560,
        "texto": "El pipeline de CI/CD ejecuta automáticamente:"
       },
       {
        "id": "6e8f816bcc",
-       "linea": 560,
+       "linea": 562,
        "texto": "La suite de tests completa en cada target."
       },
       {
        "id": "cd5032ed8e",
-       "linea": 561,
+       "linea": 563,
        "texto": "La verificación del bootstrap (diff 0 bytes)."
       },
       {
        "id": "cb4d310704",
-       "linea": 562,
+       "linea": 564,
        "texto": "El fuzzing destructivo (500+ iteraciones)."
       },
       {
        "id": "d54a48a09c",
-       "linea": 563,
+       "linea": 565,
        "texto": "Los sanitizadores (ASan, UBSan, TSan)."
       },
       {
        "id": "c1e2db490d",
-       "linea": 564,
+       "linea": 566,
        "texto": "**Nuevo (Fase 31):** `synapse lint --check` sobre el código fuente del compilador para verificar que el linter funciona correctamente."
       },
       {
        "id": "0103f768c5",
-       "linea": 565,
+       "linea": 567,
        "texto": "**Nuevo (Fase 31):** `synapse fmt --check` sobre el código fuente del compilador para verificar el formato."
       },
       {
        "id": "5889882d25",
-       "linea": 566,
+       "linea": 568,
        "texto": "**Nuevo (Fase 31):** `synapse test --junit --coverage` para generar reportes de tests y cobertura."
       }
      ]
@@ -10887,26 +10907,26 @@
     {
      "num": "6.3",
      "titulo": "Sellado Criptográfico Definitivo",
-     "linea": 568,
+     "linea": 570,
      "oraciones": [
       {
        "id": "616dd3fae0",
-       "linea": 570,
+       "linea": 572,
        "texto": "Cada artefacto se firma con la clave privada Ed25519 del proyecto."
       },
       {
        "id": "b2dbe3a79c",
-       "linea": 572,
+       "linea": 574,
        "texto": "Archivo de firma (`.sig`) para cada binario/instalador."
       },
       {
        "id": "b6945404b9",
-       "linea": 573,
+       "linea": 575,
        "texto": "Archivo `.sha256` con el hash del artefacto."
       },
       {
        "id": "1c0654c521",
-       "linea": 577,
+       "linea": 579,
        "texto": "Todos estos archivos se suben junto con los artefactos a GitHub Releases."
       }
      ]
@@ -10914,71 +10934,71 @@
     {
      "num": "7",
      "titulo": "PRUEBAS OBLIGATORIAS PARA ESTA ETAPA",
-     "linea": 581,
+     "linea": 583,
      "oraciones": [
       {
        "id": "3aba9521c2",
-       "linea": 583,
+       "linea": 585,
        "texto": "| Test | Comando | Criterio |"
       },
       {
        "id": "63ccb37d3b",
-       "linea": 584,
+       "linea": 586,
        "texto": "|------|---------|----------|"
       },
       {
        "id": "c79b6ef17d",
-       "linea": 585,
+       "linea": 587,
        "texto": "| Instalación en Windows (limpiamente) | Ejecutar instalador en máquina virtual Windows limpia | Instalación exitosa, PATH configurado, `synapse --version` funciona. |"
       },
       {
        "id": "ff92b386f5",
-       "linea": 586,
+       "linea": 588,
        "texto": "| Instalación en Linux | Ejecutar script de instalación en Ubuntu/Debian | Instalación exitosa, `synapse` en PATH, `synapse build` funciona. |"
       },
       {
        "id": "5c8e40062f",
-       "linea": 587,
+       "linea": 589,
        "texto": "| Instalación en macOS | Ejecutar script de instalación en macOS ARM | Instalación exitosa, `synapse` funciona. |"
       },
       {
        "id": "dbe8843585",
-       "linea": 588,
+       "linea": 590,
        "texto": "| OpenSyn en hardware limitado | Instalar OpenSyn en máquina con 4GB VRAM | Modelo Q3 seleccionado, consulta exitosa. |"
       },
       {
        "id": "259c57c3b2",
-       "linea": 589,
+       "linea": 591,
        "texto": "| Actualización | `synapse update` desde v7.x a v8.0 | Actualización exitosa, versión correcta. |"
       },
       {
        "id": "250f6da98c",
-       "linea": 590,
+       "linea": 592,
        "texto": "| Firma de artefactos | Verificar firma Ed25519 de cada artefacto | 100% de los artefactos verificados. |"
       },
       {
        "id": "526ea291f9",
-       "linea": 591,
+       "linea": 593,
        "texto": "| SBOM y SLSA | Generación y validación de SBOM y SLSA | Archivos generados correctamente. |"
       },
       {
        "id": "c7eefe8892",
-       "linea": 592,
+       "linea": 594,
        "texto": "| Extensión VS Code | Instalar `.vsix` en VS Code limpio | Extensión activa, comandos funcionan. |"
       },
       {
        "id": "babf415e7e",
-       "linea": 593,
+       "linea": 595,
        "texto": "| Desinstalación | Ejecutar desinstalador | Todo eliminado, PATH restaurado. |"
       },
       {
        "id": "8fffaa89e4",
-       "linea": 594,
+       "linea": 596,
        "texto": "| **Herramientas nativas (Fase 31)** | `synapse lint --check` | 0 errores de linting en el código fuente del compilador. |"
       },
       {
        "id": "788b40e222",
-       "linea": 595,
+       "linea": 597,
        "texto": "| **Herramientas nativas (Fase 31)** | `synapse fmt --check` | 0 errores de formato en el código fuente del compil"
       }
      ]

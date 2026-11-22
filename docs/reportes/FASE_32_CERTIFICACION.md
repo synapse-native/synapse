@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # Certificación de usuario final — Fase 32.8 (en curso)
 
 **ME:** r234_certificacion_usuario_final · **Fecha:** 2026-11-17 · **Estado:** paso 1 de 4 completado

@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # MANUAL 7: OPENSYN – ASISTENTE DE IA LOCAL
 
 **Archivo:** `07_OPENSYN_ASISTENTE_IA.md`  

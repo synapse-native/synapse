@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # MANUAL 2: SINTAXIS Y SEMÁNTICA DE SYNAPSE
 
 **Archivo:** `02_SINTAXIS_Y_SEMANTICA_SYNAPSE.md`  

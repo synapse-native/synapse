@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE 1 — Lexer y Parser de Synapse (cierre formal)
 
 > Reporte formal de cierre de la FASE 1 de la auditoría de alineación a Manuales v8.1.0

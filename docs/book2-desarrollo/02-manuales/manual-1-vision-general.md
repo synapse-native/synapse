@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # MANUAL 1: VISIÓN GENERAL, FILOSOFÍA Y ARQUITECTURA DEL ECOSISTEMA
 
 **Archivo:** `01_VISION_Y_ARQUITECTURA.md`  

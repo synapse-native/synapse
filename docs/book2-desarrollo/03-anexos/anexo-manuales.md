@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 ## 1. RECTIFICACIONES Y AJUSTES AL MATERIAL PREVIO
 
 ### 1.1. Módulo `lib/web.syq` – Adecuación al modelo de fibras (Manual 5)

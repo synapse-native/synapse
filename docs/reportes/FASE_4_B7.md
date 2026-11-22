@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE 4 — B7: Estrés de 10,000 fibras sin deadlocks ni data races (F4-7)
 
 **Manual referenciado:** Manual 5 §2.1 (las fibras son ligeras — "cientos de miles" de fibras en kilómetros/KB de pila; el runtime debe soportar miles de fibras sin degradación); Manual 5 §2.6 (scheduler M:N, parqueo de fibras); Manual 5 §3 (canales fiber-aware); Manual 5 §5 (primitivas de sincronización, mutex); Manual 4 §9 (PRUEBAS OBLIGATORIAS de la etapa); ROADMAP FASE 4 L109-110 (estrategia: pruebas de estrés de 10,000 fibras concurrentes con comunicación intensiva; aceptación: el 100% de los tests de concurrencia pasan sin deadlocks ni data races, el runtime soporta miles de fibras sin degradación significativa); Manual 9 §9.7 (bootstrap 3 etapas y determinismo).

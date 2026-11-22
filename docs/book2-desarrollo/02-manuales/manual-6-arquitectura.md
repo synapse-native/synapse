@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # MANUAL 6: INTEGRACIÓN DEL ECOSISTEMA
 
 **Archivo:** `06_INTEGRACION_ECOSISTEMA.md`  

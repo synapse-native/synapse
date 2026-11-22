@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE A — ETAPA A5 (D-3): Divergencia `Tensor t;` vs `Tensor t = {0};` (S1 vs S2)
 
 > Micro-entregable D-3 de la FASE A (Etapa A5 — cierre de deudas D-6/D-7/D-2/D-3/D-5).

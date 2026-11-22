@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # Visión General del Proyecto
 
 ## Roadmap del Ecosistema Synapse

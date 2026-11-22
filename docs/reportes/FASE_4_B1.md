@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE 4 — B1: Scheduler de fibras (F4.1) — `Fibra`/`Scheduler` en `runtime/core/concurrency.c`
 
 **Manual referenciado:** ROADMAP.md FASE 4 (fibras ligeras: scheduler, colas de scheduling); Manual 5 §2.1 (concepto de fibra, pila por defecto 64 KB) y §2.6 (estructuras `Fibra`/`Scheduler` y API C de 5 funciones); Manual 9 §9.7 (bootstrap 3 etapas y determinismo).

@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE 4 — B6: Valor 0 distinguible del cierre en `Canal<entero>` (F4-6)
 
 **Manual referenciado:** ROADMAP.md FASE 4 (concurrencia y canales); Manual 5 §3.4 (firma de canal: `void* canal_recibir(Canal* canal, bool* cerrado)` — el cierre se reporta por **out-param**, no por el valor devuelto); Manual 5 §4.3 (implementación de `escuchar`: `while (1) { bool cerrado; void* msg = canal_recibir(canal, &cerrado); if (cerrado) break; ... }`); Manual 9 §9.7 (bootstrap 3 etapas y determinismo).

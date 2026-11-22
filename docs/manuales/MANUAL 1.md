@@ -1,7 +1,9 @@
 # MANUAL 1: VISIÓN GENERAL, FILOSOFÍA Y ARQUITECTURA DEL ECOSISTEMA
 
 **Archivo:** `01_VISION_Y_ARQUITECTURA.md`  
-**Versión:** 8.0.0-industrial  
+**Versión:** 8.1.0-industrial  
+**Fecha:** 2026-11-21  
+**Changelog:** r283_manual_versioning - Versionado y changelog de manuales (semver)  
 **Propósito:** Establecer los fundamentos conceptuales, los principios rectores y la arquitectura de alto nivel del ecosistema completo Synapse + Syquex + OpenSyn, definiendo el alcance del proyecto y su hoja de ruta evolutiva.
 
 ---
@@ -418,6 +420,11 @@ Para considerar cualquier nuevo módulo, característica o refactorización como
 6. **Documentación:**
    - Actualización de los manuales correspondientes.
    - Ejemplos de uso en la carpeta `examples/`.
+   - **r283: Anexo de versionado y changelog** — Cada actualización debe registrar: número de versión, fecha, ME relacionado, y cambios significativos en el fichero `CHANGELOG.md` del proyecto.
+
+7. **Definition of Done (Checklist de Calidad) — r283 actualizado:**
+   - Todos los manuales afectados deben tener su versión actualizada y reflejar los cambios en el changelog.
+   - Debe verificarse que el gate de changelog pasa (change without changelog fails the gate).
 
 ---
 

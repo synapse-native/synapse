@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE A — ETAPA A4: Retirada del espejo `_P_*` (frontend nativo = fuente única)
 
 > Micro-entregable A4 de la FASE A (migración frontend embebido → frontend nativo).

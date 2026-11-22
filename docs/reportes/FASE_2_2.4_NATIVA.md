@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # FASE 2 — Brecha 2.4 NATIVA: validación Hindley-Milner de instanciaciones de ADT
 
 **Fecha:** 2026-08-09 · **Rama:** `feature/fase2-nativa-hm` · **Estado:** ✅ COMPLETADA

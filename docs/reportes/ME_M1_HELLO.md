@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE ME_M1_HELLO - ME: M1_HELLO (formato binario HELLO)
 
 --- REPORTE DE MICRO-ENTREGABLE ---

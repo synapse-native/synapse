@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # R227 — Smoke REAL de chat OpenSyn con llama-server y el GGUF instruct
 
 **Fecha:** 2026-11-17 | **ME:** r227_llm_mock (commit `24a7feb`) | **Manual:** 7 §2.2

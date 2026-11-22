@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE 3 — B1: Inventario de brechas del generador C y runtime + F3-1: extracción de `runtime/core/io.c`
 
 **Manual referenciado:** ROADMAP.md FASE 3 (generador de código C y runtime); Manual 2 §4.1 (mapeo de tipos Synapse→C); Manual 4 §2 (arenas por ámbito/pool) y §5 (cleanup/RAII); Manual 5 §2.6/§3.4 (fibras y canales en C); Manual 9 §9.1/§9.7 (bootstrap 3 etapas y determinismo).

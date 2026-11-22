@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 --- REPORTE DE MICRO-ENTREGABLE ---
 TAREA: ME-AUDITOR-2 — Audit Finding 2: 23 tipos de nodo no mapeados en el puente
 FASE: 22 — SyQuex backend (completada) + auditoría de tech debt

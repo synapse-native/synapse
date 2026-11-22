@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE A — ETAPA A5: Cierre de la deuda D-7 (ABI `entero`→`int64_t`, `decimal`→`double`)
 
 > Micro-entregable A5 de la FASE A (cierre de deudas D-6/D-7/D-2/D-3/D-5; este reporte

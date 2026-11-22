@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE A — ETAPA A5 (D-6): Operador `?` postfijo en expresiones (Manual 3 §7 L331-342)
 
 > Micro-entregable D-6 de la FASE A (Etapa A5 — cierre de deudas D-6/D-7/D-2/D-3/D-5).

@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # FASE A — Etapa A3.0: Payload léxico del AST plano (base del puente plano→tipado)
 
 > Fecha: 2026-08-06 · Estado: ✅ Completado · Bitácora: `docs/AUDITORIA_ALINEACION_MANUALES.md`

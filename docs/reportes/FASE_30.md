@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # Reporte FASE 30 — Instalación Unificada y Distribución Final
 
 ## Resumen Ejecutivo

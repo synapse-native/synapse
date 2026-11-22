@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # INFORME DE EVALUACIÓN DE INGENIERÍA — TESTS FASE 0-21
 
 **Fecha:** 2026-08-24  

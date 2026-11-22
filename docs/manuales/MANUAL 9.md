@@ -1,7 +1,9 @@
 # MANUAL 9: INSTALACIÓN, EMPAQUETADO Y DISTRIBUCIÓN (ACTUALIZADO CON FASE 31)
 
 **Archivo:** `09_INSTALACION_Y_DISTRIBUCION.md`  
-**Versión:** 8.2.0-industrial  
+**Versión:** 8.2.1-industrial  
+**Fecha:** 2026-11-21  
+**Changelog:** r283_manual_versioning - Versionado y changelog de manuales (semver); alias de índice v2  
 **Propósito:** Especificar el proceso de instalación, empaquetado y distribución del ecosistema completo Synapse + Syquex + OpenSyn. Este manual cubre la instalación de un solo clic (cero fricción), la generación de instaladores para Windows, Linux, macOS y WASM, la distribución a través de GitHub Releases y Axon Hub, el sistema de actualización automática, la verificación de firmas Ed25519 y el proceso de certificación de producción. Incluye las herramientas nativas de desarrollo (Fase 31) como parte del paquete de instalación estándar.
 
 ---

@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 ***
 
 ### Documento 16: `GUIA_ESTILO_IDIOMATICA.md`

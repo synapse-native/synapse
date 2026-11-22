@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE A — ETAPA A2.4: Cierre de deuda `es_mapeado`/struct-Tensor S1
 
 > Micro-entregable A2.4 de la FASE A (plan: `docs/FASE_A_PLAN.md`).

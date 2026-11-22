@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # Synapse: Taxonomía y Códigos de Error (El Diagnóstico)
 
 ## 1. Estructura del Error

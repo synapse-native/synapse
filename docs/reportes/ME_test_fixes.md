@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE ME_test_fixes - Conversión de tests a TDD RED (Manual 2 §4.2)
 
 --- REPORTE DE MICRO-ENTREGABLE ---

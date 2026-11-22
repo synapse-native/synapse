@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE 4 — B4: `lanzar`/`escuchar` crean FIBRAS M:N (F4.4)
 
 **Manual referenciado:** ROADMAP.md FASE 4 (concurrencia y canales); Manual 5 §2.6 (fibras M:N — `fibra_crear`/`fibra_terminar`, trampolín `void func(void*)`); Manual 5 §3 (canales `Canal<T>`, §3.2 operadores `<-`/`->`, §3.6 cierre); Manual 5 §4 (`escuchar`); Manual 2 L113/L144 (`escuchar`, `Canal<T>`); Manual 9 §9.7 (bootstrap 3 etapas y determinismo); Manual 1 (layout de std: `concurrencia.syn`).

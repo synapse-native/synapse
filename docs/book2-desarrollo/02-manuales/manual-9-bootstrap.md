@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # MANUAL 9: INSTALACIÓN, EMPAQUETADO Y DISTRIBUCIÓN
 
 **Archivo:** `09_INSTALACION_Y_DISTRIBUCION.md`  

@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE 11 — Liberación y Distribución (R72/C1)
 
 **Manual referenciado:** Manual 9 §4 (Distribución), §6 (SBOM SPDX), §6.2 (firmas Ed25519), ROADMAP Fase 11.

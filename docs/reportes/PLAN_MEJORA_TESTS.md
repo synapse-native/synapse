@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # PLAN DE MEJORA — BATERÍA DE TESTS (CALIDAD INDUSTRIAL)
 
 **Fecha de emisión:** 2026-08-25  

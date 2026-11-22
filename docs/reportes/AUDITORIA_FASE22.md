@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # AUDITORÍA FASE 22 — SyQuex Frontend (.syq → SemNodo[])
 
 - **Fecha:** 2026-08-24

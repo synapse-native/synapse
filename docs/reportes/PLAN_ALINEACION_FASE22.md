@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # PLAN DE ATAQUE — ALINEACIÓN COMPLETA FASE 22 (Syquex) A LOS MANUALES
 
 **Propósito:** llevar Fase 22 de "SUBSET funcional" a "100% alineada con Manual 3 (y 1/2/4/6 según corresponda)", cerrando los hallazgos F1–F9 de la evaluación y los tests obligatorios del Manual 3 §13.

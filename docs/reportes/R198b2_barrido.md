@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # R198b2 — Barrido de cierre (2026-10-28)
 
 **Objetivo:** regresión completa del ME r198b2_ancla (dd20276) corriendo la

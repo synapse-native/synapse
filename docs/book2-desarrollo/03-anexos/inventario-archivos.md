@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # ANEXO: Inventario de Archivos Según los Manuales v8.1.0
 
 > Anexo informativo que reúne una **línea base (NO exhaustiva) de archivos que deben estar

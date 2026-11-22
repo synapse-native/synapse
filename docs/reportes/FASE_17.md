@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # Fase 17 — PGO/LTO Pipeline Completo + Release Flags
 
 ## Estado: COMPLETADA ✓

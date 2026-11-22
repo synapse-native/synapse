@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE A — ETAPA A3.1: Puente plano→tipado (paridad `_P_*` campo a campo)
 
 > Micro-entregable A3.1 de la FASE A (migración frontend embebido → frontend nativo).

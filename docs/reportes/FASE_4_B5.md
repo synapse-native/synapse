@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE 4 — B5: Primitivas de sincronización `std.sync` (F4.5)
 
 **Manual referenciado:** ROADMAP.md FASE 4 (concurrencia y canales); Manual 5 §2.6 (fibras M:N — `cola_espera` del scheduler y parqueo); Manual 5 §5 (SINCRONIZACIÓN ADICIONAL: §5.1 mutex, §5.2 semáforos, §5.3 barreras, §5.4 implementación C con las structs `Mutex`/`Semaforo`/`Barrera` y las firmas `mutex_bloquear`/`mutex_desbloquear`/`semaforo_esperar`/`semaforo_señalar`/`barrera_esperar`); Manual 2 §4.1 (tipos, `entero`→`int64_t`, `puntero`); Manual 9 §9.7 (bootstrap 3 etapas y determinismo); Manual 1 (layout de std: `sync.syn`).

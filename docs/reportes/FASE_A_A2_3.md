@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE A — ETAPA A2.3: Paridad `.c` S2 (nativo) vs S1 (referencia)
 
 > Micro-entregable A2.3 de la FASE A (plan: `docs/FASE_A_PLAN.md`).

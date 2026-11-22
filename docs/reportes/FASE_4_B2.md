@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE 4 — B2: Canales con bloqueo fiber-aware (F4.2)
 
 **Manual referenciado:** ROADMAP.md FASE 4 (concurrencia y canales); Manual 5 §2.6 (estructuras `Fibra`/`Scheduler`, `cola_activa`/`cola_espera` y la API C) y §3 (canales tipados FIFO: síncrono capacidad 0, asíncrono con buffer; §3.4 estructura C; §3.6 cierre); Manual 9 §9.7 (bootstrap 3 etapas y determinismo).

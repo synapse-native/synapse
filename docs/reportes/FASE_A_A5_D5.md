@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE A — ETAPA A5 (D-5): Cobertura del generador ≥70% (harness reorientado al frontend único)
 
 > Micro-entregable D-5 de la FASE A (Etapa A5 — cierre de deudas D-6/D-7/D-2/D-3/D-5).

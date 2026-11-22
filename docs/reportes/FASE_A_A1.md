@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE A — ETAPA A1: MATRIZ DE BRECHAS (frontend nativo vs frontend `_P_*`)
 
 > Micro-entregable A1 de la FASE A (plan aprobado: `docs/FASE_A_PLAN.md`).

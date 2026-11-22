@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # AUDITORÍA DE OPERATIVIDAD — OpenSyn (opensyn/)
 
 **Fecha:** 2026-09-25

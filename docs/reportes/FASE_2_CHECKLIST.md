@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # FASE 2 — CIERRE DEL CHECKLIST 2.1-2.6 (scopes, pasadas, taxonomía, ownership, exhaustividad)
 
 **Fecha:** 2026-08-10 · **Rama:** `feature/fase2-nativa-hm` · **Estado:** ✅ 2.1-2.3 CERRADOS / ⚠️ 2.5 PARCIAL (R12) / ✅ **2.6 CERRADO (R11 resuelto)**

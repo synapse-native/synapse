@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # PLAN DE ALINEACIÓN ESTRICTA — Manuales 1-9 + F31/F32 vs Código
 
 > **Fecha:** 2026-09-12 (post-commit `978ea94`)

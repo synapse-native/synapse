@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # MANUAL 5: CONCURRENCIA Y COMUNICACIÓN
 
 **Archivo:** `05_CONCURRENCIA_Y_COMUNICACION.md`  

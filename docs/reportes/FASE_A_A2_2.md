@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE A — ETAPA A2.2: Parser tipado nativo (port de constructos P0)
 
 > Micro-entregable A2.2 de la FASE A (plan: `docs/FASE_A_PLAN.md`).

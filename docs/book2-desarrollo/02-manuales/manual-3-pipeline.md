@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # MANUAL 3: SINTAXIS Y SEMÁNTICA DE SYQUEX
 
 **Archivo:** `03_SINTAXIS_Y_SEMANTICA_SYQUEX.md`  

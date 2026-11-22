@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE DE FASE — FASE 29
 
 ## TAREA: FASE 29 — Detección de Hardware y Gestión de Modelos (OpenSyn)

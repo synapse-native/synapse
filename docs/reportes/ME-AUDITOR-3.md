@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 --- REPORTE DE MICRO-ENTREGABLE ---
 TAREA: ME-AUDITOR-3 — Audit Finding 3: &mut aceptado por parser (no válido en Manual 3 §L48)
 FASE: 22 — SyQuex backend (completada) + auditoría de tech debt

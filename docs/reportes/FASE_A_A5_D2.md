@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE A — ETAPA A5 (D-2): Instanciación de ADT genéricos `T/E` (monomorfización, Opción A del Arquitecto)
 
 > Micro-entregable D-2 de la FASE A (Etapa A5 — cierre de deudas D-6/D-7/D-2/D-3/D-5).

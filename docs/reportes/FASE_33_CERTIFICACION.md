@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # FASE 33 — CERTIFICACIÓN DEL COMPILADOR AUTO-ALOJADO (Fase 33.5, ME 33.5_certificacion)
 
 Fecha: 2026-09-29 · Base: `cdbfd86` · Verificación: `docs/verificacion_ME_33.5_certificacion.md`

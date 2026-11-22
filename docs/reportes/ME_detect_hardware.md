@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE ME_detect_hardware - ME: detect_hardware (M4.1 / Manual 9 §5.7)
 
 --- REPORTE DE MICRO-ENTREGABLE ---

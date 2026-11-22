@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE 4 — B3: `fibra_esperar` fiber-aware (F4.3)
 
 **Manual referenciado:** ROADMAP.md FASE 4 (concurrencia y canales); Manual 5 §2.6 (estructuras `Fibra`/`Scheduler`, `cola_activa`/`cola_espera`, la API C `scheduler_iniciar`/`scheduler_detener`/`fibra_crear`/`fibra_esperar`/`fibra_terminar`); Manual 9 §9.7 (bootstrap 3 etapas y determinismo).

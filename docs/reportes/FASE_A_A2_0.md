@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE A — ETAPA A2.0: VALIDACIÓN DE BASELINE Y PREPARACIÓN DEL ENTORNO
 
 > Micro-entregable A2.0 de la FASE A (plan aprobado: `docs/FASE_A_PLAN.md`; Etapa A1 completada

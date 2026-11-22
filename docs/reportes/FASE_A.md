@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE A — Migración del frontend embebido `_P_*` al frontend nativo Synapse (cierre formal)
 
 > Reporte formal de cierre de la FASE A de la auditoría de alineación a Manuales v8.1.0

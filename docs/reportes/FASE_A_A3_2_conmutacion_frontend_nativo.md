@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE A — ETAPA A3.2: Conmutación de `principal.syn` al frontend nativo
 
 > Micro-entregable A3.2 de la FASE A (migración frontend embebido → frontend nativo).

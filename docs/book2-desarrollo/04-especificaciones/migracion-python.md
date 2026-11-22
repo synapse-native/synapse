@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # Guía de Migración: Python → Synapse v5.0
 
 **Versión:** 5.0.0

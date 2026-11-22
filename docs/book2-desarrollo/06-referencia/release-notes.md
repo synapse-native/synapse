@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # Synapse/OpenSyn v8.1.0-industrial
 
 > **Auditoría Completa Certificada — Release Industrial**

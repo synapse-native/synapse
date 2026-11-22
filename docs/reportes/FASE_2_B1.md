@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE 2 — ETAPA B1: INVENTARIO DE BRECHAS (tabla de símbolos y análisis semántico)
 
 > Micro-entregable B1 de la Fase 2 del roadmap (tabla de símbolos y análisis semántico).

@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # EVALUACIÓN DE AVANCE — 2026-11-08
 
 > Informe de evaluación del avance, no un reporte de ME. Base:

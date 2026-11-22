@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # Reporte de Auditoría de Desviaciones — Synapse/Syquex/OpenSyn
 
 **Alcance:** Código de producción (no asserts de tests). Se auditan: `compilador/`, `pipeline.py`, `runtime/core/*`, `nucleo/*.c`, `nucleo/*.syn`, `syquex/`, `lib/`, `std/`, `opensyn/` (parcial), `axon/` (`runtime/core/axon.c`).

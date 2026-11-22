@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE A — ETAPA A2.1: TOKENIZADOR NATIVO CON PARIDAD CONTRA `_P_tokenizar`
 
 > Micro-entregable A2.1 de la FASE A (plan aprobado: `docs/FASE_A_PLAN.md`; Etapa A1 completada

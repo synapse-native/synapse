@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # API de Referencia: AST Canónico (.syn.json) v5.0
 
 **Versión:** 5.0.0

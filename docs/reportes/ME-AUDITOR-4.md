@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 --- REPORTE DE MICRO-ENTREGABLE ---
 TAREA: ME-AUDITOR-4 — Audit Finding 4: self-by-value en métodos (mutaciones perdidas)
 FASE: 22 — SyQuex backend + auditoría de tech debt

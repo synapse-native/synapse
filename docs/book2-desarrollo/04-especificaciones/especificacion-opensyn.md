@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # Especificación Técnica: OpenSyn v5.0
 
 **Versión:** 5.0.0

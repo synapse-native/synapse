@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # MANUAL DE TESTS OBLIGATORIOS (MTO) — v1
 
 **Fuente de verdad:** Manuales M1–M9 del ecosistema Synapse/Syquex/OpenSyn.

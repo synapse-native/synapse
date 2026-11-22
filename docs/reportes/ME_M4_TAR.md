@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE ME_M4_TAR - ME: M4_TAR (rechazo de typeflags peligrosos)
 
 --- REPORTE DE MICRO-ENTREGABLE ---

@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # REPORTE FASE A — ETAPAS A2.3b/A2.3c: Fix de cableado y paridad de tipos del `parsear` nativo
 
 > Micro-entregables A2.3b (cableado, BUGS 1-6) y A2.3c (paridad de tipos) de la FASE A

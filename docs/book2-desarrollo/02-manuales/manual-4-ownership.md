@@ -1,3 +1,4 @@
+// Documento informativo; la ley es docs/manuales/
 # MANUAL 4: MODELO DE MEMORIA DE SYQUEX
 
 **Archivo:** `04_MODELO_MEMORIA_SYQUEX.md`  
