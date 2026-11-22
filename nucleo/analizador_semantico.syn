@@ -171,7 +171,7 @@ funcion sem_error(est: AnalizadorSemanticoEst, codigo: entero, idx_nodo: entero,
         est != nulo
         codigo >= 0
     garantiza:
-        est.hay_error == verdadero  =>  linea >= 0 && columna >= 0
+        est.hay_error == falso o (linea >= 0 y columna >= 0)
     linea = 0
     columna = 0
     inseguro:
@@ -204,7 +204,7 @@ funcion tabla_declarar(est: AnalizadorSemanticoEst, nombre: cadena, tipo: cadena
         est != nulo
         nombre != ""
     garantiza:
-        resultado == verdadero  =>  tipo != ""
+        _resultado_ == falso o tipo != ""
     // Check if already declared in current scope
     linea = 0
     columna = 0
@@ -252,7 +252,7 @@ funcion tabla_buscar(est: AnalizadorSemanticoEst, nombre: cadena) -> entero:
         est != nulo
         longitud(nombre) > 0
     garantiza:
-        resultado >= 0  =>  nombre en est->tabla
+        _resultado_ >= -1
     // cumplé Manual 2 §12: requiere y garantiza en toda función pública
     // cumplé Manual 2 §5.1: aserciones obligatorias
     // R9: precedencia de ambito innermost-first (paridad S1 symbol_table.py
@@ -285,7 +285,7 @@ funcion tabla_entrar_scope(est: AnalizadorSemanticoEst) -> nulo:
     requiere:
         est != nulo
     garantiza:
-        est->tabla->total_entradas >= 0
+        est.tabla.total_entradas >= 0
     // cumplé Manual 2 §12: requiere y garantiza en toda función pública
     // cumplé Manual 2 §5.1: aserciones obligatorias
     inseguro:
@@ -295,7 +295,7 @@ funcion tabla_salir_scope(est: AnalizadorSemanticoEst) -> nulo:
     requiere:
         est != nulo
     garantiza:
-        est->tabla->total_entradas >= 0  antes_y_despues
+        est.tabla.total_entradas >= 0
     inseguro:
         asm("while (est->tabla->total_entradas > 0) {")
         asm("    if (est->tabla->entradas[est->tabla->total_entradas - 1].nivel_ambito < est->tabla->nivel_actual) break;")

@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 2 §1.2: fuente UTF-8 sin BOM (el lexer rechaza BOM/caracteres inválidos).
 // --- Imports for Unity Build ---
 importar tokens
 importar lexer
@@ -1319,6 +1320,7 @@ funcion principal() -> entero:
         asm("if(strcmp(_osub.datos,\"transpile\")==0){ fprintf(stderr,\"[OpenSyn] ERROR: 'opensyn transpile' requiere el transpilador opensyn/transpiler.py; usa el CLI Python: python cli.py opensyn transpile <archivo>\\n\"); r=1; return r; }")
         asm("fprintf(stderr,\"Subcomando OpenSyn desconocido: %s\\n\",_osub.datos); fprintf(stderr,\"Uso: %s opensyn <status|download|finetune|bindings|transpile>\\n\",_argv(0).datos); r=1; return r; }")
     // --- Subcomando: debug (Manual 8 §3.1-§3.4: time-travel debugger) ---
+    // cumple Manual 8 §3.1: debugger nativo con time-travel y breakpoints reversibles.
     // cumple Manual 8 §3.4: CLI `synapse debug --load/--step/--reverse/--snapshots`.
     // cumple Manual 9 §6.2 (r241): subcomando debug despachado por el bootstrap nativo.
     // cumple Manual 8 §4.2 (r241): CLI unificado expone `debug`.
@@ -1342,14 +1344,14 @@ funcion principal() -> entero:
     // cumplé Manual 1 §5.7: zero telemetría
     // cumplé Manual 7 §7.3: diagnóstico local opt-in
     // cumplé Manual 32 §1.3: agente codificación - memoria persistente
-    extern int _syn_health_check(void);
-    extern int _syn_diagnostic_info(char* buffer, int bufsize);
-    if(strcmp(cmd.datos,\"observability\")==0){ CadenaSegura _osub={0,\"\"}; int _oi;
-    for(_oi=2;_oi<_argc();_oi++){ CadenaSegura _oa=_argv(_oi); if(_oa.datos && _oa.datos[0]=='-'){ if(strcmp(_oa.datos,\"--help\")==0||strcmp(_oa.datos,\"-h\")==0){ _osub=(CadenaSegura){.longitud=5,.datos=\"help\"}; break; } continue; } _osub=_oa; break; }
-    if(_osub.longitud==0||strcmp(_osub.datos,\"help\")==0||strcmp(_osub.datos,\"status\")==0){ fprintf(stderr,\"Comando observabilidad (Manual 1 §5.7):\n\"); fprintf(stderr,\"  synapse observability status            - Mostrar estado saludable (opt-in)\n\"); fprintf(stderr,\"  synapse observability health          - Health check detallado (opt-in)\n\"); fprintf(stderr,\"  synapse observability info            - Información de diagnóstico (opt-in)\n\"); r=0; return r; }
-    if(strcmp(_osub.datos,\"status\")==0){ int _h=_syn_health_check(); fprintf(stderr,\"[Observability] status: %s\n\", _h==0 ? "OK" : "ERROR"); r=0; return r; }
-    if(strcmp(_osub.datos,\"health\")==0){ char _buf[1024]={0}; int _rc=_syn_diagnostic_info(_buf, sizeof(_buf)); if(_rc==0) fprintf(stderr,"[Observability] info:\n%s\n",_buf); else fprintf(stderr,"[Observability] health check fallo rc=%d\n",_rc); r=0; return r; }
-    fprintf(stderr,\"Subcomando observabilidad desconocido: %s\n\",_osub.datos); fprintf(stderr,\"Uso: %s observability [--help|status|health|info] (Manual 1 §5.7)\n\",_argv(0).datos); r=1; return r; }
+    inseguro:
+        asm("extern int _syn_health_check(void); extern int _syn_diagnostic_info(char* buffer, int bufsize);")
+        asm("if(strcmp(cmd.datos,\"observability\")==0){ CadenaSegura _osub={0,\"\"}; int _oi;")
+        asm("for(_oi=2;_oi<_argc();_oi++){ CadenaSegura _oa=_argv(_oi); if(_oa.datos && _oa.datos[0]=='-'){ if(strcmp(_oa.datos,\"--help\")==0||strcmp(_oa.datos,\"-h\")==0){ _osub=(CadenaSegura){.longitud=5,.datos=\"help\"}; break; } continue; } _osub=_oa; break; }")
+        asm("if(_osub.longitud==0||strcmp(_osub.datos,\"help\")==0||strcmp(_osub.datos,\"status\")==0){ fprintf(stderr,\"Comando observabilidad (Manual 1 §5.7):\\n\"); fprintf(stderr,\"  synapse observability status            - Mostrar estado saludable (opt-in)\\n\"); fprintf(stderr,\"  synapse observability health          - Health check detallado (opt-in)\\n\"); fprintf(stderr,\"  synapse observability info            - Información de diagnóstico (opt-in)\\n\"); r=0; return r; }")
+        asm("if(strcmp(_osub.datos,\"status\")==0){ int _h=_syn_health_check(); fprintf(stderr,\"[Observability] status: %s\\n\", _h==0 ? \"OK\" : \"ERROR\"); r=0; return r; }")
+        asm("if(strcmp(_osub.datos,\"health\")==0){ char _buf[1024]={0}; int _rc=_syn_diagnostic_info(_buf, sizeof(_buf)); if(_rc==0) fprintf(stderr,\"[Observability] info:\\n%s\\n\",_buf); else fprintf(stderr,\"[Observability] health check fallo rc=%d\\n\",_rc); r=0; return r; }")
+        asm("fprintf(stderr,\"Subcomando observabilidad desconocido: %s\\n\",_osub.datos); fprintf(stderr,\"Uso: %s observability [--help|status|health|info] (Manual 1 §5.7)\\n\",_argv(0).datos); r=1; return r; }")
     // cumple Manual 1 §5.7: fin subcomando observabilidad
     // --- Pipeline de compilacion normal ---
     // cumple Manual 1 §3.1: CLI debe aceptar -o

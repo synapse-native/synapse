@@ -14,6 +14,7 @@ funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
         tipo_synapse != nulo
     garantiza:
         // void retornado cuando tipo_synapse es nulo (manejado arriba)
+        verdadero
     inseguro:
         asm("const char* _t = (const char*)tipo_synapse;")
         asm("if (!_t) { strcpy(_gen_tmp_buf, \"void\"); return; }")

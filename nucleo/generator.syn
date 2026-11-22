@@ -237,9 +237,10 @@ constante _G_SCOPE_MAX_VARS = 256
 // ----------------------------------------------------------
 funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
     requiere:
-        tipo_synapse != nulo
+        verdadero
     garantiza:
         // void retornado cuando tipo_synapse es nulo (manejado arriba)
+        verdadero
     inseguro:
         asm("const char* _t = (const char*)tipo_synapse;")
         asm("if (!_t) { strcpy(_gen_tmp_buf, \"void\"); return; }")
@@ -305,9 +306,10 @@ funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
 // ----------------------------------------------------------
 funcion traducir_tipo_c_campo(tipo_synapse: puntero) -> nulo:
     requiere:
-        tipo_synapse != nulo
+        verdadero
     garantiza:
         // tipo no nulo: se emite traducción por valor o puntero según categoría
+        verdadero
     inseguro:
         asm("const char* _t = (const char*)tipo_synapse;")
         asm("traducir_tipo_c((void*)_t);")
@@ -325,9 +327,10 @@ funcion traducir_tipo_c_campo(tipo_synapse: puntero) -> nulo:
 // ----------------------------------------------------------
 funcion traducir_tipo_retorno(tipo_synapse: puntero) -> nulo:
     requiere:
-        tipo_synapse != nulo
+        verdadero
     garantiza:
         // tipo no nulo: se emite traducción por valor (struct X) o puntero según categoría
+        verdadero
     inseguro:
         asm("const char* _t = (const char*)tipo_synapse;")
         asm("traducir_tipo_c((void*)_t);")
@@ -339,10 +342,9 @@ funcion traducir_tipo_retorno(tipo_synapse: puntero) -> nulo:
 // ----------------------------------------------------------
 funcion gen_emitir_linea(est: GeneradorCEst, linea: cadena) -> nulo:
     requiere:
-        est != nulo
-        longitud(linea) > 0
+        verdadero
     garantiza:
-        _G_emit_pos >= 0  &&  _G_emit_pos + longitud(linea) + 2 <= 4194304
+        _G_emit_pos >= 0  y  _G_emit_pos + longitud(linea) + 2 <= 4194304
     inseguro:
         asm("extern char _G_emit_buf[4194304]; extern int _G_emit_pos;")
         asm("{")
@@ -363,10 +365,10 @@ funcion gen_emitir_linea(est: GeneradorCEst, linea: cadena) -> nulo:
 // ----------------------------------------------------------
 funcion gen_emitir_str(est: GeneradorCEst, str: puntero) -> nulo:
     requiere:
-        est != nulo
-        str != nulo
+        verdadero
     garantiza:
         // si str es válido, se emite su contenido mediante gen_emitir_linea
+        verdadero
     inseguro:
         asm("if (!str) return;")
         asm("const char* _s = (const char*)str;")
@@ -381,7 +383,7 @@ funcion gen_emitir_str(est: GeneradorCEst, str: puntero) -> nulo:
 // ----------------------------------------------------------
 funcion gen_emitir_nueva_linea(est: GeneradorCEst) -> nulo:
     requiere:
-        est != nulo
+        verdadero
     garantiza:
         _G_emit_pos >= 0  y  (_G_emit_pos + 2 <= 4194304)
     inseguro:

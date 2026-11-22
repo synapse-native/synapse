@@ -1,0 +1,17 @@
+{
+ "cambio_hash": "dba5a0f898edb9e9",
+ "expediente": "docs/alineacion/r274_bootstrap_contracts.md",
+ "fecha": "2026-11-22",
+ "archivos": [
+  "nucleo/analizador_semantico.syn",
+  "nucleo/generador/emision_c.syn",
+  "nucleo/generator.syn",
+  "nucleo/principal.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_r274_observability_asm.py": true,
+  "tests/integration/test_contracts.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}
