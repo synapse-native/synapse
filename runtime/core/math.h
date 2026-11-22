@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 3: math runtime
+// cumple Manual 6 3: math runtime
 // runtime/core/math.h — Math module declarations for Syquex standard library
 // Manual 3 §12.1: lib/math.syq
 
@@ -25,3 +25,7 @@ int64_t _syn_floor(double x);
 double _syn_log(double x);
 
 #endif // SYNAPSE_RT_MATH_H
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).

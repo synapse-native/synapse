@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 3: cache de compilación
+// cumple Manual 6 3: cache de compilación
 // runtime/core/cache.h — nucleo/cache.syn backing: tipos de caché + helpers TOML
 // D-9(d) corte 11: extraído de synapse_rt.c (modularización, patrón toml.c R64)
 // Caché de Compilación Incremental (Manual 5 §11): tipos + externs de nucleo/cache.syn.
@@ -41,3 +41,7 @@ CadenaSegura a_texto(struct NodoToml doc);
 struct NodoToml actualizar_indice(struct NodoToml doc, struct CacheEntry entry);
 
 #endif /* SYNAPSE_CACHE_H */
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).

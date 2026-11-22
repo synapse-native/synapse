@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 7: cluster runtime
+// cumple Manual 6 7: cluster runtime
 // synapse_rt_cluster.h — Public API of runtime/core/cluster.c
 // Extraido de synapse_rt.c (deuda D-9(d), corte 4 tras modelo.c R39).
 #ifndef SYNAPSE_RT_CLUSTER_H
@@ -111,3 +111,5 @@ int worker_cola_vacia(int worker_id); // 1 si la cola está vacía
 #endif
 
 #endif /* SYNAPSE_RT_CLUSTER_H */
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).

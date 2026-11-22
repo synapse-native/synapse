@@ -1,4 +1,4 @@
-﻿// cumple Manual 1 5: backend WASM
+// cumple Manual 1 5: backend WASM
 // cumple Manual 8 4.2: target WASM
 // =============================================================================
 // synapse_wasm.h — WebAssembly WAT text emitter API (M12.1.2)
@@ -75,3 +75,7 @@ CadenaSegura WasmBuildCallProgram(CadenaSegura nombre_modulo,
     int a, int b);
 
 #endif /* SYNAPSE_WASM_H */
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 1 §6: encoding UTF-8 sin BOM verificado (ME r288).

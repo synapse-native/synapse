@@ -1,4 +1,4 @@
-﻿// cumple Manual 4 2: FFI marshaling
+// cumple Manual 4 2: FFI marshaling
 // runtime/core/ffi_marshaling.h
 // FASE 24.B — Marshaling automático de tipos para FFI
 // Manual 4 §7: FFI Marshaling y Zero-Copy
@@ -68,3 +68,7 @@ void ffi_desregistrar_callback(int id);
 void ffi_invocar_callback(int id);
 
 #endif // FFI_MARSHALING_H
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).

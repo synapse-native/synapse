@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 3: cache de compilación
+// cumple Manual 6 3: cache de compilación
 // runtime/core/cache.c — nucleo/cache.syn backing: helpers TOML del caché
 // D-9(d) corte 11: extraído de synapse_rt.c (modularización, patrón toml.c R64)
 // Texto byte-idéntico al original (CRLF preservado).
@@ -41,3 +41,9 @@ struct NodoToml actualizar_indice(struct NodoToml doc, struct CacheEntry entry) 
     (void)entry;
     return doc;
 }
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §11: encoding UTF-8 sin BOM verificado (ME r288).

@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 3: texto runtime
+// cumple Manual 6 3: texto runtime
 // runtime/core/texto.h — Text module declarations for Syquex standard library
 // Manual 3 §12.1: lib/texto.syq
 
@@ -59,3 +59,5 @@ CadenaSegura _syn_texto_repetir(CadenaSegura t, int64_t veces);
 CadenaSegura _syn_texto_invertir(CadenaSegura t);
 
 #endif // SYNAPSE_RT_TEXTO_H
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).

@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 3: string utils
+// cumple Manual 6 3: string utils
 // runtime/core/string_utils.h — NEW string utility declarations
 // Manual 8 §1.7: leer_bytes, escapar_json, a_texto
 
@@ -27,3 +27,7 @@ CadenaSegura _syn_strcpy(CadenaSegura texto);
 CadenaSegura _syn_strncpy(CadenaSegura texto, int64_t max_len);
 
 #endif // SYNAPSE_RT_STRING_UTILS_H
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).

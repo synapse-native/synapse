@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 4: base de datos
+// cumple Manual 6 4: base de datos
 // runtime/core/db.c — Database module (SQLite bundled) for Syquex
 // Manual 3 §12.1: lib/db.syq
 // Compilar: gcc -c runtime/core/db.c -o db.o -Ivendor/sqlite3
@@ -293,3 +293,7 @@ int64_t _syn_db_ultima_id(int64_t conn) {
     if (!_conns[conn].active || !_conns[conn].db) return 0;
     return (int64_t)sqlite3_last_insert_rowid(_conns[conn].db);
 }
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).

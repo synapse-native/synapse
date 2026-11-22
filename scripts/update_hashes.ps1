@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Actualiza hashes SHA256 en synapse.iss descargando archivos y calculando hashes.
 .DESCRIPTION

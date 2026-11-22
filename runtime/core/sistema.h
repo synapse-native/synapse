@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 §1: sistema runtime
+// cumple Manual 6 §1: sistema runtime
 // cumple Manual 5 §1: cabecera sin estado mutable compartido entre hilos
 // runtime/core/sistema.h — std.sistema: helpers de ruta/string
 // D-9(d) corte 11: extraído de synapse_rt.c (modularización, patrón toml.c R64)
@@ -29,3 +29,7 @@ CadenaSegura _syn_listar_directorio(CadenaSegura ruta);
 CadenaSegura _syn_capturar_comando(CadenaSegura cmd);
 
 #endif /* SYNAPSE_SISTEMA_H */
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).

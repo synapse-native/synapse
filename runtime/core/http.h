@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 2: HTTP runtime
+// cumple Manual 6 2: HTTP runtime
 // runtime/core/http.h — std.http: HTTP Server API (minimalista, síncrono)
 // D-9(d) corte 10: extraído de synapse_rt.c (texto byte-idéntico)
 // Manual 5 §6 (std.net, primitivas de socket sobre las que monta el servidor)
@@ -15,3 +15,7 @@ void _syn_http_cerrar_cliente(int fd_cliente);
 CadenaSegura _syn_http_respuesta_ok(int codigo, const char* tipo, const char* cuerpo, int lon);
 
 #endif /* SYNAPSE_HTTP_H */
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).

@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 3: tensor runtime
+// cumple Manual 6 3: tensor runtime
 // synapse_rt_tensor.h — Public API of runtime/core/tensor.c
 // Extraido de synapse_rt.c (deuda D-9(d), corte 2 tras io.c F3-1/F3-2).
 #ifndef SYNAPSE_RT_TENSOR_H
@@ -48,3 +48,7 @@ void libera(Tensor bloque);
 #endif
 
 #endif /* SYNAPSE_RT_TENSOR_H */
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).

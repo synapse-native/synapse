@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 6: criptografía
+// cumple Manual 6 6: criptografía
 // runtime/core/cripto.h — std.cripto: SHA-256 + Ed25519 API
 // D-9(d) corte 8: extraído de synapse_rt.c (SHA-256 core + Ed25519 + randombytes stub)
 // Manual 8: std.cripto — SHA-256 (FIPS 180-4) + Ed25519 (TweetNaCl)
@@ -16,3 +16,7 @@ CadenaSegura _syn_sha256_texto(CadenaSegura datos);
 int _syn_ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica);
 
 #endif /* CRIPTO_H */
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).

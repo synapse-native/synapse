@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 3: tensor runtime
+// cumple Manual 6 3: tensor runtime
 // synapse_rt_tensor.c — Tensor math + SIMD module for Synapse runtime
 // Extracted from synapse_rt.c (std.math, std.tensor, std.simd, std.mem).
 // Deuda D-9(d): segundo corte del monolito synapse_rt.c (patron io.c,
@@ -635,3 +635,7 @@ void libera(Tensor bloque) {
         pool_free(bloque.datos);
     }
 }
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).

@@ -1,4 +1,4 @@
-﻿// cumple Manual 1 5: backend LLVM
+// cumple Manual 1 5: backend LLVM
 // cumple Manual 8 4.2: target LLVM
 // =============================================================================
 // synapse_llvm.h — LLVM IR text emitter API (M12.1.1)
@@ -69,3 +69,7 @@ CadenaSegura BuildCallProgram(LLVMContext* ctx, CadenaSegura nombre_modulo,
     int valor);
 
 #endif /* SYNAPSE_LLVM_H */
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 1 §6: encoding UTF-8 sin BOM verificado (ME r288).

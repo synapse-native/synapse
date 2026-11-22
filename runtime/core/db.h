@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 4: base de datos
+// cumple Manual 6 4: base de datos
 // runtime/core/db.h — Database (SQLite) module declarations
 // Manual 3 §12.1: lib/db.syq
 
@@ -36,3 +36,7 @@ int64_t _syn_db_cambios_fila(int64_t conn);
 int64_t _syn_db_ultima_id(int64_t conn);
 
 #endif // SYNAPSE_RT_DB_H
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).

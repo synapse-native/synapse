@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 3: math runtime
+// cumple Manual 6 3: math runtime
 // runtime/core/math.c — Math module for Syquex standard library
 // Manual 3 §12.1: lib/math.syq — Matemáticas y estadísticas
 // Implements externs: _syn_potencia, _syn_sqrt, _syn_sen, _syn_cos,
@@ -62,3 +62,7 @@ int64_t _syn_floor(double x) {
 double _syn_log(double x) {
     return log(x);
 }
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).

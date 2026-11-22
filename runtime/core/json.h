@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 3: JSON parsing
+// cumple Manual 6 3: JSON parsing
 // runtime/core/json.h — std.json: Deterministic JSON Parser API
 // D-9(d) corte 7: extraído de synapse_rt.c (lines 72-461, byte-identical)
 // Manual 5 §7: std.json (Deserializador Determinista, arquitectura simdjson-style)
@@ -20,3 +20,7 @@ NodoJson _json_object_get(NodoJson nodo, CadenaSegura clave);
 CadenaSegura _json_a_texto(NodoJson nodo);
 
 #endif /* JSON_H */
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).

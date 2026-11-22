@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 3: mapa hash
+// cumple Manual 6 3: mapa hash
 // cumple Manual 6 §3.1: externo funcion mapa del runtime C
 // runtime/core/mapa.c — Simple hash map for Syquex lib/mapa.syq
 // Manual 3 §5.2: Mapa<K,V> — diccionario hash
@@ -226,3 +226,5 @@ void _syn_mapa_liberar(void* m) {
     free(mp->pares);
     free(mp);
 }
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).

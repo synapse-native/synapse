@@ -1,4 +1,4 @@
-﻿; synapse.iss — Instalador Maestro Modular para Windows (Inno Setup 6+)
+; synapse.iss — Instalador Maestro Modular para Windows (Inno Setup 6+)
 ; cumple Manual 9 §2.5: Configuración de Inno Setup (Windows)
 ; cumple Manual 9 §2.2: Estructura del instalador
 ; cumple Manual 9 §4.1: GitHub Releases (artefactos .exe + .sig + .sha256 + SBOM + SLSA L3)

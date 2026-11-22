@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 2: HTTP runtime
+// cumple Manual 6 2: HTTP runtime
 // runtime/core/http.c — std.http: HTTP Server (minimalista, síncrono, single-thread)
 // D-9(d) corte 10: extraído de synapse_rt.c (modularización, patrón toml.c R64)
 // Texto byte-idéntico al original (CRLF preservado).
@@ -110,3 +110,7 @@ CadenaSegura _syn_http_respuesta_ok(int codigo, const char* tipo, const char* cu
     buf[total] = '\0';
     return (CadenaSegura){ .longitud = total, .datos = buf };
 }
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).

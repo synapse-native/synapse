@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 9: fuzzing
+// cumple Manual 6 9: fuzzing
 // runtime/core/fuzz.h — Public API of runtime/core/fuzz.c
 // Extraido de synapse_rt.c (deuda D-9(d), corte 6 tras debug.c R41).
 // Fuzzing Distribuido Multi-Nodo (M10.4): coordinador/agentes, envio de
@@ -32,3 +32,7 @@ CadenaSegura fz_info(void);
 #endif
 
 #endif /* SYNAPSE_RT_FUZZ_H */
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).

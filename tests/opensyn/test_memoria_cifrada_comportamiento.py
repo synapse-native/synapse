@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """Comportamiento E2E de opensyn/memoria_persistente_cifrada.syn (r212).
 
 Compila un driver real con `python main.py`, lo ejecuta y verifica:

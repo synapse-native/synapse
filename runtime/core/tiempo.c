@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 §3: tiempo runtime (integracion con el runtime, Manual 6 §3)
+// cumple Manual 6 §3: tiempo runtime (integracion con el runtime, Manual 6 §3)
 // runtime/core/tiempo.c — Time module for Syquex standard library
 // Manual 3 §12.1: lib/tiempo.syq — Fechas y tiempos
 // Compilar: gcc -c runtime/core/tiempo.c -o tiempo.o
@@ -148,3 +148,7 @@ CadenaSegura _syn_tiempo_datetime_actual(void) {
 int64_t _syn_tiempo_diferencia_segundos(int64_t ts1, int64_t ts2) {
     return ts2 - ts1;
 }
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).

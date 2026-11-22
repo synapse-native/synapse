@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 2: web runtime
+// cumple Manual 6 2: web runtime
 // runtime/core/web.h — HTTP server module declarations
 // Manual 3 §12.1: lib/web.syq
 
@@ -34,3 +34,7 @@ void _syn_web_responder_html(int64_t peticion, CadenaSegura contenido);
 void _syn_web_responder_404(int64_t peticion);
 
 #endif // SYNAPSE_RT_WEB_H
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).

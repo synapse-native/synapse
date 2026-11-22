@@ -1,4 +1,4 @@
-﻿import pytest
+import pytest
 from compilador.lexer import Lexer
 from compilador.parser import Parser
 from compilador.analizador_semantico import AnalizadorSemantico

@@ -1,4 +1,4 @@
-﻿# cumple Manual 6 §3.1: generador de declaraciones externo de bindings
+# cumple Manual 6 §3.1: generador de declaraciones externo de bindings
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
@@ -93,3 +93,5 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).

@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 3: TOML parsing
+// cumple Manual 6 3: TOML parsing
 // runtime/core/toml.h — std.toml: Deterministic TOML Parser API
 // D-9(d) corte 9: extraído de synapse_rt.c (texto byte-idéntico)
 // Manual 5 §7: std.toml (deserializador TOML para configuracion Axon)
@@ -29,3 +29,7 @@ NodoToml _toml_object_get(NodoToml nodo, CadenaSegura clave);
 NodoToml _toml_parse(CadenaSegura entrada);
 
 #endif /* TOML_H */
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).

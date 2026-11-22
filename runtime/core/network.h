@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 2: network runtime
+// cumple Manual 6 2: network runtime
 // runtime/core/network.h — std.net: Socket helpers (TCP client)
 // D-9(d): extracted from synapse_rt.c (modularization)
 //
@@ -33,3 +33,7 @@ int _syn_enviar(int fd, const char* datos, int lon);
 int _syn_recibir(int fd, char* buf, int lon);
 
 #endif // SYNAPSE_NETWORK_H
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).

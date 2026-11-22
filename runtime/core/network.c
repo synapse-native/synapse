@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 2: network runtime
+// cumple Manual 6 2: network runtime
 // runtime/core/network.c — std.net: Socket helpers (TCP client)
 // D-9(d): extracted from synapse_rt.c (modularization, patrón tensor.c R39)
 // Texto byte-idéntico al original (CRLF preservado).
@@ -74,3 +74,7 @@ int _syn_cerrar_socket(int fd) {
     return close(fd);
 #endif
 }
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).

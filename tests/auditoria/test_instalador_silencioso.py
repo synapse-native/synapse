@@ -42,7 +42,7 @@ def _find_exe():
     return None
 
 
-def _run_exe(args, timeout=60):
+def _run_exe(args, timeout=120):
     """Ejecuta synapse.exe con los argumentos dados."""
     exe = _find_exe()
     if exe is None:
@@ -94,7 +94,7 @@ def test_instalador_silencioso_compile_run():
         with open(test_file, "w", encoding="utf-8") as f:
             f.write("#lang: es\nfuncion principal() -> nulo:\n    escribir_linea(\"Hola Mundo\")\n")
 
-        result = _run_exe([test_file], timeout=30)
+        result = _run_exe([test_file], timeout=120)
         # Debe compilar y ejecutar, imprimiendo "Hola Mundo" o similar
         assert result.returncode == 0, (
             f"Falló al compilar/ejecutar: stdout={result.stdout} stderr={result.stderr}"

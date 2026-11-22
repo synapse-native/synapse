@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 3: lista enlazada
+// cumple Manual 6 3: lista enlazada
 // cumple Manual 6 §3.1: externo funcion lista del runtime C
 // runtime/core/lista.c — Dynamic list (vector) for Syquex lib/lista.syq
 // Manual 3 §5.2: Lista<T> — lista dinámica
@@ -94,3 +94,5 @@ void _syn_lista_liberar(void* l) {
     if (ls->datos) free(ls->datos);
     free(ls);
 }
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).

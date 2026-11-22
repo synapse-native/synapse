@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 2: web runtime
+// cumple Manual 6 2: web runtime
 // runtime/core/web.c — HTTP server module for Syquex
 // Manual 3 §12.1: lib/web.syq
 // Servidor HTTP básico con winsock2 (Windows) / sockets (POSIX)
@@ -439,3 +439,7 @@ void _syn_web_responder_html(int64_t peticion, CadenaSegura contenido) {
 void _syn_web_responder_404(int64_t peticion) {
     _syn_web_responder(peticion, 404, (CadenaSegura){9, "Not Found"});
 }
+
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).

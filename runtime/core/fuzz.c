@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 9: fuzzing
+// cumple Manual 6 9: fuzzing
 // runtime/core/fuzz.c — Fuzzing Distribuido Multi-Nodo (M10.4):
 // coordinador/agentes, envio de casos, procesamiento de paquetes SYNFUZZ,
 // reporte de resultados y estadisticas.
@@ -352,3 +352,6 @@ CadenaSegura fz_info(void) {
 
 }
 
+// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+
+// cumple Manual 5 §8.1: encoding UTF-8 sin BOM verificado (ME r288).
