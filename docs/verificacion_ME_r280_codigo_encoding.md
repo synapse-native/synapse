@@ -7,8 +7,9 @@ cambios de semántica; gate repo-wide con ratchet de BOM.
 
 ## Requisitos
 
-- Manual 2 §1.2 — CUMPLE: `auditoria/verificar_encoding.py` audita 2307
-  archivos versionados y reporta `0 U+FFFD, 0 C1, 0 doble codificación, 0 BOM
+- Manual 2 §1.2 — CUMPLE: `auditoria/verificar_encoding.py` audita 2327
+  archivos versionados (2307 en el commit original `38ba6f9`; el delta son
+  los archivos nuevos del ME y el refinamiento `e43fc96`) y reporta `0 U+FFFD, 0 C1, 0 doble codificación, 0 BOM
   nuevos`; quedan 46 BOM históricos congelados en
   `auditoria/encoding_bom_baseline.txt` (H-R280-2) y 2 fixtures UTF-16 exentos
   (H-R280-3). Evidencia: `auditoria/verificar_encoding.py`,
