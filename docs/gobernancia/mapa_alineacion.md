@@ -77,6 +77,8 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "runtime/core/axon.h": ["Manual 2 §1.2"],
   "runtime/core/concurrency.c": ["Manual 5 §2.1", "Manual 2 §1.2"],
   "runtime/core/debug.c": ["Manual 2 §1.2"],
+  "runtime/core/debug.h": ["Manual 8 §3.4"],
+  "nucleo/principal.syn": ["Manual 8 §3.1", "Manual 8 §3.4", "Manual 8 §2.3", "Manual 2 §1.2"],
   "runtime/core/actualizador.c": ["Manual 9 §3.1", "Manual 9 §3.2"],
   "runtime/core/actualizador.h": ["Manual 9 §3.1", "Manual 9 §3.2"],
   "runtime/core/sistema.c": ["Manual 2 §9.1", "Manual 5 §1", "Manual 7 §7.3"],

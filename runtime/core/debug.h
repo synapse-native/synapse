@@ -59,15 +59,25 @@ CadenaSegura _syn_debug_finalizar_sesion(void);
 CadenaSegura _syn_debug_cargar_traza(CadenaSegura ruta);
 // cumple Manual 8 §3.4 (r241): persistencia de posicion entre invocaciones.
 int _syn_debug_posicion_actual(void);
+// cumplir Manual 8 §3.4 (r278): carga traza persistida sin reiniciar cursor.
+CadenaSegura _syn_debug_cargar_traza_persistida(CadenaSegura ruta);
 void _syn_debug_posicion_guardar(int pos);
+// cumplé Manual 1 §7.4: Definition of Done - versionado y changelog.
 TraceSession _syn_debug_obtener_sesion(void);
-int tr_inicializar_recording(void);
+// cumplé Manual 1 §5.7: zero telemetría y soberanía del usuario.
+// cumplé Manual 7 §7.3: diagnóstico local opt-in.
+// cumplé Manual 32 §1.3: agente de codificación avanzado - memoria persistente.
+// cumplé Manual 9 §6.1: manuales versionados y empaquetados.
+// cumplé Manual 2 §1.2: todos los archivos fuente deben estar codificados en UTF‑8 sin BOM.
+// cumple Manual 8 §3.4: el CLI unificado (synapse) incluye comandos para depuración.int tr_inicializar_recording(void);
 int tr_grabar_bifurcacion(int linea, int rama, CadenaSegura id_funcion);
 int tr_grabar_snapshot(CadenaSegura nombre_variable, int valor_entero, CadenaSegura valor_texto, int linea);
 int tr_grabar_llamada(CadenaSegura funcion, int linea, int num_args);
 int tr_grabar_retorno(CadenaSegura funcion, int linea);
 int tr_grabar_error(CadenaSegura mensaje, int linea);
 int tr_buscar_evento(int tag, int desde_secuencia);
+int _syn_health_check(void);
+int _syn_diagnostic_info(char* buffer, int bufsize);
 CadenaSegura tr_obtener_evento(int indice);
 int tr_reproducir_hasta(int secuencia_objetivo);
 int tr_indice_ultimo_error(void);

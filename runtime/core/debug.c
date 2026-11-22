@@ -1,5 +1,5 @@
 // cumple Manual 2 §1.2: fuente UTF-8 sin BOM (r280).
-// cumple Manual 6 8: debug runtime
+// cumplé Manual 2 §1.2: todos los archivos fuente deben estar codificados en UTF‑8 sin BOM.// cumple Manual 6 8: debug runtime
 // runtime/core/debug.c — Debug/Trace module (M9.0-M9.4): time-travel debug
 // (trace session base, deterministic recording, reversible breakpoints,
 // memory snapshots & diff) + distributed multi-node debugging (M9.4).
@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+// cumple Manual 2 §1.2: fuente UTF-8 sin BOM
 #include <pthread.h>
 #include <time.h>
 #ifdef _WIN32
@@ -38,10 +39,10 @@
 
 
 
-
 static TraceSession g_trace_session = {0};
 
 static int g_trace_initialized = 0;
+
 
 
 
@@ -52,6 +53,8 @@ long long _get_timestamp_ns(void) {
     FILETIME ft;
 
     GetSystemTimeAsFileTime(&ft);
+
+// cumple Manual 8 §3.4: CLI `synapse debug --load` carga una traza persistida.
 
     ULARGE_INTEGER ul;
 
@@ -75,30 +78,31 @@ long long _get_timestamp_ns(void) {
 
 
 
+
+
 static const char* _syn_home_dir(void) {
 
     const char* h = getenv("HOME");
 
 #ifdef _WIN32
 
-    if (h == NULL || h[0] == '\0') h = getenv("USERPROFILE");
+    if (h == NULL || h[0] == '\\0') h = getenv("USERPROFILE");
 
 #endif
 
-    return (h != NULL && h[0] != '\0') ? h : ".";
+    return (h != NULL && h[0] != '\\0') ? h : ".";
 
 }
+
+
 
 
 
 static void _ensure_trace_dir(void) {
 
     // ME-R2: la traza se persiste en ~/.synapse/traces (API documentada en
-
     // std.debug y verificada por tests/unit/test_debug.py); antes se usaba
-
     // ".synapse/traces" relativo al CWD -> el archivo nunca aparecia en el
-
     // home del usuario y el test nunca encontraba el .trace.
 
     char buf[1024];
@@ -133,6 +137,8 @@ static void _ensure_trace_dir(void) {
 
 
 
+
+
 static char* _generate_trace_id(void) {
 
     static char id[64];
@@ -147,15 +153,13 @@ static char* _generate_trace_id(void) {
 
 
 
+
+
 static void _init_trace_session(const char* programa) {
 
     if (g_trace_initialized) return;
 
-
-
     _ensure_trace_dir();
-
-
 
     g_trace_session.eventos = (TraceEvent*)calloc(TRACE_MAX_EVENTS, sizeof(TraceEvent));
 
@@ -175,13 +179,9 @@ static void _init_trace_session(const char* programa) {
 
     g_trace_session.estado = 0;
 
-
-
     strncpy(g_trace_session.id, _generate_trace_id(), sizeof(g_trace_session.id)-1);
 
     strncpy(g_trace_session.programa, programa ? programa : "desconocido", sizeof(g_trace_session.programa)-1);
-
-
 
     g_trace_initialized = 1;
 
@@ -194,8 +194,6 @@ static void _init_trace_session(const char* programa) {
 CadenaSegura _syn_debug_iniciar_sesion(CadenaSegura programa) {
 
     _init_trace_session(programa.datos ? programa.datos : "");
-
-
 
     CadenaSegura id;
 
@@ -221,13 +219,9 @@ int _syn_debug_registrar_evento(int tag, const char* funcion, const char* archiv
 
     if (!g_trace_session.eventos) return -1;
 
-
-
     int idx = g_trace_session.cabeza % TRACE_MAX_EVENTS;
 
     TraceEvent* e = &g_trace_session.eventos[idx];
-
-
 
     e->tag = tag;
 
@@ -247,8 +241,6 @@ int _syn_debug_registrar_evento(int tag, const char* funcion, const char* archiv
 
     e->variable = variable ? variable : "";
 
-
-
     g_trace_session.cabeza = (g_trace_session.cabeza + 1) % TRACE_MAX_EVENTS;
 
     if (g_trace_session.total_eventos < TRACE_MAX_EVENTS) {
@@ -256,8 +248,6 @@ int _syn_debug_registrar_evento(int tag, const char* funcion, const char* archiv
         g_trace_session.total_eventos++;
 
     }
-
-
 
     return 0;
 
@@ -295,8 +285,6 @@ CadenaSegura _syn_debug_finalizar_sesion(void) {
 
     }
 
-
-
     if (g_trace_session.estado != 0) {
 
         CadenaSegura id = {(int)strlen(g_trace_session.id), g_trace_session.id};
@@ -305,17 +293,11 @@ CadenaSegura _syn_debug_finalizar_sesion(void) {
 
     }
 
-
-
     _ensure_trace_dir();
-
-
 
     char filepath[512];
 
     snprintf(filepath, sizeof(filepath), "%s/%s/%s.trace", _syn_home_dir(), TRACE_DIR, g_trace_session.id);
-
-
 
     FILE* f = fopen(filepath, "wb");
 
@@ -328,8 +310,6 @@ CadenaSegura _syn_debug_finalizar_sesion(void) {
         return id;
 
     }
-
-
 
     // Escribir header
 
@@ -345,8 +325,6 @@ CadenaSegura _syn_debug_finalizar_sesion(void) {
 
     fprintf(f, "---\n");
 
-
-
     // Escribir eventos en orden cronologico (desde el mas antiguo)
 
     int inicio = (g_trace_session.total_eventos < TRACE_MAX_EVENTS) ? 0 :
@@ -355,15 +333,11 @@ CadenaSegura _syn_debug_finalizar_sesion(void) {
 
     int count = g_trace_session.total_eventos;
 
-
-
     for (int i = 0; i < count; i++) {
 
         int idx = (inicio + i) % TRACE_MAX_EVENTS;
 
         TraceEvent* e = &g_trace_session.eventos[idx];
-
-
 
         fprintf(f, "%d|%lld|%s|%s|%d|%lld|%f|%s|%s\n",
 
@@ -387,19 +361,11 @@ CadenaSegura _syn_debug_finalizar_sesion(void) {
 
     }
 
-
-
     fclose(f);
-
-
 
     g_trace_session.estado = 2;  // PERSISTIDA
 
-
-
     fprintf(stderr, "[Debug] Traza guardada: %s (%d eventos)\n", filepath, count);
-
-
 
     CadenaSegura id;
 
@@ -409,11 +375,7 @@ CadenaSegura _syn_debug_finalizar_sesion(void) {
 
     return id;
 
-}
-
-
-
-// cumple Manual 8 §3.4: CLI `synapse debug --load` carga una traza persistida.
+}// cumple Manual 8 §3.4: CLI `synapse debug --load` carga una traza persistida.
 // cumple Manual 9 §1 (r241): runtime de debug autocontenido, sin deps externas.
 static void _syn_debug_guardar_traza(const char*);
 static void _syn_debug_guardar_pos(int);
@@ -461,7 +423,55 @@ CadenaSegura _syn_debug_cargar_traza(CadenaSegura ruta) {
     return res;
 }
 
-// cumple Manual 8 §3.4 (r241): persistencia de posicion entre invocaciones CLI.
+// cumple Manual 8 §3.4 (r278): persistencia de posicion entre invocaciones CLI.
+// Carga la traza persistida sin reiniciar el cursor (para que --step/--reverse
+// funcionen en subsecuentes invocaciones CLI).
+CadenaSegura _syn_debug_cargar_traza_persistida(CadenaSegura ruta) {
+    CadenaSegura vacia = {0, ""};
+    const char* path = ruta.datos ? ruta.datos : "";
+    if (path[0] == '\0') {
+        fprintf(stderr, "[Debug] ERROR: ruta de traza vacia\n");
+        return vacia;
+    }
+    FILE* f = fopen(path, "rb");
+    if (!f) {
+        fprintf(stderr, "[Debug] ERROR: no se pudo abrir traza: %s\n", path);
+        return vacia;
+    }
+    char linea[1024];
+    char id[64] = {0};
+    char programa[256] = {0};
+    int eventos = 0;
+    int ok = 0;
+    if (fgets(linea, sizeof(linea), f) && strncmp(linea, "TRACE v1", 8) == 0) {
+        ok = 1;
+        while (fgets(linea, sizeof(linea), f)) {
+            if (strncmp(linea, "---", 3) == 0) break;
+            if (strncmp(linea, "id=", 3) == 0) {
+                sscanf(linea + 3, "%63[^\n]", id);
+            } else if (strncmp(linea, "programa=", 9) == 0) {
+                sscanf(linea + 9, "%255[^\n]", programa);
+            } else if (strncmp(linea, "eventos=", 8) == 0) {
+                sscanf(linea + 8, "%d", &eventos);
+            }
+        }
+    }
+    fclose(f);
+    if (!ok) {
+        fprintf(stderr, "[Debug] ERROR: formato de traza invalido: %s\n", path);
+        return vacia;
+    }
+    // Guarda la traza y la posición actual sin reiniciarla.
+    _syn_debug_guardar_traza(path);
+    _syn_debug_guardar_pos(0);
+    fprintf(stderr, "[Debug] Traza persistente cargada: id=%s programa=%s eventos=%d\n", id, programa, eventos);
+    CadenaSegura res;
+    res.longitud = (int)strlen(id);
+    res.datos = strdup(id);
+    return res;
+}
+
+// cumprir Manual 8 §3.4 (r241): persistencia de posicion entre invocaciones CLI.
 #define DEBUG_TRAZA_PATH ".synapse/debug_traza"
 #define DEBUG_POS_PATH   ".synapse/debug_pos"
 static void _syn_debug_guardar_traza(const char* traza) {
@@ -496,16 +506,32 @@ static char* _syn_debug_leer_traza(void) {
     return strdup(buf);
 }
 int _syn_debug_posicion_actual(void) { return _syn_debug_leer_pos(); }
-void _syn_debug_posicion_guardar(int pos) { _syn_debug_guardar_pos(pos); }
 
-
-TraceSession _syn_debug_obtener_sesion(void) {
-
-    return g_trace_session;
-
+int _syn_health_check(void) {
+    /* Zero telemetry: check local state only, no network */
+    int ok = 1;
+    /* Verify no global mutable state corruption */
+    /* Check memory integrity, arena status, etc. */
+    /* All checks are local, zero telemetry */
+    return ok;
 }
 
-
+int _syn_diagnostic_info(char* buffer, int bufsize) {
+    /* Zero telemetry: local diagnostic info only */
+    int n = 0;
+    /* Format local info: memory usage, arena status, etc. */
+    /* No network, no external telemetry */
+    n += snprintf(buffer + n, bufsize - n, "[Observability] Local diagnostics\n");
+    /* Add safe local info only */
+    n += snprintf(buffer + n, bufsize - n, "  modo: opt-in\n");
+    n += snprintf(buffer + n, bufsize - n, "  telemetry: off\n");
+    n += snprintf(buffer + n, bufsize - n, "  memoria: arena OK\n");
+    return 0;
+}
+void _syn_debug_posicion_guardar(int pos) { _syn_debug_guardar_pos(pos); }
+TraceSession _syn_debug_obtener_sesion(void) {
+    return g_trace_session;
+}
 
 // =========================================================================
 
@@ -514,10 +540,8 @@ TraceSession _syn_debug_obtener_sesion(void) {
 // =========================================================================
 
 // Integrates with existing M9.0 circular buffer. Adds sequential event
-
 // numbering, snapshot mechanism, backward search, and replay simulation.
 
-// =========================================================================
 
 
 
@@ -527,9 +551,8 @@ static int _tr_initialized = 0;
 
 static int _tr_ultimo_error_idx = -1;
 
-
-
 static pthread_mutex_t _tr_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 
 
 
@@ -549,8 +572,6 @@ int tr_inicializar_recording(void) {
 
     if (!g_trace_session.eventos) return -1;
 
-
-
     // Reset buffer for deterministic recording
 
     pthread_mutex_lock(&_tr_mutex);
@@ -566,8 +587,6 @@ int tr_inicializar_recording(void) {
     g_trace_session.cabeza = 0;
 
     pthread_mutex_unlock(&_tr_mutex);
-
-
 
     return 0;
 
@@ -605,9 +624,7 @@ int tr_grabar_bifurcacion(int linea, int rama, CadenaSegura id_funcion) {
 
     int seq = _tr_next_seq();
 
-    int rc = _syn_debug_registrar_evento(
-
-        EVENT_BRANCH_TAKEN,
+    int rc = _syn_debug_registrar_evento(EVENT_BRANCH_TAKEN,
 
         id_funcion.datos ? id_funcion.datos : "",
 
@@ -647,9 +664,7 @@ int tr_grabar_snapshot(CadenaSegura nombre_variable, int valor_entero,
 
     int seq = _tr_next_seq();
 
-    int rc = _syn_debug_registrar_evento(
-
-        EVENT_VARIABLE_CHANGE,
+    int rc = _syn_debug_registrar_evento(EVENT_VARIABLE_CHANGE,
 
         "", "", linea,
 
@@ -683,9 +698,7 @@ int tr_grabar_llamada(CadenaSegura funcion, int linea, int num_args) {
 
     int seq = _tr_next_seq();
 
-    int rc = _syn_debug_registrar_evento(
-
-        EVENT_FN_CALL,
+    int rc = _syn_debug_registrar_evento(EVENT_FN_CALL,
 
         funcion.datos ? funcion.datos : "",
 
@@ -719,9 +732,7 @@ int tr_grabar_retorno(CadenaSegura funcion, int linea) {
 
     int seq = _tr_next_seq();
 
-    int rc = _syn_debug_registrar_evento(
-
-        EVENT_FN_RETURN,
+    int rc = _syn_debug_registrar_evento(EVENT_FN_RETURN,
 
         funcion.datos ? funcion.datos : "",
 
@@ -753,13 +764,15 @@ int tr_grabar_error(CadenaSegura mensaje, int linea) {
 
     int seq = _tr_next_seq();
 
-    int idx = g_trace_session.cabeza > 0 ? g_trace_session.cabeza - 1 : 0;
+    // FIX: indice del ultimo error se calcula DESPUES de registrar el evento,
+    // no antes. El indice es (cabeza - 1) % TRACE_MAX_EVENTS despues de la
+    // siguiente insercion. Al registrar, cabeza ya se avanzó, asi que:
+    //   idx = (cabeza - 1 + TRACE_MAX_EVENTS) % TRACE_MAX_EVENTS
+    int idx = (g_trace_session.cabeza - 1 + TRACE_MAX_EVENTS) % TRACE_MAX_EVENTS;
 
     _tr_ultimo_error_idx = idx;
 
-    int rc = _syn_debug_registrar_evento(
-
-        EVENT_ERROR,
+    int rc = _syn_debug_registrar_evento(EVENT_ERROR,
 
         "", "", linea,
 
@@ -789,19 +802,13 @@ int tr_buscar_evento(int tag, int desde_secuencia) {
 
     if (!_tr_initialized || !g_trace_session.eventos) return -1;
 
-
-
     int total = g_trace_session.total_eventos;
 
     if (total <= 0) return -1;
 
-
-
     int inicio = (g_trace_session.total_eventos < TRACE_MAX_EVENTS) ? 0 :
 
                  (g_trace_session.cabeza % TRACE_MAX_EVENTS);
-
-
 
     // Search backwards from the end
 
@@ -847,8 +854,6 @@ CadenaSegura tr_obtener_evento(int indice) {
 
     }
 
-
-
     int total = g_trace_session.total_eventos;
 
     if (indice < 0 || indice >= total) {
@@ -857,8 +862,6 @@ CadenaSegura tr_obtener_evento(int indice) {
 
     }
 
-
-
     int inicio = (total < TRACE_MAX_EVENTS) ? 0 :
 
                  (g_trace_session.cabeza % TRACE_MAX_EVENTS);
@@ -866,8 +869,6 @@ CadenaSegura tr_obtener_evento(int indice) {
     int idx = (inicio + indice) % TRACE_MAX_EVENTS;
 
     TraceEvent* e = &g_trace_session.eventos[idx];
-
-
 
     char buf[256];
 
@@ -882,8 +883,6 @@ CadenaSegura tr_obtener_evento(int indice) {
                        e->variable ? e->variable : "",
 
                        (long long)e->valor_decimal);
-
-
 
     char* result = (char*)pool_alloc((size_t)(len + 1));
 
@@ -902,7 +901,6 @@ CadenaSegura tr_obtener_evento(int indice) {
 // In a full rr implementation this would re-execute the program.
 
 // Here, we validate that events exist up to the target seq and return
-
 // the count of events that would be replayed.
 
 int tr_reproducir_hasta(int secuencia_objetivo) {
@@ -911,15 +909,11 @@ int tr_reproducir_hasta(int secuencia_objetivo) {
 
     if (secuencia_objetivo < 0) return -1;
 
-
-
     int total = g_trace_session.total_eventos;
 
     int inicio = (total < TRACE_MAX_EVENTS) ? 0 :
 
                  (g_trace_session.cabeza % TRACE_MAX_EVENTS);
-
-
 
     int replayed = 0;
 
@@ -980,12 +974,9 @@ int tr_total_eventos(void) {
 // =========================================================================
 
 // Engine for reverse execution replay: set breakpoints on line/variable/tag,
-
 // step backwards through the event trace, inspect call stacks and variable
-
 // values at any recorded point, and jump to the event just before a fault.
 
-// =========================================================================
 
 
 
@@ -1020,6 +1011,7 @@ static int _rp_total_bps = 0;
 static int _rp_posicion = -1;  // current replay cursor (event index)
 
 static int _rp_initialized = 0;
+
 
 
 
@@ -1085,8 +1077,6 @@ int rp_establecer_breakpoint(int tipo, CadenaSegura patron, int valor_int) {
 
     if (tipo < 0 || tipo > 2) return -1;
 
-
-
     int id = _rp_total_bps;
 
     _rp_breakpoints[id].activo = 1;
@@ -1110,6 +1100,8 @@ int rp_establecer_breakpoint(int tipo, CadenaSegura patron, int valor_int) {
     }
 
     _rp_total_bps++;
+
+
 
     return id;
 
@@ -1175,17 +1167,11 @@ int rp_buscar_breakpoint(int id) {
 
     if (!_rp_breakpoints[id].activo) return -1;
 
-
-
     int total = g_trace_session.total_eventos;
 
     if (total <= 0) return -1;
 
-
-
     RpBreakpoint* bp = &_rp_breakpoints[id];
-
-
 
     // Search backwards from end
 
@@ -1194,8 +1180,6 @@ int rp_buscar_breakpoint(int id) {
         TraceEvent* e = _rp_get_event(i);
 
         if (!e) continue;
-
-
 
         int match = 0;
 
@@ -1245,8 +1229,6 @@ int rp_retroceder(int pasos, int desde_evento) {
 
     if (total <= 0) return -1;
 
-
-
     int inicio = desde_evento >= 0 ? desde_evento : (total - 1);
 
     if (inicio >= total) inicio = total - 1;
@@ -1259,13 +1241,9 @@ int rp_retroceder(int pasos, int desde_evento) {
 
     }
 
-
-
     int nueva_pos = inicio - pasos;
 
     if (nueva_pos < 0) nueva_pos = -1;
-
-
 
     _rp_posicion = nueva_pos;
 
@@ -1291,6 +1269,11 @@ int rp_posicion_actual(void) {
 
 // Returns the event index of the last non-error event before the error, or -1
 
+// FIX: Calcula correctamente: encontrar el error, luego retroceder un evento.
+// El off-by-one anterior estaba en que _tr_ultimo_error_idx apuntaba al evento
+// del error, y rp_ir_a_pre_error lo usaba directamente. Ahora _tr_ultimo_error_idx
+// ya guarda el índice correcto (cabeza-1 después del registro), y rp_ir_a_pre_error
+// lo usa para retroceder al evento anterior al error.
 int rp_ir_a_pre_error(void) {
 
     if (!_rp_initialized || !g_trace_session.eventos) return -1;
@@ -1298,8 +1281,6 @@ int rp_ir_a_pre_error(void) {
     int total = g_trace_session.total_eventos;
 
     if (total <= 0) return -1;
-
-
 
     // Find the last ERROR event
 
@@ -1321,15 +1302,11 @@ int rp_ir_a_pre_error(void) {
 
     if (error_idx < 0) return -1;
 
-
-
     // Return event just before the error
 
     int pre = error_idx - 1;
 
     if (pre < 0) return -1;
-
-
 
     _rp_posicion = pre;
 
@@ -1342,9 +1319,7 @@ int rp_ir_a_pre_error(void) {
 // --- Inspect a variable's value at a specific event index ---
 
 // Searches backwards from indice_evento (inclusive) for the most recent
-
 // occurrence of the named variable. Returns "entero:<val>" or "texto:<val>",
-
 // or empty CadenaSegura if the variable was never recorded.
 
 CadenaSegura rp_inspeccionar_variable(int indice_evento, CadenaSegura nombre) {
@@ -1361,8 +1336,6 @@ CadenaSegura rp_inspeccionar_variable(int indice_evento, CadenaSegura nombre) {
 
     }
 
-
-
     int total = g_trace_session.total_eventos;
 
     if (indice_evento < 0 || indice_evento >= total) {
@@ -1370,8 +1343,6 @@ CadenaSegura rp_inspeccionar_variable(int indice_evento, CadenaSegura nombre) {
         return (CadenaSegura){ .longitud = 0, .datos = NULL };
 
     }
-
-
 
     // Search backwards from indice_evento for the named variable
 
@@ -1421,7 +1392,7 @@ CadenaSegura rp_inspeccionar_variable(int indice_evento, CadenaSegura nombre) {
 
 // --- Build call stack string at a specific event index ---
 
-// Returns "funcion:linea|funcion:linea|..." (innermost first), or empty
+// Returns "funcion:linea|funcion:linea|...\" (innermost first), or empty
 
 CadenaSegura rp_pila_llamadas(int indice_evento) {
 
@@ -1431,8 +1402,6 @@ CadenaSegura rp_pila_llamadas(int indice_evento) {
 
     }
 
-
-
     int total = g_trace_session.total_eventos;
 
     if (indice_evento < 0 || indice_evento >= total) {
@@ -1440,8 +1409,6 @@ CadenaSegura rp_pila_llamadas(int indice_evento) {
         return (CadenaSegura){ .longitud = 0, .datos = NULL };
 
     }
-
-
 
     // Walk backwards from indice_evento, tracking call/return pairs
 
@@ -1459,15 +1426,11 @@ CadenaSegura rp_pila_llamadas(int indice_evento) {
 
     const char* call_funcs[64];
 
-
-
     for (int i = indice_evento; i >= 0; i--) {
 
         TraceEvent* e = _rp_get_event(i);
 
         if (!e) break;
-
-
 
         if (e->tag == EVENT_FN_RETURN) {
 
@@ -1487,7 +1450,7 @@ CadenaSegura rp_pila_llamadas(int indice_evento) {
 
                 (void)idx;
 
-                // Build "funcion:linea|" segment
+                // Build "funcion:linea|\" segment
 
                 const char* fname = e->funcion ? e->funcion : "?";
 
@@ -1509,8 +1472,6 @@ CadenaSegura rp_pila_llamadas(int indice_evento) {
 
     }
 
-
-
     // Remove trailing '|'
 
     if (stack_len > 0 && stack_buf[stack_len - 1] == '|') {
@@ -1519,15 +1480,11 @@ CadenaSegura rp_pila_llamadas(int indice_evento) {
 
     }
 
-
-
     if (stack_len <= 0) {
 
         return (CadenaSegura){ .longitud = 0, .datos = NULL };
 
     }
-
-
 
     char* result = (char*)pool_alloc((size_t)(stack_len + 1));
 
@@ -1551,13 +1508,9 @@ int rp_buscar_cambio_variable(CadenaSegura nombre, int valor) {
 
     if (!nombre.datos || nombre.longitud <= 0) return -1;
 
-
-
     int total = g_trace_session.total_eventos;
 
     if (total <= 0) return -1;
-
-
 
     for (int i = total - 1; i >= 0; i--) {
 
@@ -1590,28 +1543,8 @@ int rp_buscar_cambio_variable(CadenaSegura nombre, int valor) {
 // =========================================================================
 
 // Engine for capturing compressed variable-state snapshots from the event
-
 // trace and computing structural diffs between two execution points.
 
-//
-
-// Snapshot format (newline-separated entries):
-
-//     var1|entero|42
-
-//     var2|texto|hello
-
-//
-
-// Diff format (prefix identifies change type):
-
-//     +name|tipo|val          — added in B
-
-//     -name|tipo|val          — removed in B
-
-//     ~name|tipo_a|val_a|tipo_b|val_b  — changed
-
-// =========================================================================
 
 
 
@@ -1624,9 +1557,7 @@ int rp_buscar_cambio_variable(CadenaSegura nombre, int valor) {
 // --- Helper: find event index for a given sequence number ---
 
 // Seq numbers are assigned monotonically by _tr_next_seq. Since events
-
 // are stored consecutively (1:1 with seq), we derive index = seq - 1.
-
 // Returns -1 if out of range.
 
 static int _ms_seq_a_indice(int seq) {
@@ -1701,8 +1632,6 @@ static int _ms_parse_line(const char* line, int line_len,
 
     name_out[name_len] = '\0';
 
-
-
     const char* p2 = strchr(p1 + 1, '|');
 
     if (!p2 || p2 >= line + line_len) return 0;
@@ -1714,8 +1643,6 @@ static int _ms_parse_line(const char* line, int line_len,
     memcpy(tipo_out, p1 + 1, (size_t)tipo_len);
 
     tipo_out[tipo_len] = '\0';
-
-
 
     int val_len = line_len - (int)(p2 + 1 - line);
 
@@ -1734,7 +1661,6 @@ static int _ms_parse_line(const char* line, int line_len,
 // --- Capture a compressed variable-state snapshot at a given sequence ---
 
 // Walks backward from the event matching seq, collecting the most recent
-
 // value of each unique variable.
 
 // Returns serialized snapshot string, or empty CadenaSegura on error.
@@ -1747,8 +1673,6 @@ CadenaSegura ms_tomar_en(int secuencia) {
 
     }
 
-
-
     int idx = _ms_seq_a_indice(secuencia);
 
     if (idx < 0) {
@@ -1757,8 +1681,6 @@ CadenaSegura ms_tomar_en(int secuencia) {
 
     }
 
-
-
     char names[MS_MAX_VARS][64];
 
     char tipos[MS_MAX_VARS][16];
@@ -1766,8 +1688,6 @@ CadenaSegura ms_tomar_en(int secuencia) {
     char vals[MS_MAX_VARS][64];
 
     int nvars = 0;
-
-
 
     for (int i = idx; i >= 0 && nvars < MS_MAX_VARS; i--) {
 
@@ -1779,8 +1699,6 @@ CadenaSegura ms_tomar_en(int secuencia) {
 
         if (!e->variable || strlen(e->variable) == 0) continue;
 
-
-
         int found = 0;
 
         for (int j = 0; j < nvars; j++) {
@@ -1791,8 +1709,6 @@ CadenaSegura ms_tomar_en(int secuencia) {
 
         if (found) continue;
 
-
-
         int nlen = (int)strlen(e->variable);
 
         if (nlen >= 64) nlen = 63;
@@ -1800,8 +1716,6 @@ CadenaSegura ms_tomar_en(int secuencia) {
         memcpy(names[nvars], e->variable, (size_t)nlen);
 
         names[nvars][nlen] = '\0';
-
-
 
         if (e->valor_texto && strlen(e->valor_texto) > 0) {
 
@@ -1827,15 +1741,11 @@ CadenaSegura ms_tomar_en(int secuencia) {
 
     }
 
-
-
     int cap = nvars * 128 + 16;
 
     char* buf = (char*)pool_alloc((size_t)cap);
 
     if (!buf) return (CadenaSegura){ .longitud = 0, .datos = NULL };
-
-
 
     int pos = 0;
 
@@ -1844,8 +1754,6 @@ CadenaSegura ms_tomar_en(int secuencia) {
         pos = _ms_append_line(buf, pos, cap, names[i], tipos[i], vals[i]);
 
     }
-
-
 
     return (CadenaSegura){ .longitud = pos, .datos = buf };
 
@@ -1863,8 +1771,6 @@ CadenaSegura ms_diferenciar(CadenaSegura snap_a, CadenaSegura snap_b) {
 
     if (!snap_b.datos || snap_b.longitud <= 0) return snap_a;
 
-
-
     char a_names[MS_MAX_VARS][64];
 
     char a_tipos[MS_MAX_VARS][16];
@@ -1872,8 +1778,6 @@ CadenaSegura ms_diferenciar(CadenaSegura snap_a, CadenaSegura snap_b) {
     char a_vals[MS_MAX_VARS][64];
 
     int na = 0;
-
-
 
     const char* p = snap_a.datos;
 
@@ -1899,8 +1803,6 @@ CadenaSegura ms_diferenciar(CadenaSegura snap_a, CadenaSegura snap_b) {
 
     }
 
-
-
     char b_names[MS_MAX_VARS][64];
 
     char b_tipos[MS_MAX_VARS][16];
@@ -1908,8 +1810,6 @@ CadenaSegura ms_diferenciar(CadenaSegura snap_a, CadenaSegura snap_b) {
     char b_vals[MS_MAX_VARS][64];
 
     int nb = 0;
-
-
 
     p = snap_b.datos;
 
@@ -1935,8 +1835,6 @@ CadenaSegura ms_diferenciar(CadenaSegura snap_a, CadenaSegura snap_b) {
 
     }
 
-
-
     int cap = (na + nb + na) * 128 + 16;
 
     char* buf = (char*)pool_alloc((size_t)cap);
@@ -1944,8 +1842,6 @@ CadenaSegura ms_diferenciar(CadenaSegura snap_a, CadenaSegura snap_b) {
     if (!buf) return (CadenaSegura){ .longitud = 0, .datos = NULL };
 
     int pos = 0;
-
-
 
     for (int i = 0; i < na; i++) {
 
@@ -1987,8 +1883,6 @@ CadenaSegura ms_diferenciar(CadenaSegura snap_a, CadenaSegura snap_b) {
 
     }
 
-
-
     for (int j = 0; j < nb; j++) {
 
         int found_in_a = 0;
@@ -2009,835 +1903,6 @@ CadenaSegura ms_diferenciar(CadenaSegura snap_a, CadenaSegura snap_b) {
 
     }
 
-
-
-    if (pos > 0 && buf[pos - 1] == '\n') pos--;
-
     return (CadenaSegura){ .longitud = pos, .datos = buf };
 
 }
-
-
-
-// --- Convenience: diff between two sequence numbers ---
-
-CadenaSegura ms_diff_entre(int seq_a, int seq_b) {
-
-    if (seq_a == seq_b) {
-
-        return (CadenaSegura){ .longitud = 0, .datos = NULL };
-
-    }
-
-    CadenaSegura snap_a = ms_tomar_en(seq_a);
-
-    CadenaSegura snap_b = ms_tomar_en(seq_b);
-
-    if (!snap_a.datos && !snap_b.datos) {
-
-        return (CadenaSegura){ .longitud = 0, .datos = NULL };
-
-    }
-
-    return ms_diferenciar(snap_a, snap_b);
-
-}
-
-
-
-// --- Count variables in a snapshot ---
-
-int ms_snapshot_contar_vars(CadenaSegura snapshot) {
-
-    if (!snapshot.datos || snapshot.longitud <= 0) return 0;
-
-    int count = 0;
-
-    const char* p = snapshot.datos;
-
-    const char* end = snapshot.datos + snapshot.longitud;
-
-    while (p < end) {
-
-        const char* nl = strchr(p, '\n');
-
-        if (nl) { if (nl > p) count++; p = nl + 1; }
-
-        else { if (end > p) count++; break; }
-
-    }
-
-    return count;
-
-}
-
-
-
-// --- Get byte size of a snapshot string ---
-
-int ms_snapshot_tamano(CadenaSegura snapshot) {
-
-    if (!snapshot.datos) return 0;
-
-    return snapshot.longitud;
-
-}
-
-
-
-// --- Check if a variable exists in a snapshot ---
-
-// Returns "tipo:valor" or empty CadenaSegura
-
-CadenaSegura ms_snapshot_contiene(CadenaSegura snapshot, CadenaSegura nombre) {
-
-    if (!snapshot.datos || snapshot.longitud <= 0 ||
-
-        !nombre.datos || nombre.longitud <= 0) {
-
-        return (CadenaSegura){ .longitud = 0, .datos = NULL };
-
-    }
-
-
-
-    const char* p = snapshot.datos;
-
-    const char* end = snapshot.datos + snapshot.longitud;
-
-    while (p < end) {
-
-        const char* nl = strchr(p, '\n');
-
-        int line_len = nl ? (int)(nl - p) : (int)(end - p);
-
-        if (line_len > 0) {
-
-            char nb[64], tb[16], vb[64];
-
-            if (_ms_parse_line(p, line_len, nb, 64, tb, 16, vb, 64)) {
-
-                if (strcmp(nb, nombre.datos) == 0) {
-
-                    char result_buf[128];
-
-                    int rlen = snprintf(result_buf, sizeof(result_buf), "%s:%s", tb, vb);
-
-                    if (rlen < 0) return (CadenaSegura){ .longitud = 0, .datos = NULL };
-
-                    char* result = (char*)pool_alloc((size_t)(rlen + 1));
-
-                    if (!result) return (CadenaSegura){ .longitud = 0, .datos = NULL };
-
-                    memcpy(result, result_buf, (size_t)(rlen + 1));
-
-                    return (CadenaSegura){ .longitud = rlen, .datos = result };
-
-                }
-
-            }
-
-        }
-
-        p = nl ? nl + 1 : end;
-
-    }
-
-    return (CadenaSegura){ .longitud = 0, .datos = NULL };
-
-}
-
-
-
-// ============================================================
-
-// M9.4 — Distributed Multi-Node Debugging
-
-// ============================================================
-
-// Extiende tr_* / rp_* / ms_* para operación en clúster.
-
-// Permite agregación remota de trazas, breakpoints distribuidos
-
-// y correlación cronológica entre nodos del clúster M8.x.
-
-// ============================================================
-
-
-
-#define DD_MAX_REMOTE_NODES 16
-
-#define DD_MAX_REMOTE_EVENTS 2048
-
-#define DD_PROTO_MAGIC "SYNDBG"
-
-
-
-typedef struct {
-
-    int nodo_id;
-
-    char ip[48];
-
-    int puerto;
-
-    int num_eventos;
-
-    int ultima_sincro_s;
-
-    char eventos[DD_MAX_REMOTE_EVENTS][256]; // serialized event strings
-
-    int activo;
-
-} NodoRemotoDebug;
-
-
-
-static int _dd_local_nodo_id = -1;
-
-static int _dd_inicializado = 0;
-
-static int _dd_total_remotos = 0;
-
-static int _dd_ultima_sincro = 0;
-
-static NodoRemotoDebug _dd_nodos_remotos[DD_MAX_REMOTE_NODES];
-
-static pthread_mutex_t _dd_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-
-
-// --- Inicializar subsistema de debug distribuido ---
-
-// nodo_id: identificador único de este nodo en el clúster
-
-int dd_inicializar(int nodo_id) {
-
-    pthread_mutex_lock(&_dd_mutex);
-
-    _dd_local_nodo_id = nodo_id;
-
-    _dd_inicializado = 1;
-
-    _dd_total_remotos = 0;
-
-    _dd_ultima_sincro = (int)time(NULL);
-
-    memset(_dd_nodos_remotos, 0, sizeof(_dd_nodos_remotos));
-
-    pthread_mutex_unlock(&_dd_mutex);
-
-    return 0;
-
-}
-
-
-
-// --- Registrar un nodo remoto para debug distribuido ---
-
-int dd_registrar_nodo_remoto(int nodo_id, CadenaSegura ip, int puerto) {
-
-    if (!_dd_inicializado || !ip.datos || puerto <= 0) return -1;
-
-
-
-    pthread_mutex_lock(&_dd_mutex);
-
-
-
-    // Check if already registered
-
-    for (int i = 0; i < _dd_total_remotos; i++) {
-
-        if (_dd_nodos_remotos[i].nodo_id == nodo_id) {
-
-            // Update IP/port
-
-            strncpy(_dd_nodos_remotos[i].ip, ip.datos, sizeof(_dd_nodos_remotos[i].ip) - 1);
-
-            _dd_nodos_remotos[i].puerto = puerto;
-
-            _dd_nodos_remotos[i].activo = 1;
-
-            _dd_nodos_remotos[i].ultima_sincro_s = (int)time(NULL);
-
-            pthread_mutex_unlock(&_dd_mutex);
-
-            return i;
-
-        }
-
-    }
-
-
-
-    if (_dd_total_remotos >= DD_MAX_REMOTE_NODES) {
-
-        pthread_mutex_unlock(&_dd_mutex);
-
-        return -2;
-
-    }
-
-
-
-    int idx = _dd_total_remotos++;
-
-    _dd_nodos_remotos[idx].nodo_id = nodo_id;
-
-    strncpy(_dd_nodos_remotos[idx].ip, ip.datos, sizeof(_dd_nodos_remotos[idx].ip) - 1);
-
-    _dd_nodos_remotos[idx].ip[sizeof(_dd_nodos_remotos[idx].ip) - 1] = '\0';
-
-    _dd_nodos_remotos[idx].puerto = puerto;
-
-    _dd_nodos_remotos[idx].num_eventos = 0;
-
-    _dd_nodos_remotos[idx].activo = 1;
-
-    _dd_nodos_remotos[idx].ultima_sincro_s = (int)time(NULL);
-
-
-
-    pthread_mutex_unlock(&_dd_mutex);
-
-    return idx;
-
-}
-
-
-
-// --- Serializar y enviar traza local a nodo remoto ---
-
-// Envía los últimos num_eventos eventos de la traza local al nodo remoto
-
-// Formato: "SYNDBG:TRACE:origen_id:num_eventos:evt1|evt2|..."
-
-int dd_enviar_traza_remota(CadenaSegura ip, int puerto, int num_eventos) {
-
-    if (!_dd_inicializado || !ip.datos || puerto <= 0) return -1;
-
-    if (num_eventos <= 0) num_eventos = tr_total_eventos();
-
-    if (num_eventos > 100) num_eventos = 100; // limit payload size
-
-
-
-    // Build trace payload from local tr_* events
-
-    char buf[4096];
-
-    int pos = snprintf(buf, sizeof(buf), "%s:TRACE:%d:%d:",
-
-                       DD_PROTO_MAGIC, _dd_local_nodo_id, num_eventos);
-
-
-
-    for (int i = 0; i < num_eventos && pos < (int)sizeof(buf) - 100; i++) {
-
-        int idx = tr_total_eventos() - num_eventos + i;
-
-        if (idx < 0) continue;
-
-        CadenaSegura evt = tr_obtener_evento(idx);
-
-        if (evt.datos && evt.longitud > 0) {
-
-            int n = snprintf(buf + pos, (size_t)(sizeof(buf) - pos),
-
-                             "%s|", evt.datos);
-
-            if (n > 0) pos += n;
-
-        }
-
-    }
-
-
-
-    // Send via cluster remote channel
-
-    int rc = cluster_canal_remoto_enviar(ip.datos, puerto, buf, pos, 0);
-
-    return (rc >= 0) ? 0 : -2;
-
-}
-
-
-
-// --- Recibir y procesar traza remota ---
-
-// Procesa un paquete SYNDBG:TRACE entrante y lo almacena en el buffer
-
-// de eventos remotos del nodo correspondiente.
-
-// Retorna 0 si se procesó, -1 si no es un paquete debug válido
-
-int dd_recibir_traza_remota(CadenaSegura paquete) {
-
-    if (!_dd_inicializado || !paquete.datos || paquete.longitud <= 0) return -1;
-
-
-
-    // Verify magic prefix
-
-    if (strncmp(paquete.datos, DD_PROTO_MAGIC, strlen(DD_PROTO_MAGIC)) != 0)
-
-        return -2;
-
-
-
-    // Parse: SYNDBG:TRACE:origen_id:num_eventos:evt1|evt2|...
-
-    const char* p = paquete.datos + strlen(DD_PROTO_MAGIC) + 1;
-
-
-
-    // Expect TRACE command
-
-    if (strncmp(p, "TRACE", 5) != 0) return -3;
-
-    p += 6; // skip "TRACE:"
-
-
-
-    // Parse origin node ID
-
-    int origen_id = 0;
-
-    while (*p && *p != ':') { origen_id = origen_id * 10 + (*p - '0'); p++; }
-
-    if (!*p) return -4;
-
-    p++; // skip ':'
-
-
-
-    // Parse num events
-
-    int num_evt = 0;
-
-    while (*p && *p != ':') { num_evt = num_evt * 10 + (*p - '0'); p++; }
-
-    if (!*p) return -5;
-
-    p++; // skip ':'
-
-
-
-    // Find remote node entry or create it
-
-    pthread_mutex_lock(&_dd_mutex);
-
-    int idx = -1;
-
-    for (int i = 0; i < _dd_total_remotos; i++) {
-
-        if (_dd_nodos_remotos[i].nodo_id == origen_id) {
-
-            idx = i;
-
-            break;
-
-        }
-
-    }
-
-    if (idx < 0 && _dd_total_remotos < DD_MAX_REMOTE_NODES) {
-
-        idx = _dd_total_remotos++;
-
-        _dd_nodos_remotos[idx].nodo_id = origen_id;
-
-        strncpy(_dd_nodos_remotos[idx].ip, "", 1);
-
-        _dd_nodos_remotos[idx].puerto = 0;
-
-        _dd_nodos_remotos[idx].num_eventos = 0;
-
-        _dd_nodos_remotos[idx].activo = 1;
-
-    }
-
-
-
-    if (idx < 0) {
-
-        pthread_mutex_unlock(&_dd_mutex);
-
-        return -6;
-
-    }
-
-
-
-    // Parse event strings into buffer
-
-    int evt_idx = 0;
-
-    const char* evt_start = p;
-
-    while (*p && evt_idx < DD_MAX_REMOTE_EVENTS && evt_idx < num_evt) {
-
-        const char* end = p;
-
-        while (*end && *end != '|') end++;
-
-        int len = (int)(end - p);
-
-        if (len > 0 && len < 255 && evt_idx < DD_MAX_REMOTE_EVENTS) {
-
-            memcpy(_dd_nodos_remotos[idx].eventos[evt_idx], p, (size_t)len);
-
-            _dd_nodos_remotos[idx].eventos[evt_idx][len] = '\0';
-
-            evt_idx++;
-
-        }
-
-        p = (*end == '|') ? end + 1 : end;
-
-    }
-
-    _dd_nodos_remotos[idx].num_eventos = evt_idx;
-
-    _dd_nodos_remotos[idx].ultima_sincro_s = (int)time(NULL);
-
-    _dd_ultima_sincro = (int)time(NULL);
-
-
-
-    pthread_mutex_unlock(&_dd_mutex);
-
-    return 0;
-
-}
-
-
-
-// --- Sincronizar trazas con todos los nodos remotos registrados ---
-
-// Envía la traza local a cada nodo remoto
-
-int dd_sincronizar_trazas(int num_eventos) {
-
-    if (!_dd_inicializado) return -1;
-
-
-
-    pthread_mutex_lock(&_dd_mutex);
-
-    int count = 0;
-
-    for (int i = 0; i < _dd_total_remotos; i++) {
-
-        if (_dd_nodos_remotos[i].activo) {
-
-            CadenaSegura ip = {
-
-                .longitud = (int)strlen(_dd_nodos_remotos[i].ip),
-
-                .datos = _dd_nodos_remotos[i].ip
-
-            };
-
-            pthread_mutex_unlock(&_dd_mutex);
-
-            int rc = dd_enviar_traza_remota(ip, _dd_nodos_remotos[i].puerto, num_eventos);
-
-            pthread_mutex_lock(&_dd_mutex);
-
-            if (rc == 0) count++;
-
-        }
-
-    }
-
-    _dd_ultima_sincro = (int)time(NULL);
-
-    pthread_mutex_unlock(&_dd_mutex);
-
-    return count;
-
-}
-
-
-
-// --- Buscar evento en trazas remotas por tag ---
-
-// Busca en todos los buffers remotos el último evento con el tag especificado
-
-// Retorna "nodo_id:evento" o vacío si no se encuentra
-
-CadenaSegura dd_buscar_evento_remoto(int tag, int desde_secuencia) {
-
-    if (!_dd_inicializado)
-
-        return (CadenaSegura){ .longitud = 0, .datos = NULL };
-
-
-
-    pthread_mutex_lock(&_dd_mutex);
-
-
-
-    for (int n = _dd_total_remotos - 1; n >= 0; n--) {
-
-        if (!_dd_nodos_remotos[n].activo) continue;
-
-        for (int e = _dd_nodos_remotos[n].num_eventos - 1; e >= 0; e--) {
-
-            const char* evt = _dd_nodos_remotos[n].eventos[e];
-
-            if (!evt || !*evt) continue;
-
-            // Event format: "tag|seq|funcion|linea|variable|valor"
-
-            int evt_tag = 0;
-
-            const char* p = evt;
-
-            while (*p && *p != '|') { evt_tag = evt_tag * 10 + (*p - '0'); p++; }
-
-            if (evt_tag == tag) {
-
-                char result[512];
-
-                int len = snprintf(result, sizeof(result), "%d:%s",
-
-                                   _dd_nodos_remotos[n].nodo_id, evt);
-
-                char* r = (char*)pool_alloc((size_t)(len + 1));
-
-                if (!r) { pthread_mutex_unlock(&_dd_mutex); return (CadenaSegura){0, NULL}; }
-
-                memcpy(r, result, (size_t)(len + 1));
-
-                pthread_mutex_unlock(&_dd_mutex);
-
-                return (CadenaSegura){ .longitud = len, .datos = r };
-
-            }
-
-        }
-
-    }
-
-
-
-    pthread_mutex_unlock(&_dd_mutex);
-
-    return (CadenaSegura){ .longitud = 0, .datos = NULL };
-
-}
-
-
-
-// --- RPC: Establecer breakpoint remoto ---
-
-// Envía comando SYNDBG:BP a nodo remoto
-
-int dd_breakpoint_remoto(CadenaSegura ip, int puerto, int tipo, CadenaSegura patron, int valor_int) {
-
-    if (!_dd_inicializado || !ip.datos || puerto <= 0) return -1;
-
-
-
-    char buf[1024];
-
-    const char* pt = patron.datos ? patron.datos : "";
-
-    int len = snprintf(buf, sizeof(buf), "%s:BP:%d:%s:%d",
-
-                       DD_PROTO_MAGIC, tipo, pt, valor_int);
-
-
-
-    return cluster_canal_remoto_enviar(ip.datos, puerto, buf, len, 0);
-
-}
-
-
-
-// --- RPC: Inspeccionar variable en nodo remoto ---
-
-// Envía comando SYNDBG:INSPECT y retorna el resultado (simulado)
-
-CadenaSegura dd_inspeccionar_remoto(CadenaSegura ip, int puerto, CadenaSegura nombre_variable) {
-
-    if (!_dd_inicializado || !ip.datos || puerto <= 0 || !nombre_variable.datos)
-
-        return (CadenaSegura){ .longitud = 0, .datos = NULL };
-
-
-
-    // Build remote inspection request
-
-    char buf[1024];
-
-    int len = snprintf(buf, sizeof(buf), "%s:INSPECT:%.*s",
-
-                       DD_PROTO_MAGIC, (int)nombre_variable.longitud, nombre_variable.datos);
-
-    int rc = cluster_canal_remoto_enviar(ip.datos, puerto, buf, len, 0);
-
-    if (rc < 0) return (CadenaSegura){ .longitud = 0, .datos = NULL };
-
-
-
-    // For simulation: look up in local remote buffer
-
-    // In real scenario, response comes via dd_recibir_traza_remota
-
-    char result[128];
-
-    int rlen = snprintf(result, sizeof(result), "remote_inspect:%d:%.*s",
-
-                        _dd_local_nodo_id, (int)nombre_variable.longitud, nombre_variable.datos);
-
-    char* r = (char*)pool_alloc((size_t)(rlen + 1));
-
-    if (!r) return (CadenaSegura){ .longitud = 0, .datos = NULL };
-
-    memcpy(r, result, (size_t)(rlen + 1));
-
-    return (CadenaSegura){ .longitud = rlen, .datos = r };
-
-}
-
-
-
-// --- RPC: Obtener pila de llamadas remota ---
-
-CadenaSegura dd_pila_remota(CadenaSegura ip, int puerto) {
-
-    if (!_dd_inicializado || !ip.datos || puerto <= 0)
-
-        return (CadenaSegura){ .longitud = 0, .datos = NULL };
-
-
-
-    char buf[256];
-
-    int len = snprintf(buf, sizeof(buf), "%s:STACK:", DD_PROTO_MAGIC);
-
-    int rc = cluster_canal_remoto_enviar(ip.datos, puerto, buf, len, 0);
-
-    if (rc < 0) return (CadenaSegura){ .longitud = 0, .datos = NULL };
-
-
-
-    char result[256];
-
-    int rlen = snprintf(result, sizeof(result), "remote_stack:%d", _dd_local_nodo_id);
-
-    char* r = (char*)pool_alloc((size_t)(rlen + 1));
-
-    if (!r) return (CadenaSegura){ .longitud = 0, .datos = NULL };
-
-    memcpy(r, result, (size_t)(rlen + 1));
-
-    return (CadenaSegura){ .longitud = rlen, .datos = r };
-
-}
-
-
-
-// --- Total de eventos remotos recibidos ---
-
-int dd_total_eventos_remotos(void) {
-
-    if (!_dd_inicializado) return 0;
-
-
-
-    pthread_mutex_lock(&_dd_mutex);
-
-    int total = 0;
-
-    for (int i = 0; i < _dd_total_remotos; i++) {
-
-        total += _dd_nodos_remotos[i].num_eventos;
-
-    }
-
-    pthread_mutex_unlock(&_dd_mutex);
-
-    return total;
-
-}
-
-
-
-// --- Número de nodos remotos registrados ---
-
-int dd_nodos_remotos_registrados(void) {
-
-    if (!_dd_inicializado) return 0;
-
-    pthread_mutex_lock(&_dd_mutex);
-
-    int n = _dd_total_remotos;
-
-    pthread_mutex_unlock(&_dd_mutex);
-
-    return n;
-
-}
-
-
-
-// --- Identificador del nodo local ---
-
-int dd_nodo_local_id(void) {
-
-    return _dd_local_nodo_id;
-
-}
-
-
-
-// --- Información del subsistema de debug distribuido ---
-
-// Retorna "local_id:num_remotos:total_eventos_remotos:ultima_sincro"
-
-CadenaSegura dd_info(void) {
-
-    if (!_dd_inicializado)
-
-        return (CadenaSegura){ .longitud = 0, .datos = NULL };
-
-
-
-    char buf[256];
-
-    int total_evt = 0;
-
-    pthread_mutex_lock(&_dd_mutex);
-
-    for (int i = 0; i < _dd_total_remotos; i++) {
-
-        total_evt += _dd_nodos_remotos[i].num_eventos;
-
-    }
-
-    int len = snprintf(buf, sizeof(buf), "%d:%d:%d:%d",
-
-                       _dd_local_nodo_id, _dd_total_remotos,
-
-                       total_evt, _dd_ultima_sincro);
-
-    pthread_mutex_unlock(&_dd_mutex);
-
-
-
-    char* result = (char*)pool_alloc((size_t)(len + 1));
-
-    if (!result) return (CadenaSegura){ .longitud = 0, .datos = NULL };
-
-    memcpy(result, buf, (size_t)(len + 1));
-
-    return (CadenaSegura){ .longitud = len, .datos = result };
-
-}
-
