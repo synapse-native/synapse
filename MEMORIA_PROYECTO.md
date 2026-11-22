@@ -1324,6 +1324,8 @@ Próximo paso:      ME R181 — harness GCC (H-R176-1): reparar el comando gcc d
 
 ### Deudas / Hallazgos críticos activos
 
+- **D-10 (RATIFICADO por el Arquitecto, 2026-11-22):** el barrido de BOM (commit 5c954a6) tocó 5 archivos de test. Se ratifica: 4 son solo BOM/espacios finales; `tests/auditoria/test_instalador_silencioso.py` sube presupuestos de timeout 30/60→120 s para acompañar r273. Ninguna aserción modificada. Sin deuda pendiente.
+
 - **H-CFG-4 (RESUELTO, 4697132 — ME reparacion_imports_ffi):** la resolución de imports
   fallaba (E-603) cuando el fuente vivía fuera de la raíz (probes en $TEMP, tests/):
   `importar opensyn` solo buscaba en dir_base. Cierre: resolvedor_axon.py añade

@@ -17,5 +17,6 @@
 - D-7 | CERRADA | A5 ABI entero→int64_t / decimal→double
 - D-8 | CERRADA | sin acción (por diseño, Manual 2 §2: cadenas multi-línea)
 - D-9 | CERRADA | R42: D-9(d) corte 6 CERRADA COMPLETA; (a) parser.syn CERRADA en R29; (b) lexer_keywords.syn CERRADA en R32; (c) emit_selfhost.py CERRADA en R33 (podado emitir_generar); (d) synapse_rt.c 7.882->1.769 L, runtime/core/ 20+ modulos; (e) NodoID/TokenID: tabla canonica unica runtime/core/ast_nodos.h (gen desde nucleo/parser_constantes.syn; generator.py emite #include; 9 archivos C/H migrados; tests cross-language 1:1; gen_ast_nodos_h.py --check en CI)
+- D-10 | CERRADA | RATIFICADO por el Arquitecto (2026-11-22): normalización de encoding en tests tocados por el barrido de BOM — 5 archivos; solo BOM (U+FEFF) y espacios finales, salvo `tests/auditoria/test_instalador_silencioso.py` donde los presupuestos de timeout suben 30/60→120 s para acompañar r273. Ninguna aserción modificada. Commits 5c954a6/ef858f2.
 - H12 | CERRADA | std/oraculo.syn sin duplicar generar_texto (2026-08-26, commit 1a4b4e1)
 - R3 | CERRADA | tests/unit/test_r3_param_adt.py + fixtures: S1/S2 compilan y ejecutan parámetros ADT instanciados (Resultado<entero,texto> -> Resultado_entero_texto)
