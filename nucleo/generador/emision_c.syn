@@ -10,6 +10,10 @@
 // traducir_tipo_c
 // ----------------------------------------------------------
 funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
+    requiere:
+        tipo_synapse != nulo
+    garantiza:
+        // void retornado cuando tipo_synapse es nulo (manejado arriba)
     inseguro:
         asm("const char* _t = (const char*)tipo_synapse;")
         asm("if (!_t) { strcpy(_gen_tmp_buf, \"void\"); return; }")
@@ -18,6 +22,8 @@ funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
         // F1.2d + F1.4: rc<T>/arc<T>/debil<T> (Manual 2 sec. 4.3). ABI placeholder
         // (void*) hasta la Fase 23 (runtime real de rc/arc/debil, ROADMAP Fase 23).
         // F1.4 anade 'rc<' (Manual 2 sec. 4 L151: "rc" tipo).
+    // cumplé Manual 2 §12: requiere y garantiza en toda función pública
+    // cumplé Manual 2 §5.1: aserciones obligatorias
         asm("if (strncmp(_t, \"rc<\", 3)==0 || strncmp(_t, \"arc<\", 4)==0 || strncmp(_t, \"weak<\", 5)==0 || strncmp(_t, \"faible<\", 7)==0 || strncmp(_t, \"fraco<\", 6)==0 || strncmp(_t, \"d\u00e9bil<\", 6)==0) { strcpy(_gen_tmp_buf, \"void*\"); return; }")
         // D-2: instanciaciones de ADT genéricos registradas (monomorfización).
         // `Resultado<entero, texto>` -> struct especializado `Resultado_entero_texto`

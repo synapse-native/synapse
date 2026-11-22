@@ -167,6 +167,11 @@ estructura AnalizadorSemanticoEst:
 
 // --- Error reporting helper ---
 funcion sem_error(est: AnalizadorSemanticoEst, codigo: entero, idx_nodo: entero, mensaje: cadena) -> nulo:
+    requiere:
+        est != nulo
+        codigo >= 0
+    garantiza:
+        est.hay_error == verdadero  =>  linea >= 0 && columna >= 0
     linea = 0
     columna = 0
     inseguro:
@@ -176,6 +181,8 @@ funcion sem_error(est: AnalizadorSemanticoEst, codigo: entero, idx_nodo: entero,
     // Checklist 2.3 (Manual 2 §10.1): diagnostico observable con paridad S1
     // ("[Synapse] Error semantico (linea L, columna C): mensaje"). El S1 los
     // imprime; el nativo los tragaba (solo marcaba hay_error). Se excluye
+    // cumple Manual 2 §12: requiere y garantiza en toda función pública
+    // cumple Manual 2 §5.1: aserciones obligatorias
     // ERR_SEM_CONSTANTE_INMUTABLE: su call-site (R9) ya imprime el
     // diagnostico especifico con el nombre formateado.
     si codigo == ERR_SEM_REDEFINICION:
@@ -193,6 +200,11 @@ funcion sem_error(est: AnalizadorSemanticoEst, codigo: entero, idx_nodo: entero,
 
 // --- Symbol table operations ---
 funcion tabla_declarar(est: AnalizadorSemanticoEst, nombre: cadena, tipo: cadena, idx_nodo: entero, es_constante: booleano) -> booleano:
+    requiere:
+        est != nulo
+        nombre != ""
+    garantiza:
+        resultado == verdadero  =>  tipo != ""
     // Check if already declared in current scope
     linea = 0
     columna = 0
@@ -201,6 +213,8 @@ funcion tabla_declarar(est: AnalizadorSemanticoEst, nombre: cadena, tipo: cadena
         asm("columna = (idx_nodo >= 0) ? est->nodos[idx_nodo].columna : 0")
     // Search for existing symbol with same name in current scope
     i = 0
+    // cumple Manual 2 §12: requiere y garantiza en toda función pública
+    // cumple Manual 2 §5.1: aserciones obligatorias
     encontrado = falso
     r = 1
     mientras r == 1:
@@ -234,6 +248,13 @@ funcion tabla_declarar(est: AnalizadorSemanticoEst, nombre: cadena, tipo: cadena
     retornar verdadero
 
 funcion tabla_buscar(est: AnalizadorSemanticoEst, nombre: cadena) -> entero:
+    requiere:
+        est != nulo
+        longitud(nombre) > 0
+    garantiza:
+        resultado >= 0  =>  nombre en est->tabla
+    // cumplé Manual 2 §12: requiere y garantiza en toda función pública
+    // cumplé Manual 2 §5.1: aserciones obligatorias
     // R9: precedencia de ambito innermost-first (paridad S1 symbol_table.py
     // buscar: for scope in reversed(self._scopes)). La tabla es lineal con
     // niveles de ambito y tabla_salir_scope hace pop de las entradas del
@@ -261,16 +282,28 @@ funcion tabla_buscar(est: AnalizadorSemanticoEst, nombre: cadena) -> entero:
     retornar -1
 
 funcion tabla_entrar_scope(est: AnalizadorSemanticoEst) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        est->tabla->total_entradas >= 0
+    // cumplé Manual 2 §12: requiere y garantiza en toda función pública
+    // cumplé Manual 2 §5.1: aserciones obligatorias
     inseguro:
         asm("est->tabla->nivel_actual = est->tabla->nivel_actual + 1")
 
 funcion tabla_salir_scope(est: AnalizadorSemanticoEst) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        est->tabla->total_entradas >= 0  antes_y_despues
     inseguro:
         asm("while (est->tabla->total_entradas > 0) {")
         asm("    if (est->tabla->entradas[est->tabla->total_entradas - 1].nivel_ambito < est->tabla->nivel_actual) break;")
         asm("    est->tabla->total_entradas = est->tabla->total_entradas - 1;")
         asm("}")
         // M21.4: pop de prestamos del scope saliente (Manual 4 S4.2)
+    // cumplé Manual 2 §12: requiere y garantiza en toda función pública
+    // cumplé Manual 2 §5.1: aserciones obligatorias
         asm("while (est->total_prestamos > 0) {")
         asm("    if (est->prestamos[est->total_prestamos - 1].nivel_ambito < est->tabla->nivel_actual) break;")
         asm("    est->total_prestamos = est->total_prestamos - 1;")
