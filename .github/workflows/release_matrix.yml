@@ -46,6 +46,25 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      # cumple Manual 9 §6.2 (r322): el C emitido usa dialecto GNU (nested
+      # functions, declaraciones implícitas) y el clang de macOS lo rechaza; el
+      # bootstrap del target exige un GCC real, tal como resuelve pipeline.py.
+      - name: Install GCC (darwin)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -e
+          if command -v gcc >/dev/null 2>&1 && ! gcc --version | grep -qi clang; then
+            GCC_REAL="$(command -v gcc)"
+          else
+            brew install gcc
+            GCC_REAL="$(ls -1 /opt/homebrew/bin/gcc-* /usr/local/bin/gcc-* 2>/dev/null | sort -V | tail -1)"
+          fi
+          test -n "$GCC_REAL"
+          test -x "$GCC_REAL"
+          "$GCC_REAL" --version | head -1
+          echo "SYNAPSE_GCC_PATH=$GCC_REAL" >> "$GITHUB_ENV"
+
       - name: Bootstrap compiler (critical path)
         run: python build.py
 

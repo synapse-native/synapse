@@ -86,6 +86,65 @@ def _resolver_toolchain_gcc() -> str:
     )
 
 
+def _resolver_gcc_darwin(env=None, which=None, run=None, glob_mod=None):
+    """
+    cumple Manual 9 §6.2: el C emitido usa dialecto GNU (nested functions,
+    declaraciones implícitas) y el clang de macOS lo rechaza; el bootstrap de
+    cada target exige un GCC real.
+
+    requiere: nada del entorno salvo los inyectables opcionales.
+    garantiza: devuelve la ruta del primer compilador C cuyo `--version` NO
+    mencione `clang`, o None si no hay ninguno. Prioridad: SYNAPSE_GCC_PATH,
+    `gcc-*` de Homebrew (versión descendente) y `gcc`/`cc` del PATH.
+    """
+    import glob as _glob
+    import re as _re
+
+    env = os.environ if env is None else env
+    which = shutil.which if which is None else which
+    glob_mod = _glob if glob_mod is None else glob_mod
+
+    def _valido(ruta):
+        if not ruta:
+            return False
+        p = which(ruta)
+        if not p:
+            if os.path.isabs(ruta) and os.path.isfile(ruta):
+                p = ruta
+            else:
+                return False
+        try:
+            if run is None:
+                salida = subprocess.run([p, '--version'], capture_output=True,
+                                        text=True, timeout=10).stdout
+            else:
+                salida = run(p) or ''
+        except Exception:
+            return False
+        return 'clang' not in salida.lower()
+
+    env_path = (env.get('SYNAPSE_GCC_PATH') or '').strip()
+    if env_path and _valido(env_path):
+        return which(env_path) or env_path
+
+    versionados = []
+    for dir_brew in ('/opt/homebrew/bin', '/usr/local/bin'):
+        versionados.extend(glob_mod.glob(os.path.join(dir_brew, 'gcc-*')))
+    versionados.sort(
+        key=lambda r: [int(n) for n in _re.findall(r'\d+', os.path.basename(r))] or [0],
+        reverse=True)
+
+    for ruta in versionados:
+        if _valido(ruta):
+            return ruta
+
+    for cmd in [f'gcc-{n}' for n in range(20, 10, -1)] + ['gcc', 'cc']:
+        if _valido(cmd):
+            return which(cmd) or cmd
+
+    return None
+
+
 def _soporta_sanitizers(compiler: str) -> bool:
     """Detecta si el toolchain puede LINKEAR -fsanitize (Manual 9 §6.1).
 
@@ -950,31 +1009,13 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
 
 
         if sys.platform == "darwin":
-            # ME-R2 (Causa C): el C generado usa extensiones GCC que clang rechaza;
-            # preferir gcc de Homebrew (gcc-14/13/12) como hace release_matrix.yml.
-            # NOTA post-revision: en macOS 'gcc'/'cc' del PATH pueden ser shims de
-            # clang; solo se aceptan si --version NO reporta clang.
-            compiler = "clang"
-            for g in ("/opt/homebrew/bin/gcc-14", "/opt/homebrew/bin/gcc-13", "/opt/homebrew/bin/gcc-12",
-                      "/usr/local/bin/gcc-14", "/usr/local/bin/gcc-13", "/usr/local/bin/gcc-12",
-                      "gcc-14", "gcc-13", "gcc-12"):
-                p = shutil.which(g)
-                if p:
-                    compiler = p
-                    break
+            # cumple Manual 9 §6.2 (r322): el C generado usa extensiones GCC que
+            # clang rechaza; se resuelve cualquier GCC real (r321 dejó el enlace
+            # limpio, pero el runner sin Homebrew caía a clang y fallaba aquí).
+            compiler = _resolver_gcc_darwin() or "clang"
             if compiler == "clang":
-                for g in ("gcc", "cc"):
-                    p = shutil.which(g)
-                    if not p:
-                        continue
-                    try:
-                        out = subprocess.run([p, "--version"], capture_output=True,
-                                             text=True, timeout=10).stdout
-                    except Exception:
-                        continue
-                    if "clang" not in out.lower():
-                        compiler = p
-                        break
+                print("[WARN] macOS sin GCC real: se usa clang; el C emitido usa "
+                      "extensiones GNU (nested functions) que clang rechaza")
             platform_flags = "-Wl,-dead_strip"
             thread_flag = "-lpthread"
         else:
