@@ -11,7 +11,11 @@
 #include <dxgi.h>
 #else
 #include <unistd.h>
+// cumple Manual 9 §5.7: deteccion de hardware via runtime (FFI).
+// cumple Manual 9 §6.2 (r317): sys/sysinfo.h existe solo en Linux.
+#if defined(__linux__)
 #include <sys/sysinfo.h>
+#endif
 #endif
 
 #ifdef _WIN32
@@ -91,7 +95,7 @@ int synapse_detectar_hardware(HwProfile* perfil) {
             perfil->vram_gb = (double)max_vram / (1024.0 * 1024.0 * 1024.0);
     }
 
-#else
+#elif defined(__linux__)
     struct sysinfo si;
     if (sysinfo(&si) == 0) {
         perfil->total_ram_gb = (double)si.totalram * si.mem_unit / (1024.0 * 1024.0 * 1024.0);
@@ -124,6 +128,17 @@ int synapse_detectar_hardware(HwProfile* perfil) {
             pclose(nv);
         }
     }
+#else
+    // cumple Manual 9 §6.2 (r317): macOS y otros POSIX sin sysinfo ni /proc.
+    long pages = sysconf(_SC_PHYS_PAGES);
+    long page_size = sysconf(_SC_PAGE_SIZE);
+    if (pages > 0 && page_size > 0) {
+        perfil->total_ram_gb = (double)pages * (double)page_size / (1024.0 * 1024.0 * 1024.0);
+    }
+    long cores = sysconf(_SC_NPROCESSORS_CONF);
+    perfil->cpu_logicos = (cores > 0) ? (int)cores : 1;
+    perfil->cpu_fisicos = (perfil->cpu_logicos + 1) / 2;
+    if (perfil->cpu_fisicos < 1) perfil->cpu_fisicos = 1;
 #endif
 
     if (perfil->cpu_fisicos < 1) perfil->cpu_fisicos = 1;

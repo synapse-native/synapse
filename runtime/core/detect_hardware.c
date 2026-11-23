@@ -9,8 +9,13 @@
 #include <windows.h>
 #else
 #include <unistd.h>
-#include <sys/sysinfo.h>
 #include <string.h>
+// cumple Manual 9 §5.7: deteccion de hardware via runtime (FFI).
+// cumple Manual 9 §6.2 (r317): sys/sysinfo.h es solo de Linux; macOS no lo
+// tiene y el bootstrap de la matriz fallaba al compilar este archivo.
+#if defined(__linux__)
+#include <sys/sysinfo.h>
+#endif
 #endif
 
 // Windows: GlobalMemoryStatusEx para RAM
@@ -43,11 +48,20 @@ int64_t _syn_memoria_libre(void) {
         return (int64_t)ms.ullAvailPhys;
     }
     return 0;
-#else
+#elif defined(__linux__)
     // Linux: memoria disponible de /proc/meminfo via sysinfo
     struct sysinfo si;
     if (sysinfo(&si) == 0) {
         return (int64_t)si.freeram * (int64_t)si.mem_unit;
+    }
+    return 0;
+#else
+    // cumple Manual 9 §6.2 (r317): macOS expone la memoria disponible por
+    // sysconf; si el kernel no lo soporta, 0 (no inventar dato).
+    long avail = sysconf(_SC_AVPHYS_PAGES);
+    long page_size = sysconf(_SC_PAGE_SIZE);
+    if (avail > 0 && page_size > 0) {
+        return (int64_t)avail * (int64_t)page_size;
     }
     return 0;
 #endif

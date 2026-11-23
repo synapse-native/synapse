@@ -44,6 +44,8 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "nucleo/generador/compilar.syn": ["Manual 9 §6.2"],
   "librerias/compiler/generator.c": ["Manual 9 §6.2"],
   "cli.py": ["Manual 9 §6.2"],
+  "runtime/core/detect_hardware.c": ["Manual 9 §5.7", "Manual 9 §6.2"],
+  "nucleo/detect_hardware.c": ["Manual 9 §5.7", "Manual 9 §6.2"],
   "nucleo/actualizador.syn": ["Manual 9 §3.1", "Manual 9 §3.2", "Manual 2 §5.1"],
   "nucleo/lexer.syn": ["Manual 2 §1.1", "Manual 2 §1.2", "Manual 2 §3", "Manual 8 §4.1"],
   "nucleo/analizador_semantico.syn": ["Manual 2 §4.2", "Manual 2 §8.1"],
