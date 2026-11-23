@@ -1106,13 +1106,11 @@ funcion ia_extraer_campo(json_txt: texto, clave: texto) -> texto:
 // FUNCIÓN PRINCIPAL — Bucle del LSP
 // ============================================================
 
-
 // ============================================================
 // Comparacion de texto
 // ============================================================
 
 // cumple Manual 8 §1.1: el LSP usa la unica definicion publica cmp_texto de std.texto.
-
 
 funcion principal() -> entero:
     let ejecutando = 1

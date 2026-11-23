@@ -8,6 +8,7 @@
 
 // cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas (ME formatter_fix R4: anclaje de norma vigente tras reformato)
 // cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
+// cumple Manual 2 §8.2 (ME r300_formatter_comentarios): reformato cosmético (espacios y coma) sin cambios en la emisión de código C del generador — la semántica de §8.2 se conserva byte a byte en el fuente generado.
 // vinculo ME formatter_fix R4 (Manual 1 §7.1, M8 §4.1): reformato cosmético del nucleo — estilo, sin cambios semánticos
 # cumple Manual 1 1: infraestructura del compilador Synapse
 # cumple Manual 8 4: toolchain de construcción
@@ -344,7 +345,7 @@ funcion gen_emitir_linea(est: GeneradorCEst, linea: cadena) -> nulo:
     requiere:
         verdadero
     garantiza:
-        _G_emit_pos >= 0  y  _G_emit_pos + longitud(linea) + 2 <= 4194304
+        _G_emit_pos >= 0 y _G_emit_pos + longitud(linea) + 2 <= 4194304
     inseguro:
         asm("extern char _G_emit_buf[4194304]; extern int _G_emit_pos;")
         asm("{")
@@ -385,7 +386,7 @@ funcion gen_emitir_nueva_linea(est: GeneradorCEst) -> nulo:
     requiere:
         verdadero
     garantiza:
-        _G_emit_pos >= 0  y  (_G_emit_pos + 2 <= 4194304)
+        _G_emit_pos >= 0 y (_G_emit_pos + 2 <= 4194304)
     inseguro:
         asm("extern char _G_emit_buf[4194304]; extern int _G_emit_pos;")
         asm("{")

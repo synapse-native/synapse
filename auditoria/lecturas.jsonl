@@ -978,3 +978,4 @@
 {"fecha": "2026-11-22", "archivos": ["synapse_llvm.c", "synapse_llvm.h", "synapse_wasm.c", "synapse_wasm.h"], "cita": "Manual 1 §6", "puntos": "hoja de ruta tecnica: backends LLVM y WASM del compilador"}
 {"fecha": "2026-11-22", "archivos": ["std/texto.syn"], "cita": "Manual 2 §12", "puntos": "Contratos requiere/garantiza obligatorios y prueba 100% pass; dedup sin redundancia"}
 {"fecha": "2026-11-22", "archivos": ["nucleo/cache.syn", "nucleo/formatter.syn"], "cita": "Manual 1 §7.4", "puntos": "Definition of Done: 100% tests sin regresiones; cero codigo muerto (limpieza de funciones sin referencias en cache/formatter)"}
+{"fecha": "2026-11-22", "archivos": ["nucleo/formatter.syn", "nucleo/generator.syn", "nucleo/lsp_v3.syn"], "cita": "Manual 8 §4.1", "puntos": "synapse fmt ejecuta el formateador nativo sobre el codigo fuente; se preserva la alineacion deliberada en comentarios (H-R299-1)"}

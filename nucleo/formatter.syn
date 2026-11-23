@@ -171,6 +171,10 @@ funcion formatear_linea(linea: texto) -> texto:
 // del aplanador) y protege los LITERALES DE CADENA: el contenido entre
 // comillas dobles (con escapes, M2 §2 cadena_literal) se copia VERBATIM —
 // colapsar "hola  mundo" a "hola mundo" alteraría el significado del programa.
+// cumple Manual 1 §7.4 (ME r300_formatter_comentarios): el COMENTARIO de línea
+// (`//` fuera de literal) se copia VERBATIM, junto con la sangría de alineación
+// que lo precede: la alineación deliberada dentro de comentarios (`//   1. paso`,
+// `x = 0     // nota`) es contenido del autor, no estilo colapsable (H-R299-1).
 funcion normalizar_espacios(linea: texto) -> texto:
     requiere:
         verdadero
@@ -204,9 +208,29 @@ funcion normalizar_espacios(linea: texto) -> texto:
                 _syn_texto_builder_anexar(acc, c)
                 i = i + 1
             sino si c == " ":
+                // ME r300_formatter_comentarios: si el hueco de espacios precede
+                // a un comentario, se conserva tal cual (alineación deliberada).
+                let inicio_hueco = i
                 mientras i < largo y subcadena(linea, i, 1) == " ":
                     i = i + 1
-                _syn_texto_builder_anexar(acc, " ")
+                si i + 1 < largo y subcadena(linea, i, 1) == "/" y subcadena(linea, i + 1, 1) == "/":
+                    let h = inicio_hueco
+                    mientras h < i:
+                        _syn_texto_builder_anexar(acc, " ")
+                        h = h + 1
+                sino:
+                    _syn_texto_builder_anexar(acc, " ")
+            sino si c == "/":
+                // ME r300_formatter_comentarios: comentario de línea VERBATIM
+                // (el texto del autor no se re-formatea; el fin de línea ya
+                // viene recortado por `recortar`).
+                si i + 1 < largo y subcadena(linea, i + 1, 1) == "/":
+                    mientras i < largo:
+                        _syn_texto_builder_anexar(acc, subcadena(linea, i, 1))
+                        i = i + 1
+                sino:
+                    _syn_texto_builder_anexar(acc, c)
+                    i = i + 1
             sino si c == ",":
                 // Un espacio tras coma SOLO si queda contenido despues: una
                 // coma al final de linea no debe ganar un espacio final
