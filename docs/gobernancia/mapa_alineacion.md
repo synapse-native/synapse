@@ -118,7 +118,7 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "compilador/generator/emit_expressions.py": ["Manual 2 §12", "Manual 6 §3.1", "Manual 5 §3.6"],
   "compilador/generator/emit_control.py": ["Manual 3 §3", "Manual 1 §6", "Manual 5 §3.6"],
   "compilador/generator/context.py": ["Manual 6 §3.1", "Manual 2 §4.1", "Manual 2 §4.2"],
-  "pipeline.py": ["Manual 1 §3.1"],
+  "pipeline.py": ["Manual 1 §3.1", "Manual 9 §6.2"],
   "compilador/resolvedor_axon.py": ["Manual 1 §3.1"],
   "compilador/generator/generator.py": ["Manual 2 §5.1"],
   "compilador/generator/emit_tensors.py": ["Manual 2 §4.1"],

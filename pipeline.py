@@ -1023,7 +1023,12 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         # el C generado (traductor.syn usa parser_nodos()) y runtime/core/memory.c
         # (g_ast_base). El frontend usa parser_nodos() y el runtime usa g_ast_base;
         # ambos coexistes sin colisión en runtime.
-        link_flags = f'{thread_flag} -lm {linker_net} {linker_extra} -Wl,--allow-multiple-definition'.strip()
+        # cumple Manual 9 §6.2 (r320): el ld64 de macOS rechaza
+        # `--allow-multiple-definition` (ld: unknown options). En darwin se
+        # enlaza en modo unity: los helpers por módulo se definen una sola vez
+        # y no hace falta tolerar definiciones duplicadas.
+        _ld_dup_flag = "" if sys.platform == "darwin" else " -Wl,--allow-multiple-definition"
+        link_flags = f'{thread_flag} -lm {linker_net} {linker_extra}{_ld_dup_flag}'.strip()
 
         # === COMPILACIÓN MODULAR (FASE A): .c por módulo → compilar .c→.o → link ===
         # Paso 1: Generar header compartido (tipos + prototipos + runtime externs)
@@ -1038,6 +1043,11 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         # Se usa el AST aplanado (con todos los tipos) para cada módulo,
         # filtrando por scope_names para emitir solo las funciones del módulo.
         modulos_c = []
+        # cumple Manual 9 §6.2 (r320): sin el flag GNU, la compilación modular
+        # duplica helpers (`desde_texto`, `contiene`) entre módulos y ld64 falla;
+        # en macOS se va directo al unity fallback.
+        if sys.platform == "darwin":
+            _module_asts.clear()
         for ruta_mod_abs, ast_modulo in _module_asts.items():
             nombre_mod = os.path.splitext(os.path.basename(ruta_mod_abs))[0]
             ruta_mod_c = os.path.join(dir_base, f"_{nombre_mod}.c")
@@ -1317,7 +1327,8 @@ def _link_object(obj_path: str, output_exe: str, opt_flags: str = "-O2") -> int:
     # (conflicto tr_* documentado ME-R2) y por tanto tolera que quantum_err_corr.o
     # figure dos veces (_RT_FUENTES + _RT_QUANTUM_FUENTES); sin el flag, el
     # [CACHE LINK] moria con `multiple definition of _syn_qec_verificar_estado_logico`.
-    link_align = "-Wl,--allow-multiple-definition"
+    # cumple Manual 9 §6.2 (r320): ld64 no conoce el flag GNU.
+    link_align = "" if sys.platform == "darwin" else "-Wl,--allow-multiple-definition"
     gcc_cmd = f'{compiler} {base_flags} "{obj_path}" {rt_objs} -o "{output_exe}" {thread_flag} -lm {linker_net} {link_align}'.strip()
     print(f"[CACHE LINK] {gcc_cmd}")
     return subprocess.run(gcc_cmd, shell=True).returncode

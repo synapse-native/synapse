@@ -801,6 +801,13 @@ funcion generar_etapa(ruta: cadena, salida: cadena, modo_validar: entero) -> Res
         asm("    const char* _static_flag = \"\";")
         asm("    const char* _win_ld = \"\";")
         asm("    const char* _win_libs = \"\";")
+        // cumple Manual 9 §6.2 (r320): el ld64 de macOS no conoce
+        // --allow-multiple-definition (ld: unknown options) y el enlace nativo
+        // se hace en unity; en darwin no se pasa el flag.
+        asm("    const char* _dup_flag = \"-Wl,--allow-multiple-definition\";")
+        asm("#ifdef __APPLE__")
+        asm("    _dup_flag = \"\";")
+        asm("#endif")
         asm("#ifdef _WIN32")
         asm("    _static_flag = \"-static \";")
         asm("    _win_ld = \"-Wl,--no-insert-timestamp -Wl,--stack,8388608 \";")
@@ -875,7 +882,7 @@ funcion generar_etapa(ruta: cadena, salida: cadena, modo_validar: entero) -> Res
         asm("            strncat(_cmd, _q, 4095 - strlen(_cmd));")
         asm("        }")
         asm("    }")
-        asm("    char _cmd_tail[1600]; snprintf(_cmd_tail, 1600, \" -o \\\"%s\\\" -lpthread -lm %s-Wl,--allow-multiple-definition\", salida.datos, _win_libs);")
+        asm("    char _cmd_tail[1600]; snprintf(_cmd_tail, 1600, \" -o \\\"%s\\\" -lpthread -lm %s%s\", salida.datos, _win_libs, _dup_flag);")
         asm("    strncat(_cmd, _cmd_tail, 4095 - strlen(_cmd));")
         asm("}")
         asm("fprintf(stderr, \"[Synapse] GCC: %s\\n\", _cmd);")
