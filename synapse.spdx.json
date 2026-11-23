@@ -4573,25 +4573,6 @@
       "size": 3380
     },
     {
-      "SPDXID": "SPDXRef-FILE-239",
-      "name": "nucleo/analizador_semantico.c",
-      "versionInfo": "1.0.0",
-      "supplier": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "filesAnalyzed": true,
-      "checksums": [
-        {
-          "algorithm": "SHA256",
-          "checksumValue": "4df985291f4ab65c43e7fe17eab6c8b002c9388f504d3cab93d491275ed59d8e"
-        }
-      ],
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "copyrightText": "NOASSERTION",
-      "primaryPackagePurpose": "SOURCE",
-      "size": 48424
-    },
-    {
       "SPDXID": "SPDXRef-FILE-240",
       "name": "nucleo/analizador_semantico.syn",
       "versionInfo": "1.0.0",
@@ -4609,25 +4590,6 @@
       "copyrightText": "NOASSERTION",
       "primaryPackagePurpose": "SOURCE",
       "size": 82847
-    },
-    {
-      "SPDXID": "SPDXRef-FILE-241",
-      "name": "nucleo/ast_nodes.c",
-      "versionInfo": "1.0.0",
-      "supplier": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "filesAnalyzed": true,
-      "checksums": [
-        {
-          "algorithm": "SHA256",
-          "checksumValue": "c28b4c50cc59911453853c1bfeb3fa42321f4f382d861c589818ed6e268ce73e"
-        }
-      ],
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "copyrightText": "NOASSERTION",
-      "primaryPackagePurpose": "SOURCE",
-      "size": 12481
     },
     {
       "SPDXID": "SPDXRef-FILE-242",
@@ -4782,25 +4744,6 @@
       "size": 537
     },
     {
-      "SPDXID": "SPDXRef-FILE-250",
-      "name": "nucleo/diagnostics.c",
-      "versionInfo": "1.0.0",
-      "supplier": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "filesAnalyzed": true,
-      "checksums": [
-        {
-          "algorithm": "SHA256",
-          "checksumValue": "b41da1602ecba847782e26a87223c39b241dfccb13cf845c16d74594f5ebd7c4"
-        }
-      ],
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "copyrightText": "NOASSERTION",
-      "primaryPackagePurpose": "SOURCE",
-      "size": 27703
-    },
-    {
       "SPDXID": "SPDXRef-FILE-251",
       "name": "nucleo/diagnostics.syn",
       "versionInfo": "1.0.0",
@@ -4913,25 +4856,6 @@
       "copyrightText": "NOASSERTION",
       "primaryPackagePurpose": "SOURCE",
       "size": 10482
-    },
-    {
-      "SPDXID": "SPDXRef-FILE-257",
-      "name": "nucleo/errores.c",
-      "versionInfo": "1.0.0",
-      "supplier": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "filesAnalyzed": true,
-      "checksums": [
-        {
-          "algorithm": "SHA256",
-          "checksumValue": "0a13fff572a1e5ca06d832e0e3dfc1b11cd47005a171c403694cb46deea3ea95"
-        }
-      ],
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "copyrightText": "NOASSERTION",
-      "primaryPackagePurpose": "SOURCE",
-      "size": 9649
     },
     {
       "SPDXID": "SPDXRef-FILE-258",
@@ -40877,32 +40801,12 @@
       ]
     },
     {
-      "fileName": "nucleo/analizador_semantico.c",
-      "SPDXID": "SPDXRef-FILE-239",
-      "checksums": [
-        {
-          "algorithm": "SHA256",
-          "checksumValue": "4df985291f4ab65c43e7fe17eab6c8b002c9388f504d3cab93d491275ed59d8e"
-        }
-      ]
-    },
-    {
       "fileName": "nucleo/analizador_semantico.syn",
       "SPDXID": "SPDXRef-FILE-240",
       "checksums": [
         {
           "algorithm": "SHA256",
           "checksumValue": "b06a00ffa1e741a1a3a8dc74684c46ef7a0f84984ae2298a3b14121d5a3a6c5b"
-        }
-      ]
-    },
-    {
-      "fileName": "nucleo/ast_nodes.c",
-      "SPDXID": "SPDXRef-FILE-241",
-      "checksums": [
-        {
-          "algorithm": "SHA256",
-          "checksumValue": "c28b4c50cc59911453853c1bfeb3fa42321f4f382d861c589818ed6e268ce73e"
         }
       ]
     },
@@ -40987,16 +40891,6 @@
       ]
     },
     {
-      "fileName": "nucleo/diagnostics.c",
-      "SPDXID": "SPDXRef-FILE-250",
-      "checksums": [
-        {
-          "algorithm": "SHA256",
-          "checksumValue": "b41da1602ecba847782e26a87223c39b241dfccb13cf845c16d74594f5ebd7c4"
-        }
-      ]
-    },
-    {
       "fileName": "nucleo/diagnostics.syn",
       "SPDXID": "SPDXRef-FILE-251",
       "checksums": [
@@ -41053,16 +40947,6 @@
         {
           "algorithm": "SHA256",
           "checksumValue": "61ff6e6e7dcfc703b98a5a32d8b8b5d3f3f8864d5ddec822d455a4c7063ab55c"
-        }
-      ]
-    },
-    {
-      "fileName": "nucleo/errores.c",
-      "SPDXID": "SPDXRef-FILE-257",
-      "checksums": [
-        {
-          "algorithm": "SHA256",
-          "checksumValue": "0a13fff572a1e5ca06d832e0e3dfc1b11cd47005a171c403694cb46deea3ea95"
         }
       ]
     },
@@ -59925,17 +59809,7 @@
     },
     {
       "spdxElementId": "SPDXRef-ROOT",
-      "relatedSpdxElement": "SPDXRef-FILE-239",
-      "relationshipType": "CONTAINS"
-    },
-    {
-      "spdxElementId": "SPDXRef-ROOT",
       "relatedSpdxElement": "SPDXRef-FILE-240",
-      "relationshipType": "CONTAINS"
-    },
-    {
-      "spdxElementId": "SPDXRef-ROOT",
-      "relatedSpdxElement": "SPDXRef-FILE-241",
       "relationshipType": "CONTAINS"
     },
     {
@@ -59980,11 +59854,6 @@
     },
     {
       "spdxElementId": "SPDXRef-ROOT",
-      "relatedSpdxElement": "SPDXRef-FILE-250",
-      "relationshipType": "CONTAINS"
-    },
-    {
-      "spdxElementId": "SPDXRef-ROOT",
       "relatedSpdxElement": "SPDXRef-FILE-251",
       "relationshipType": "CONTAINS"
     },
@@ -60011,11 +59880,6 @@
     {
       "spdxElementId": "SPDXRef-ROOT",
       "relatedSpdxElement": "SPDXRef-FILE-256",
-      "relationshipType": "CONTAINS"
-    },
-    {
-      "spdxElementId": "SPDXRef-ROOT",
-      "relatedSpdxElement": "SPDXRef-FILE-257",
       "relationshipType": "CONTAINS"
     },
     {
