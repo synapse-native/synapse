@@ -10,16 +10,15 @@
 #if !defined(_WIN32)
   // ucontext_t (Manual 5 §2.6) requiere los feature-test macros ANTES de
   // cualquier include del TU (SUSv3).
+  // cumple Manual 9 §6.1 (r312): el SDK de macOS exige `_XOPEN_SOURCE` para
+  // ucontext.h (`#error The deprecated ucontext routines require
+  // _XOPEN_SOURCE`), y ese perfil oculta `_SC_NPROCESSORS_ONLN`; el conteo de
+  // CPUs en Darwin se obtiene con sysctl (ver `scheduler_iniciar`).
+  #define _XOPEN_SOURCE 700
+  #include <ucontext.h>
+  #include <unistd.h>
   #if defined(__APPLE__)
-    // cumple Manual 9 §6.1 (r310): en Darwin `_XOPEN_SOURCE` limita
-    // unistd.h al perfil XSI y oculta `_SC_NPROCESSORS_ONLN`; ucontext_t y
-    // el perfil completo están disponibles sin el macro.
-    #include <ucontext.h>
-    #include <unistd.h>
-  #else
-    #define _XOPEN_SOURCE 700
-    #include <ucontext.h>
-    #include <unistd.h>
+    #include <sys/sysctl.h>
   #endif
 #endif
 
@@ -905,6 +904,18 @@ void scheduler_iniciar(int num_hilos_os) {
         SYSTEM_INFO si;
         GetSystemInfo(&si);
         num_hilos_os = (int)si.dwNumberOfProcessors;
+#elif defined(__APPLE__)
+        // cumple Manual 9 §6.1 (r312): `_XOPEN_SOURCE` (necesario para
+        // ucontext) no declara `_SC_NPROCESSORS_ONLN` en Darwin; hw.ncpu es la
+        // fuente nativa. sysctlbyname está marcada como deprecada pero es la
+        // API disponible sin cabeceras de Mach.
+        #pragma GCC diagnostic push
+        #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+        int ncpu = 1;
+        size_t ncpu_len = sizeof(ncpu);
+        if (sysctlbyname("hw.ncpu", &ncpu, &ncpu_len, NULL, 0) != 0 || ncpu < 1) ncpu = 1;
+        num_hilos_os = ncpu;
+        #pragma GCC diagnostic pop
 #else
         long n = sysconf(_SC_NPROCESSORS_ONLN);
         num_hilos_os = (n > 0) ? (int)n : 1;

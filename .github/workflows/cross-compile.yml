@@ -126,6 +126,10 @@ jobs:
           if not exist dist\bin mkdir dist\bin
           copy /Y synapse_stage2.exe dist\bin\synapse.exe >NUL
           if not exist dist\bin\synapse.exe (echo FAIL: dist\bin\synapse.exe no generado & exit /b 1)
+          REM cumple Manual 9 §6.1: el .iss exige dist\bin\opensyn.exe (componente
+          REM opensyn, sin skipifsourcedoesntexist); se compila igual que synapse.
+          python main.py opensyn/principal.syn -o dist\bin\opensyn.exe
+          if not exist dist\bin\opensyn.exe (echo FAIL: dist\bin\opensyn.exe no generado & exit /b 1)
 
       # -------------------------------------------------------------------------
       # 5. Preparar estructura de archivos para instalador

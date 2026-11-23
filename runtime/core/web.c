@@ -1,4 +1,4 @@
-// cumple Manual 6 2: web runtime
+// cumple Manual 6 §2: web runtime (biblioteca C del runtime, enlazada al binario)
 // runtime/core/web.c — HTTP server module for Syquex
 // Manual 3 §12.1: lib/web.syq
 // Servidor HTTP básico con winsock2 (Windows) / sockets (POSIX)
@@ -7,6 +7,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+// cumple Manual 9 §6.1 (r312): PATH_MAX llega por <limits.h>; en Linux/ARM
+// no lo arrastra ninguna otra cabecera y web.c no compilaba.
+#include <limits.h>
 
 #ifdef _WIN32
 #include <winsock2.h>

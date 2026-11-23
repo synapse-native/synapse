@@ -23,11 +23,11 @@ def test_tui_incluye_headers_posix_de_directorios():
     assert antes_de_usar, "los includes deben preceder al uso"
 
 
-def test_concurrency_apple_sin_xopen_source():
+def test_concurrency_posix_define_xopen_source():
+    # r312 corrigió la hipótesis inicial: el SDK de macOS EXIGE _XOPEN_SOURCE
+    # para ucontext.h, así que el macro se define en todo POSIX y el conteo de
+    # CPUs de Darwin se resuelve con sysctl (ver test_r312).
     texto = (RAIZ / "runtime" / "core" / "concurrency.c").read_text(encoding="utf-8")
-    assert "defined(__APPLE__)" in texto, (
-        "Darwin necesita su propia rama de feature-test macros")
-    bloque = texto[:texto.index('_XOPEN_SOURCE 700')]
-    assert "defined(__APPLE__)" in bloque, (
-        "la rama __APPLE__ debe preceder al #define _XOPEN_SOURCE 700")
+    assert "#define _XOPEN_SOURCE 700" in texto, (
+        "ucontext.h no compila en macOS sin _XOPEN_SOURCE")
     assert "cumple Manual 9 §6.1" in texto

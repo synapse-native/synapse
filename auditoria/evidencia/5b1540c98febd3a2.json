@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "5b1540c98febd3a2",
+ "expediente": "docs/alineacion/r312_compilacion_matrix.md",
+ "fecha": "2026-11-23",
+ "archivos": [
+  "runtime/core/concurrency.c",
+  "runtime/core/web.c"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_r312_compilacion_matrix.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

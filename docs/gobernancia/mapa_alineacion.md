@@ -58,6 +58,7 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "runtime/core/cripto.c": ["Manual 9 §5.3"],
   "std/sistema.syn": ["Manual 2 §5.1"],
   "runtime/core/ollama.c": ["Manual 7 §2.2"],
+  "runtime/core/web.c": ["Manual 6 §2"],
   "runtime/core/tui.c": ["Manual 5 §1"],
   "runtime/core/lsp.c": ["Manual 8 §1"],
   "instaladores/common/auto_actualizar.py": ["Manual 9 §3.2", "Manual 9 §4.1", "Manual 1 §3.1"],
