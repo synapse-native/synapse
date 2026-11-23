@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **r278_ide_debugger**: Integration tests (5/5 passed: load/step/reverse/snapshots/sin traza)
 
 ### Changed
+- **nucleo/formatter.syn**: `fmt` preserva los comentarios `//` verbatim (incluida la alineación deliberada) — H-R299-1 RESUELTO
 - **nucleo/cache.syn / nucleo/formatter.syn**: eliminadas 6 funciones sin ninguna referencia (`_calcular_hash_archivo`, `_obtener_hashes_dependencias`, `_leer_flags_compilacion`, `_resolver_ruta_import`, `formatear_archivo`, `fmt_directorio`) — H-R285-2 RESUELTO
 - **std/texto.syn**: Removed duplicate block (12 functions H-R196-2), 275→129 líneas, 28→10 funciones únicas
 - **docs/book2-desarrollo/** (20 files): Added "Documento informativo; la ley es docs/manuales/" header
