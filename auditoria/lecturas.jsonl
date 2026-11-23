@@ -977,3 +977,4 @@
 {"fecha": "2026-11-22", "archivos": ["runtime/core/cache.c"], "cita": "Manual 5 §11", "puntos": "siguientes pasos del runtime y estrategia de cache de compilacion"}
 {"fecha": "2026-11-22", "archivos": ["synapse_llvm.c", "synapse_llvm.h", "synapse_wasm.c", "synapse_wasm.h"], "cita": "Manual 1 §6", "puntos": "hoja de ruta tecnica: backends LLVM y WASM del compilador"}
 {"fecha": "2026-11-22", "archivos": ["std/texto.syn"], "cita": "Manual 2 §12", "puntos": "Contratos requiere/garantiza obligatorios y prueba 100% pass; dedup sin redundancia"}
+{"fecha": "2026-11-22", "archivos": ["nucleo/cache.syn", "nucleo/formatter.syn"], "cita": "Manual 1 §7.4", "puntos": "Definition of Done: 100% tests sin regresiones; cero codigo muerto (limpieza de funciones sin referencias en cache/formatter)"}

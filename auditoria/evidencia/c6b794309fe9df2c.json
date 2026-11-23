@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "c6b794309fe9df2c",
+ "expediente": "docs/alineacion/r299_codigo_muerto.md",
+ "fecha": "2026-11-22",
+ "archivos": [
+  "nucleo/cache.syn",
+  "nucleo/formatter.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_codigo_muerto.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

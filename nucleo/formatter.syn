@@ -62,15 +62,8 @@ funcion formatear_funcion(linea: texto) -> texto:
     // de función con las mismas reglas de estilo.
     retornar formatear_linea(linea)
 
-// --- Formateo de archivo ---
-
-funcion formatear_archivo(ruta: texto) -> texto:
-    requiere:
-        longitud(ruta) > 0
-    garantiza:
-        longitud(_resultado_) >= 0
-    let contenido = leer_archivo(ruta)
-    retornar formatear_texto(contenido)
+// cumple Manual 1 §7.4 (ME r299_codigo_muerto): `formatear_archivo` no tenía
+// referencias; el `fmt` del CLI compone `formatear_texto(leer_archivo(ruta))`.
 
 // --- Formateo de texto completo ---
 
@@ -286,31 +279,6 @@ funcion fmt_archivo(ruta: texto) -> booleano:
         asm("FILE* _f = fopen(ruta.datos, \"wb\"); if(_f){ fwrite(formateado.datos, 1, formateado.longitud, _f); fclose(_f); }")
     retornar verdadero // reformateado
 
-// --- Reformato de multiples archivos ---
-
-funcion fmt_directorio(ruta: texto) -> entero:
-    requiere:
-        longitud(ruta) > 0
-    garantiza:
-        _resultado_ >= 0
-    let errores = 0
-    // Recorrer archivos .syn en directorio
-    let cmd = "dir /b \"" + ruta + "\\*.syn\" 2>nul"
-    let salida = ""
-    inseguro:
-        asm("char _buf[4096]; FILE* _p = popen(cmd.datos, \"r\"); if(_p){ while(fgets(_buf, sizeof(_buf), _p)){ CadenaSegura _frag = { .longitud = (int)strlen(_buf), .datos = _buf }; CadenaSegura _acc = concat(salida, _frag); salida.longitud = _acc.longitud; salida.datos = _acc.datos; } pclose(_p); }")
-    let inicio = 0
-    let largo = longitud(salida)
-    mientras inicio < largo:
-        let fin = inicio
-        mientras fin < largo:
-            si subcadena(salida, fin, 1) == "\n":
-                romper
-            fin = fin + 1
-        let nombre = subcadena(salida, inicio, fin - inicio)
-        si longitud(nombre) > 0:
-            let ruta_completa = ruta + "\\" + nombre
-            si no fmt_archivo(ruta_completa):
-                errores = errores + 1
-        inicio = fin + 1
-    retornar errores
+// cumple Manual 1 §7.4 (ME r299_codigo_muerto): `fmt_directorio` no tenía
+// referencias; la expansión de directorios vive en el CLI (comando `fmt`), que
+// aplica `fmt_archivo` archivo a archivo.

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v8.1.0-industrial] - 2026-11-21
 
 ### Added
+- **r299_codigo_muerto**: `auditoria/verificar_codigo_muerto.py` (barrido de funciones sin referencias en los módulos alcanzables desde el build) + gate en pre-commit y oráculo `tests/auditoria/test_codigo_muerto.py`
 - **r282_docs_informativos**: Added "Documento informativo; la ley es docs/manuales/" header to documentation files
 - **r282_docs_informativos**: Mapped and categorized all documentation in docs/book2-desarrollo/, docs/reportes/, and docs/auditorias/
 - **r281_d9_dead_code**: Removed 12 duplicated functions from std/texto.syn (lines 108-187)
@@ -17,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **r278_ide_debugger**: Integration tests (5/5 passed: load/step/reverse/snapshots/sin traza)
 
 ### Changed
+- **nucleo/cache.syn / nucleo/formatter.syn**: eliminadas 6 funciones sin ninguna referencia (`_calcular_hash_archivo`, `_obtener_hashes_dependencias`, `_leer_flags_compilacion`, `_resolver_ruta_import`, `formatear_archivo`, `fmt_directorio`) — H-R285-2 RESUELTO
 - **std/texto.syn**: Removed duplicate block (12 functions H-R196-2), 275→129 líneas, 28→10 funciones únicas
 - **docs/book2-desarrollo/** (20 files): Added "Documento informativo; la ley es docs/manuales/" header
 - **docs/reportes/** (244 files): Added "Documento informativo; la ley es docs/manuales/" header  
