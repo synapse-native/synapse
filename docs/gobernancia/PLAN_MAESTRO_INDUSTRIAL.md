@@ -131,14 +131,14 @@ completos), no en semanas calendario.
 |---|---|---|---|---|
 | `r215_tool_patch` | `TOOL aplicar_patch <ruta> :: <diff>` con sandbox y aprobación | Manual 7 §7.3 (sandbox); Evaluación §6.1 (paridad) | E2E con repo temporal: parche aplicado, contexto no aplicable rechazado, ruta fuera del workspace denegada; test de comportamiento | r204 |
 | `r216_tool_ejecutar` | `TOOL ejecutar <comando>` con allowlist (`synapse check`, `pytest`, `git status/diff`, build) y timeout | Manual 32 §6.4 (timeout); Manual 7 §7.3 (sandbox) | E2E: comando permitido ejecuta y devuelve rc/salida; comando no permitido rechazado; timeout corta; sin inyección de shell | r215 |
-| `r217_loop_integracion` | Cablear `validation_loop` y el pipeline al loop vivo de `principal.syn` | Manual 32 §5.3, §7.2 | E2E con LLM falso: editar→compilar→corregir; el loop se detiene a los 3 intentos; sin fugas de texto | r207, r216 |
-| `r218_sesiones_undo` | Sesión/reanudar/undo/revertir en el loop | Manual 32 §3.2, §3.4 | Test de reanudar una sesión y revertir un cambio; historial consistente | r208, r217 |
+| `r217_loop_integracion` | **HECHO** (`R243`) | `opensyn/principal.syn` importa e invoca `validation_loop` y `pipeline_multiagente` (ME r217_loop_integracion); reporte `docs/reportes/R243.md` |
+| `r218_sesiones_undo` | **HECHO** (`R244`, ME r254_sesiones_undo) | `opensyn/principal.syn` importa `run_manager` y cablea sesiones reanudables (`sesion_archivo`/`sesion_activar`/`sesion_marcar_paso`); reporte `docs/reportes/R244.md` |
 
 ### Frente C — LSP/IDE e IA (prioridad 1)
 
 | ME | Objetivo | Manual | Criterio de aceptación / oráculo | Depende |
 |---|---|---|---|---|
-| `r219_lsp_ai` | Implementar de verdad `aiExplain`, `aiComplete`, `aiFix`, `aiStatus`; quitar los skips TDD | Manual 7 §4.1, §4.2; Manual 8 §1.4, §5.1, §5.4 | Tests LSP sin skip: respuesta JSON-RPC válida; código generado validado con `--check`; `aiStatus` refleja el servidor real | r217 |
+| `r219_lsp_ai` | **HECHO** (`R245`, ME r255_lsp_ai) | `nucleo/lsp_v3.syn` refleja el servidor real y `tests/integration/test_ai_commands_opensyn.py` ya no tiene skips; reporte `docs/reportes/R245.md` |
 | `r240_vscode_ai` | Comandos de la paleta y configuración de la extensión | Manual 8 §2.3, §2.4 | Test de la extensión: comandos despachan a los métodos LSP correctos | r219 |
 | `r241_debugger` | Time-travel/reversible y comandos CLI | Manual 8 §3.1-§3.5 | Test de avance/retroceso y snapshots; integración VS Code | r219 |
 
@@ -198,20 +198,20 @@ HEAD `c341fc5` (R237). Leyenda: **HECHO** (entregado con reporte y oráculo),
 | `r213_verificacion_aot` | RENUMERADO → `r219_verificacion_aot` (HECHO) | `docs/reportes/R219.md`, commit `26e4cf8` |
 | `r214_baseline_cero` | HECHO (sin reporte propio) | `tests/fixtures/compilacion_baseline.txt` sólo comentarios; `pytest tests/integration/test_compilacion_fase32.py` → 2 passed |
 
-#### Frente B — Tools y loop: **2 de 4**
+#### Frente B — Tools y loop: **4 de 4**
 
 | ME | Estado | Evidencia |
 |---|---|---|
 | `r215_tool_patch` | HECHO | `docs/reportes/R215.md` |
 | `r216_tool_ejecutar` | HECHO | `docs/reportes/R216.md`; allowlist y timeout en `opensyn/` |
-| `r217_loop_integracion` | PENDIENTE | `nucleo/principal.syn` y `opensyn/principal.syn` **no** invocan `validation_loop` ni `pipeline_multiagente` (grep vacío); el loop a 3 intentos sólo existe dentro del módulo y su oráculo. R217 es otro ME (`r217_integracion_determinista`) |
-| `r218_sesiones_undo` | PENDIENTE | R218 es `r218_bootstrap_json`, otro ME. `reanudar`/`revertir` aparecen sólo como funciones de `opensyn/run_manager.syn`, sin cableado al loop ni oráculo de reanudación |
+| `r217_loop_integracion` | **HECHO** (`R243`) | `opensyn/principal.syn` importa e invoca `validation_loop` y `pipeline_multiagente` (ME r217_loop_integracion); reporte `docs/reportes/R243.md` |
+| `r218_sesiones_undo` | **HECHO** (`R244`, ME r254_sesiones_undo) | `opensyn/principal.syn` importa `run_manager` y cablea sesiones reanudables (`sesion_archivo`/`sesion_activar`/`sesion_marcar_paso`); reporte `docs/reportes/R244.md` |
 
-#### Frente C — LSP/IDE e IA: **0 de 3**
+#### Frente C — LSP/IDE e IA: **1 de 3**
 
 | ME | Estado | Evidencia |
 |---|---|---|
-| `r219_lsp_ai` | PENDIENTE | `tests/integration/test_ai_commands_opensyn.py` conserva **5 `pytest.skip`** («no implementado aún (TDD)»); el bloqueo de id viene de que `r219` se usó para `verificacion_aot` |
+| `r219_lsp_ai` | **HECHO** (`R245`, ME r255_lsp_ai) | `nucleo/lsp_v3.syn` refleja el servidor real y `tests/integration/test_ai_commands_opensyn.py` ya no tiene skips; reporte `docs/reportes/R245.md` |
 | `r240_vscode_ai` | PARCIAL | `vscode-synapse/package.json` declara `synapse.aiStatus/aiExplain/aiComplete/aiFix`; los métodos LSP que despachan siguen en skip ⇒ comandos sin verificación real |
 | `r241_debugger` | PARCIAL | `opensyn/router.syn` cataloga `std.debug` con `rp_*` (retroceder, breakpoints, pila) y `ms_*`/`tr_*` (snapshots, recording); sin oráculo de time-travel ni integración VS Code |
 
