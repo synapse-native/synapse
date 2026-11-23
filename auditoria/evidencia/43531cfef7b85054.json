@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "43531cfef7b85054",
+ "expediente": "docs/alineacion/r304_sbom_regeneracion.md",
+ "fecha": "2026-11-23",
+ "archivos": [
+  "nucleo/sbom.py"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_r304_sbom_determinista.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

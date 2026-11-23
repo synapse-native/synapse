@@ -25,6 +25,7 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "opensyn/validation_loop.syn": ["Manual 7 §6.3"],
   "opensyn/permisos.syn": ["Manual 7 §1.1", "Manual 7 §7.3"],
   "nucleo/ai_orchestrator.h": ["Manual 7 §2.1"],
+  "nucleo/sbom.py": ["Manual 9 §6.1"],
   "opensyn/generate_runtime_bindings.py": ["Manual 6 §3.1"],
   "opensyn/run_manager.syn": ["Manual 7 §4.3"],
   "opensyn/planificador.syn": ["Manual 7 §2.1"],
