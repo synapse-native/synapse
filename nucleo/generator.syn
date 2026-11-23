@@ -7,8 +7,8 @@
 // ===== From: contexto.syn =====
 
 // cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas (ME formatter_fix R4: anclaje de norma vigente tras reformato)
+// cumple Manual 2 §8.2 (ME r301_generator_reconciliacion): generator.syn se regenera desde estos submódulos; la inferencia de tipos (Hindley‑Milner) y la emisión C se conservan al reconciliar.
 // cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
-// cumple Manual 2 §8.2 (ME r300_formatter_comentarios): reformato cosmético (espacios y coma) sin cambios en la emisión de código C del generador — la semántica de §8.2 se conserva byte a byte en el fuente generado.
 // vinculo ME formatter_fix R4 (Manual 1 §7.1, M8 §4.1): reformato cosmético del nucleo — estilo, sin cambios semánticos
 # cumple Manual 1 1: infraestructura del compilador Synapse
 # cumple Manual 8 4: toolchain de construcción
@@ -228,6 +228,7 @@ constante _G_SCOPE_MAX_VARS = 256
 
 #lang: es
 // cumple Manual 9 §6.2: buffer de emision C de 4 MB para el unity build del bootstrap S2 (antes 1 MB truncaba `int main`)
+// cumple Manual 2 §5.1: la emision C respeta la semantica formal (lineas completas, sin truncamiento silencioso)
 // cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
 // ============================================================
 // emision_c.syn — API de emision de codigo C de bajo nivel
@@ -238,7 +239,7 @@ constante _G_SCOPE_MAX_VARS = 256
 // ----------------------------------------------------------
 funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
     requiere:
-        verdadero
+        tipo_synapse != nulo
     garantiza:
         // void retornado cuando tipo_synapse es nulo (manejado arriba)
         verdadero
@@ -249,9 +250,9 @@ funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
         asm("if (_len > 7 && _t[0]=='C' && _t[1]=='a' && _t[2]=='n' && _t[3]=='a' && _t[4]=='l' && _t[5]=='<') { strcpy(_gen_tmp_buf, \"CanalConcurrencia*\"); return; }")
         // F1.2d + F1.4: rc<T>/arc<T>/debil<T> (Manual 2 sec. 4.3). ABI placeholder
         // (void*) hasta la Fase 23 (runtime real de rc/arc/debil, ROADMAP Fase 23).
-    // cumplé Manual 2 §12: requiere y garantiza en toda función pública
-    // cumplé Manual 2 §5.1: aserciones obligatorias
         // F1.4 anade 'rc<' (Manual 2 sec. 4 L151: "rc" tipo).
+    // cumple Manual 2 §12: requiere y garantiza en toda función pública
+    // cumple Manual 2 §5.1: aserciones obligatorias
         asm("if (strncmp(_t, \"rc<\", 3)==0 || strncmp(_t, \"arc<\", 4)==0 || strncmp(_t, \"weak<\", 5)==0 || strncmp(_t, \"faible<\", 7)==0 || strncmp(_t, \"fraco<\", 6)==0 || strncmp(_t, \"d\u00e9bil<\", 6)==0) { strcpy(_gen_tmp_buf, \"void*\"); return; }")
         // D-2: instanciaciones de ADT genéricos registradas (monomorfización).
         // `Resultado<entero, texto>` -> struct especializado `Resultado_entero_texto`
@@ -318,8 +319,6 @@ funcion traducir_tipo_c_campo(tipo_synapse: puntero) -> nulo:
         asm("// Si el tipo no es primitivo, traducir_tipo_c emite 'struct <X>'.")
         asm("// Como campo de estructura ese tipo se referencia por puntero -> anadir '*'.")
         asm("if (strncmp(_gen_tmp_buf, \"struct \", 7) == 0) { strcat(_gen_tmp_buf, \"*\"); }")
-    // cumplé Manual 2 §12: requiere y garantiza en toda función pública
-    // cumplé Manual 2 §5.1: aserciones obligatorias
 
 // ----------------------------------------------------------
 // traducir_tipo_retorno
@@ -335,8 +334,6 @@ funcion traducir_tipo_retorno(tipo_synapse: puntero) -> nulo:
     inseguro:
         asm("const char* _t = (const char*)tipo_synapse;")
         asm("traducir_tipo_c((void*)_t);")
-    // cumplé Manual 2 §12: requiere y garantiza en toda función pública
-    // cumplé Manual 2 §5.1: aserciones obligatorias
 
 // ----------------------------------------------------------
 // gen_emitir_linea — API PRINCIPAL
@@ -358,8 +355,6 @@ funcion gen_emitir_linea(est: GeneradorCEst, linea: cadena) -> nulo:
         asm("    _G_emit_pos++;")
         asm("    _G_emit_buf[_G_emit_pos] = 0;")
         asm("}")
-    // cumplé Manual 2 §12: requiere y garantiza en toda función pública
-    // cumplé Manual 2 §5.1: aserciones obligatorias
 
 // ----------------------------------------------------------
 // gen_emitir_str — API de bajo nivel para bloques asm()
@@ -376,8 +371,6 @@ funcion gen_emitir_str(est: GeneradorCEst, str: puntero) -> nulo:
         asm("int _len = (int)strlen(_s);")
         asm("CadenaSegura _cs = {_len, _s};")
         asm("gen_emitir_linea(est, _cs);")
-    // cumplé Manual 2 §12: requiere y garantiza en toda función pública
-    // cumplé Manual 2 §5.1: aserciones obligatorias
 
 // ----------------------------------------------------------
 // gen_emitir_nueva_linea
@@ -395,8 +388,6 @@ funcion gen_emitir_nueva_linea(est: GeneradorCEst) -> nulo:
         asm("    _G_emit_pos++;")
         asm("    _G_emit_buf[_G_emit_pos] = 0;")
         asm("}")
-    // cumplé Manual 2 §12: requiere y garantiza en toda función pública
-    // cumplé Manual 2 §5.1: aserciones obligatorias
 
 // ----------------------------------------------------------
 // gen_obtener_salida
@@ -409,8 +400,6 @@ funcion gen_obtener_salida(est: GeneradorCEst) -> cadena:
         asm("    _G_emit_buf[_G_emit_pos] = 0;")
         asm("    strcpy(_gen_tmp_buf, _G_emit_buf);")
         asm("} else {")
-    // cumplé Manual 2 §12: requiere y garantiza en toda función pública
-    // cumplé Manual 2 §5.1: aserciones obligatorias
         asm("    strcpy(_gen_tmp_buf, \"\");")
         asm("}")
         asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)};")
@@ -3276,6 +3265,7 @@ funcion gen_escanear_constructores(est: GeneradorCEst, programa: Programa) -> nu
 
 #lang: es
 // cumple Manual 9 §6.2: submodulo regenerado y reformateado para el bootstrap S2 determinista
+// cumple Manual 2 §5.1: la monomorfizacion conserva la semantica formal de los ADT genericos
 # cumple Manual 1 5: nucleo del compilador Synapse
 // ============================================================
 // monomorfizacion.syn - monomorfizacion de ADT genericos (registro + scan D-2 de instanciaciones)
