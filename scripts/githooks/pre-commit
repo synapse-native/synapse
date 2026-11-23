@@ -86,6 +86,8 @@ check_pattern() {
   local patron="$1" mensaje="$2" exts="$3" f ok fallo=0
   while IFS= read -r f; do
     [ -z "$f" ] && continue
+    # Los borrados staged no existen en disco: no hay contenido que revisar.
+    [ -f "$f" ] || continue
     ok=0
     for e in $exts; do
       case "$f" in *."$e") ok=1; break ;; esac
@@ -156,11 +158,33 @@ if [ -n "$CHANGED_HEADERS" ]; then
             git add lib/runtime_bindings.syq 2>/dev/null || true
             echo "  ✅ Bindings regenerados y añadidos al commit"
         else
-            echo "  ⚠️  Error regenerando bindings (no bloqueante)" >&2
+            echo "❌ Generador de bindings FALLÓ — commit bloqueado (Manual 1 §7.4)" >&2
+            echo "   Un generador roto no puede pasar en silencio (lección r302)." >&2
+            exit 1
         fi
     fi
 else
     echo "  ✅ Sin cambios en headers del runtime"
+fi
+
+# --- SBOM determinista (Manual 9 §6.1, ME r304): no puede quedar desactualizado ---
+echo "── Verificando SBOM (nucleo/sbom.py --versionados --check) ──"
+SBOM_GEN="$RAIZ/nucleo/sbom.py"
+if [ -f "$SBOM_GEN" ]; then
+    if (cd "$RAIZ" && $PYTHON "$SBOM_GEN" --versionados --check >/dev/null 2>&1); then
+        echo "  ✅ SBOM sincronizado con el inventario versionado"
+    else
+        echo "  SBOM desactualizado: regenerando synapse.spdx.json..."
+        if (cd "$RAIZ" && $PYTHON "$SBOM_GEN" --versionados -o synapse.spdx.json 2>&1) \
+           && (cd "$RAIZ" && $PYTHON -c "import hashlib,pathlib; pathlib.Path('synapse.spdx.json.sha256').write_text(hashlib.sha256(pathlib.Path('synapse.spdx.json').read_bytes()).hexdigest()+'  synapse.spdx.json\\n', encoding='utf-8', newline='\\n')") \
+           && (cd "$RAIZ" && $PYTHON "$SBOM_GEN" --versionados --check >/dev/null 2>&1); then
+            git add synapse.spdx.json synapse.spdx.json.sha256 2>/dev/null || true
+            echo "  ✅ SBOM regenerado y añadido al commit"
+        else
+            echo "❌ SBOM desincronizado y no se pudo regenerar — commit bloqueado (Manual 9 §6.1)" >&2
+            exit 1
+        fi
+    fi
 fi
 
 echo "── Verificando alineación con los manuales (auditoria/verificar_alineacion.py) ──"
