@@ -112,14 +112,19 @@ jobs:
       # `actions/setup-clang@v4` (el repositorio no tiene Rust y este job es
       # Windows + MinGW: ambas acciones no existen y abortaban el workflow
       # antes de construir nada).
+      # cumple Manual 9 §6.1: el binario distribuible se produce con el build
+      # canonico (bootstrap de 3 etapas + runtime modular completo). Antes se
+      # armaba a mano una linea `gcc` con solo 4 fuentes del runtime, asi que el
+      # link fallaba con `undefined reference` a http/axon/debug/tracing/listas
+      # y a `randombytes` de tweetnacl. Un link manual no es la fuente de verdad
+      # del build.
       - name: Bootstrap y link estatico a dist\bin\synapse.exe (ME-R6)
         shell: cmd
         run: |
-          python main.py nucleo/principal.syn
+          python build.py
+          if not exist synapse_stage2.exe (echo FAIL: build.py no produjo synapse_stage2.exe & exit /b 1)
           if not exist dist\bin mkdir dist\bin
-          gcc -O2 -static -o dist\bin\synapse.exe ^
-            synapse_unity.c synapse_rt.c runtime/core/memory.c runtime/core/concurrency.c axon/tweetnacl.c ^
-            -I. -lws2_32 -lm
+          copy /Y synapse_stage2.exe dist\bin\synapse.exe >NUL
           if not exist dist\bin\synapse.exe (echo FAIL: dist\bin\synapse.exe no generado & exit /b 1)
 
       # -------------------------------------------------------------------------
