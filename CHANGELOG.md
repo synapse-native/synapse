@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **r278_ide_debugger**: Integration tests (5/5 passed: load/step/reverse/snapshots/sin traza)
 
 ### Changed
+- **synapse.spdx.json / nucleo/sbom.py**: inventario determinista desde `git ls-files`, `packageVerificationCode` SPDX 2.3, checksum raiz reproducible y `--check` de deriva; `.sha256` recalculado — H-R303-1 RESUELTO
+- **nucleo/*.c (8 dumps de H25)**: retirados del repo; la fuente de verdad son sus `.syn` y el build genera `_<modulo>.c`; script de migracion D-9(e) actualizado — H25 RESUELTO
+- **scripts/githooks/pre-commit**: los generadores rotos bloquean el commit, los borrados staged ya no pasan por `sed` y el SBOM se regenera o bloquea si deriva
 - **nucleo/*.c (6 dumps de S1)**: retirados del repo (no son insumos de build; la fuente de verdad son sus .syn) y podados del SBOM; `.sha256` recalculado y oráculo contra dumps nuevos — H-R302-1 RESUELTO
 - **opensyn/generate_runtime_bindings.py, bindings_generator.py, full_pipeline.py**: reparadas citas `//` inválidas en Python que rompían la generación de bindings desde r288; `librerias/embedded_libs.h` regenerado y con `--check` — H-R302-2 RESUELTO
 - **nucleo/generator.syn + nucleo/generador/**: reconciliación generador↔submódulos; los bloques H-R275-1 y los contratos viven en su origen y el rebuild es idempotente — H-R300-1 RESUELTO
