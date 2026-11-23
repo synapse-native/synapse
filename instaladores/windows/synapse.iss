@@ -121,7 +121,10 @@ Source: "{#SourcePath}\..\..\dist\bin\{#MyAppExeName}"; DestDir: "{app}\bin"; Co
 Source: "{#SourcePath}\..\..\dist\bin\opensyn.exe"; DestDir: "{app}\bin"; Components: opensyn; Flags: ignoreversion
 Source: "{#SourcePath}\..\..\opensyn\opensyn.bat"; DestDir: "{app}\bin"; Components: opensyn; Flags: ignoreversion
 ; Helper de descarga con ventana de progreso propia (resuelve congelamiento de Inno Setup)
-Source: "{#SourcePath}\dl_helper.exe"; DestDir: "{app}"; Components: opensyn; Flags: ignoreversion
+; cumple Manual 9 §6.1: el .iss usa curl como fallback (ver DownloadFile), así que
+; sin helper binario el instalador compila; H-R314-1 registra que el ejecutable
+; no está versionado ni tiene fuente en el repositorio.
+Source: "{#SourcePath}\dl_helper.exe"; DestDir: "{app}"; Components: opensyn; Flags: ignoreversion skipifsourcedoesntexist
 ; LSP opcional — solo se incluye si fue construido (Flags: skipifsourcedoesntexist)
 Source: "{#SourcePath}\..\..\dist\bin\{#MyAppLspExeName}"; DestDir: "{app}\bin"; Components: synapse; Flags: ignoreversion skipifsourcedoesntexist
 Source: "{#SourcePath}\..\..\dist\bin\*.dll"; DestDir: "{app}\bin"; Components: synapse; Flags: ignoreversion skipifsourcedoesntexist

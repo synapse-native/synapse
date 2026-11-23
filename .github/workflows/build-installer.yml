@@ -78,7 +78,6 @@ jobs:
             exit 1
           }
         shell: powershell
-        shell: powershell
 
       # -------------------------------------------------------------------------
       # 4. Verificar iscc disponible
@@ -93,11 +92,18 @@ jobs:
       # El instalador empaqueta dist\bin\synapse.exe; el link es el de ME-R1
       # (runtime modular completo: Manual 3 S3.1, Manual 9 S9.1).
       # -------------------------------------------------------------------------
+      # cumple Manual 9 §6.1: el binario se produce con el build canónico
+      # (`build.py`), que compila el runtime modular completo y verifica S2==S3.
+      # `main.py --output` no enlazaba el runtime y el instalador quedaba roto.
       - name: Bootstrap y generar binario modular dist\bin\synapse.exe (ME-R6 + cumple Manual 9 §6.1)
         shell: cmd
         run: |
-          python main.py nucleo/principal.syn --output dist/bin/synapse.exe
-          if not exist dist\bin\synapse.exe (echo FAIL: dist\bin\synapse.exe no generado & exit /b 1)
+          python build.py
+          if not exist synapse_stage2.exe (echo FAIL: build.py no produjo synapse_stage2.exe & exit /b 1)
+          if not exist dist\bin mkdir dist\bin
+          copy /Y synapse_stage2.exe dist\bin\synapse.exe >NUL
+          python main.py opensyn/principal.syn -o dist\bin\opensyn.exe
+          if not exist dist\bin\opensyn.exe (echo FAIL: dist\bin\opensyn.exe no generado & exit /b 1)
           certutil -hashfile dist\bin\synapse.exe SHA256
 
       # -------------------------------------------------------------------------
