@@ -86,8 +86,8 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   deuda **crezca** (ratchet contra `auditoria/contratos_baseline.txt`) y está
   cableado al CI. **Resolución asignada:** Plan Maestro formalizado en
   `docs/plan_QUEMA_CONTRATOS_H_R277_1.md` estructurado en 5 bloques de MEs
-  secuenciales (`r286_contratos_std_util`, `r287_contratos_std_avanzado`,
-  `r288_contratos_syquex`, `r289_contratos_nucleo_front` y `r290_contratos_nucleo_codegen`),
+  secuenciales (`r294_contratos_std_util`, `r295_contratos_std_avanzado`,
+  `r296_contratos_syquex`, `r297_contratos_nucleo_front` y `r298_contratos_nucleo_codegen`),
   combinando contratos con semántica real verificable (nunca `verdadero` de
   relleno) y privatización con prefijo `_` de funciones internas. Cierre cuando
   `python auditoria/verificar_contratos.py --estricto` dé rc=0 con

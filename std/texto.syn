@@ -125,5 +125,6 @@ externo funcion _syn_escapar_json(texto: texto) -> texto
 externo funcion _syn_a_texto_entero(valor: entero) -> texto
 externo funcion _syn_a_texto_decimal(valor: decimal) -> texto
 // H-R196-2: Eliminado bloque duplicado de 12 funciones en std/texto.syn (líneas 108-187 originales)
-// cumpl Manual 1 §7.4: módulos >1200 líneas limpiados de duplicados
+// cumple Manual 1 §7.4: sin código duplicado (H-R196-2 resuelto en 8a2f82b; r285)
+// cumple Manual 2 §12: contratos requiere/garantiza conservados sin redundancia
 // cumpl Manual 2 §12: contratos requiere/garantiza conservados sin redundancia

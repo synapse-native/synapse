@@ -26,7 +26,7 @@
 
 ## 2. Desglose en 5 Bloques Ejecutables
 
-### Bloque 1: `r286_contratos_std_util` — Utilidades de Biblioteca Estándar y OpenSyn
+### Bloque 1: `r294_contratos_std_util` — Utilidades de Biblioteca Estándar y OpenSyn
 * **Prioridad:** P1 (Bajo riesgo en bootstrap)
 * **Alcance:** ~85 funciones en 20 archivos.
 * **Archivos objetivo:**
@@ -39,7 +39,7 @@
   - `pytest tests/opensyn/`
   - `auditoria/verificar_contratos.py` (deuda debe bajar de 590 a ~505)
 
-### Bloque 2: `r287_contratos_std_avanzado` — Módulos Científicos, Simbólicos y Distribuidos
+### Bloque 2: `r295_contratos_std_avanzado` — Módulos Científicos, Simbólicos y Distribuidos
 * **Prioridad:** P1 (Riesgo medio)
 * **Alcance:** ~145 funciones en 14 archivos.
 * **Archivos objetivo:**
@@ -51,7 +51,7 @@
   - Suites unitarias y avanzadas de `tests/unit/`
   - `auditoria/verificar_contratos.py` (deuda debe bajar a ~360)
 
-### Bloque 3: `r288_contratos_syquex` — Frontend y Concurrencia de Syquex
+### Bloque 3: `r296_contratos_syquex` — Frontend y Concurrencia de Syquex
 * **Prioridad:** P1 (Riesgo medio)
 * **Alcance:** 84 funciones en 4 archivos.
 * **Archivos objetivo:**
@@ -63,7 +63,7 @@
   - `pytest tests/syquex/` (281 tests sin regresiones ni caídas de cobertura)
   - `auditoria/verificar_contratos.py` (deuda debe bajar a ~276)
 
-### Bloque 4: `r289_contratos_nucleo_front` — Compilador: Lexer, Parsers y Análisis Semántico
+### Bloque 4: `r297_contratos_nucleo_front` — Compilador: Lexer, Parsers y Análisis Semántico
 * **Prioridad:** P0 (Alto riesgo / Afecta compilador autohospedado)
 * **Alcance:** ~140 funciones en 13 archivos.
 * **Archivos objetivo:**
@@ -77,7 +77,7 @@
   - `python build.py`
   - `auditoria/verificar_contratos.py` (deuda debe bajar a ~136)
 
-### Bloque 5: `r290_contratos_nucleo_codegen` — Compilador: Generador C y Cierre Deuda Cero
+### Bloque 5: `r298_contratos_nucleo_codegen` — Compilador: Generador C y Cierre Deuda Cero
 * **Prioridad:** P0 (Crítico / Sellado final)
 * **Alcance:** ~136 funciones en 17 archivos.
 * **Archivos objetivo:**
