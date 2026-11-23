@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **r278_ide_debugger**: Integration tests (5/5 passed: load/step/reverse/snapshots/sin traza)
 
 ### Changed
+- **opensyn/generate_runtime_bindings.py, bindings_generator.py, full_pipeline.py**: reparadas citas `//` inválidas en Python que rompían la generación de bindings desde r288; `librerias/embedded_libs.h` regenerado y con `--check` — H-R302-2 RESUELTO
 - **nucleo/generator.syn + nucleo/generador/**: reconciliación generador↔submódulos; los bloques H-R275-1 y los contratos viven en su origen y el rebuild es idempotente — H-R300-1 RESUELTO
 - **nucleo/formatter.syn**: `fmt` preserva los comentarios `//` verbatim (incluida la alineación deliberada) — H-R299-1 RESUELTO
 - **nucleo/cache.syn / nucleo/formatter.syn**: eliminadas 6 funciones sin ninguna referencia (`_calcular_hash_archivo`, `_obtener_hashes_dependencias`, `_leer_flags_compilacion`, `_resolver_ruta_import`, `formatear_archivo`, `fmt_directorio`) — H-R285-2 RESUELTO
