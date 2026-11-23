@@ -1,7 +1,7 @@
 # Expediente de alineación r312_compilacion_matrix
 
 base: HEAD  # commit sobre el que se leyó el manual
-cambio_hash:
+cambio_hash: 5b1540c98febd3a2
 
 > Una ancla por requisito. `estado:` CUMPLE | DESVIACION.
 > CUMPLE exige `evidencia: archivo:linea` con el comentario

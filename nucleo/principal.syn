@@ -687,8 +687,15 @@ funcion generar_etapa(ruta: cadena, salida: cadena, modo_validar: entero) -> Res
         asm("    char _gdir[1200]; strcpy(_gdir, _gcc_exe); char* _gs = strrchr(_gdir, '\\\\'); if (_gs) *_gs = 0;")
         asm("    const char* _pv = getenv(\"PATH\");")
         asm("    if (_pv == 0 || strstr(_pv, _gdir) == 0) {")
+        // cumple Manual 9 §6.2: el PATH del hijo se ajusta con el separador y la
+        // API de cada plataforma (';' + _putenv solo existen en Windows).
+        asm("#ifdef _WIN32")
         asm("        char _np[3000]; snprintf(_np, sizeof _np, \"PATH=%s;%s\", _gdir, _pv ? _pv : \"\");")
         asm("        _putenv(_np);")
+        asm("#else")
+        asm("        char _np[3000]; snprintf(_np, sizeof _np, \"%s:%s\", _gdir, _pv ? _pv : \"\");")
+        asm("        setenv(\"PATH\", _np, 1);")
+        asm("#endif")
         asm("    }")
         asm("}")
         asm("}")
@@ -1133,7 +1140,9 @@ funcion principal() -> entero:
         asm("    if(_rt.tipo<0){fprintf(stderr,\"[Axon] ERROR: TOML invalido\\n\");free(_b);r=1;return r;}")
         asm("    fprintf(stderr,\"[Axon] TOML: %%d secciones\\n\",_rt.longitud);")
         asm("    // Create cache directory")
-        asm("    system(\"mkdir .axon_cache 2>nul\"); system(\"mkdir axon_modules 2>nul\");")
+        // cumple Manual 9 §6.2: sin redireccion `2>nul` (solo cmd.exe); el
+        // redirect posix creaba un archivo llamado `nul` en el cwd.
+        asm("    system(\"mkdir .axon_cache\"); system(\"mkdir axon_modules\");")
         asm("    // Parse --online flag (default: offline strict)")
         asm("    int _online = 0; for(int _ai=3;_ai<_argc();_ai++){ CadenaSegura _a=_argv(_ai); if(strcmp(_a.datos,\"--online\")==0){ _online=1; break; } }")
         asm("    fprintf(stderr,\"[Axon] Modo: %s\\n\",_online?\"online\":\"offline (air-gapped)\");")
@@ -1392,7 +1401,9 @@ funcion principal() -> entero:
         asm("  int _rl=(int)strlen(ruta.datos); char _base[512]={0}; int _ri=0, _rlast=-1;")
         asm("  for(_ri=0;_ri<_rl;_ri++){ if(ruta.datos[_ri]=='/'||ruta.datos[_ri]=='\\\\') _rlast=_ri; }")
         asm("  { int _bi=0; for(_ri=_rlast+1;_ri<_rl && _bi<505;_ri++) _base[_bi++]=ruta.datos[_ri]; _base[_bi]=0; }")
-        asm("  int _bl=(int)strlen(_base); if(_bl>4 && _stricmp(_base+_bl-4,\".syn\")==0){ _bl-=4; _base[_bl]=0; }")
+        // cumple Manual 9 §6.2: comparacion sin _stricmp (MSVC), que no existe
+        // en glibc/macOS; se compara en minusculas sin depender de <strings.h>.
+        asm("  int _bl=(int)strlen(_base); if(_bl>4){ const char* _ext=\".syn\"; int _ei=0; for(_ei=0;_ei<4;_ei++){ char _cx=_base[_bl-4+_ei]; if(_cx>='A'&&_cx<='Z') _cx=(char)(_cx+32); if(_cx!=_ext[_ei]) break; } if(_ei==4){ _bl-=4; _base[_bl]=0; } }")
         asm("  if(_bl>0){ char _out2[512]; snprintf(_out2,sizeof(_out2),\"%s.exe\",_base); char* _d=strdup(_out2); if(_d){ salida_ruta=(CadenaSegura){.longitud=(int)strlen(_out2),.datos=_d}; } }")
         asm("  if (salida_ruta.longitud == 0) { salida_ruta = (CadenaSegura){.longitud=19,.datos=\"synapse_stage2.exe\"}; }")
         asm("}")

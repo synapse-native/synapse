@@ -60,9 +60,11 @@ funcion _cache_dir() -> texto:
 funcion _asegurar_cache_dir() -> nulo:
     dir = _cache_dir()
     inseguro:
-        asm("mkdir -p \"" + dir + "\" 2>nul")
-        asm("mkdir -p \"" + dir + "obj\" 2>nul")
-        asm("mkdir -p \"" + dir + "meta\" 2>nul")
+        // cumple Manual 9 §6.2: sin redireccion `2>nul` (solo cmd.exe); en POSIX
+        // el redirect creaba un archivo `nul` en el cwd de cada compilacion.
+        asm("mkdir -p \"" + dir + "\"")
+        asm("mkdir -p \"" + dir + "obj\"")
+        asm("mkdir -p \"" + dir + "meta\"")
 
 funcion _cache_index_path() -> texto:
     retornar concat(_cache_dir(), "index.toml")
@@ -154,8 +156,8 @@ funcion cache_eliminar(clave: texto) -> nulo:
 funcion cache_limpiar() -> nulo:
     dir = _cache_dir()
     inseguro:
-        asm("rm -rf \"" + dir + "obj\" 2>nul")
-        asm("rm -rf \"" + dir + "meta\" 2>nul")
+        asm("rm -rf \"" + dir + "obj\"")
+        asm("rm -rf \"" + dir + "meta\"")
     _asegurar_cache_dir()
 
 funcion cache_stats() -> CacheStats:
