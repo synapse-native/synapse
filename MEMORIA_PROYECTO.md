@@ -7,6 +7,27 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
+**2026-11-23 (FRENTE CI R308–R321 CERRADO con dos deudas de Arquitecto):** la matriz de workflows
+estaba roja por causas encadenadas, no por una: acciones inexistentes (`actions/setup-clang`,
+`dtolnay/setup-rust`) que mataban `Cross-Compile` en el setup; `mkdir` de un argumento en
+`runtime/core/debug.c` y `cryptography` sin declarar; el workflow compilando el runtime a mano;
+`PATH_MAX`, `_XOPEN_SOURCE`/`u_int`, `--stack`, `--no-insert-timestamp`, `-lws2_32` y `sysinfo`
+viajando fuera de su plataforma; la clave `shell` duplicada que descartaba el workflow del
+instalador y `dl_helper.exe` inexistente. Tras r308–r321: `Build Synapse Installer` y
+`Cross-Compile Synapse` en **success**, y `Release Matrix` falla sólo en
+`Package and Sign binary with Ed25519` en las cuatro filas (**H-R276-2**: falta el secreto
+`ED25519_PRIVATE_KEY`). macOS pasó de no compilar a enlazar tras cinco vueltas: `sys/sysinfo.h`
+(r317), `_SC_AVPHYS_PAGES` (r318), las constantes mach reales `HOST_VM_INFO64`/`HOST_VM_INFO64_COUNT`
+(r319), el flag GNU que ld64 no conoce (r320) y, al quitarlo, los 23 símbolos duplicados que ese
+flag tapaba (r321, definiciones `weak` en darwin). **Lecciones:** (1) un flag tolerante puede ser
+síntoma, no solución: al retirarlo apareció el duplicado real; (2) los nombres de API del SDK no
+se recuerdan — clang los corrige en el primer run; (3) cuando no hay toolchain local, cada ME debe
+declarar esa limitación y cerrarse con la evidencia del run; (4) los oráculos propios también se
+equivocan (r317 afirmaba `_SC_AVPHYS_PAGES` en macOS) y corregirlos debe quedar declarado.
+Deuda abierta: **H-R314-1** (`dl_helper.exe` sin fuente) y **H-R276-2** (secreto de firma);
+además la suite `Synapse CI — Tests` sigue con fallos históricos ajenos a este frente.
+Reportes: `docs/reportes/R308.md`–`R321.md`.
+
 **2026-11-21 (ME `r281_cache_runtime_nativa` CERRADO — commit `339b794`, cierra H-R279-2):** medido el síntoma en aislamiento, el enlace nativo tardaba 93,18 s en compilar un `.syn` de 300 bytes: emitía un solo `gcc` con las ~50 fuentes del runtime y las recompilaba en CADA invocación. `pipeline.py` ya cacheaba esos `.o` desde r193 (`~/.synapse/cache/runtime_obj/`, sidecar `<sha>|<compiler>|<opt>|<flags>`); el binario que usan los usuarios y los tests nunca consultaba esa caché. Fix en `nucleo/principal.syn`: lista de fuentes primero, reuso del `.o` solo si el SHA-256 del fuente coincide con el sidecar y el compilador del sidecar es el toolchain resuelto (la primera prueba falló con `undefined reference to stat64i32` por mezclar TDM-GCC con el MinGW incluido), fallback completo a fuentes y solo con `-O2`. Además se añadió `toolchain_gcc12\mingw64in\gcc.exe` a la búsqueda junto al ejecutable. Medido: 93,18 s → **1,25 s**; `test_r3_param_adt` **2 passed en 24,54 s** (antes 2 failed por timeout en 250,41 s, test inmutable intacto); `tests/unit` **517 passed en 207,19 s** (antes 515+2 failed en 537,82 s); S2==S3 `027f1fdd…` byte-idénticos en 20,33 s. **Lección:** una caché solo sirve si todas las rutas la consultan; r193 arregló el pipeline Python y el binario nativo siguió recompilando meses. Reporte: `docs/reportes/R281.md`.
 
 **2026-11-21 (ME `r279b_suite_paralela` CERRADO — commit `c81f2b5`):** medir antes de optimizar cambió el objetivo. `--durations` mostró que el coste es compilación real, no el runner: `tests/unit` 537,82 s con 3 tests que concentran el 91% (172,88 + 171,27 + 145,22 s) y `tests/e2e` 271,98 s para 8 tests (~34 s/test, cada uno compila, enlaza y ejecuta). Se añade `pytest-xdist` como dependencia de test y los shards de CI pasan a `-n auto --dist loadfile` (un archivo por worker, porque varios tests escriben rutas fijas como `tests/fixtures/tmp_*` y `dist/bin`); el job `test` sigue serial y completo en la matriz 3×3 por target. Medido: `tests/syquex` 112,96 s → **75,25 s (−33%)** con recuentos idénticos (281 passed, 1 skipped); en un subconjunto de 35 tests de integración el paralelismo cuesta más (13,24 s → 14,97 s) y se publica así. **H-R279-2 abierto (preexistente):** `test_r3_param_adt_s1/s2` fallan por `TimeoutExpired` de 120 s al compilar con S1/S2, reproducido en aislamiento (2 failed en 250,41 s); tests inmutables, deuda registrada. **Lección:** el cuello era gcc, no pytest; la palanca grande —compilar una vez por sesión y parametrizar la entrada— exige tocar fixtures y tests, así que queda a decisión del Arquitecto con la medición hecha. Reporte: `docs/reportes/R279b.md`.

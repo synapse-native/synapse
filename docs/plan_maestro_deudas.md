@@ -87,6 +87,12 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   (`test_installer` de r273 + `verificar_release_limpio.py` en la VM) y
   actualizar el reporte con la evidencia real. Cierre cuando las cuatro
   plataformas tengan `PASS` publicado y la VM limpia tenga log adjunto.
+  **Progreso 2026-11-23 (r308–r321):** la matriz ya compila y enlaza en las
+  cuatro filas; la única causa de fallo restante es
+  `Package and Sign binary with Ed25519` en Linux x64/ARM64, Windows y macOS
+  (`.github/workflows/release_matrix.yml` aborta a propósito sin el secreto).
+  Ver `docs/reportes/R316.md`–`R321.md`. Cierre cuando el Arquitecto cargue
+  `ED25519_PRIVATE_KEY` y la matriz publique `PASS` en las cuatro plataformas.
 - **H-R277-1 (ABIERTO 2026-11-20, MEDIO — deuda medida):** la primera medición
   de contratos del ME `r277_contracts_audit` (commit `3eff2fa`) cuenta **600
   funciones públicas sin `requiere` + `garantiza`** en 68 archivos (de 1.161
