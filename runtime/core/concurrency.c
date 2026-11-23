@@ -10,9 +10,17 @@
 #if !defined(_WIN32)
   // ucontext_t (Manual 5 §2.6) requiere los feature-test macros ANTES de
   // cualquier include del TU (SUSv3).
-  #define _XOPEN_SOURCE 700
-  #include <ucontext.h>
-  #include <unistd.h>
+  #if defined(__APPLE__)
+    // cumple Manual 9 §6.1 (r310): en Darwin `_XOPEN_SOURCE` limita
+    // unistd.h al perfil XSI y oculta `_SC_NPROCESSORS_ONLN`; ucontext_t y
+    // el perfil completo están disponibles sin el macro.
+    #include <ucontext.h>
+    #include <unistd.h>
+  #else
+    #define _XOPEN_SOURCE 700
+    #include <ucontext.h>
+    #include <unistd.h>
+  #endif
 #endif
 
 #include "synapse_rt_types.h"

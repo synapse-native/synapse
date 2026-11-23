@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "82edd61d35986c71",
+ "expediente": "docs/alineacion/r310_compilacion_posix.md",
+ "fecha": "2026-11-23",
+ "archivos": [
+  "runtime/core/concurrency.c",
+  "runtime/core/tui.c"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_r310_compilacion_posix.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

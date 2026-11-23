@@ -28,6 +28,10 @@
   #include <termios.h>
   #include <unistd.h>
   #include <sys/ioctl.h>
+  // cumple Manual 9 §6.1 (r310): el autocompletado POSIX usa DIR/struct dirent
+  // y stat(); sin estos includes el runtime no compila en Linux/macOS.
+  #include <dirent.h>
+  #include <sys/stat.h>
   #include <errno.h>
   #include <pthread.h>
 #endif
@@ -540,6 +544,10 @@ static void _entrada_cursor_der(void) {
 // Spinner "pensando" + status bar dinámico (Manual 7 §8: UX OpenCode/Kilo)
 // ============================================================
 
+// cumple Manual 5 §1: el único estado que cruza el hilo dibujante es el flag
+// de actividad y el mutex de salida (`_out_lock`); no hay estado mutable
+// compartido sin sincronizar (Manual 5 §1: nada se pasa por variables
+// globales mutables entre hilos).
 // cumple Manual 7 §8: el hilo SOLO escribe su renglón reservado (alto-1); el
 // repintado completo sigue siendo exclusivo del hilo principal. Sin estado
 // compartido de mensajes — sin condiciones de carrera.
