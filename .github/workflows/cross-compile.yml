@@ -107,17 +107,11 @@ jobs:
           platform: x64
           static: 0
 
-      - name: Setup Rust toolchain (for darwin_arm64)
-        uses: dtolnay/setup-rust@v1
-        with:
-          rust-version: "1.75"
-
-      - name: Setup ARM64 toolchain (for linux_arm64)
-        uses: actions/setup-clang@v4
-        with:
-          target: arm64
-          os: linux
-
+      # cumple Manual 9 §6.2: el pipeline de CI/CD debe ejecutarse sin pasos
+      # inexistentes. Se retiraron `dtolnay/setup-rust@v1` y
+      # `actions/setup-clang@v4` (el repositorio no tiene Rust y este job es
+      # Windows + MinGW: ambas acciones no existen y abortaban el workflow
+      # antes de construir nada).
       - name: Bootstrap y link estatico a dist\bin\synapse.exe (ME-R6)
         shell: cmd
         run: |

@@ -471,18 +471,27 @@ CadenaSegura _syn_debug_cargar_traza_persistida(CadenaSegura ruta) {
     return res;
 }
 
-// cumprir Manual 8 §3.4 (r241): persistencia de posicion entre invocaciones CLI.
+// cumple Manual 8 §3.4 (r241): persistencia de posicion entre invocaciones CLI.
+// cumple Manual 9 §6.1 (r309): mkdir portable — POSIX exige el modo y por eso
+// el runtime no compilaba en Linux/macOS.
 #define DEBUG_TRAZA_PATH ".synapse/debug_traza"
 #define DEBUG_POS_PATH   ".synapse/debug_pos"
+static void _debug_asegurar_dir_synapse(void) {
+#ifdef _WIN32
+    (void)_mkdir(".synapse");
+#else
+    (void)mkdir(".synapse", 0755);
+#endif
+}
 static void _syn_debug_guardar_traza(const char* traza) {
-    (void)mkdir(".synapse");
+    _debug_asegurar_dir_synapse();
     FILE* f = fopen(DEBUG_TRAZA_PATH, "wb");
     if (!f) return;
     fprintf(f, "%s", traza ? traza : "");
     fclose(f);
 }
 static void _syn_debug_guardar_pos(int pos) {
-    (void)mkdir(".synapse");
+    _debug_asegurar_dir_synapse();
     FILE* f = fopen(DEBUG_POS_PATH, "wb");
     if (!f) return;
     fprintf(f, "%d", pos);

@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "90b67df9b1f3d9f3",
+ "expediente": "docs/alineacion/r309_ci_crossplatform.md",
+ "fecha": "2026-11-23",
+ "archivos": [
+  "runtime/core/debug.c"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_r309_ci_crossplatform.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}
