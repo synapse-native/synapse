@@ -60,14 +60,15 @@ int64_t _syn_memoria_libre(void) {
     }
     return 0;
 #elif defined(__APPLE__)
-    // cumple Manual 9 §6.2 (r318): la consulta sysconf de memoria disponible
-    // es Linux-only; macOS da libre+inactiva+especulativa por host_statistics64.
+    // cumple Manual 9 §6.2 (r319): la consulta sysconf de memoria disponible
+    // es Linux-only; macOS da libre+inactiva+especulativa por host_statistics64
+    // (constantes mach HOST_VM_INFO64 / HOST_VM_INFO64_COUNT de mach/host_info.h).
     mach_port_t host = mach_host_self();
     vm_size_t page_size = 0;
     vm_statistics64_data_t vms;
-    mach_msg_type_number_t count = HOST_VMSTATS64_COUNT;
+    mach_msg_type_number_t count = HOST_VM_INFO64_COUNT;
     if (host_page_size(host, &page_size) == KERN_SUCCESS &&
-        host_statistics64(host, HOST_VMSTATS64, (host_info64_t)&vms, &count) == KERN_SUCCESS) {
+        host_statistics64(host, HOST_VM_INFO64, (host_info64_t)&vms, &count) == KERN_SUCCESS) {
         return ((int64_t)vms.free_count + (int64_t)vms.inactive_count +
                 (int64_t)vms.speculative_count) * (int64_t)page_size;
     }
