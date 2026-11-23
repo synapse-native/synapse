@@ -20,13 +20,15 @@ def test_web_c_incluye_limits():
     assert texto.index("#include <limits.h>") < texto.index("char req_ruta[PATH_MAX]")
 
 
-def test_darwin_cuenta_cpus_con_sysctl():
+def test_darwin_cuenta_cpus_sin_sysctl():
+    # r313: `<sys/sysctl.h>` no compila bajo _XOPEN_SOURCE (u_int desconocido);
+    # el conteo de CPUs se reusa de detect_hardware.c.
     texto = (RAIZ / "runtime" / "core" / "concurrency.c").read_text(encoding="utf-8")
     assert "defined(__APPLE__)" in texto
-    assert "sysctlbyname(\"hw.ncpu\"" in texto, (
+    assert "_syn_cpu_nucleos()" in texto, (
         "con _XOPEN_SOURCE, _SC_NPROCESSORS_ONLN no existe en Darwin")
-    assert "#include <sys/sysctl.h>" in texto
-    assert '#pragma GCC diagnostic ignored "-Wdeprecated-declarations"' in texto
+    assert "#include <sys/sysctl.h>" not in texto, (
+        "sys/sysctl.h no compila en el perfil XSI que exige ucontext.h")
 
 
 def test_workflow_construye_opensyn():

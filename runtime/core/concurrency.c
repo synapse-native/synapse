@@ -17,9 +17,11 @@
   #define _XOPEN_SOURCE 700
   #include <ucontext.h>
   #include <unistd.h>
-  #if defined(__APPLE__)
-    #include <sys/sysctl.h>
-  #endif
+  // cumple Manual 9 §6.1 (r312/r313): en Darwin, con `_XOPEN_SOURCE`
+  // (exigido por ucontext.h) no se declara `_SC_NPROCESSORS_ONLN` y
+  // `<sys/sysctl.h>` tampoco compila en ese perfil; el conteo de CPUs lo
+  // aporta detect_hardware.c, que se compila sin feature-test macros.
+  #include "runtime/core/detect_hardware.h"
 #endif
 
 #include "synapse_rt_types.h"
@@ -905,17 +907,11 @@ void scheduler_iniciar(int num_hilos_os) {
         GetSystemInfo(&si);
         num_hilos_os = (int)si.dwNumberOfProcessors;
 #elif defined(__APPLE__)
-        // cumple Manual 9 §6.1 (r312): `_XOPEN_SOURCE` (necesario para
-        // ucontext) no declara `_SC_NPROCESSORS_ONLN` en Darwin; hw.ncpu es la
-        // fuente nativa. sysctlbyname está marcada como deprecada pero es la
-        // API disponible sin cabeceras de Mach.
-        #pragma GCC diagnostic push
-        #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-        int ncpu = 1;
-        size_t ncpu_len = sizeof(ncpu);
-        if (sysctlbyname("hw.ncpu", &ncpu, &ncpu_len, NULL, 0) != 0 || ncpu < 1) ncpu = 1;
-        num_hilos_os = ncpu;
-        #pragma GCC diagnostic pop
+        // cumple Manual 9 §6.1 (r313): se reusa `_syn_cpu_nucleos()` de
+        // detect_hardware.c (sin _XOPEN_SOURCE) en lugar de abrir sys/sysctl.h,
+        // que no compila en el perfil XSI que exige ucontext.h.
+        int64_t nucleos = _syn_cpu_nucleos();
+        num_hilos_os = (nucleos > 0) ? (int)nucleos : 1;
 #else
         long n = sysconf(_SC_NPROCESSORS_ONLN);
         num_hilos_os = (n > 0) ? (int)n : 1;

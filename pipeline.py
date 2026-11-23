@@ -783,7 +783,11 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                   "toolchain; se usa -O0 -g", file=sys.stderr)
     else:
         gcc_opt = "-O3 -flto -DNDEBUG" if modo_release else "-O2"
-    flags_compilacion = os.environ.get('SYNAPSE_GCC_FLAGS', '') + f" {gcc_opt} -Wl,--stack,8388608 -Wl,--gc-sections"
+    # cumple Manual 9 §6.1 (r313): `--stack` y `--gc-sections` son de MinGW;
+    # en ELF, pasarlos por `-Wl` en una compilación `-c` es ruido y en el link
+    # ld.bfd los rechaza.
+    _flags_link = " -Wl,--stack,8388608 -Wl,--gc-sections" if sys.platform == "win32" else ""
+    flags_compilacion = os.environ.get('SYNAPSE_GCC_FLAGS', '') + f" {gcc_opt}" + _flags_link
 
     try:
         if ruta_archivo.endswith('.json'):
@@ -977,10 +981,11 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             compiler = _resolver_toolchain_gcc()
             platform_flags = "-fno-ident -Wl,--gc-sections"
             thread_flag = "-lpthread"
+            # cumple Manual 9 §6.1 (r313): `--stack` es una opcion de ld de
+            # MinGW; en ELF (Linux/ARM) ld.bfd la rechaza y el link del
+            # bootstrap fallaba con `unrecognized option '--stack'`.
             if sys.platform == "win32":
                 platform_flags += " -static -Wl,--no-insert-timestamp -Wl,--stack,8388608"
-            else:
-                platform_flags += " -Wl,--stack,8388608"
 
         # cumple Manual 9 5.7: detect_hardware.c usa DXGI/COM para VRAM real (A2)
         linker_net = "-lws2_32 -lole32 -ldxgi -luuid" if sys.platform == "win32" else ""
@@ -1260,10 +1265,9 @@ def _link_object(obj_path: str, output_exe: str, opt_flags: str = "-O2") -> int:
     compiler = _resolver_toolchain_gcc()
     platform_flags = "-fno-ident -Wl,--gc-sections"
     thread_flag = "-lpthread"
+    # cumple Manual 9 §6.1 (r313): `--stack` solo existe en el ld de MinGW.
     if sys.platform == "win32":
         platform_flags += " -static -Wl,--no-insert-timestamp -Wl,--stack,8388608"
-    else:
-        platform_flags += " -Wl,--stack,8388608"
     linker_net = "-lws2_32" if sys.platform == "win32" else ""
     # cumple Manual 1 §4 (ME r193_fixtures_infra): base_flags de PARIDAD con el
     # camino normal (incluye `-static` win32 y SYNAPSE_GCC_FLAGS; el no_std no
