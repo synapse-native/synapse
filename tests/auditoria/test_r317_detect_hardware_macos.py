@@ -34,9 +34,11 @@ def test_include_sysinfo_solo_bajo_linux():
 
 def test_memoria_libre_tiene_rama_posix_no_linux():
     texto = (RAIZ / "runtime" / "core" / "detect_hardware.c").read_text(encoding="utf-8")
-    # La rama sysinfo queda bajo __linux__ y existe un #else con sysconf para macOS.
+    # La rama sysinfo queda bajo __linux__ y existe una rama macOS.
+    # (r318: la rama macOS no puede usar _SC_AVPHYS_PAGES, que es Linux-only;
+    # usa host_statistics64. Ver test_r318_detect_hardware_macos_mem.py.)
     assert "#elif defined(__linux__)" in texto
-    assert "_SC_AVPHYS_PAGES" in texto, "macOS necesita sysconf(_SC_AVPHYS_PAGES)"
+    assert "#elif defined(__APPLE__)" in texto, "macOS necesita rama propia"
 
 
 def test_detect_hardware_legacy_tiene_rama_sin_proc():

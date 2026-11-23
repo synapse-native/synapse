@@ -1,7 +1,7 @@
 # Expediente de alineación r316_link_flags_posix
 
 base: 9359e46  # commit sobre el que se leyó el manual
-cambio_hash:
+cambio_hash: 4d6c9a16972af6fc
 
 > Una ancla por requisito. `estado:` CUMPLE | DESVIACION.
 > CUMPLE exige `evidencia: archivo:linea` con el comentario

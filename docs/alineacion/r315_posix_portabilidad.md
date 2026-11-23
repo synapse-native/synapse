@@ -1,7 +1,7 @@
 # Expediente de alineación r315_posix_portabilidad
 
 base: 92b6523  # commit sobre el que se leyó el manual
-cambio_hash:
+cambio_hash: 31b44bc5c1136c5f
 
 > Una ancla por requisito. `estado:` CUMPLE | DESVIACION.
 > CUMPLE exige `evidencia: archivo:linea` con el comentario

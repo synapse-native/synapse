@@ -1,7 +1,7 @@
 # Expediente de alineación r317_detect_hardware_macos
 
 base: 499afd9  # commit sobre el que se leyó el manual
-cambio_hash:
+cambio_hash: a7bc8befac4de0b0
 
 > Una ancla por requisito. `estado:` CUMPLE | DESVIACION.
 > CUMPLE exige `evidencia: archivo:linea` con el comentario

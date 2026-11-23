@@ -15,6 +15,10 @@
 // tiene y el bootstrap de la matriz fallaba al compilar este archivo.
 #if defined(__linux__)
 #include <sys/sysinfo.h>
+#elif defined(__APPLE__)
+// cumple Manual 9 §6.2 (r318): macOS no expone memoria disponible por sysconf;
+// se consulta el VM del kernel por mach (misma llamada al SO, via FFI).
+#include <mach/mach.h>
 #endif
 #endif
 
@@ -55,14 +59,22 @@ int64_t _syn_memoria_libre(void) {
         return (int64_t)si.freeram * (int64_t)si.mem_unit;
     }
     return 0;
-#else
-    // cumple Manual 9 §6.2 (r317): macOS expone la memoria disponible por
-    // sysconf; si el kernel no lo soporta, 0 (no inventar dato).
-    long avail = sysconf(_SC_AVPHYS_PAGES);
-    long page_size = sysconf(_SC_PAGE_SIZE);
-    if (avail > 0 && page_size > 0) {
-        return (int64_t)avail * (int64_t)page_size;
+#elif defined(__APPLE__)
+    // cumple Manual 9 §6.2 (r318): la consulta sysconf de memoria disponible
+    // es Linux-only; macOS da libre+inactiva+especulativa por host_statistics64.
+    mach_port_t host = mach_host_self();
+    vm_size_t page_size = 0;
+    vm_statistics64_data_t vms;
+    mach_msg_type_number_t count = HOST_VMSTATS64_COUNT;
+    if (host_page_size(host, &page_size) == KERN_SUCCESS &&
+        host_statistics64(host, HOST_VMSTATS64, (host_info64_t)&vms, &count) == KERN_SUCCESS) {
+        return ((int64_t)vms.free_count + (int64_t)vms.inactive_count +
+                (int64_t)vms.speculative_count) * (int64_t)page_size;
     }
+    return 0;
+#else
+    // cumple Manual 9 §6.2 (r317): POSIX sin API de memoria disponible; 0
+    // (no inventar dato).
     return 0;
 #endif
 }
