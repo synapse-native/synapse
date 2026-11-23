@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "31b44bc5c1136c5f",
+ "expediente": "docs/alineacion/r315_posix_portabilidad.md",
+ "fecha": "2026-11-23",
+ "archivos": [
+  "nucleo/cache.syn",
+  "nucleo/principal.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_r315_posix_portabilidad.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

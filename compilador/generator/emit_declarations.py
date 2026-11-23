@@ -6,6 +6,7 @@ Generación de código C para declaraciones: funciones, structs, variables,
 declaraciones externas, asignaciones de campo, envío de canales, etc.
 """
 
+import sys
 from typing import Optional
 from compilador.ast_nodes import (
     Nodo, DefinicionFuncion, DefinicionEstructura,
@@ -629,7 +630,15 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
     # nombre colisiona con stdlib.h (abs/min/max/exit/...) se emite como
     # `_syn_usuario_<n>` (prototipo y definición en paridad; ver context.py).
     c_name = '_principal_impl' if nodo.nombre == 'principal' else nombre_funcion_c(nodo.nombre)
-    ctx.write_line(f"{tipo} {c_name}({params}) {{")
+    # cumple Manual 2 §1.3 (r321): comentario de línea en la emisión.
+    # cumple Manual 2 §5.1 (r321): la firma generada mantiene contratos y c_name.
+    # cumple Manual 9 §6.2 (r321): el ld64 de macOS no acepta
+    # --allow-multiple-definition y el C emitido redefine helpers que ya viven
+    # en el runtime (p.ej. _escribir_linea en io.c, _str_eq en sistema.c). En
+    # darwin la definición se emite weak y el linker toma la primera, igual que
+    # hace GNU ld con el flag; en Windows/ELF el C emitido no cambia.
+    weak = " __attribute__((weak))" if sys.platform == "darwin" else ""
+    ctx.write_line(f"{tipo}{weak} {c_name}({params}) {{")
     ctx.inc_indent()
     ctx.push_scope()
 

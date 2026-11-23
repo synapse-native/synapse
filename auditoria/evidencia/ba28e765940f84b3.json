@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "ba28e765940f84b3",
+ "expediente": "docs/alineacion/r319_detect_hardware_mach_consts.md",
+ "fecha": "2026-11-23",
+ "archivos": [
+  "runtime/core/detect_hardware.c"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_r319_detect_hardware_mach_consts.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

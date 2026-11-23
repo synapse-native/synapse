@@ -217,7 +217,16 @@ funcion gen_visitar_funcion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("    extern int64_t _es_palabra_reservada_c(void* nombre);")
         asm("    char _fncbuf[96]; const char* _fnc = _fn;")
         asm("    if (_es_palabra_reservada_c((void*)_fn)) { snprintf(_fncbuf, 96, \"_syn_usuario_%s\", _fn); _fnc = _fncbuf; }")
-        asm("    snprintf(_sig, 4096, \"%s %s(%s)\", _rct, _fnc, _ps);")
+        // cumple Manual 2 §5.1 (r321): la firma emitida conserva contratos.
+        // cumple Manual 9 §6.2 (r321): el ld64 de macOS no acepta
+        // --allow-multiple-definition y el C emitido redefine helpers del
+        // runtime; en darwin la definicion se emite weak (GNU ld ya tomaba la
+        // primera). En Windows/ELF el atributo es vacio y la firma no cambia.
+        asm("    const char* _weak_attr = \"\";")
+        asm("#ifdef __APPLE__")
+        asm("    _weak_attr = \" __attribute__((weak))\";")
+        asm("#endif")
+        asm("    snprintf(_sig, 4096, \"%s%s %s(%s)\", _rct, _weak_attr, _fnc, _ps);")
         asm("    gen_emitir_str(est, _sig);")
         asm("    gen_abrir_bloque_c(est);")
         asm("    // F5-1 (Manual 2 §5.1): requiere se evalua antes de la primera")

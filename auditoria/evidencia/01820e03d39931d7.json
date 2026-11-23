@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "01820e03d39931d7",
+ "expediente": "docs/alineacion/r321_weak_darwin.md",
+ "fecha": "2026-11-23",
+ "archivos": [
+  "compilador/generator/emit_declarations.py",
+  "nucleo/generador/funciones.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_r321_weak_darwin.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}
