@@ -42,14 +42,14 @@ def _find_exe():
     return None
 
 
-def _run_exe(args, timeout=120):
+def _run_exe(args, timeout=120, cwd=None):
     """Ejecuta synapse.exe con los argumentos dados."""
     exe = _find_exe()
     if exe is None:
         pytest.skip("synapse.exe no encontrado; test instalador pending")
     result = subprocess.run(
         [exe] + args,
-        capture_output=True, text=True, timeout=timeout,
+        capture_output=True, text=True, timeout=timeout, cwd=cwd,
     )
     return result
 
@@ -88,23 +88,46 @@ def test_instalador_silencioso_check():
 # Test 3: Compilar y ejecutar un .syn simple (requiere #lang)
 # -------------------------------------------------------------------
 def test_instalador_silencioso_compile_run():
-    """El instalado debe poder compilar y ejecutar un .syn con #lang."""
-    test_file = os.path.join(tempfile.gettempdir(), "hola.syn")
+    """El instalado debe poder compilar y ejecutar un .syn con #lang.
+
+    Cambio autorizado explícitamente por el Arquitecto (2026-11-23): el test
+    esperaba ver la salida del programa en la invocación del compilador. El
+    flujo oficial (tests/e2e/test_smoke_usuario_final.py) compila con `-o` y
+    ejecuta el binario resultante; este test se alinea a ese patrón.
+    """
+    tempdir = tempfile.gettempdir()
+    test_file = os.path.join(tempdir, "hola.syn")
+    out_exe = os.path.join(tempdir, "hola.exe")
+    artefactos = (test_file, out_exe, os.path.join(tempdir, "synapse_unity.c"),
+                  os.path.join(tempdir, "hola.log"))
+    for ruta in artefactos:
+        if os.path.exists(ruta):
+            os.remove(ruta)
     try:
         with open(test_file, "w", encoding="utf-8") as f:
             f.write("#lang: es\nfuncion principal() -> nulo:\n    escribir_linea(\"Hola Mundo\")\n")
 
-        result = _run_exe([test_file], timeout=120)
-        # Debe compilar y ejecutar, imprimiendo "Hola Mundo" o similar
-        assert result.returncode == 0, (
-            f"Falló al compilar/ejecutar: stdout={result.stdout} stderr={result.stderr}"
+        compilacion = _run_exe([test_file, "-o", out_exe], timeout=120, cwd=tempdir)
+        assert compilacion.returncode == 0, (
+            f"Falló al compilar: stdout={compilacion.stdout} stderr={compilacion.stderr}"
         )
-        assert "Hola" in result.stdout or "Hola" in result.stderr, (
-            f"Output inesperado: stdout={result.stdout} stderr={result.stderr}"
+        assert os.path.isfile(out_exe), (
+            f"No se generó el binario: stdout={compilacion.stdout} stderr={compilacion.stderr}"
+        )
+
+        ejecucion = subprocess.run(
+            [out_exe], capture_output=True, text=True, timeout=120, cwd=tempdir,
+        )
+        assert ejecucion.returncode == 0, (
+            f"Falló la ejecución: stdout={ejecucion.stdout} stderr={ejecucion.stderr}"
+        )
+        assert "Hola" in ejecucion.stdout, (
+            f"Output inesperado: stdout={ejecucion.stdout} stderr={ejecucion.stderr}"
         )
     finally:
-        if os.path.exists(test_file):
-            os.remove(test_file)
+        for ruta in artefactos:
+            if os.path.exists(ruta):
+                os.remove(ruta)
 
 
 # -------------------------------------------------------------------
@@ -112,16 +135,27 @@ def test_instalador_silencioso_compile_run():
 # -------------------------------------------------------------------
 def test_instalador_silencioso_hash():
     """El instalador debe tener hash SHA-256 válido registrado."""
-    installer_candidates = [
+    candidatos = [
         r"C:\Program Files\Synapse\Synapse-8.1.0-industrial-Windows-x64.exe",
         r"C:\Program Files (x86)\Synapse\Synapse-8.1.0-industrial-Windows-x64.exe",
+        os.path.join("dist", "Synapse-8.1.0-industrial-Windows-x64.exe"),
     ]
-    found = False
-    for path in installer_candidates:
-        if os.path.exists(path):
-            sha = _sha256_file(path)
-            assert len(sha) == 64, f"Hash SHA-256 inválido: {sha}"
-            found = True
-            break
-    if not found:
-        pytest.skip("No se encontró el instalador para verificar hash")
+    distribucion = os.path.join("instaladores", "dist", "distribucion")
+    if os.path.isdir(distribucion):
+        for nombre in os.listdir(distribucion):
+            if nombre.lower().endswith(".exe") and "synapse" in nombre.lower():
+                candidatos.append(os.path.join(distribucion, nombre))
+
+    for path in candidatos:
+        if not os.path.exists(path):
+            continue
+        sha = _sha256_file(path)
+        assert len(sha) == 64, f"Hash SHA-256 inválido: {sha}"
+        sidecar = path + ".sha256"
+        if os.path.exists(sidecar):
+            with open(sidecar, encoding="utf-8") as f:
+                esperado = f.read().split()[0].lower()
+            assert sha == esperado, (
+                f"El hash del instalador no coincide con {sidecar}: {sha} != {esperado}")
+        return
+    pytest.skip("No se encontró el instalador para verificar hash")

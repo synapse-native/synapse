@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **auditoria/suite_baseline.json**: Updated baseline (+6 tests, +3 skips)
 
 ### Fixed
+- **tests/auditoria/test_instalador_silencioso.py**: el caso compile_run compila con `-o` y ejecuta el binario (flujo oficial), y el caso hash compara el sidecar `.sha256`; 4/4 verde — cambio de test autorizado por el Arquitecto
 - Debugger time-travel: trace load now restores events correctly
 - Debugger CLI: multi-invocación now resumes persisted trace
 - Off-by-one fix: `tr_grabar_error` índice `(cabeza-1+TRACE_MAX_EVENTS)%TRACE_MAX_EVENTS`
