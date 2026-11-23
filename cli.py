@@ -337,7 +337,8 @@ def _auditar_memoria():
     rt_obj, rt_mem, rt_conc, rt_tweet = rt_objs
 
     flags = '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -DSYNAPSE_DEBUG_MEM -I.'
-    link_flags = '-fsanitize=address,undefined -lpthread -lm -lws2_32'
+    # cumple Manual 9 §6.2 (r316): -lws2_32 solo existe en Windows.
+    link_flags = '-fsanitize=address,undefined -lpthread -lm' + (' -lws2_32' if sys.platform == 'win32' else '')
 
     all_ok = True
     for src_rel in c_tests:
@@ -398,7 +399,7 @@ def _auditar_hilos():
     rt_obj, rt_mem, rt_conc, rt_tweet = rt_objs
 
     flags = '-O1 -g -fsanitize=thread -DSYNAPSE_DEBUG_MEM -I.'
-    link_flags = '-fsanitize=thread -lpthread -lm -lws2_32'
+    link_flags = '-fsanitize=thread -lpthread -lm' + (' -lws2_32' if sys.platform == 'win32' else '')
 
     print('=' * 60)
     print('  [TSan] Auditoria de Hilos — ThreadSanitizer')

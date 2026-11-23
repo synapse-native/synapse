@@ -1545,7 +1545,13 @@ int generar(struct Programa programa, CadenaSegura ruta) {
     } else {
         snprintf(out_exe, sizeof(out_exe), "%s.exe", sal);
     }
+    // cumple Manual 9 §6.2 (r316): --no-insert-timestamp y -lws2_32 son de
+    // MinGW; en Linux/macOS el enlace es el mismo sin ellos.
+#ifdef _WIN32
     snprintf(cmd, sizeof(cmd), "gcc -O2 -fno-ident -Wl,--no-insert-timestamp \"%s\" synapse_rt.c -I. -o \"%s\" -lpthread -lws2_32", sal, out_exe);
+#else
+    snprintf(cmd, sizeof(cmd), "gcc -O2 -fno-ident \"%s\" synapse_rt.c -I. -o \"%s\" -lpthread", sal, out_exe);
+#endif
     int rc = system(cmd);
     if (rc != 0) {
         fprintf(stderr, "[LINKER ERROR] gcc fallo con codigo %d\n", rc);

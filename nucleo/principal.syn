@@ -796,11 +796,17 @@ funcion generar_etapa(ruta: cadena, salida: cadena, modo_validar: entero) -> Res
         // cumple Manual 1 §6 (ME r270, H-R252-4): en win32 el enlace nativo usa
         // -static para igualar la emision S1 y no depender de DLLs del toolchain.
         // cumple Manual 9 §6.2 (ME r270): el enlace nativo se sella con S2==S3.
+        // cumple Manual 9 §6.2 (r316): --no-insert-timestamp, --stack y -lws2_32
+        // son de MinGW; en ELF/macOS ld.bfd los rechaza y el bootstrap no enlazaba.
         asm("    const char* _static_flag = \"\";")
+        asm("    const char* _win_ld = \"\";")
+        asm("    const char* _win_libs = \"\";")
         asm("#ifdef _WIN32")
         asm("    _static_flag = \"-static \";")
+        asm("    _win_ld = \"-Wl,--no-insert-timestamp -Wl,--stack,8388608 \";")
+        asm("    _win_libs = \"-lws2_32 \";")
         asm("#endif")
-        asm("    snprintf(_cmd, 4096, \"gcc %s %s %s-fno-ident -Wl,--no-insert-timestamp -Wl,--stack,8388608 -Wl,--gc-sections -I\\\"%s\\\" \\\"synapse_unity.c\\\"\", _gcc_opt, _gcc_flags, _static_flag, _rt_dir);")
+        asm("    snprintf(_cmd, 4096, \"gcc %s %s %s%s-fno-ident -Wl,--gc-sections -I\\\"%s\\\" \\\"synapse_unity.c\\\"\", _gcc_opt, _gcc_flags, _win_ld, _static_flag, _rt_dir);")
         // cumple Manual 8 §4.1 (ME r281, H-R279-2): la lista de fuentes del
         // runtime se materializa primero; despues se decide si se enlaza desde
         // fuente o desde los .o que pipeline.py cachea (mismo binario).
@@ -869,7 +875,7 @@ funcion generar_etapa(ruta: cadena, salida: cadena, modo_validar: entero) -> Res
         asm("            strncat(_cmd, _q, 4095 - strlen(_cmd));")
         asm("        }")
         asm("    }")
-        asm("    char _cmd_tail[1600]; snprintf(_cmd_tail, 1600, \" -o \\\"%s\\\" -lpthread -lm -lws2_32 -Wl,--allow-multiple-definition\", salida.datos);")
+        asm("    char _cmd_tail[1600]; snprintf(_cmd_tail, 1600, \" -o \\\"%s\\\" -lpthread -lm %s-Wl,--allow-multiple-definition\", salida.datos, _win_libs);")
         asm("    strncat(_cmd, _cmd_tail, 4095 - strlen(_cmd));")
         asm("}")
         asm("fprintf(stderr, \"[Synapse] GCC: %s\\n\", _cmd);")
