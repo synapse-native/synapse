@@ -47,6 +47,10 @@ EXCLUIDOS_PREFIX = (
     "docs/", "tests/", "auditoria/", "scripts/",
     "benchmarks/", "examples/", "vscode-synapse/",
     ".github/", ".kilo/", ".venv/",
+    # Generado por tests/_gen_embedded.py: agrega el texto de los .syn fuente
+    # (que ya se escanean por separado); las citas de sus literales no tienen
+    # sección verificable en el agregado (H-R302-2).
+    "librerias/embedded_libs.h",
 )
 
 # Campos obligatorios del protocolo de micro-entregable

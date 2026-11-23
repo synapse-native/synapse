@@ -126,7 +126,26 @@ for rel_path, content in contents.items():
 # Also create the var_name lookup dict
 name_map = {rel: var for rel, var in libraries}
 
+# cumple Manual 1 §3.1 (ME r302_deriva_generados): traza de norma que viaja en
+# el artefacto generado, para que contrastar.py pueda vincularlo a su requisito.
+lines.insert(1, '// cumple Manual 1 §3.1: librerias embebidas del arbol del compilador, '
+                 'regeneradas desde sus .syn (ME r302_deriva_generados).')
+
+nuevo = '\n'.join(lines)
+
+if '--check' in sys.argv:
+    # cumple Manual 1 §7.4: modo verificación para el oráculo de generados
+    actual = ''
+    if os.path.isfile(header):
+        with open(header, encoding='utf-8') as f:
+            actual = f.read()
+    if actual != nuevo:
+        print(f'FALLO --check: {header} está desactualizado', file=sys.stderr)
+        sys.exit(1)
+    print(f'[OK] {header} sincronizado ({len(contents)} librerías embebidas)')
+    sys.exit(0)
+
 with open(header, 'w', encoding='utf-8') as f:
-    f.write('\n'.join(lines))
+    f.write(nuevo)
 
 print(f'Generated {header} with {len(contents)} embedded libraries')

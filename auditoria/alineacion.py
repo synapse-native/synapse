@@ -58,6 +58,9 @@ MEMORIA = RAIZ / "MEMORIA_PROYECTO.md"
 EXCLUIDOS = (
     "tests/*", "docs/*", "auditoria/*", "scripts/*", "benchmarks/*",
     "examples/*", "vscode-synapse/*", ".github/*", ".kilo/*", "vendor/*",
+    # Agregado generado por tests/_gen_embedded.py: sus citas son las de los
+    # .syn fuente (escaneados aparte) embebidas como literales C (H-R302-2).
+    "librerias/embedded_libs.h",
 )
 EXTENSIONES = (".syn", ".syq", ".c", ".h", ".py")
 TIPOS = ("contrato", "comportamiento", "seguridad", "rendimiento")

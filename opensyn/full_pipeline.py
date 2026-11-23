@@ -157,6 +157,6 @@ def main():
 if __name__ == "__main__":
     main()
 
-// cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
+# cumple Manual 2 §1.2: encoding UTF-8 sin BOM verificado (ME r288).
 
-// cumple Manual 7 §2.1: encoding UTF-8 sin BOM verificado (ME r288).
+# cumple Manual 7 §2.1: encoding UTF-8 sin BOM verificado (ME r288).
