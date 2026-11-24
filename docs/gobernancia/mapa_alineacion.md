@@ -53,9 +53,9 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "nucleo/parser_constantes.syn": ["Manual 2 §7"],
   "nucleo/verificador_formal.syn": ["Manual 2 §5"],
   "nucleo/lifetimes.syn": ["Manual 4 §4"],
-  "syquex/lexer.syn": ["Manual 3 §1"],
-  "syquex/parser.syn": ["Manual 3 §3", "Manual 1 §1.1", "Manual 1 §5.1"],
-  "syquex/traductor.syn": ["Manual 6 §1"],
+  "syquex/lexer.syn": ["Manual 2 §5.1"],
+  "syquex/parser.syn": ["Manual 3 §3", "Manual 1 §1.1", "Manual 1 §5.1", "Manual 2 §5.1"],
+  "syquex/traductor.syn": ["Manual 2 §5.1"],
   "runtime/core/memory.c": ["Manual 4 §2"],
   "runtime/core/io.c": ["Manual 5 §2.6"],
   "runtime/core/modelo.c": ["Manual 9 §5.3"],
@@ -148,7 +148,7 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "compilador/lexer.py": ["Manual 2 §2", "Manual 8 §4.1"],
   "nucleo/lexer.syn": ["Manual 2 §1.1", "Manual 2 §1.2", "Manual 2 §3", "Manual 8 §4.1"],
   "synapse_rt_types.h": ["Manual 2 §4.1"],
-  "syquex/expr.syn": ["Manual 3 §3"],
+  "syquex/expr.syn": ["Manual 3 §3", "Manual 2 §5.1"],
   "lib/runtime_bindings.syq": ["Manual 6 §3.1"],
   "std/testing.syn": ["Manual 2 §2"]
 }

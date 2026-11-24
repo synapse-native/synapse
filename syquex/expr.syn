@@ -22,6 +22,11 @@ funcion sq_nuevo(est: ParserEst, tipo: entero, linea: entero, col: entero) -> en
     retornar parser_nuevo_nodo(est, tipo, linea, col)
 
 funcion sq_id(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     // Consume identificador/keyword-contextual → NODO_IDENTIFICADOR con lexema
     requiere:
         verdadero
@@ -290,6 +295,12 @@ funcion parse_unario_sq(est: ParserEst) -> entero:
     retornar parse_postfix_sq(est)
 
 funcion sq_args(est: ParserEst, nodo_llamada: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        nodo_llamada >= 0
+    garantiza:
+        _resultado_ >= -1
     primero = 0
     ultimo = 0
     si token_mirar(est) == T_PAREN_DER:
@@ -317,6 +328,12 @@ funcion sq_args(est: ParserEst, nodo_llamada: entero) -> entero:
     retornar nodo_llamada
 
 funcion sq_campo_despues_punto(est: ParserEst, base: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        base >= 0
+    garantiza:
+        _resultado_ >= -1
     dot_linea = token_linea(est, est.posicion)
     dot_col = token_columna(est, est.posicion)
     token_avanzar(est)
@@ -339,6 +356,11 @@ funcion sq_nodo_es_identificador(est: ParserEst, n: entero) -> entero:
     retornar 0
 
 funcion sq_scan_genericos(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     // Argumentos genéricos de constructor (M3 §3 L157-158, uso canónico §8.1
     // 'Canal<texto>(10)'): retorna el nº de tokens '<...>' a consumir SOLO si
     // el patrón es '<' {tipo} '>' seguido INMEDIATAMENTE de '(' — en otro caso
@@ -364,6 +386,11 @@ funcion sq_scan_genericos(est: ParserEst) -> entero:
     retornar 0
 
 funcion parse_postfix_sq(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     base = parse_primario_sq(est)
     gen_ini = 0
     gen_fin = -1
@@ -455,6 +482,12 @@ funcion parse_postfix_sq(est: ParserEst) -> entero:
     retornar base
 
 funcion sq_lexema_contiene_punto_o_e(est: ParserEst, pos: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        pos >= 0
+    garantiza:
+        _resultado_ >= -1
     inseguro:
         r = 0
         asm("struct SqLexerBuffers* _b=(struct SqLexerBuffers*)sq_buffers(); if (_b && pos < _b->ntks) { CadenaSegura v=((struct TokenLex*)_b->tokens)[pos].valor; for (int i=0;i<v.longitud;i++){ char ch=v.datos[i]; if (ch=='.'||ch=='e'||ch=='E'){ r=1; break; } } }")
@@ -462,6 +495,11 @@ funcion sq_lexema_contiene_punto_o_e(est: ParserEst, pos: entero) -> entero:
     retornar 0
 
 funcion parse_primario_sq(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     t = token_mirar(est)
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)

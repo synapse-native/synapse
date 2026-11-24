@@ -1024,3 +1024,10 @@
 {"fecha": "2026-11-24", "archivos": ["nucleo/parser.syn"], "cita": "Manual 2 §2", "puntos": "gramatica EBNF extension notacion sintaxis parser"}
 {"fecha": "2026-11-24", "archivos": ["nucleo/generador/compilar.syn", "nucleo/generador/emision_c.syn", "nucleo/generador/escaneo.syn", "nucleo/generador/frontend_nativo.syn", "nucleo/generador/funciones.syn", "nucleo/generador/monomorfizacion.syn", "nucleo/generador/nodos_flujo.syn", "nucleo/generador/orquestador.syn", "nucleo/generador/recorrido.syn"], "cita": "Manual 2 §5.1", "puntos": "requiere garantiza booleanas precondiciones poscondiciones dominio"}
 {"fecha": "2026-11-24", "archivos": ["nucleo/generador/compilar.syn"], "cita": "Manual 9 §6.2", "puntos": "bootstrap verificacion diff 0 bytes validacion cruzada CI CD"}
+{"fecha": "2026-11-24", "archivos": ["syquex/lexer.syn"], "cita": "Manual 3 §1", "puntos": "directiva archivo codificacion tokenizador syquex"}
+{"fecha": "2026-11-24", "archivos": ["syquex/lexer.syn"], "cita": "Manual 3 §4", "puntos": "tabla palabras reservadas multi idioma tokenid espanol ingles frances portugues"}
+{"fecha": "2026-11-24", "archivos": ["syquex/parser.syn", "syquex/expr.syn"], "cita": "Manual 3 §3", "puntos": "gramatica syquex expresiva objetos estructuras metodos constructores errores algebraico"}
+{"fecha": "2026-11-24", "archivos": ["syquex/parser.syn"], "cita": "Manual 1 §1.1", "puntos": "ecosistema synapse plataforma desarrollo unificada syquex alto nivel"}
+{"fecha": "2026-11-24", "archivos": ["syquex/parser.syn"], "cita": "Manual 1 §5.1", "puntos": "legibilidad codigo natural estructurado indentacion bloques"}
+{"fecha": "2026-11-24", "archivos": ["syquex/traductor.syn"], "cita": "Manual 6 §1.3", "puntos": "traductor syquex semnodo biyectiva semantica funciondef nodofuncion"}
+{"fecha": "2026-11-24", "archivos": ["syquex/traductor.syn"], "cita": "Manual 3 §11", "puntos": "integracion ast canonico synapse backend traduce nodos"}

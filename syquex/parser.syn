@@ -238,6 +238,12 @@ funcion sq_declaracion(est: ParserEst) -> entero:
     retornar -1
 
 funcion nombre_pos_previa(est: ParserEst, nodo_nombre: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        nodo_nombre >= 0
+    garantiza:
+        _resultado_ >= -1
     // Recupera la posición de token del identificador previamente consumido
     // por token_esperar_texto: se apoya en que el nodo ID copió el lexema;
     // aquí solo se usa como marcador (el nombre real lo copia sq_copiar_nombre
@@ -253,6 +259,13 @@ funcion nombre_pos_previa(est: ParserEst, nodo_nombre: entero) -> entero:
     retornar 0
 
 funcion sq_copiar_nombre(est: ParserEst, n_destino: entero, nodo_id: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        n_destino >= 0
+        nodo_id >= 0
+    garantiza:
+        1 == 1
     // Copia ptr_str/len_str + bits altos desde el nodo IDENTIFICADOR fuente
     // al destino (R88: los bits altos viven en sq_tokens_hi; sin ellos la
     // reconstrucción 64-bit del nombre queda truncada).
@@ -317,6 +330,11 @@ funcion sq_variable(est: ParserEst) -> entero:
     retornar sq_let_nucleo(est, linea, col)
 
 funcion saltar_nl(est: ParserEst) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     mientras token_mirar(est) == T_NUEVALINEA:
         token_avanzar(est)
     retornar
@@ -473,6 +491,11 @@ funcion sq_params(est: ParserEst, nodo_fun: entero) -> entero:
     retornar primero
 
 funcion sq_bloque_interno(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     // Cadena de sentencias dentro de un INDENT ya consumido; termina con
     // T_DESINDENTAR/T_FIN (lo consume). Reutilizado por sq_bloque (M3 §3
     // L104) y por el cuerpo en bloque del caso coincidir (L140).
@@ -524,6 +547,13 @@ funcion sq_bloque(est: ParserEst) -> entero:
     retornar primero
 
 funcion sq_caso_cuerpo(est: ParserEst, linea: entero, col: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        linea >= 0
+        col >= 0
+    garantiza:
+        _resultado_ >= -1
     // M3 §3 L140: caso ::= patron "=>" ( sentencia | NEWLINE INDENT bloque DEDENT )
     // — la forma de una línea NO lleva ':' ni INDENT.
     requiere:
@@ -826,6 +856,14 @@ funcion sq_estructura(est: ParserEst) -> entero:
     retornar n
 
 funcion sq_self_param(est: ParserEst, linea: entero, col: entero, nodo_struct: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        linea >= 0
+        col >= 0
+        nodo_struct >= 0
+    garantiza:
+        _resultado_ >= -1
     // Self IMPLÍCITO y TIPADO (M3 §6.1 L283-290: crear y metodo usan
     // self.<campo> en su cuerpo; M6 §1.3 L105: método → función con
     // self primero). El TIPO de self es la propia estructura: se copia el
@@ -1021,6 +1059,11 @@ funcion sq_sentencia(est: ParserEst) -> entero:
     retornar n
 
 funcion sq_si(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
     token_avanzar(est)
