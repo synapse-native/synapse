@@ -495,8 +495,12 @@ jobs:
       - name: Calcular base para diff incremental
         id: base
         run: |
-          git fetch origin main --depth=1 2>/dev/null || true
-          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD~1)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin main --depth=1 2>/dev/null || true
+            BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD~1)
+          else
+            BASE=$(git rev-parse HEAD~1 2>/dev/null || echo HEAD)
+          fi
           echo "ref=$BASE" >> "$GITHUB_OUTPUT"
 
       - name: Auditar calidad de tests (incremental)
@@ -533,8 +537,12 @@ jobs:
       - name: Calcular base para diff incremental
         id: base
         run: |
-          git fetch origin main --depth=1 2>/dev/null || true
-          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD~1)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin main --depth=1 2>/dev/null || true
+            BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD~1)
+          else
+            BASE=$(git rev-parse HEAD~1 2>/dev/null || echo HEAD)
+          fi
           echo "ref=$BASE" >> "$GITHUB_OUTPUT"
 
       - name: Verificar trazabilidad de produccion nueva
@@ -604,8 +612,12 @@ jobs:
       - name: Calcular base para diff incremental
         id: base
         run: |
-          git fetch origin main --depth=1 2>/dev/null || true
-          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD~1)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin main --depth=1 2>/dev/null || true
+            BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD~1)
+          else
+            BASE=$(git rev-parse HEAD~1 2>/dev/null || echo HEAD)
+          fi
           echo "ref=$BASE" >> "$GITHUB_OUTPUT"
 
       - name: Verificar lectura previa (CI)
@@ -635,8 +647,12 @@ jobs:
       - name: Calcular base para diff incremental
         id: base
         run: |
-          git fetch origin main --depth=1 2>/dev/null || true
-          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD~1)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin main --depth=1 2>/dev/null || true
+            BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD~1)
+          else
+            BASE=$(git rev-parse HEAD~1 2>/dev/null || echo HEAD)
+          fi
           echo "ref=$BASE" >> "$GITHUB_OUTPUT"
 
       - name: Verificar alineación con los manuales (auditoria/verificar_alineacion.py)
@@ -686,8 +702,12 @@ jobs:
       - name: Calcular base para diff incremental
         id: base
         run: |
-          git fetch origin main --depth=1 2>/dev/null || true
-          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD~1)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin main --depth=1 2>/dev/null || true
+            BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD~1)
+          else
+            BASE=$(git rev-parse HEAD~1 2>/dev/null || echo HEAD)
+          fi
           echo "ref=$BASE" >> "$GITHUB_OUTPUT"
 
       - name: Verificar plan_ME obligatorio para cambios productivos
@@ -747,8 +767,12 @@ jobs:
       - name: Calcular base para diff incremental
         id: base
         run: |
-          git fetch origin main --depth=1 2>/dev/null || true
-          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD~1)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin main --depth=1 2>/dev/null || true
+            BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD~1)
+          else
+            BASE=$(git rev-parse HEAD~1 2>/dev/null || echo HEAD)
+          fi
           echo "ref=$BASE" >> "$GITHUB_OUTPUT"
 
       - name: Verificar alineación manual<->código (alineacion.py)
