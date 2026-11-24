@@ -1,4 +1,8 @@
-// Documento informativo; la ley es docs/manuales/
+> Documento informativo. La fuente de verdad es `docs/manuales/`.
+>
+> **Mapa canónico:** [MANUAL 5](../../manuales/MANUAL 5.md) (completo).
+> **Vigencia:** copia histórica v8.0.0; el nombre del archivo es un alias.
+
 # MANUAL 5: CONCURRENCIA Y COMUNICACIÓN
 
 **Archivo:** `05_CONCURRENCIA_Y_COMUNICACION.md`  

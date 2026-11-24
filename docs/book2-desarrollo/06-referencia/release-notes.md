@@ -1,4 +1,8 @@
-// Documento informativo; la ley es docs/manuales/
+> Documento informativo. La fuente de verdad es `docs/manuales/`.
+>
+> **Mapa canónico:** [MANUAL 9](../../manuales/MANUAL 9.md) §6.1; [ROADMAP.md](../../../ROADMAP.md).
+> **Vigencia:** histórico (v8.1.0); no es la ley vigente.
+
 # Synapse/OpenSyn v8.1.0-industrial
 
 > **Auditoría Completa Certificada — Release Industrial**

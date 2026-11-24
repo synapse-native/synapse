@@ -1,4 +1,8 @@
-// Documento informativo; la ley es docs/manuales/
+> Documento informativo. La fuente de verdad es `docs/manuales/`.
+>
+> **Mapa canónico:** [MANUAL 9](../../manuales/MANUAL 9.md) (completo).
+> **Vigencia:** copia histórica v8.0.0; el alias `manual-9-bootstrap` conserva el nombre del archivo, pero el contenido es Instalación y Distribución.
+
 # MANUAL 9: INSTALACIÓN, EMPAQUETADO Y DISTRIBUCIÓN
 
 **Archivo:** `09_INSTALACION_Y_DISTRIBUCION.md`  

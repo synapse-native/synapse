@@ -1,4 +1,8 @@
-// Documento informativo; la ley es docs/manuales/
+> Documento informativo. La fuente de verdad es `docs/manuales/`.
+>
+> **Mapa canónico:** [MANUAL 1](../../manuales/MANUAL 1.md) §1; [ROADMAP.md](../../../ROADMAP.md).
+> **Vigencia:** histórico (v8.1.0); el roadmap vigente es `ROADMAP.md`.
+
 # Visión General del Proyecto
 
 ## Roadmap del Ecosistema Synapse
@@ -104,7 +108,7 @@ proyecto_synapse/
 ├── docs/                    # Documentación
 │   ├── book1-aprendizaje/   # Manual de aprendizaje
 │   ├── book2-desarrollo/    # Guía para desarrolladores
-│   └── manuales/            # Los 9 manuales oficiales
+│   └── manuales/            # Manuales oficiales (1–9, 31, 32)
 ├── tests/                   # Suites de prueba
 ├── instaladores/            # Instaladores multiplataforma
 ├── vscode-synapse/          # Extensión VS Code
@@ -137,10 +141,10 @@ proyecto_synapse/
 
 ## Próximos Pasos
 
-1. Revisa la [Guía de Contribución](../05-contribuir/guia-contribucion.md)
-2. Explora los [Manuales de Ingeniería](../02-manuales/manual-1-vision-general.md)
+1. Revisa el [protocolo de trabajo](../../../AGENTS.md)
+2. Explora el [índice informativo](../SUMMARY.md) y el [MANUAL 1](../../manuales/MANUAL 1.md)
 3. Revisa los [Benchmarks](../06-referencia/benchmarks.md)
 
 ---
 
-*Este documento es la fuente de verdad para la arquitectura del ecosistema Synapse.*
+*Documento informativo; el roadmap vigente es `ROADMAP.md`.*

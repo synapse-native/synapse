@@ -1,4 +1,8 @@
-// Documento informativo; la ley es docs/manuales/
+> Documento informativo. La fuente de verdad es `docs/manuales/`.
+>
+> **Mapa canónico:** [MANUAL 9](../../manuales/MANUAL 9.md) §6.1; [ROADMAP.md](../../../ROADMAP.md).
+> **Vigencia:** histórico (v5.0); no usar como métrica vigente.
+
 # BENCHMARK_RESULTS.md — Synapse v5.0 Final Benchmark Report
 
 > **Clasificación:** M11.5 — Métricas de benchmark finales (Cierre del Roadmap v5.0)

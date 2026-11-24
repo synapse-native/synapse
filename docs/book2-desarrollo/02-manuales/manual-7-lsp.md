@@ -1,4 +1,8 @@
-// Documento informativo; la ley es docs/manuales/
+> Documento informativo. La fuente de verdad es `docs/manuales/`.
+>
+> **Mapa canónico:** [MANUAL 7](../../manuales/MANUAL 7.md) (completo).
+> **Vigencia:** copia histórica v8.1.0; el alias `manual-7-lsp` conserva el nombre del archivo, pero el contenido es OpenSyn.
+
 # MANUAL 7: OPENSYN – ASISTENTE DE IA LOCAL
 
 **Archivo:** `07_OPENSYN_ASISTENTE_IA.md`  

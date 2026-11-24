@@ -1,7 +1,11 @@
-// Documento informativo; la ley es docs/manuales/
+> Documento informativo. La fuente de verdad es `docs/manuales/`.
+>
+> **Mapa canónico:** [MANUAL 9](../../manuales/MANUAL 9.md) §6.1; [MANUAL 1](../../manuales/MANUAL 1.md) §7.4.
+> **Vigencia:** histórico (v1); la suite vigente es la del repositorio.
+
 # MANUAL DE TESTS OBLIGATORIOS (MTO) — v1
 
-**Fuente de verdad:** Manuales M1–M9 del ecosistema Synapse/Syquex/OpenSyn.
+**Alcance:** inventario histórico de oráculos; no sustituye a los manuales.
 **Propósito:** enumerar, por capítulo funcional, los oráculos mínimos obligatorios que toda fase
 debe dejar en verde. Toda prueba (`test_*.py`) debe mapear a una entrada `OBL-*` y citar el
 `Manual §` correspondiente (gobernanza regla 5, hoy operativa mediante este manual).

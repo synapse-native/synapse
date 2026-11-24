@@ -1,4 +1,8 @@
-// Documento informativo; la ley es docs/manuales/
+> Documento informativo. La fuente de verdad es `docs/manuales/`.
+>
+> **Mapa canónico:** [MANUAL 1](../../manuales/MANUAL 1.md) a [MANUAL 9](../../manuales/MANUAL 9.md).
+> **Vigencia:** histórico (v8.1.0); línea base no exhaustiva.
+
 # ANEXO: Inventario de Archivos Según los Manuales v8.1.0
 
 > Anexo informativo que reúne una **línea base (NO exhaustiva) de archivos que deben estar

@@ -7,7 +7,8 @@
 
 Uso:
     python auditoria/verificar_manuales.py --encoding
-    python auditoria/verificar_manuales.py --encoding --docs
+    python auditoria/verificar_manuales.py --docs
+    python auditoria/verificar_manuales.py --informativos
     python auditoria/verificar_manuales.py --nombres
     python auditoria/verificar_manuales.py --indice
     python auditoria/verificar_manuales.py --citas
@@ -31,6 +32,21 @@ import indice_manual as im  # noqa: E402
 RE_MOJIBAKE = re.compile(r"[\u00c2\u00c3][\u0080-\u00bf]|\u00e2\u20ac[\u0080-\u00bf]|ï»¿")
 RE_CITA = re.compile(
     r"cumple\s+Manual\s+(\d+)\s*(?:\u00a7\s*)?(\d+(?:\.\d+){0,3})?",
+    re.IGNORECASE,
+)
+BASE_INFORMATIVOS = "docs/book2-desarrollo"
+CABECERA_INFORMATIVO = (
+    "> Documento informativo. La fuente de verdad es `docs/manuales/`."
+)
+RE_ENLACE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
+RE_CONTRADICCION = re.compile(
+    r"(este\s+(?:manual|documento)\s+es\s+la\s+fuente\s+de\s+verdad|"
+    r"\*\*fuente\s+de\s+verdad:\*\*|"
+    r"los\s+9\s+manuales\s+oficiales|"
+    r"manual\s+6:\s+gestor\s+de\s+paquetes\s+axon|"
+    r"manual\s+7:\s+herramientas\s+de\s+desarrollo|"
+    r"manual\s+8:\s+backend\s+y\s+generaci[oó]n\s+de\s+c[oó]digo|"
+    r"manual\s+9:\s+bootstrap,\s+pruebas\s+y\s+qa)",
     re.IGNORECASE,
 )
 SUFIJOS_TEXTO = {".md", ".json", ".txt", ".yml", ".yaml"}
@@ -205,6 +221,48 @@ def verificar_citas(root: Path) -> list:
     return errores
 
 
+def verificar_informativos(root: Path) -> list:
+    """Valida cabecera, mapa canonico y enlaces de docs/book2-desarrollo."""
+    base = root / BASE_INFORMATIVOS
+    if not base.is_dir():
+        return []
+    errores = []
+    for path in _archivos(root):
+        if base not in path.parents or path.suffix.lower() != ".md":
+            continue
+        rel = _rel(root, path)
+        try:
+            texto = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            errores.append(_error(rel, 1, f"no se pudo leer: {exc}"))
+            continue
+        lineas = texto.splitlines()
+        if not any(l.strip() == CABECERA_INFORMATIVO for l in lineas[:20]):
+            errores.append(_error(
+                rel, 1,
+                "falta cabecera 'Documento informativo' (POLITICA_MANUALES I7)"))
+        if not any("**Mapa canónico:**" in l for l in lineas[:20]):
+            errores.append(_error(rel, 1, "falta '**Mapa canónico:**'"))
+        for n, linea in enumerate(lineas, 1):
+            if RE_CONTRADICCION.search(linea):
+                errores.append(_error(
+                    rel, n, "contradicción conocida con los manuales"))
+        for m in RE_ENLACE.finditer(texto):
+            destino = m.group(1).strip()
+            if not destino or destino.startswith(
+                    ("#", "http://", "https://", "mailto:", "tel:", "data:")):
+                continue
+            if destino.startswith("/"):
+                continue
+            objetivo = destino.split("#", 1)[0].split("?", 1)[0]
+            if not objetivo:
+                continue
+            if not (path.parent / objetivo).resolve().exists():
+                linea = texto[:m.start()].count("\n") + 1
+                errores.append(_error(rel, linea, f"enlace roto: {destino}"))
+    return errores
+
+
 def _imprimir(titulo: str, errores: list, avisos=None, silencio_ok=True):
     if errores:
         print(f"[FAIL] {titulo}: {len(errores)} problema(s)")
@@ -231,20 +289,25 @@ def main(argv=None) -> int:
     ap.add_argument("--citas", action="store_true")
     ap.add_argument("--todo", action="store_true")
     ap.add_argument("--docs", action="store_true",
-                    help="con --encoding, escanea todo docs/ (r272)")
+                    help="escanea todo docs/ y valida book2 (r272/r282)")
+    ap.add_argument("--informativos", action="store_true",
+                    help="valida cabeceras, mapas y enlaces de book2 (r282)")
     ap.add_argument("--root", default=str(RAIZ), help=argparse.SUPPRESS)
     args = ap.parse_args(argv)
 
+    if args.docs:
+        args.encoding = True
     if not any((args.encoding, args.nombres, args.indice, args.citas,
-                args.todo)):
-        ap.error("indica --encoding, --nombres, --indice, --citas o --todo")
+                args.todo, args.docs, args.informativos)):
+        ap.error("indica --encoding, --docs, --informativos, --nombres, "
+                 "--indice, --citas o --todo")
 
     root = Path(args.root).resolve()
     ok = True
     if args.todo or args.encoding:
         errores = verificar_encoding(root, docs=args.docs or args.todo)
         ok &= _imprimir("encoding UTF-8 sin BOM", errores,
-                        silencio_ok=not args.todo)
+                        silencio_ok=not (args.todo or args.docs))
     if args.todo or args.nombres:
         errores, avisos = verificar_nombres(root)
         ok &= _imprimir("nombres canonicos", errores, avisos,
@@ -257,9 +320,14 @@ def main(argv=None) -> int:
         errores = verificar_citas(root)
         ok &= _imprimir("citas Manual N §S", errores,
                         silencio_ok=not args.todo)
+    if args.todo or args.docs or args.informativos:
+        errores = verificar_informativos(root)
+        ok &= _imprimir("documentos informativos (book2)", errores,
+                        silencio_ok=not (args.todo or args.docs))
 
     if ok:
-        print("[OK] manuales: encoding, nombres, indice y citas verificados")
+        print("[OK] manuales: encoding, nombres, indice, citas e "
+              "informativos verificados")
         return 0
     return 1
 

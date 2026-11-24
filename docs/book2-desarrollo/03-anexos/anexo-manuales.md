@@ -1,4 +1,10 @@
-// Documento informativo; la ley es docs/manuales/
+> Documento informativo. La fuente de verdad es `docs/manuales/`.
+>
+> **Mapa canónico:** [MANUAL 1](../../manuales/MANUAL 1.md) a [MANUAL 9](../../manuales/MANUAL 9.md).
+> **Vigencia:** histórico (registro de correcciones); no es ley.
+
+# Anexo de manuales (histórico)
+
 ## 1. RECTIFICACIONES Y AJUSTES AL MATERIAL PREVIO
 
 ### 1.1. Módulo `lib/web.syq` – Adecuación al modelo de fibras (Manual 5)

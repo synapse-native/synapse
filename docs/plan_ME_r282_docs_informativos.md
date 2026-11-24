@@ -1,76 +1,34 @@
-# Plan de Micro-Entregable r282_docs_informativos
+# Plan ME r282_docs_informativos
 
-## Objetivo
+**Fase del roadmap:** Frente H (sostenibilidad), P2 tras r280/r281.
+**Micro-entregable:** `r282_docs_informativos`.
+**Depende de:** `r271_manuales_canonicos` (CERRADO), `r272_docs_encoding` (CERRADO).
+**Manuales:** Manual 1 §7.4; Manual 9 §6.1.
 
-Añadir headers "Documento informativo; la ley es docs/manuales/" a los archivos de documentación y mapear la documentación del proyecto:
+> Alcance de esta sesión: barrido único de `docs/book2-desarrollo/` (D-MAN-3
+> opción A). Se añade la cabecera de documento informativo, el mapa canónico y
+> la marca de vigencia a los 22 `.md`; se corrigen las contradicciones visibles
+> (lista de manuales, títulos y enlaces muertos de `SUMMARY.md` y `roadmap.md`)
+> y se marca lo histórico como histórico. No se reescriben los manuales ni los
+> reportes históricos.
 
-- **r282_docs_informativos**: Headers informativos en documentación
-- Manual references: **Manual 1 §7.4** (Definition of Done); **Manual 9 §6.1** (Index y catálogo de manuales)
-- Goal: 267 archivos docs/ con headers informativos; mapeo de documentación
-- Dependencies: r271
+---
 
-## Requisitos de los Manuales
+requisito: Manual 1 §7.4
+texto: "Actualización de los manuales correspondientes."
+implementacion: cada `.md` de `docs/book2-desarrollo/` recibe la cabecera `> Documento informativo. La fuente de verdad es docs/manuales/.`, una línea `**Mapa canónico:**` con enlace a la sección o manual que resume, y una marca de vigencia. Las copias de los manuales 1–9 se declaran copias históricas y enlazan al `MANUAL N` canónico; no se altera su cuerpo. `SUMMARY.md` se reescribe como índice de documentos existentes y `presentacion.md` corrige la lista a los 11 manuales vigentes.
+oraculo: tests/auditoria/test_verificar_informativos_r282.py
 
-### Manual 1 §7.4 - Definition of Done (Checklist de Documentación)
+requisito: Manual 9 §6.1
+texto: "Documentación: todos los manuales versionados y empaquetados (incluyendo el Manual 31)."
+implementacion: se eliminan las contradicciones conocidas del barrido (fuente de verdad local, “9 manuales”, títulos de Manual 6/7/8/9 y enlaces a archivos inexistentes). El gate `verificar_manuales.py --docs` valida cabecera, mapa canónico, contradicciones y resolución de enlaces relativos; `--todo` lo integra en el pre-commit.
+oraculo: auditoria/oraculos/oraculo_r282_docs_informativos.py
 
-- **r282: Añadir headers informativos a documentación** — Cada archivo docs debe comenzar con un header identificatorio que indique "Documento informativo; la ley es docs/manuales/" y su relación con el manual correspondiente.
-- Punto 5: **Seguridad en la Cadena de Suministro** — Verificación de que el mapeo de documentación es consistente y los enlaces son resolubles.
+## Criterio de cierre
 
-### Manual 9 §6.1 - Index y catálogo de manuales
-
-- Los manuales deben tener índices y nombres canónicos
-- El gate de encoding debe pasar sin U+FFFD ni C1
-- Los aliases y versiones deben ser estables
-
-## Estado Actual
-
-### Total de archivos docs/ con header "Documento informativo"
-
-| Directorio | Con header | Sin header | Total |
-|---|---|---|---|
-| `docs/book2-desarrollo/` | 20 | ? | ? |
-| `docs/reportes/R*.md` | 244 | ? | ? |
-| `docs/auditorias/` | 3 | ? | ? |
-| **Total** | **264** | **3** | **267** |
-
-### Hallazgos
-
-- **H-R282-1:** 267 archivos docs/ deberían tener header "Documento informativo; la ley es docs/manuales/" — **PARCIAL: 264/267 completados**
-- **H-R282-2:** Mapeo de documentación book2/reportes/auditorías — **En progreso**
-- **H-R282-3:** Verificar que todos los headers tengan formato consistente
-
-## Cambios en Producción
-
-### docs/ (264 files con header)
-
-- Cada archivo comienza con: `// Documento informativo; la ley es docs/manuales/`
-- Formato consistente en book2, reportes y auditorías
-- 3 archivos pending por header (revisar directorios específicos)
-
-### docs/plan_ME_r282_docs_informativos.md
-
-- Plan de micro-entregable con objetivos, requisitos y evidencia
-
-### docs/reportes/R282.md
-
-- Reporte del micro-entregable r282
-
-### docs/alineacion/r282_docs_informativos.md
-
-- Expediente de alineación con citas, evidencia y oráculos
-
-## Evidencia
-
-| check | resultado esperado |
-|---|---|
-| `contrastar --plan docs/plan_ME_r282_docs_informativos.md` | PASS (0 brechas) |
-| `alinelacion --verificar --me r282_docs_informativos` | 0 brechas; citas textuales ↔ código ↔ oráculos |
-| `verificar_encoding.py` | Sin U+FFFD ni C1 en archivos modificados |
-| grep header "Documento informativo" | 267/267 archivos docs/ |
-
-## Oráculos Ejecutados
-
-- `contrastar --plan docs/plan_ME_r282_docs_informativos.md` → PASS (0 brechas) — *pending: crear plan file*
-- `alinelacion --verificar --me r282_docs_informativos` → 0 brechas; oráculos ejecutados
-- `verificar_encoding.py` → Sin U+FFFD ni C1
-- `pytest tests/integration/test_axon_10.py` → 7 passed, 1 skipped
+1. `python auditoria/verificar_manuales.py --docs` rc=0.
+2. `pytest tests/auditoria/test_verificar_informativos_r282.py` 8/8.
+3. `python auditoria/contrastar.py --plan docs/plan_ME_r282_docs_informativos.md` PASS.
+4. `python auditoria/verificar_alineacion.py` 0 brechas.
+5. Reporte `docs/reportes/R282.md` con el hash real y actualización de
+   `MEMORIA_PROYECTO.md` y de la bitácora canónica.

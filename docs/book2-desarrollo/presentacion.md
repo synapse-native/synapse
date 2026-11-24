@@ -1,3 +1,8 @@
+> Documento informativo. La fuente de verdad es `docs/manuales/`.
+>
+> **Mapa canónico:** [MANUAL 1](../manuales/MANUAL 1.md) a [MANUAL 9](../manuales/MANUAL 9.md); [MANUAL 31](../manuales/MANUAL 31.md); [MANUAL 32](../manuales/MANUAL 32.md).
+> **Vigencia:** resumen informativo; no sustituye a los manuales.
+
 # Desarrollo del Ecosistema Synapse
 
 **Versión:** 8.1.0  
@@ -21,16 +26,18 @@ Este manual está diseñado para ingenieros que quieren:
 - Estructura del repositorio
 
 ### Manuales de Ingeniería
-Los 9 manuales oficiales que definen el ecosistema:
-- Manual 1: Arquitectura del Lenguaje
-- Manual 2: Especificación Sintáctica
-- Manual 3: Arquitectura del Compilador
-- Manual 4: Gestión de Memoria
-- Manual 5: Concurrencia
-- Manual 6: Gestor de Paquetes Axon
-- Manual 7: Herramientas de Desarrollo
-- Manual 8: Backend y Generación de Código
-- Manual 9: Bootstrap, Pruebas y QA
+Los 11 manuales oficiales que definen el ecosistema:
+- [Manual 1: Visión General, Filosofía y Arquitectura del Ecosistema](../manuales/MANUAL 1.md)
+- [Manual 2: Sintaxis y Semántica de Synapse](../manuales/MANUAL 2.md)
+- [Manual 3: Sintaxis y Semántica de Syquex](../manuales/MANUAL 3.md)
+- [Manual 4: Modelo de Memoria de Syquex](../manuales/MANUAL 4.md)
+- [Manual 5: Concurrencia y Comunicación](../manuales/MANUAL 5.md)
+- [Manual 6: Integración del Ecosistema](../manuales/MANUAL 6.md)
+- [Manual 7: OpenSyn – Asistente de IA Local](../manuales/MANUAL 7.md)
+- [Manual 8: Herramientas de Desarrollo](../manuales/MANUAL 8.md)
+- [Manual 9: Instalación, Empaquetado y Distribución](../manuales/MANUAL 9.md)
+- [Manual 31: Herramientas de Desarrollo Nativas](../manuales/MANUAL 31.md)
+- [Manual 32: Agente de Codificación Avanzado y Memoria Persistente](../manuales/MANUAL 32.md)
 
 ### Anexos y Referencias
 - Anexo de Manuales
@@ -76,4 +83,4 @@ Los 9 manuales oficiales que definen el ecosistema:
 
 ---
 
-*Este manual es la fuente de verdad para el desarrollo del ecosistema Synapse.*
+*Documento informativo; no sustituye a los manuales.*

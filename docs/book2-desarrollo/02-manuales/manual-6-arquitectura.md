@@ -1,4 +1,8 @@
-// Documento informativo; la ley es docs/manuales/
+> Documento informativo. La fuente de verdad es `docs/manuales/`.
+>
+> **Mapa canónico:** [MANUAL 6](../../manuales/MANUAL 6.md) (completo).
+> **Vigencia:** copia histórica v8.0.0; el nombre del archivo es un alias.
+
 # MANUAL 6: INTEGRACIÓN DEL ECOSISTEMA
 
 **Archivo:** `06_INTEGRACION_ECOSISTEMA.md`  

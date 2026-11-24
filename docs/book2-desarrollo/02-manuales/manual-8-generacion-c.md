@@ -1,4 +1,8 @@
-// Documento informativo; la ley es docs/manuales/
+> Documento informativo. La fuente de verdad es `docs/manuales/`.
+>
+> **Mapa canónico:** [MANUAL 8](../../manuales/MANUAL 8.md) (completo).
+> **Vigencia:** copia histórica v8.2.0; el alias `manual-8-generacion-c` conserva el nombre del archivo, pero el contenido es Herramientas de Desarrollo.
+
 # MANUAL 8: HERRAMIENTAS DE DESARROLLO
 
 **Archivo:** `08_HERRAMIENTAS_DESARROLLO.md`  

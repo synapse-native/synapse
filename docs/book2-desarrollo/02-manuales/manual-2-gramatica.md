@@ -1,4 +1,8 @@
-// Documento informativo; la ley es docs/manuales/
+> Documento informativo. La fuente de verdad es `docs/manuales/`.
+>
+> **Mapa canónico:** [MANUAL 2](../../manuales/MANUAL 2.md) (completo).
+> **Vigencia:** copia histórica v8.0.0; el nombre del archivo es un alias.
+
 # MANUAL 2: SINTAXIS Y SEMÁNTICA DE SYNAPSE
 
 **Archivo:** `02_SINTAXIS_Y_SEMANTICA_SYNAPSE.md`  

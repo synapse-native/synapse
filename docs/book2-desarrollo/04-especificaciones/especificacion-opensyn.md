@@ -1,4 +1,8 @@
-// Documento informativo; la ley es docs/manuales/
+> Documento informativo. La fuente de verdad es `docs/manuales/`.
+>
+> **Mapa canónico:** [MANUAL 7](../../manuales/MANUAL 7.md).
+> **Vigencia:** histórico (v5.0); la especificación vigente de OpenSyn es el Manual 7.
+
 # Especificación Técnica: OpenSyn v5.0
 
 **Versión:** 5.0.0

@@ -1,4 +1,8 @@
-// Documento informativo; la ley es docs/manuales/
+> Documento informativo. La fuente de verdad es `docs/manuales/`.
+>
+> **Mapa canónico:** [MANUAL 4](../../manuales/MANUAL 4.md) (completo).
+> **Vigencia:** copia histórica v8.0.0; el nombre del archivo es un alias.
+
 # MANUAL 4: MODELO DE MEMORIA DE SYQUEX
 
 **Archivo:** `04_MODELO_MEMORIA_SYQUEX.md`  

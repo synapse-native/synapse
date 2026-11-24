@@ -1,4 +1,8 @@
-// Documento informativo; la ley es docs/manuales/
+> Documento informativo. La fuente de verdad es `docs/manuales/`.
+>
+> **Mapa canónico:** [MANUAL 31](../../manuales/MANUAL 31.md); [MANUAL 2](../../manuales/MANUAL 2.md) §1.
+> **Vigencia:** histórico (fragmento); la guía vigente de estilo y formato es el Manual 31.
+
 ***
 
 ### Documento 16: `GUIA_ESTILO_IDIOMATICA.md`

@@ -1,4 +1,8 @@
-// Documento informativo; la ley es docs/manuales/
+> Documento informativo. La fuente de verdad es `docs/manuales/`.
+>
+> **Mapa canónico:** [MANUAL 2](../../manuales/MANUAL 2.md) §7; [MANUAL 6](../../manuales/MANUAL 6.md) §1.
+> **Vigencia:** histórico (v5.0); el AST canónico vigente está en los manuales.
+
 # API de Referencia: AST Canónico (.syn.json) v5.0
 
 **Versión:** 5.0.0

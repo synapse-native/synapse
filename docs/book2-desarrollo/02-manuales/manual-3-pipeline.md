@@ -1,4 +1,8 @@
-// Documento informativo; la ley es docs/manuales/
+> Documento informativo. La fuente de verdad es `docs/manuales/`.
+>
+> **Mapa canónico:** [MANUAL 3](../../manuales/MANUAL 3.md) (completo).
+> **Vigencia:** copia histórica v8.0.0; el nombre del archivo es un alias.
+
 # MANUAL 3: SINTAXIS Y SEMÁNTICA DE SYQUEX
 
 **Archivo:** `03_SINTAXIS_Y_SEMANTICA_SYQUEX.md`  

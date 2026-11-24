@@ -1,4 +1,8 @@
-// Documento informativo; la ley es docs/manuales/
+> Documento informativo. La fuente de verdad es `docs/manuales/`.
+>
+> **Mapa canónico:** [MANUAL 2](../../manuales/MANUAL 2.md); [MANUAL 3](../../manuales/MANUAL 3.md).
+> **Vigencia:** histórico; la taxonomía vigente está en los manuales.
+
 # Synapse: Taxonomía y Códigos de Error (El Diagnóstico)
 
 ## 1. Estructura del Error

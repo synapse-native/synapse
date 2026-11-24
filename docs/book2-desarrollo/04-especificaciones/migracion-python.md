@@ -1,4 +1,8 @@
-// Documento informativo; la ley es docs/manuales/
+> Documento informativo. La fuente de verdad es `docs/manuales/`.
+>
+> **Mapa canónico:** [MANUAL 7](../../manuales/MANUAL 7.md) §7; [MANUAL 2](../../manuales/MANUAL 2.md); [MANUAL 3](../../manuales/MANUAL 3.md).
+> **Vigencia:** histórico (v5.0); la migración vigente está en el Manual 7.
+
 # Guía de Migración: Python → Synapse v5.0
 
 **Versión:** 5.0.0
