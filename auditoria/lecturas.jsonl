@@ -1019,3 +1019,4 @@
 {"fecha": "2026-11-24", "archivos": ["nucleo/analizador_semantico.syn"], "cita": "Manual 2 §8", "puntos": "analisis semantico validacion tipos expresiones sentencias pasadas"}
 {"fecha": "2026-11-24", "archivos": ["nucleo/analizador_semantico.syn"], "cita": "Manual 2 §10", "puntos": "manejo errores taxonomia categorias compilador"}
 {"fecha": "2026-11-24", "archivos": ["nucleo/generator.syn"], "cita": "Manual 2 §8.2", "puntos": "inferencia tipos Hindley-Milner emision C generador"}
+{"fecha": "2026-11-24", "archivos": ["std/cripto.syn", "std/debug.syn", "std/json.syn", "std/math.syn", "std/mem.syn", "std/oraculo.syn", "std/sistema.syn", "std/texto.syn", "std/tiempo.syn", "std/toml.syn"], "cita": "Manual 2 §5.1", "puntos": "contratos cumple garantiza std"}
