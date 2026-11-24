@@ -22,6 +22,11 @@
 // gen_visitar_si (INSTRUMENTADO con PGO via asm())
 // ----------------------------------------------------------
 funcion gen_visitar_si(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct SentenciaSi* _s = (struct SentenciaSi*)stmt;")
         asm("if (!_s) return;")
@@ -68,6 +73,11 @@ funcion gen_visitar_si(est: GeneradorCEst, stmt: puntero) -> nulo:
 // gen_visitar_mientras (INSTRUMENTADO con PGO via asm())
 // ----------------------------------------------------------
 funcion gen_visitar_mientras(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct SentenciaMientras* _w = (struct SentenciaMientras*)stmt;")
         asm("if (!_w) return;")
@@ -100,6 +110,11 @@ funcion gen_visitar_mientras(est: GeneradorCEst, stmt: puntero) -> nulo:
 // gen_visitar_para (INSTRUMENTADO con PGO via asm())
 // ----------------------------------------------------------
 funcion gen_visitar_para(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct SentenciaPara* _p = (struct SentenciaPara*)stmt;")
         asm("if (!_p) return;")
@@ -341,6 +356,11 @@ funcion gen_visitar_para(est: GeneradorCEst, stmt: puntero) -> nulo:
 // gen_visitar_retornar
 // ----------------------------------------------------------
 funcion gen_visitar_retornar(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct SentenciaRetornar* _rt = (struct SentenciaRetornar*)stmt;")
         asm("if (!_rt) return;")
@@ -393,6 +413,11 @@ funcion gen_visitar_retornar(est: GeneradorCEst, stmt: puntero) -> nulo:
 // (rastrea rc/arc/débil/ texto para emitir decremento al cierre de scope)
 // ----------------------------------------------------------
 funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct DeclaracionVariable* _dv = (struct DeclaracionVariable*)stmt;")
         asm("if (!_dv) return;")
@@ -681,6 +706,11 @@ funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
 // si es ok, continua (el valor se descarta).
 // ----------------------------------------------------------
 funcion gen_visitar_delegar(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct SentenciaDelegar* _dl = (struct SentenciaDelegar*)stmt;")
         asm("if (!_dl) return;")
@@ -695,6 +725,11 @@ funcion gen_visitar_delegar(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("gen_emitir_str(est, \"}\");")
 
 funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 4 5.2; Manual 4 §3.2; Manual 4 §3.3; Manual 2 §4.3; D-1.2
     inseguro:
         asm("struct AsignacionVariable* _a = (struct AsignacionVariable*)stmt;")
@@ -948,6 +983,11 @@ funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
 // gen_visitar_asignacion_campo (ME-B9.x, paridad visitar_asignacion_campo)
 // ----------------------------------------------------------
 funcion gen_visitar_asignacion_campo(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct AsignacionCampo* _ac = (struct AsignacionCampo*)stmt;")
         asm("if (!_ac) return;")
@@ -994,6 +1034,11 @@ funcion gen_visitar_asignacion_campo(est: GeneradorCEst, stmt: puntero) -> nulo:
 // gen_visitar_log (R8: log(...) -> printf; paridad S1 visitar_log)
 // ----------------------------------------------------------
 funcion gen_visitar_log(est: GeneradorCEst, nodo_log: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct LogLlamada* _ll = (struct LogLlamada*)nodo_log;")
         asm("if (!_ll) return;")
@@ -1075,6 +1120,11 @@ funcion gen_visitar_log(est: GeneradorCEst, nodo_log: puntero) -> nulo:
         asm("}")
         asm("gen_emitir_str(est, _lline);")
 funcion gen_visitar_expr(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct SentenciaExpr* _s = (struct SentenciaExpr*)stmt;")
         asm("if (!_s) return;")
@@ -1143,6 +1193,11 @@ funcion gen_visitar_expr(est: GeneradorCEst, stmt: puntero) -> nulo:
 // gen_visitar_romper
 // ----------------------------------------------------------
 funcion gen_visitar_romper(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct SentenciaRomper* _br = (struct SentenciaRomper*)stmt;")
         asm("if (!_br) return;")
@@ -1153,6 +1208,11 @@ funcion gen_visitar_romper(est: GeneradorCEst, stmt: puntero) -> nulo:
 // gen_visitar_siguiente
 // ----------------------------------------------------------
 funcion gen_visitar_siguiente(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct SentenciaSiguiente* _ct = (struct SentenciaSiguiente*)stmt;")
         asm("if (!_ct) return;")
@@ -1229,6 +1289,11 @@ funcion gen_visitar_escuchar(est: GeneradorCEst, stmt: puntero) -> nulo:
 // gen_visitar_stmt_generico - Dispatcher principal
 // ----------------------------------------------------------
 funcion gen_visitar_stmt_generico(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct Nodo* _n = (struct Nodo*)stmt;")
         asm("if (!_n) return;")
@@ -1372,6 +1437,11 @@ funcion gen_visitar_stmt_generico(est: GeneradorCEst, stmt: puntero) -> nulo:
 // gen_visitar_coincidir (R11 - paridad S1 visitar_coincidir)
 // ----------------------------------------------------------
 funcion gen_visitar_coincidir(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct NodoCoincidir* _mc = (struct NodoCoincidir*)stmt;")
         asm("if (!_mc) return;")

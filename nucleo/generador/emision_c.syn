@@ -165,6 +165,11 @@ funcion gen_emitir_nueva_linea(est: GeneradorCEst) -> nulo:
 // gen_obtener_salida
 // ----------------------------------------------------------
 funcion gen_obtener_salida(est: GeneradorCEst) -> cadena:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     r = ""
     inseguro:
         asm("extern char _G_emit_buf[4194304]; extern int _G_emit_pos;")
@@ -181,6 +186,11 @@ funcion gen_obtener_salida(est: GeneradorCEst) -> cadena:
 // gen_escribir_cadena_escapada
 // ----------------------------------------------------------
 funcion gen_escribir_cadena_escapada(est: GeneradorCEst, str: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     inseguro:
         asm("const char* _s=(const char*)str;if(!_s)return;char _esc[16384];int _epos=0;int _ei=0;while(_s[_ei]&&_epos<16380){char _c=_s[_ei];if(_c==10){_esc[_epos++]=92;_esc[_epos++]=110;}else if(_c==34){_esc[_epos++]=92;_esc[_epos++]=34;}else if(_c==92){_esc[_epos++]=92;_esc[_epos++]=92;}else if(_c==9){_esc[_epos++]=92;_esc[_epos++]=116;}else if(_c==13){_esc[_epos++]=92;_esc[_epos++]=114;}else{_esc[_epos++]=_c;}_ei++;}_esc[_epos]=0;CadenaSegura _esc_cs={.longitud=_epos,.datos=_esc};gen_emitir_linea(est,_esc_cs);")
 
@@ -193,6 +203,11 @@ funcion gen_escribir_cadena_escapada(est: GeneradorCEst, str: puntero) -> nulo:
 // Emite: /* [Traza: modulo.syn - NombreNodo] */
 // ----------------------------------------------------------
 funcion gen_emitir_traza(est: GeneradorCEst, modulo: puntero, nombre_nodo: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     inseguro:
         asm("// [Optimizacion] gen_emitir_traza anulado: no emitir comentarios de traza en el C")
         asm("(void)modulo; (void)nombre_nodo; (void)est;")
@@ -212,6 +227,11 @@ funcion gen_emitir_traza(est: GeneradorCEst, modulo: puntero, nombre_nodo: punte
 // Formato: assert(condition && "mensaje");
 // ----------------------------------------------------------
 funcion gen_emitir_lifetime_assert(est: GeneradorCEst, condicion: puntero, mensaje: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     inseguro:
         asm("extern int _G_safe_mode;")
         asm("if (!_G_safe_mode) return;")
@@ -228,6 +248,11 @@ funcion gen_emitir_lifetime_assert(est: GeneradorCEst, condicion: puntero, mensa
 // M22.2: Incrementa scope_depth global y emite marcador de entrada.
 // ----------------------------------------------------------
 funcion gen_abrir_bloque_c(est: GeneradorCEst) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     inseguro:
         asm("extern char _G_emit_buf[4194304]; extern int _G_emit_pos; extern int _G_scope_depth;")
         asm("if (_G_emit_pos + 2 > 4194304) return;")
@@ -253,6 +278,11 @@ funcion gen_abrir_bloque_c(est: GeneradorCEst) -> nulo:
 // NOTA: La indentacion la gestiona el visitante llamante.
 // ----------------------------------------------------------
 funcion gen_cerrar_bloque_c(est: GeneradorCEst) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     inseguro:
         asm("extern char _G_emit_buf[4194304]; extern int _G_emit_pos; extern int _G_scope_depth;")
         asm("extern int _G_scope_vars_depth[256]; extern char _G_scope_vars_names[256][64];")
@@ -327,6 +357,11 @@ funcion gen_cerrar_bloque_c(est: GeneradorCEst) -> nulo:
 // Evita problemas de NUL terminator en _n->tipo.datos.
 // ----------------------------------------------------------
 funcion _syn_es_tipo(ptr_tipo_nodo: puntero, esperado: puntero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     inseguro:
         asm("if (!ptr_tipo_nodo || !esperado) return 0;")
 

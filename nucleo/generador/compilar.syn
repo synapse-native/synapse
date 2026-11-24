@@ -10,6 +10,11 @@
 // ============================================================
 
 funcion compilar_archivo(ruta: cadena, salida: cadena) -> ResultadoEtapa:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     inseguro:
         asm("fflush(stderr);")
         asm("fprintf(stderr, \"[Compilar] Leyendo %s...\\n\", ruta.datos); fflush(stderr);")

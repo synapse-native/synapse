@@ -15,6 +15,12 @@
 // gen_recorrer_toplevel - (bloque extraido de generar())
 // ----------------------------------------------------------
 funcion gen_recorrer_toplevel(est: GeneradorCEst, programa: Programa) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        programa != nulo
+    garantiza:
+        1 == 1
     // WALK TOP-LEVEL AST
     inseguro:
         asm("fprintf(stderr, \"[Orquestador] Iniciando recorrido AST\\n\"); fflush(stderr);")

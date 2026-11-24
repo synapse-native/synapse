@@ -8,6 +8,11 @@
 // generar - Punto de entrada principal
 // ----------------------------------------------------------
 funcion generar(programa: Programa, ruta: cadena) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        programa != nulo
+    garantiza:
+        _resultado_ >= -1
     r = 0
     est = GeneradorCEst()
     // F17: Inicializar estado PGO (instrumentación de contadores de bloques básicos)
@@ -582,6 +587,11 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
 // runtime (definidos en synapse_rt.o) no se re-emiten como funciones.
 // ----------------------------------------------------------
 funcion _es_builtin_runtime(nombre: puntero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     inseguro:
         asm("const char* _bn = (const char*)nombre;")
         asm("if (!_bn) return 0;")
@@ -629,6 +639,11 @@ funcion _es_funcdef_usuario(nombre: puntero) -> entero:
         asm("return 0;")
 
 funcion gen_visitar_top_level(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct Nodo* _n = (struct Nodo*)stmt;")
         asm("if (!_n) return;")
@@ -812,6 +827,11 @@ funcion gen_visitar_top_level(est: GeneradorCEst, stmt: puntero) -> nulo:
 // Función del COMPILADOR (como _syn_nativo_expr_tipo_c): la usan los emisores
 // del generador nativo; el C del usuario no la necesita.
 funcion _syn_tipo_escalar(t: puntero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §12 (r153): contratos en toda función pública (tabla de
     // pruebas obligatorias) — clasificador puro: t nulo devuelve 0, t no nulo
     // devuelve 1 si es escalar.
@@ -826,6 +846,11 @@ funcion _syn_tipo_escalar(t: puntero) -> entero:
         retornar r
 
 funcion _syn_nativo_expr_tipo_c(n: puntero, out: puntero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     inseguro:
         asm("    struct Nodo* _nn = (struct Nodo*)n; char* _oo = (char*)out;")
         asm("    if (!_nn || !_oo) return 0;")

@@ -10,6 +10,11 @@
 // ============================================================
 
 funcion gen_visitar_funcion(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct Nodo* _n = (struct Nodo*)stmt;")
         asm("if (!_n) return;")

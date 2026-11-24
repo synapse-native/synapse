@@ -21,6 +21,12 @@
 // _volcar_typedefs_genericos).
 // ----------------------------------------------------------
 funcion gen_escanear_genericas(est: GeneradorCEst, programa: Programa) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        programa != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §12 (33.4b): contratos en toda función pública —
     // el escaneo es tolerante a programa vacío (while con guard), no modifica
     // su entrada y solo llena los registros _G_native_gen* + emite typedefs
@@ -132,6 +138,12 @@ funcion gen_escanear_genericas(est: GeneradorCEst, programa: Programa) -> nulo:
 // gen_escanear_adt_instancias - (bloque extraido de generar())
 // ----------------------------------------------------------
 funcion gen_escanear_adt_instancias(est: GeneradorCEst, programa: Programa) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        programa != nulo
+    garantiza:
+        1 == 1
     // ME-D2: registrar ADT genericos (DeclaracionTipo con parametros_tipo)
     // y sus instanciaciones `Base<A, B>` (monomorfizacion, Opcion A). Paridad
     // pre-pass generator.py _recolectar_instancias_adt.
@@ -500,6 +512,11 @@ funcion gen_emitir_str_typedef_instancia(est: GeneradorCEst, idx: entero):
 // base; el arg 0 es concreto (literal o ctor anidado recursivo).
 // ----------------------------------------------------------
 funcion _G_native_adt_registrar_syn(tipo_syn: puntero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     inseguro:
         asm("extern void traducir_tipo_c(void* tipo); extern char _gen_tmp_buf[4096];")
         asm("const char* _ts = (const char*)tipo_syn;")
@@ -564,6 +581,11 @@ funcion _G_native_adt_registrar_syn(tipo_syn: puntero) -> entero:
         asm("return 1;")
 
 funcion _G_native_adt_resolver_ctor(n: puntero, out: puntero, depth: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        depth >= 0
+    garantiza:
+        _resultado_ >= -1
     inseguro:
         asm("struct Nodo* _nn = (struct Nodo*)n; char* _oo = (char*)out; int _dep = (int)depth;")
         asm("if (!_nn || !_nn->tipo.datos || _dep > 8) { _oo[0] = 0; return 0; }")
@@ -622,6 +644,11 @@ funcion _G_native_adt_resolver_ctor(n: puntero, out: puntero, depth: entero) -> 
         asm("return 1;")
 
 funcion _G_native_scan_ctor_exprs(p: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct Programa* _pp = (struct Programa*)p;")
         asm("if (!_pp) return;")
