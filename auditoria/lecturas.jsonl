@@ -1035,3 +1035,6 @@
 {"fecha": "2026-11-24", "archivos": ["nucleo/lifetimes.syn", "nucleo/diagnostics.syn", "nucleo/optimizador_ia.syn"], "cita": "Manual 2 §5.1", "puntos": "requiere garantiza booleanas precondiciones poscondiciones dominio"}
 {"fecha": "2026-11-24", "archivos": ["nucleo/cache.syn", "nucleo/generator_pgo.syn", "nucleo/puente_ast.syn"], "cita": "Manual 2 §5.1", "puntos": "requiere garantiza booleanas precondiciones poscondiciones dominio"}
 {"fecha": "2026-11-24", "archivos": ["nucleo/puente_ast.syn"], "cita": "Manual 2 §7", "puntos": "arbol sintaxis abstracta ast nodos semanticos"}
+{"fecha": "2026-11-24", "archivos": ["nucleo/lexer.syn", "nucleo/lexer_keywords.syn"], "cita": "Manual 2 §3", "puntos": "tokens keywords lexer"}
+{"fecha": "2026-11-24", "archivos": ["nucleo/lexer.syn", "nucleo/lexer_keywords.syn", "nucleo/principal.syn", "nucleo/resolvedor_axon.syn", "nucleo/lsp.syn", "nucleo/lsp_v3.syn", "nucleo/analizador_semantico.syn", "nucleo/optimizador_ia.syn"], "cita": "Manual 2 §5.1", "puntos": "requiere garantiza contratos dominio"}
+{"fecha": "2026-11-24", "archivos": ["nucleo/lsp.syn"], "cita": "Manual 8 §1.1", "puntos": "language server protocol binario nativo syquex syn transparente"}

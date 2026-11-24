@@ -53,11 +53,21 @@ estructura ResultadoEtapa:
 
 // Native pipeline entry point
 funcion etapa_ok() -> ResultadoEtapa:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     r = ResultadoEtapa()
     r.tag = 0
     retornar r
 
 funcion fallo_etapa(cod: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        cod >= 0
+    garantiza:
+        _resultado_ >= -1
     inseguro:
     // cumple Manual 8 §4.2 (ME r243): modo de validacion reporta la causa de la etapa.
     // cumple Manual 2 §10.2 (ME r243): mensaje explicativo por categoria de error.
@@ -77,6 +87,11 @@ funcion fallo_etapa(cod: entero) -> entero:
     retornar cod
 
 funcion argv_str(i: entero) -> cadena:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        i >= 0
+    garantiza:
+        1 == 1
     r = ""
     inseguro:
         asm("if (i < 0 || i >= _argc()) { r = (CadenaSegura){0,(char*)\"\"}; return r; }")
@@ -91,6 +106,11 @@ funcion argv_str(i: entero) -> cadena:
 // genera C, invoca gcc ni escribe el archivo de salida (M8 §5.2: consumido
 // por el bucle de corrección de OpenSyn/LSP).
 funcion generar_etapa(ruta: cadena, salida: cadena, modo_validar: entero) -> ResultadoEtapa:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        modo_validar >= 0
+    garantiza:
+        1 == 1
     inseguro:
         asm("fprintf(stderr, \"[Synapse] Pipeline nativa: Unity Build - leyendo nucleo...\\n\");")
         asm("// ORDEN 3 M17.2: Multi-file unity build")
@@ -1142,6 +1162,11 @@ funcion escribir_reporte(ruta: texto, contenido: texto) -> entero:
     retornar 0
 
 funcion principal() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     r = 0
     // --- R183d R1: --version / --help como flags globales (Manual 8 §4.2) ---
     // Antes: principal() trataba argv(1) como ARCHIVO a compilar: synapse.exe

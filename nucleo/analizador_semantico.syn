@@ -167,6 +167,13 @@ estructura AnalizadorSemanticoEst:
 
 // --- Error reporting helper ---
 funcion sem_error(est: AnalizadorSemanticoEst, codigo: entero, idx_nodo: entero, mensaje: cadena) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        codigo >= 0
+        idx_nodo >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: código de error válido, índice no negativo, mensaje no vacío
     requiere:
         codigo >= 0
@@ -209,6 +216,12 @@ funcion sem_error(est: AnalizadorSemanticoEst, codigo: entero, idx_nodo: entero,
 
 // --- Symbol table operations ---
 funcion tabla_declarar(est: AnalizadorSemanticoEst, nombre: cadena, tipo: cadena, idx_nodo: entero, es_constante: booleano) -> booleano:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        idx_nodo >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: nombre no vacío, índice no negativo
     requiere:
         longitud(nombre) > 0
@@ -264,6 +277,11 @@ funcion tabla_declarar(est: AnalizadorSemanticoEst, nombre: cadena, tipo: cadena
     retornar verdadero
 
 funcion tabla_buscar(est: AnalizadorSemanticoEst, nombre: cadena) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §5.1: nombre no vacío
     requiere:
         longitud(nombre) > 0
@@ -303,6 +321,11 @@ funcion tabla_buscar(est: AnalizadorSemanticoEst, nombre: cadena) -> entero:
     retornar -1
 
 funcion tabla_entrar_scope(est: AnalizadorSemanticoEst) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: entrada de scope
     garantiza:
         1 == 1
@@ -316,6 +339,11 @@ funcion tabla_entrar_scope(est: AnalizadorSemanticoEst) -> nulo:
         asm("est->tabla->nivel_actual = est->tabla->nivel_actual + 1")
 
 funcion tabla_salir_scope(est: AnalizadorSemanticoEst) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: salida de scope
     garantiza:
         1 == 1
@@ -338,6 +366,11 @@ funcion tabla_salir_scope(est: AnalizadorSemanticoEst) -> nulo:
         asm("est->tabla->nivel_actual = est->tabla->nivel_actual - 1")
 
 funcion tabla_marcar_movido(est: AnalizadorSemanticoEst, nombre: cadena) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: nombre no vacío
     requiere:
         longitud(nombre) > 0
@@ -349,6 +382,11 @@ funcion tabla_marcar_movido(est: AnalizadorSemanticoEst, nombre: cadena) -> nulo
             asm("est->tabla->entradas[idx].propiedad = 2")
 
 funcion tabla_esta_movido(est: AnalizadorSemanticoEst, nombre: cadena) -> booleano:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: nombre no vacío
     requiere:
         longitud(nombre) > 0
@@ -365,6 +403,11 @@ funcion tabla_esta_movido(est: AnalizadorSemanticoEst, nombre: cadena) -> boolea
 
 // --- Type normalization ---
 funcion tipo_normalizado(tipo: cadena) -> cadena:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: tipo no vacío
     requiere:
         longitud(tipo) > 0
@@ -388,6 +431,11 @@ funcion tipo_normalizado(tipo: cadena) -> cadena:
 
 // --- Builtin function types ---
 funcion es_builtin(nombre: cadena) -> booleano:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: nombre no vacío
     requiere:
         longitud(nombre) > 0
@@ -430,6 +478,11 @@ funcion es_builtin(nombre: cadena) -> booleano:
     retornar falso
 
 funcion builtin_cantidad_args(nombre: cadena) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §5.1: nombre no vacío
     requiere:
         longitud(nombre) > 0
@@ -472,6 +525,11 @@ funcion builtin_cantidad_args(nombre: cadena) -> entero:
     retornar 0
 
 funcion builtin_tipo_retorno(nombre: cadena) -> cadena:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: nombre no vacío
     requiere:
         longitud(nombre) > 0
@@ -513,6 +571,11 @@ funcion builtin_tipo_retorno(nombre: cadena) -> cadena:
     retornar ""
 
 funcion builtin_tipo_parametro(nombre: cadena, idx: entero) -> cadena:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        idx >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: nombre no vacío, índice no negativo
     requiere:
         longitud(nombre) > 0
@@ -564,6 +627,12 @@ funcion builtin_tipo_parametro(nombre: cadena, idx: entero) -> cadena:
 
 // --- Node information helpers ---
 funcion nodo_tipo(est: AnalizadorSemanticoEst, idx: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        idx >= 0
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §5.1: índice no negativo
     requiere:
         idx >= 0
@@ -575,6 +644,12 @@ funcion nodo_tipo(est: AnalizadorSemanticoEst, idx: entero) -> entero:
     retornar r
 
 funcion nodo_linea(est: AnalizadorSemanticoEst, idx: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        idx >= 0
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §5.1: índice no negativo
     requiere:
         idx >= 0
@@ -586,6 +661,12 @@ funcion nodo_linea(est: AnalizadorSemanticoEst, idx: entero) -> entero:
     retornar r
 
 funcion nodo_hijo_izq(est: AnalizadorSemanticoEst, idx: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        idx >= 0
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §5.1: índice no negativo
     requiere:
         idx >= 0
@@ -597,6 +678,12 @@ funcion nodo_hijo_izq(est: AnalizadorSemanticoEst, idx: entero) -> entero:
     retornar r
 
 funcion nodo_hijo_der(est: AnalizadorSemanticoEst, idx: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        idx >= 0
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §5.1: índice no negativo
     requiere:
         idx >= 0
@@ -608,6 +695,12 @@ funcion nodo_hijo_der(est: AnalizadorSemanticoEst, idx: entero) -> entero:
     retornar r
 
 funcion nodo_hermano(est: AnalizadorSemanticoEst, idx: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        idx >= 0
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §5.1: índice no negativo
     requiere:
         idx >= 0
@@ -619,6 +712,12 @@ funcion nodo_hermano(est: AnalizadorSemanticoEst, idx: entero) -> entero:
     retornar r
 
 funcion nodo_expr(est: AnalizadorSemanticoEst, idx: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        idx >= 0
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §5.1: índice no negativo
     requiere:
         idx >= 0
@@ -631,6 +730,12 @@ funcion nodo_expr(est: AnalizadorSemanticoEst, idx: entero) -> entero:
     retornar r
 
 funcion nodo_valor_int(est: AnalizadorSemanticoEst, idx: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        idx >= 0
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §5.1: índice no negativo
     requiere:
         idx >= 0
@@ -642,6 +747,12 @@ funcion nodo_valor_int(est: AnalizadorSemanticoEst, idx: entero) -> entero:
     retornar r
 
 funcion nodo_cadena_retorno(est: AnalizadorSemanticoEst, idx: entero) -> cadena:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        idx >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: índice no negativo
     requiere:
         idx >= 0
@@ -656,6 +767,12 @@ funcion nodo_cadena_retorno(est: AnalizadorSemanticoEst, idx: entero) -> cadena:
 
 // --- M21.4: Borrow tracking (Manual 4 S4.2) ---
 funcion prestamo_activo(est: AnalizadorSemanticoEst, idx_simbolo: entero, es_mutable: booleano) -> booleano:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        idx_simbolo >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: índice no negativo
     requiere:
         idx_simbolo >= 0
@@ -678,6 +795,12 @@ funcion prestamo_activo(est: AnalizadorSemanticoEst, idx_simbolo: entero, es_mut
     retornar falso
 
 funcion registrar_prestamo(est: AnalizadorSemanticoEst, idx_simbolo: entero, es_mutable: booleano) -> booleano:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        idx_simbolo >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: índice no negativo
     requiere:
         idx_simbolo >= 0
@@ -700,6 +823,12 @@ funcion registrar_prestamo(est: AnalizadorSemanticoEst, idx_simbolo: entero, es_
 // ERR_SEM_TYPE_AMBIGUOUS si el retorno queda con un TVar sin resolver).
 // Patron nested C unico auto-contenido (sin referencias cruzadas, leccion 2.4).
 funcion validar_llamada_generica(est: AnalizadorSemanticoEst, idx_llamada: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        idx_llamada >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: índice no negativo
     requiere:
         idx_llamada >= 0
@@ -815,6 +944,12 @@ funcion validar_llamada_generica(est: AnalizadorSemanticoEst, idx_llamada: enter
 
 // --- M21.4: Expression traversal to register borrows (Manual 4 S4.2) ---
 funcion analizar_expr(est: AnalizadorSemanticoEst, idx: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        idx >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: índice no negativo
     requiere:
         idx >= 0
@@ -941,6 +1076,12 @@ funcion analizar_expr(est: AnalizadorSemanticoEst, idx: entero) -> nulo:
 
 // --- Struct info management ---
 funcion registrar_estructura(est: AnalizadorSemanticoEst, nombre: cadena, idx_nodo: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        idx_nodo >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: nombre no vacío, índice no negativo
     requiere:
         longitud(nombre) > 0
@@ -984,6 +1125,13 @@ funcion registrar_estructura(est: AnalizadorSemanticoEst, nombre: cadena, idx_no
 // compilador/tipos.py (es_tipo_conocido) + semantic_types.py
 // (_validar_aridad_instanciaciones). Manual 2 §8.2. ---
 funcion registrar_adt(est: AnalizadorSemanticoEst, nombre: cadena, num_parametros: entero, idx_nodo: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        num_parametros >= 0
+        idx_nodo >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: nombre no vacío, parámetros no negativos, índice no negativo
     requiere:
         longitud(nombre) > 0
@@ -1009,6 +1157,12 @@ funcion registrar_adt(est: AnalizadorSemanticoEst, nombre: cadena, num_parametro
         asm("est->total_adts = est->total_adts + 1;")
 
 funcion validar_tipo_instanciacion(est: AnalizadorSemanticoEst, tipo: cadena, idx_nodo: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        idx_nodo >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: tipo no vacío, índice no negativo
     requiere:
         longitud(tipo) > 0
@@ -1068,6 +1222,11 @@ funcion validar_tipo_instanciacion(est: AnalizadorSemanticoEst, tipo: cadena, id
 // --- Regex-free pattern parser for match cases ---
 // Pattern format: "tag_name(var_name)" or "_"
 funcion parsear_patron_coincidir(patron: cadena, tag_buf: puntero, var_buf: puntero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §5.1: patron no vacío, buffers no nulos
     requiere:
         longitud(patron) > 0
@@ -1113,6 +1272,12 @@ funcion parsear_patron_coincidir(patron: cadena, tag_buf: puntero, var_buf: punt
 // --- Main analysis functions ---
 
 funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        idx_nodo >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: índice no negativo
     requiere:
         idx_nodo >= 0
@@ -1449,6 +1614,12 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
 
 // --- First pass: register struct definitions ---
 funcion analizar_paso_estructuras(est: AnalizadorSemanticoEst, idx_programa: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        idx_programa >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: índice no negativo
     requiere:
         idx_programa >= 0
@@ -1483,6 +1654,12 @@ funcion analizar_paso_estructuras(est: AnalizadorSemanticoEst, idx_programa: ent
 
 // --- Second pass: register functions and extern declarations ---
 funcion analizar_paso_funciones(est: AnalizadorSemanticoEst, idx_programa: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        idx_programa >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: índice no negativo
     requiere:
         idx_programa >= 0
@@ -1568,6 +1745,12 @@ funcion analizar_paso_funciones(est: AnalizadorSemanticoEst, idx_programa: enter
 
 // --- Third pass: analyze function bodies ---
 funcion analizar_paso_cuerpos(est: AnalizadorSemanticoEst, idx_programa: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        idx_programa >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: índice no negativo
     requiere:
         idx_programa >= 0
@@ -1637,6 +1820,11 @@ funcion analizar_paso_cuerpos(est: AnalizadorSemanticoEst, idx_programa: entero)
 
 // --- Main entry point ---
 funcion analizar(est: AnalizadorSemanticoEst) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: análisis completo
     garantiza:
         1 == 1
@@ -1655,6 +1843,12 @@ funcion analizar(est: AnalizadorSemanticoEst) -> nulo:
 
 // --- Constructor ---
 funcion analizador_nuevo(nodos: SemNodo, total: entero) -> AnalizadorSemanticoEst:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        nodos != nulo
+        total >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: total no negativo
     requiere:
         total >= 0

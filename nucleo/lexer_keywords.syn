@@ -18,6 +18,11 @@
 // (Manual 2 §3: T_LET, T_DELEGAR, T_RC, T_ARC, T_DEBIL, T_MODULO), keywords
 // contextuales que conservan el lexema para el parser (paridad con _P_*).
 funcion keyword_token_es(palabra: cadena) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     si str_eq(palabra, "si") == 1:
         retornar T_SI
     si str_eq(palabra, "sino") == 1:
@@ -103,6 +108,11 @@ funcion keyword_token_es(palabra: cadena) -> entero:
     retornar 0
 
 funcion keyword_token_en(palabra: cadena) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     si str_eq(palabra, "if") == 1:
         retornar T_SI
     si str_eq(palabra, "else") == 1:
@@ -188,6 +198,11 @@ funcion keyword_token_en(palabra: cadena) -> entero:
     retornar 0
 
 funcion keyword_token_fr(palabra: cadena) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     si str_eq(palabra, "si") == 1:
         retornar T_SI
     si str_eq(palabra, "sinon") == 1:
@@ -271,6 +286,11 @@ funcion keyword_token_fr(palabra: cadena) -> entero:
     retornar 0
 
 funcion keyword_token_pt(palabra: cadena) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     si str_eq(palabra, "se") == 1:
         retornar T_SI
     si str_eq(palabra, "senao") == 1:

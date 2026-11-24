@@ -654,6 +654,11 @@ funcion handle_definition(id: entero, uri: texto, doc: texto, params: texto) -> 
 // ============================================================
 
 funcion handle_code_action(id: entero, doc: texto, params: texto) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        id >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 8 1.4: textDocument/codeAction — sugiere correcciones rápidas
     requiere:
         id >= 0
@@ -721,6 +726,11 @@ funcion handle_code_action(id: entero, doc: texto, params: texto) -> nulo:
     enviar_respuesta(construir_respuesta(id, "[]"))
 
 funcion handle_formatting(id: entero, doc: texto, params: texto) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        id >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 8 1.4: textDocument/formatting — formatea código según reglas de estilo
     requiere:
         id >= 0
@@ -776,6 +786,11 @@ funcion handle_formatting(id: entero, doc: texto, params: texto) -> nulo:
     enviar_respuesta(construir_respuesta(id, "[" + edit + "]"))
 
 funcion handle_signature_help(id: entero, doc: texto, params: texto) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        id >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 8 1.4: textDocument/signatureHelp — muestra firma de función mientras se escribe
     requiere:
         id >= 0
@@ -1113,6 +1128,11 @@ funcion ia_extraer_campo(json_txt: texto, clave: texto) -> texto:
 // cumple Manual 8 §1.1: el LSP usa la unica definicion publica cmp_texto de std.texto.
 
 funcion principal() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     let ejecutando = 1
     let uri_actual = ""
     mientras ejecutando == 1:

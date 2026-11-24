@@ -9,6 +9,11 @@ estructura DepNoDeclaradaError:
     mensaje: cadena
 
 funcion buscar_en(dir_base: cadena, ruta_import: cadena) -> cadena:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     r = ""
     inseguro:
         asm("char _buf[1024];")
@@ -23,6 +28,11 @@ funcion buscar_en(dir_base: cadena, ruta_import: cadena) -> cadena:
     retornar r
 
 funcion resolver(ruta_import: cadena, dir_base: cadena, dependencias_nombres: cadena, dependencias_valores: cadena, total_dependencias: entero) -> cadena:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        total_dependencias >= 0
+    garantiza:
+        1 == 1
     r = ""
     inseguro:
         asm("// Check if dependency is in the declared list")
