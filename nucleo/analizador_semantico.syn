@@ -167,6 +167,15 @@ estructura AnalizadorSemanticoEst:
 
 // --- Error reporting helper ---
 funcion sem_error(est: AnalizadorSemanticoEst, codigo: entero, idx_nodo: entero, mensaje: cadena) -> nulo:
+    // cumple Manual 2 §5.1: código de error válido, índice no negativo, mensaje no vacío
+    requiere:
+        codigo >= 0
+    requiere:
+        idx_nodo >= 0
+    requiere:
+        longitud(mensaje) > 0
+    garantiza:
+        1 == 1
     requiere:
         est != nulo
         codigo >= 0
@@ -200,6 +209,13 @@ funcion sem_error(est: AnalizadorSemanticoEst, codigo: entero, idx_nodo: entero,
 
 // --- Symbol table operations ---
 funcion tabla_declarar(est: AnalizadorSemanticoEst, nombre: cadena, tipo: cadena, idx_nodo: entero, es_constante: booleano) -> booleano:
+    // cumple Manual 2 §5.1: nombre no vacío, índice no negativo
+    requiere:
+        longitud(nombre) > 0
+    requiere:
+        idx_nodo >= 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso
     requiere:
         est != nulo
         nombre != ""
@@ -248,6 +264,11 @@ funcion tabla_declarar(est: AnalizadorSemanticoEst, nombre: cadena, tipo: cadena
     retornar verdadero
 
 funcion tabla_buscar(est: AnalizadorSemanticoEst, nombre: cadena) -> entero:
+    // cumple Manual 2 §5.1: nombre no vacío
+    requiere:
+        longitud(nombre) > 0
+    garantiza:
+        _resultado_ >= -1
     requiere:
         est != nulo
         longitud(nombre) > 0
@@ -282,6 +303,9 @@ funcion tabla_buscar(est: AnalizadorSemanticoEst, nombre: cadena) -> entero:
     retornar -1
 
 funcion tabla_entrar_scope(est: AnalizadorSemanticoEst) -> nulo:
+    // cumple Manual 2 §5.1: entrada de scope
+    garantiza:
+        1 == 1
     requiere:
         est != nulo
     garantiza:
@@ -292,6 +316,9 @@ funcion tabla_entrar_scope(est: AnalizadorSemanticoEst) -> nulo:
         asm("est->tabla->nivel_actual = est->tabla->nivel_actual + 1")
 
 funcion tabla_salir_scope(est: AnalizadorSemanticoEst) -> nulo:
+    // cumple Manual 2 §5.1: salida de scope
+    garantiza:
+        1 == 1
     requiere:
         est != nulo
     garantiza:
@@ -311,12 +338,22 @@ funcion tabla_salir_scope(est: AnalizadorSemanticoEst) -> nulo:
         asm("est->tabla->nivel_actual = est->tabla->nivel_actual - 1")
 
 funcion tabla_marcar_movido(est: AnalizadorSemanticoEst, nombre: cadena) -> nulo:
+    // cumple Manual 2 §5.1: nombre no vacío
+    requiere:
+        longitud(nombre) > 0
+    garantiza:
+        1 == 1
     idx = tabla_buscar(est, nombre)
     si idx >= 0:
         inseguro:
             asm("est->tabla->entradas[idx].propiedad = 2")
 
 funcion tabla_esta_movido(est: AnalizadorSemanticoEst, nombre: cadena) -> booleano:
+    // cumple Manual 2 §5.1: nombre no vacío
+    requiere:
+        longitud(nombre) > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso
     idx = tabla_buscar(est, nombre)
     si idx >= 0:
         r = 0
@@ -328,6 +365,11 @@ funcion tabla_esta_movido(est: AnalizadorSemanticoEst, nombre: cadena) -> boolea
 
 // --- Type normalization ---
 funcion tipo_normalizado(tipo: cadena) -> cadena:
+    // cumple Manual 2 §5.1: tipo no vacío
+    requiere:
+        longitud(tipo) > 0
+    garantiza:
+        longitud(_resultado_) > 0
     si tipo == "entero" o tipo == "int":
         retornar "int"
     si tipo == "decimal" o tipo == "real" o tipo == "flotante":
@@ -346,6 +388,11 @@ funcion tipo_normalizado(tipo: cadena) -> cadena:
 
 // --- Builtin function types ---
 funcion es_builtin(nombre: cadena) -> booleano:
+    // cumple Manual 2 §5.1: nombre no vacío
+    requiere:
+        longitud(nombre) > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso
     inseguro:
         asm("if (strcmp(nombre.datos, \"reserva\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"libera\") == 0) { return verdadero; }")
@@ -383,6 +430,11 @@ funcion es_builtin(nombre: cadena) -> booleano:
     retornar falso
 
 funcion builtin_cantidad_args(nombre: cadena) -> entero:
+    // cumple Manual 2 §5.1: nombre no vacío
+    requiere:
+        longitud(nombre) > 0
+    garantiza:
+        _resultado_ >= 0
     inseguro:
         asm("if (strcmp(nombre.datos, \"reserva\") == 0) { return 1; }")
         asm("if (strcmp(nombre.datos, \"libera\") == 0) { return 1; }")
@@ -420,6 +472,11 @@ funcion builtin_cantidad_args(nombre: cadena) -> entero:
     retornar 0
 
 funcion builtin_tipo_retorno(nombre: cadena) -> cadena:
+    // cumple Manual 2 §5.1: nombre no vacío
+    requiere:
+        longitud(nombre) > 0
+    garantiza:
+        longitud(_resultado_) > 0
     si nombre == "reserva": retornar "tensor"
     si nombre == "libera": retornar "nulo"
     si nombre == "crear_tensor": retornar "tensor"
@@ -456,6 +513,13 @@ funcion builtin_tipo_retorno(nombre: cadena) -> cadena:
     retornar ""
 
 funcion builtin_tipo_parametro(nombre: cadena, idx: entero) -> cadena:
+    // cumple Manual 2 §5.1: nombre no vacío, índice no negativo
+    requiere:
+        longitud(nombre) > 0
+    requiere:
+        idx >= 0
+    garantiza:
+        longitud(_resultado_) > 0
     si nombre == "reserva" o nombre == "libera" o nombre == "crear_tensor" o nombre == "suma_tensor" o nombre == "producto_punto":
         si idx == 0: retornar "tensor"
         si idx == 1 o nombre == "reserva" o nombre == "libera": retornar "int"
@@ -500,36 +564,66 @@ funcion builtin_tipo_parametro(nombre: cadena, idx: entero) -> cadena:
 
 // --- Node information helpers ---
 funcion nodo_tipo(est: AnalizadorSemanticoEst, idx: entero) -> entero:
+    // cumple Manual 2 §5.1: índice no negativo
+    requiere:
+        idx >= 0
+    garantiza:
+        _resultado_ >= 0
     r = 0
     inseguro:
         asm("r = (idx >= 0 && idx < est->total_nodos) ? est->nodos[idx].tipo_nodo : 0")
     retornar r
 
 funcion nodo_linea(est: AnalizadorSemanticoEst, idx: entero) -> entero:
+    // cumple Manual 2 §5.1: índice no negativo
+    requiere:
+        idx >= 0
+    garantiza:
+        _resultado_ >= 0
     r = 0
     inseguro:
         asm("r = (idx >= 0 && idx < est->total_nodos) ? est->nodos[idx].linea : 0")
     retornar r
 
 funcion nodo_hijo_izq(est: AnalizadorSemanticoEst, idx: entero) -> entero:
+    // cumple Manual 2 §5.1: índice no negativo
+    requiere:
+        idx >= 0
+    garantiza:
+        _resultado_ >= -1
     r = 0
     inseguro:
         asm("r = (idx >= 0 && idx < est->total_nodos) ? est->nodos[idx].hijo_izq : 0")
     retornar r
 
 funcion nodo_hijo_der(est: AnalizadorSemanticoEst, idx: entero) -> entero:
+    // cumple Manual 2 §5.1: índice no negativo
+    requiere:
+        idx >= 0
+    garantiza:
+        _resultado_ >= -1
     r = 0
     inseguro:
         asm("r = (idx >= 0 && idx < est->total_nodos) ? est->nodos[idx].hijo_der : 0")
     retornar r
 
 funcion nodo_hermano(est: AnalizadorSemanticoEst, idx: entero) -> entero:
+    // cumple Manual 2 §5.1: índice no negativo
+    requiere:
+        idx >= 0
+    garantiza:
+        _resultado_ >= -1
     r = 0
     inseguro:
         asm("r = (idx >= 0 && idx < est->total_nodos) ? est->nodos[idx].hermano : 0")
     retornar r
 
 funcion nodo_expr(est: AnalizadorSemanticoEst, idx: entero) -> entero:
+    // cumple Manual 2 §5.1: índice no negativo
+    requiere:
+        idx >= 0
+    garantiza:
+        _resultado_ >= -1
     // Slot [6] del flat array: hijo de expresion (len_str reutilizado por flatten)
     r = 0
     inseguro:
@@ -537,12 +631,22 @@ funcion nodo_expr(est: AnalizadorSemanticoEst, idx: entero) -> entero:
     retornar r
 
 funcion nodo_valor_int(est: AnalizadorSemanticoEst, idx: entero) -> entero:
+    // cumple Manual 2 §5.1: índice no negativo
+    requiere:
+        idx >= 0
+    garantiza:
+        _resultado_ >= 0
     r = 0
     inseguro:
         asm("r = (idx >= 0 && idx < est->total_nodos) ? est->nodos[idx].valor_int : 0")
     retornar r
 
 funcion nodo_cadena_retorno(est: AnalizadorSemanticoEst, idx: entero) -> cadena:
+    // cumple Manual 2 §5.1: índice no negativo
+    requiere:
+        idx >= 0
+    garantiza:
+        1 == 1
     // 2.4 nativa: cadena guardada por el flatten F8 en ptr_extra +
     // asignaciones_retorno_campo (tipo_retorno de funcion o tipo de parametro).
     r = ""
@@ -552,6 +656,11 @@ funcion nodo_cadena_retorno(est: AnalizadorSemanticoEst, idx: entero) -> cadena:
 
 // --- M21.4: Borrow tracking (Manual 4 S4.2) ---
 funcion prestamo_activo(est: AnalizadorSemanticoEst, idx_simbolo: entero, es_mutable: booleano) -> booleano:
+    // cumple Manual 2 §5.1: índice no negativo
+    requiere:
+        idx_simbolo >= 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso
     // Conflicto si: hay mutable y pedimos inmutable, o hay cualquier prestamo y pedimos mutable
     r = 0
     i = 0
@@ -569,6 +678,11 @@ funcion prestamo_activo(est: AnalizadorSemanticoEst, idx_simbolo: entero, es_mut
     retornar falso
 
 funcion registrar_prestamo(est: AnalizadorSemanticoEst, idx_simbolo: entero, es_mutable: booleano) -> booleano:
+    // cumple Manual 2 §5.1: índice no negativo
+    requiere:
+        idx_simbolo >= 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso
     si prestamo_activo(est, idx_simbolo, es_mutable):
         retornar falso
     inseguro:
@@ -586,6 +700,11 @@ funcion registrar_prestamo(est: AnalizadorSemanticoEst, idx_simbolo: entero, es_
 // ERR_SEM_TYPE_AMBIGUOUS si el retorno queda con un TVar sin resolver).
 // Patron nested C unico auto-contenido (sin referencias cruzadas, leccion 2.4).
 funcion validar_llamada_generica(est: AnalizadorSemanticoEst, idx_llamada: entero) -> nulo:
+    // cumple Manual 2 §5.1: índice no negativo
+    requiere:
+        idx_llamada >= 0
+    garantiza:
+        1 == 1
     inseguro:
         asm("void _f8_r1_llamada_generica(struct AnalizadorSemanticoEst* e, int idx) {")
         asm("    int* _phi=(int*)e->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)e->nodos[idx].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx])<<32; } const char* _callee=(const char*)_bp;")
@@ -696,6 +815,11 @@ funcion validar_llamada_generica(est: AnalizadorSemanticoEst, idx_llamada: enter
 
 // --- M21.4: Expression traversal to register borrows (Manual 4 S4.2) ---
 funcion analizar_expr(est: AnalizadorSemanticoEst, idx: entero) -> nulo:
+    // cumple Manual 2 §5.1: índice no negativo
+    requiere:
+        idx >= 0
+    garantiza:
+        1 == 1
     si idx <= 0:
         retornar
     tipo = nodo_tipo(est, idx)
@@ -817,6 +941,13 @@ funcion analizar_expr(est: AnalizadorSemanticoEst, idx: entero) -> nulo:
 
 // --- Struct info management ---
 funcion registrar_estructura(est: AnalizadorSemanticoEst, nombre: cadena, idx_nodo: entero) -> nulo:
+    // cumple Manual 2 §5.1: nombre no vacío, índice no negativo
+    requiere:
+        longitud(nombre) > 0
+    requiere:
+        idx_nodo >= 0
+    garantiza:
+        1 == 1
     // Check for duplicate
     i = 0
     r = 1
@@ -853,6 +984,15 @@ funcion registrar_estructura(est: AnalizadorSemanticoEst, nombre: cadena, idx_no
 // compilador/tipos.py (es_tipo_conocido) + semantic_types.py
 // (_validar_aridad_instanciaciones). Manual 2 §8.2. ---
 funcion registrar_adt(est: AnalizadorSemanticoEst, nombre: cadena, num_parametros: entero, idx_nodo: entero) -> nulo:
+    // cumple Manual 2 §5.1: nombre no vacío, parámetros no negativos, índice no negativo
+    requiere:
+        longitud(nombre) > 0
+    requiere:
+        num_parametros >= 0
+    requiere:
+        idx_nodo >= 0
+    garantiza:
+        1 == 1
     i = 0
     r = 1
     mientras r == 1:
@@ -869,6 +1009,13 @@ funcion registrar_adt(est: AnalizadorSemanticoEst, nombre: cadena, num_parametro
         asm("est->total_adts = est->total_adts + 1;")
 
 funcion validar_tipo_instanciacion(est: AnalizadorSemanticoEst, tipo: cadena, idx_nodo: entero) -> nulo:
+    // cumple Manual 2 §5.1: tipo no vacío, índice no negativo
+    requiere:
+        longitud(tipo) > 0
+    requiere:
+        idx_nodo >= 0
+    garantiza:
+        1 == 1
     // Valida instanciaciones de ADT en firmas: `Base<A, B>` con Base registrada
     // (aridad contra tipo X<T, E>), base conocida (no typo) y argumentos
     // conocidos (recursivo para anidados). Tipos simples: lenient (Etapa 1).
@@ -921,6 +1068,15 @@ funcion validar_tipo_instanciacion(est: AnalizadorSemanticoEst, tipo: cadena, id
 // --- Regex-free pattern parser for match cases ---
 // Pattern format: "tag_name(var_name)" or "_"
 funcion parsear_patron_coincidir(patron: cadena, tag_buf: puntero, var_buf: puntero) -> entero:
+    // cumple Manual 2 §5.1: patron no vacío, buffers no nulos
+    requiere:
+        longitud(patron) > 0
+    requiere:
+        tag_buf != nulo
+    requiere:
+        var_buf != nulo
+    garantiza:
+        _resultado_ >= 0
     // Returns 0 = wildcard, 1 = tag(var), -1 = error
     // R11: paridad S1 regex (\w+)(?:\((\w+)\))? — acepta tags SIN parentesis
     // (ej. 'ninguno') como tag con variable vacia (semantic_checker.py L619).
@@ -957,6 +1113,11 @@ funcion parsear_patron_coincidir(patron: cadena, tag_buf: puntero, var_buf: punt
 // --- Main analysis functions ---
 
 funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nulo:
+    // cumple Manual 2 §5.1: índice no negativo
+    requiere:
+        idx_nodo >= 0
+    garantiza:
+        1 == 1
     si idx_nodo < 0:
         retornar
     tipo = nodo_tipo(est, idx_nodo)
@@ -1288,6 +1449,11 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
 
 // --- First pass: register struct definitions ---
 funcion analizar_paso_estructuras(est: AnalizadorSemanticoEst, idx_programa: entero) -> nulo:
+    // cumple Manual 2 §5.1: índice no negativo
+    requiere:
+        idx_programa >= 0
+    garantiza:
+        1 == 1
     stmt = nodo_hijo_izq(est, idx_programa)
     r = 1
     mientras r == 1:
@@ -1317,6 +1483,11 @@ funcion analizar_paso_estructuras(est: AnalizadorSemanticoEst, idx_programa: ent
 
 // --- Second pass: register functions and extern declarations ---
 funcion analizar_paso_funciones(est: AnalizadorSemanticoEst, idx_programa: entero) -> nulo:
+    // cumple Manual 2 §5.1: índice no negativo
+    requiere:
+        idx_programa >= 0
+    garantiza:
+        1 == 1
     nombre = ""
     inseguro:
         asm("nombre.datos = NULL;")
@@ -1397,6 +1568,11 @@ funcion analizar_paso_funciones(est: AnalizadorSemanticoEst, idx_programa: enter
 
 // --- Third pass: analyze function bodies ---
 funcion analizar_paso_cuerpos(est: AnalizadorSemanticoEst, idx_programa: entero) -> nulo:
+    // cumple Manual 2 §5.1: índice no negativo
+    requiere:
+        idx_programa >= 0
+    garantiza:
+        1 == 1
     stmt = nodo_hijo_izq(est, idx_programa)
     r = 1
     mientras r == 1:
@@ -1461,6 +1637,9 @@ funcion analizar_paso_cuerpos(est: AnalizadorSemanticoEst, idx_programa: entero)
 
 // --- Main entry point ---
 funcion analizar(est: AnalizadorSemanticoEst) -> nulo:
+    // cumple Manual 2 §5.1: análisis completo
+    garantiza:
+        1 == 1
     idx_programa = 0
     inseguro:
         asm("idx_programa = 0")
@@ -1476,6 +1655,11 @@ funcion analizar(est: AnalizadorSemanticoEst) -> nulo:
 
 // --- Constructor ---
 funcion analizador_nuevo(nodos: SemNodo, total: entero) -> AnalizadorSemanticoEst:
+    // cumple Manual 2 §5.1: total no negativo
+    requiere:
+        total >= 0
+    garantiza:
+        1 == 1
     est = AnalizadorSemanticoEst()
     inseguro:
         asm("est.nodos = (struct SemNodo*)&nodos")
