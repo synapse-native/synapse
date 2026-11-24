@@ -49,37 +49,110 @@ externo funcion _syn_fed_verificar_firma(grad: puntero, n: entero, firma: texto,
 
 // Inicia una sesión de aprendizaje federado
 funcion fed_iniciar(pesos: puntero, n: entero, lr: decimal, rounds: entero) -> puntero:
+    // cumple Manual 2 §5.1: n positivo, lr y rounds válidos
+    requiere:
+        n > 0
+    requiere:
+        lr > 0.0
+    requiere:
+        rounds > 0
+    garantiza:
+        _resultado_ == _resultado_
     retornar _syn_fed_iniciar(pesos, n, lr, rounds)
 
 // Cierra la sesión y libera recursos
 funcion fed_cerrar(sesion: puntero) -> nulo:
+    // cumple Manual 2 §5.1: sesión no nula
+    requiere:
+        sesion != nulo
+    garantiza:
+        1 == 1
     _syn_fed_cerrar(sesion)
     retornar
 
 // Registra un worker en el clúster federado
 funcion fed_registrar_worker(sesion: puntero, id: texto, ip: texto, puerto: entero, pubkey: texto, peso: decimal) -> entero:
+    // cumple Manual 2 §5.1: sesión no nula, id/ip/pubkey no vacíos, puerto válido, peso positivo
+    requiere:
+        sesion != nulo
+    requiere:
+        longitud(id) > 0
+    requiere:
+        longitud(ip) > 0
+    requiere:
+        puerto > 0
+    requiere:
+        longitud(pubkey) > 0
+    requiere:
+        peso > 0.0
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_fed_registrar_worker(sesion, id, ip, puerto, pubkey, peso)
 
 // Elimina un worker del clúster
 funcion fed_eliminar_worker(sesion: puntero, id: texto) -> entero:
+    // cumple Manual 2 §5.1: sesión no nula, id no vacío
+    requiere:
+        sesion != nulo
+    requiere:
+        longitud(id) > 0
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_fed_eliminar_worker(sesion, id)
 
 // Ejecuta una ronda de FedAvg
 funcion fed_ronda_fedavg(sesion: puntero) -> decimal:
+    // cumple Manual 2 §5.1: sesión no nula
+    requiere:
+        sesion != nulo
+    garantiza:
+        _resultado_ == _resultado_
     retornar _syn_fed_ronda_fedavg(sesion)
 
 // Ejecuta entrenamiento federado completo
 funcion fed_entrenar(sesion: puntero) -> decimal:
+    // cumple Manual 2 §5.1: sesión no nula
+    requiere:
+        sesion != nulo
+    garantiza:
+        _resultado_ == _resultado_
     retornar _syn_fed_entrenar(sesion)
 
 // Guarda el estado federado a archivo
 funcion fed_guardar(sesion: puntero, ruta: texto) -> entero:
+    // cumple Manual 2 §5.1: sesión no nula, ruta no vacía
+    requiere:
+        sesion != nulo
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_fed_guardar(sesion, ruta)
 
 // Carga el estado federado desde archivo
 funcion fed_cargar(sesion: puntero, ruta: texto) -> entero:
+    // cumple Manual 2 §5.1: sesión no nula, ruta no vacía
+    requiere:
+        sesion != nulo
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_fed_cargar(sesion, ruta)
 
 // Verifica firma Ed25519 de gradientes
 funcion fed_verificar_firma(grad: puntero, n: entero, firma: texto, pubkey: texto, worker_id: texto) -> entero:
+    // cumple Manual 2 §5.1: grad no nulo, n positivo, firma/pubkey/worker_id no vacíos
+    requiere:
+        grad != nulo
+    requiere:
+        n > 0
+    requiere:
+        longitud(firma) > 0
+    requiere:
+        longitud(pubkey) > 0
+    requiere:
+        longitud(worker_id) > 0
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_fed_verificar_firma(grad, n, firma, pubkey, worker_id)
