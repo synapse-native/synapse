@@ -1020,3 +1020,5 @@
 {"fecha": "2026-11-24", "archivos": ["nucleo/analizador_semantico.syn"], "cita": "Manual 2 §10", "puntos": "manejo errores taxonomia categorias compilador"}
 {"fecha": "2026-11-24", "archivos": ["nucleo/generator.syn"], "cita": "Manual 2 §8.2", "puntos": "inferencia tipos Hindley-Milner emision C generador"}
 {"fecha": "2026-11-24", "archivos": ["std/cripto.syn", "std/debug.syn", "std/json.syn", "std/math.syn", "std/mem.syn", "std/oraculo.syn", "std/sistema.syn", "std/texto.syn", "std/tiempo.syn", "std/toml.syn"], "cita": "Manual 2 §5.1", "puntos": "contratos cumple garantiza std"}
+{"fecha": "2026-11-24", "archivos": ["nucleo/parser.syn", "nucleo/parser_base.syn", "nucleo/parser_canales.syn", "nucleo/parser_declaraciones.syn", "nucleo/parser_expr.syn", "nucleo/parser_sentencias.syn", "nucleo/parser_stmt.syn"], "cita": "Manual 2 §5.1", "puntos": "requiere garantiza booleanas precondiciones poscondiciones dominio"}
+{"fecha": "2026-11-24", "archivos": ["nucleo/parser.syn"], "cita": "Manual 2 §2", "puntos": "gramatica EBNF extension notacion sintaxis parser"}

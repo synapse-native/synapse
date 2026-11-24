@@ -12,6 +12,11 @@
 // (Manual 8 §8.2) -> C byte-identico verificado por bootstrap.
 // ------------------------------------------------------------
 funcion parsear_si(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     stmt = 0
     r = 1
     si token_esperar(est, T_SI) == 0:
@@ -139,6 +144,11 @@ funcion parsear_si(est: ParserEst) -> entero:
     retornar nodo
 
 funcion parsear_mientras(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     si token_esperar(est, T_MIENTRAS) == 0:
         retornar 0
     linea = token_linea(est, est.posicion)
@@ -199,6 +209,11 @@ funcion parsear_mientras(est: ParserEst) -> entero:
     retornar nodo
 
 funcion parsear_para(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     // Synapse-style: para Identificador = Expresion mientras Expresion: (Manual 2 §2.2)
     // Ej: para i = 0 mientras i < 10:
     si token_esperar(est, T_PARA) == 0:
@@ -341,6 +356,11 @@ funcion parsear_para(est: ParserEst) -> entero:
     retornar nodo
 
 funcion parsear_retornar(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     si token_esperar(est, T_RETORNAR) == 0:
         retornar 0
     linea = token_linea(est, est.posicion)
@@ -356,6 +376,11 @@ funcion parsear_retornar(est: ParserEst) -> entero:
     retornar nodo
 
 funcion parsear_lanzar(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     si token_esperar(est, T_LANZAR) == 0:
         retornar 0
     linea = token_linea(est, est.posicion)
@@ -367,6 +392,11 @@ funcion parsear_lanzar(est: ParserEst) -> entero:
     retornar nodo
 
 funcion parsear_escuchar(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     si token_esperar(est, T_ESCUCHAR) == 0:
         retornar 0
     linea = token_linea(est, est.posicion)
@@ -428,6 +458,11 @@ funcion parsear_escuchar(est: ParserEst) -> entero:
     retornar nodo
 
 funcion parsear_asignacion(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     t = token_mirar(est)
     si token_es_nombre(t) == 0:
         retornar 0
@@ -449,6 +484,11 @@ funcion parsear_asignacion(est: ParserEst) -> entero:
     retornar nodo
 
 funcion parsear_asm(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     si token_esperar(est, T_ASM) == 0:
         retornar 0
     linea = token_linea(est, est.posicion)
@@ -466,6 +506,11 @@ funcion parsear_asm(est: ParserEst) -> entero:
     retornar nodo
 
 funcion parsear_inseguro(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     si token_esperar(est, T_INSEGURO) == 0:
         retornar 0
     linea = token_linea(est, est.posicion)
@@ -519,6 +564,11 @@ funcion parsear_inseguro(est: ParserEst) -> entero:
     retornar nodo
 
 funcion parsear_coincidir(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     // R11 (deuda FASE_2_2.4_NATIVA.md): cablear NodoCoincidir en el pipeline
     // nativo (parser -> puente -> flatten F8 -> analizador -> generador).
     // Antes el parser plano creaba NODO_CASO vacios (sin patron, sin cuerpo

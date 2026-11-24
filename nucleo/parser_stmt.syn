@@ -5,6 +5,11 @@
 # cumple Manual 1 1: infraestructura del compilador Synapse
 # cumple Manual 8 4: toolchain de construcción
 funcion parsear_sentencia_simple(est: ParserEst, t: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     linea = 0
     col = 0
     si t == T_ROMPER:
@@ -29,6 +34,11 @@ funcion parsear_sentencia_simple(est: ParserEst, t: entero) -> entero:
 
 // Helper: Parse declaration-like statements (struct, import, const, etc.)
 funcion parsear_sentencia_decl(est: ParserEst, t: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     si t == T_ESTRUCTURA:
         retornar parsear_estructura_def(est)
     si t == T_IMPORTAR:
@@ -89,6 +99,11 @@ funcion parsear_sentencia_decl(est: ParserEst, t: entero) -> entero:
 
 // Helper: Parse control flow statements (if, while, for, etc.)
 funcion parsear_sentencia_control(est: ParserEst, t: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     si t == T_SI:
         retornar parsear_si(est)
     si t == T_MIENTRAS:
@@ -107,6 +122,11 @@ funcion parsear_sentencia_control(est: ParserEst, t: entero) -> entero:
 
 // Helper: Parse channel-related statements
 funcion parsear_sentencia_canal(est: ParserEst, t: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     linea = 0
     col = 0
     expr = 0
@@ -224,6 +244,11 @@ funcion parsear_sentencia_canal(est: ParserEst, t: entero) -> entero:
 
 // Main statement parser - refactored
 funcion parsear_sentencia(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     linea = 0
     col = 0
     nodo = 0

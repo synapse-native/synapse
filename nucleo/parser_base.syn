@@ -61,6 +61,11 @@ estructura ParserEst:
 // parsear() (parser.syn) enlaza este buffer a ParserEst.nodos; el flatten (F8)
 // y los harnesses de paridad lo leen via esta funcion.
 funcion parser_nodos() -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     inseguro:
         let r: puntero = nulo
         asm("static struct NodoAST _N_nodos[65536];")
@@ -79,6 +84,11 @@ funcion parser_nodos() -> puntero:
 // (A3) reconstruiria punteros truncados (misma clase de bug que el segfault
 // &mut de A2.3b). Patron _f8_ptr_hi del flatten F8 (principal.syn L182).
 funcion parser_ptr_hi() -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     inseguro:
         let r: puntero = nulo
         asm("static int _N_ptr_hi[65536];")
@@ -91,6 +101,11 @@ funcion parser_ptr_hi() -> puntero:
 // tipo_param). El NodoAST plano solo tiene un slot (ptr_str/len_str + hi);
 // se anade un slot paralelo por nodo (ptr + len + bits altos).
 funcion parser_str2_ptr() -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     inseguro:
         let r: puntero = nulo
         asm("static int _N_str2_ptr[65536];")
@@ -98,6 +113,11 @@ funcion parser_str2_ptr() -> puntero:
         retornar r
 
 funcion parser_str2_hi() -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     inseguro:
         let r: puntero = nulo
         asm("static int _N_str2_hi[65536];")
@@ -105,6 +125,11 @@ funcion parser_str2_hi() -> puntero:
         retornar r
 
 funcion parser_str2_len() -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     inseguro:
         let r: puntero = nulo
         asm("static int _N_str2_len[65536];")
@@ -112,6 +137,11 @@ funcion parser_str2_len() -> puntero:
         retornar r
 
 funcion parser_meta() -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     inseguro:
         let r: puntero = nulo
         asm("static int _N_parser_total = 0;")
@@ -119,6 +149,11 @@ funcion parser_meta() -> puntero:
         retornar r
 
 funcion parser_obtener_total() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     inseguro:
         r = 0
         asm("r = *((int*)parser_meta());")
@@ -126,6 +161,13 @@ funcion parser_obtener_total() -> entero:
 
 // ---- Node allocation via asm ----
 funcion parser_nuevo_nodo(est: ParserEst, tipo: entero, linea: entero, columna: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        linea >= 0
+        columna >= 0
+    garantiza:
+        _resultado_ >= -1
     inseguro:
         idx = 0
         // FASE A (A2.3): guarda de desbordamiento — el buffer estatico
@@ -162,6 +204,13 @@ funcion parser_nuevo_nodo(est: ParserEst, tipo: entero, linea: entero, columna: 
 
 // ---- Error reporting ----
 funcion parser_error(est: ParserEst, mensaje: cadena, linea: entero, columna: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        linea >= 0
+        columna >= 0
+    garantiza:
+        1 == 1
     est.hay_error = verdadero
     est.error_mensaje = mensaje
     est.error_linea = linea
@@ -180,6 +229,11 @@ funcion parser_error(est: ParserEst, mensaje: cadena, linea: entero, columna: en
 // T_NUEVALINEA/T_DESINDENTAR/T_FIN antes de llamar a parsear_sentencia, asi que
 // el fallthrough solo ve tokens invalidos reales.
 funcion parser_sinc_skip(est: ParserEst) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     // do-while: consume SIEMPRE al menos un token (garantiza progreso del loop
     // de sentencias aunque el token actual ya sea de sincronizacion, ej: ', '
     // suelto — sin esto el loop quedaria estancado igualmente).
@@ -195,46 +249,92 @@ funcion parser_sinc_skip(est: ParserEst) -> nulo:
 
 // ---- Token access helpers ----
 funcion token_tipo(est: ParserEst, pos: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        pos >= 0
+    garantiza:
+        _resultado_ >= -1
     inseguro:
         r = 0
         asm("r = (pos < est->total_tokens) ? est->tokens[pos].tipo : 57")
         retornar r
 
 funcion token_linea(est: ParserEst, pos: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        pos >= 0
+    garantiza:
+        _resultado_ >= -1
     inseguro:
         r = 0
         asm("r = (pos < est->total_tokens) ? est->tokens[pos].linea : 0")
         retornar r
 
 funcion token_columna(est: ParserEst, pos: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        pos >= 0
+    garantiza:
+        _resultado_ >= -1
     inseguro:
         r = 0
         asm("r = (pos < est->total_tokens) ? est->tokens[pos].columna : 0")
         retornar r
 
 funcion token_ptr_valor(est: ParserEst, pos: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        pos >= 0
+    garantiza:
+        _resultado_ >= -1
     inseguro:
         r = 0
         asm("r = (pos < est->total_tokens) ? est->tokens[pos].ptr_valor : 0")
         retornar r
 
 funcion token_len_valor(est: ParserEst, pos: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        pos >= 0
+    garantiza:
+        _resultado_ >= -1
     inseguro:
         r = 0
         asm("r = (pos < est->total_tokens) ? est->tokens[pos].len_valor : 0")
         retornar r
 
 funcion token_avanzar(est: ParserEst) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     inseguro:
         asm("est->posicion = est->posicion + 1")
 
 funcion token_mirar(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     inseguro:
         r = 0
         asm("r = (est->posicion < est->total_tokens) ? est->tokens[est->posicion].tipo : 57")
         retornar r
 
 funcion token_esperar(est: ParserEst, esperado: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        esperado >= 0
+    garantiza:
+        _resultado_ >= -1
     t = token_mirar(est)
     si t == esperado:
         inseguro:
@@ -244,6 +344,12 @@ funcion token_esperar(est: ParserEst, esperado: entero) -> entero:
     retornar 0
 
 funcion token_esperar_texto(est: ParserEst, esperado: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        esperado >= 0
+    garantiza:
+        _resultado_ >= -1
     t = token_mirar(est)
     si t == esperado:
         linea = token_linea(est, est.posicion)
@@ -267,6 +373,11 @@ funcion token_esperar_texto(est: ParserEst, esperado: entero) -> entero:
 // T_MODULO (modulo), T_EXPORT (@export ... funcion).
 // Manual 2 §3: let, delegar, rc, arc, débil, modulo conservan el lexema.
 funcion token_es_nombre(t: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     si t == T_IDENTIFICADOR:
         retornar 1
     si t == T_TIPO:

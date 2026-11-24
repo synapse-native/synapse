@@ -7,6 +7,11 @@
 // byte-identico (bootstrap, Manual 8 §8.2).
 // ------------------------------------------------------------
 funcion parsear_estructura_def(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     si token_esperar(est, T_ESTRUCTURA) == 0:
         retornar 0
     t = token_mirar(est)
@@ -98,6 +103,11 @@ funcion parsear_estructura_def(est: ParserEst) -> entero:
     retornar nodo
 
 funcion parsear_constante(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     si token_esperar(est, T_CONSTANTE) == 0:
         retornar 0
     t = token_mirar(est)
@@ -122,6 +132,11 @@ funcion parsear_constante(est: ParserEst) -> entero:
     retornar nodo
 
 funcion parsear_importar_c(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     si token_esperar(est, T_IMPORTAR_C) == 0:
         retornar 0
     linea = token_linea(est, est.posicion)
@@ -136,6 +151,11 @@ funcion parsear_importar_c(est: ParserEst) -> entero:
     retornar nodo
 
 funcion parsear_externo(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     si token_esperar(est, T_EXTERNO) == 0:
         retornar 0
     si token_esperar(est, T_FUNCION) == 0:
@@ -196,6 +216,11 @@ funcion parsear_externo(est: ParserEst) -> entero:
     retornar nodo
 
 funcion parsear_declaracion_tipo(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     si token_esperar(est, T_TIPO) == 0:
         retornar 0
     linea = token_linea(est, est.posicion)
@@ -392,6 +417,11 @@ funcion parsear_declaracion_tipo(est: ParserEst) -> entero:
 
 // AUDITORIA FASE A (A2.2): @export ( IDENT ) funcion (Manual 2 §2 L81)
 funcion parsear_export(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     si token_mirar(est) != T_EXPORT:
         retornar 0
     linea = token_linea(est, est.posicion)

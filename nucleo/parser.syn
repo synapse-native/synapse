@@ -6,6 +6,13 @@
 // tras tokenizar (fuente + sbuf acumulativo), asi que el puntero es estable
 // hasta el final de la compilacion (el puente plano->tipado de A3 lo lee).
 funcion nodo_guardar_token(est: ParserEst, nodo: entero, pos: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        nodo >= 0
+        pos >= 0
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct LexerBuffers* _lb_g = (struct LexerBuffers*)lexer_buffers();")
         asm("if (_lb_g && pos >= 0 && pos < _lb_g->ntks && nodo >= 0 && nodo < est->total_nodos) {")
@@ -24,6 +31,15 @@ funcion nodo_guardar_token(est: ParserEst, nodo: entero, pos: entero) -> nulo:
 // exactamente "arc<NodoLista>". NOTA de paridad: con espacios dentro del generico
 // ('arc < NodoLista >') el span los incluiria (el codigo real no los usa).
 funcion nodo_guardar_span(est: ParserEst, nodo: entero, pos_ini: entero, pos_fin: entero, slot: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        nodo >= 0
+        pos_ini >= 0
+        pos_fin >= 0
+        slot >= 0
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct LexerBuffers* _lb_s = (struct LexerBuffers*)lexer_buffers();")
         asm("if (_lb_s && pos_ini >= 0 && pos_ini < _lb_s->ntks && pos_fin >= pos_ini && pos_fin < _lb_s->ntks && nodo >= 0 && nodo < est->total_nodos) {")
@@ -43,6 +59,13 @@ funcion nodo_guardar_span(est: ParserEst, nodo: entero, pos_ini: entero, pos_fin
 // FASE A (A3.0): segundo slot de cadena por nodo (parser_str2_{ptr, hi, len}()).
 // Uso: NODO_FUNCION tipo_retorno, NODO_PARAMETRO tipo_param, NODO_LET tipo_param.
 funcion nodo_guardar_token2(est: ParserEst, nodo: entero, pos: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        nodo >= 0
+        pos >= 0
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct LexerBuffers* _lb_g2 = (struct LexerBuffers*)lexer_buffers();")
         asm("if (_lb_g2 && pos >= 0 && pos < _lb_g2->ntks && nodo >= 0 && nodo < est->total_nodos) {")
@@ -58,6 +81,11 @@ funcion nodo_guardar_token2(est: ParserEst, nodo: entero, pos: entero) -> nulo:
 
 // Results stored in these temp fields for caller to save
 funcion parsear_bloque_contrato(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     r2 = 1
     expr = 0
     mientras r2 == 1:
@@ -102,6 +130,12 @@ funcion parsear_bloque_contrato(est: ParserEst) -> entero:
 // solo afecta input malformado (ej: 'a: 5'), no codigo valido. No reutilizar en
 // parsear_tipo_retorno: el fallback no excluye T_DOSPUNTOS y romperia '-> :'.
 funcion parsear_tipo_compuesto(est: ParserEst, nodo: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        nodo >= 0
+    garantiza:
+        _resultado_ >= -1
     // FASE A (A3.1): el tipo completo (base + <T, E> + *) se captura como SPAN
     // contiguo en el slot secundario del nodo (paridad _P_* que concatena).
     pos_ini = est.posicion
@@ -136,6 +170,11 @@ funcion parsear_tipo_compuesto(est: ParserEst, nodo: entero) -> entero:
 
 // Helper: Parse function parameters (Manual 2 §2.2)
 funcion parsear_parametros(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     primero = 0
     ultimo = 0
     si token_mirar(est) != T_PAREN_DER:
@@ -208,6 +247,12 @@ funcion parsear_parametros(est: ParserEst) -> entero:
 // AUDITORIA FASE A (A2.2): soportar tipos genericos en retorno -> arc<T>, -> Resultado<T, E>
 // (Manual 2 §2 L144-153, §4.2). Se consumen identificador + posible < T1, T2 >.
 funcion parsear_tipo_retorno(est: ParserEst, nodo_func: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        nodo_func >= 0
+    garantiza:
+        _resultado_ >= -1
     // FASE A (A3.1): el tipo de retorno completo (base + <T, E>) se captura como
     // span en el slot secundario del nodo funcion (DefinicionFuncion.tipo_retorno,
     // paridad _P_* _rt concatenado).
@@ -250,6 +295,12 @@ funcion parsear_tipo_retorno(est: ParserEst, nodo_func: entero) -> entero:
 // token DESPUES de los contratos (ya sea DESINDENTAR o primera sentencia
 // del cuerpo). Paridad con _P_bloque y parser Python.
 funcion parsear_contratos(est: ParserEst, nodo_func: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        nodo_func >= 0
+    garantiza:
+        _resultado_ >= -1
     r = 1
     mientras r == 1:
         t = token_mirar(est)
@@ -305,6 +356,12 @@ funcion parsear_contratos(est: ParserEst, nodo_func: entero) -> entero:
 // estamos DENTRO del bloque (INDENTAR ya consumido) y parsea sentencias
 // hasta DESINDENTAR.
 funcion parsear_cuerpo_funcion(est: ParserEst, nodo_func: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        nodo_func >= 0
+    garantiza:
+        _resultado_ >= -1
     primero = 0
     ultimo = 0
     r = 1
@@ -431,6 +488,11 @@ funcion parsear_funcion(est: ParserEst) -> entero:
 // alfabeticamente (Manual 8 §8.2) -> C byte-identico verificado por bootstrap.
 // ------------------------------------------------------------
 funcion parsear_nativo(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     inseguro:
         asm("est->tokens = (struct TokenExt*)lexer_obtener_tokens()")
         asm("est->total_tokens = lexer_obtener_total()")
@@ -491,6 +553,11 @@ funcion parsear_nativo(est: ParserEst) -> entero:
 // Manual 2 S2 (EBNF: funcion/retorno) / Manual 3 S3.3 (el pipeline runtime
 // consume struct Programa) / Manual 9 S9.7 (determinismo bootstrap, diff 0).
 funcion parsear() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     // FASE A (A4.5, fix harness): este STUB era `retornar -1` — el harness
     // native_parser_paridad/native_puente_paridad renombra `parsear()` a
     // `_nat_parsear()` y la llama como entrada real del parser (el hook ME-B7

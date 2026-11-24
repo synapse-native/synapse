@@ -8,6 +8,11 @@
 // alfabeticamente -> C byte-identico (bootstrap, Manual 8 §8.2).
 // ------------------------------------------------------------
 funcion parsear_enviar_canal(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
     nodo = parser_nuevo_nodo(est, NODO_ENVIAR_CANAL, linea, col)
@@ -25,6 +30,11 @@ funcion parsear_enviar_canal(est: ParserEst) -> entero:
     retornar nodo
 
 funcion parsear_crear_canal(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     si token_esperar(est, T_CANAL) == 0:
         retornar 0
     linea = token_linea(est, est.posicion)
@@ -44,6 +54,11 @@ funcion parsear_crear_canal(est: ParserEst) -> entero:
     retornar nodo
 
 funcion parsear_recibir_canal(est: ParserEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
     nodo = parser_nuevo_nodo(est, NODO_RECIBIR_CANAL, linea, col)
