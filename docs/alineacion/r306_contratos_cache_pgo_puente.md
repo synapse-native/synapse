@@ -1,7 +1,7 @@
 # Expediente de alineación r306_contratos_cache_pgo_puente
 
 base: HEAD  # commit sobre el que se leyó el manual
-cambio_hash:
+cambio_hash: f49fdc6236f05c23
 
 > Una ancla por requisito. `estado:` CUMPLE | DESVIACION.
 > CUMPLE exige `evidencia: archivo:linea` con el comentario
