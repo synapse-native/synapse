@@ -9,7 +9,7 @@
       "Tool: synapse-sbom-2.0",
       "Organization: Synapse Project"
     ],
-    "created": "2026-11-24T23:05:34Z"
+    "created": "2026-11-24T23:07:13Z"
   },
   "packages": [
     {
@@ -20,12 +20,12 @@
       "downloadLocation": "NOASSERTION",
       "filesAnalyzed": true,
       "packageVerificationCode": {
-        "packageVerificationCodeValue": "dd7ea61844c98bcfb175d0d4a6e56be0161e63c3"
+        "packageVerificationCodeValue": "29b81735ce2316f16cb8e9417ec9a8480e4f7d0b"
       },
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "5efba2ae734956b51f855909a6360f3185878e1c575953c5020b1fab5f69c328"
+          "checksumValue": "cfbe9498f521b52427840ec0721fa005c5e4bbfc86e12bbb5ccb20ada6f3d149"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -251,14 +251,14 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "55873ca299b838f30c26eab66daf7ab40d859eca164d728d1496822f7babc945"
+          "checksumValue": "a0fb82f15934c7a78e1a13b490770b9eb590fe469ee08d4b4b0037a71ba7b962"
         }
       ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "primaryPackagePurpose": "SOURCE",
-      "size": 262835
+      "size": 263496
     },
     {
       "SPDXID": "SPDXRef-FILE-12",
@@ -9351,14 +9351,14 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "e0549de145994779959e2737418a023824e1ab1ed700a27bccb1a61af9162af6"
+          "checksumValue": "bc4d6774fef8bf119cc220223881bd3dd85e129bd870c1a2413e29bb5b3f4d3d"
         }
       ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "primaryPackagePurpose": "SOURCE",
-      "size": 517668
+      "size": 518095
     },
     {
       "SPDXID": "SPDXRef-FILE-491",
@@ -22613,14 +22613,14 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "2cd4841f5cf52cde81b4809606ad4c05dfd64152b390d2c0c512654efee1fe23"
+          "checksumValue": "58c439d1d5219898bac1360321db506376ac83eb6ecdcc61a917037c4a88bb7d"
         }
       ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "primaryPackagePurpose": "SOURCE",
-      "size": 2600
+      "size": 1089
     },
     {
       "SPDXID": "SPDXRef-FILE-1189",
@@ -46296,7 +46296,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "55873ca299b838f30c26eab66daf7ab40d859eca164d728d1496822f7babc945"
+          "checksumValue": "a0fb82f15934c7a78e1a13b490770b9eb590fe469ee08d4b4b0037a71ba7b962"
         }
       ]
     },
@@ -51086,7 +51086,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "e0549de145994779959e2737418a023824e1ab1ed700a27bccb1a61af9162af6"
+          "checksumValue": "bc4d6774fef8bf119cc220223881bd3dd85e129bd870c1a2413e29bb5b3f4d3d"
         }
       ]
     },
@@ -58066,7 +58066,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "2cd4841f5cf52cde81b4809606ad4c05dfd64152b390d2c0c512654efee1fe23"
+          "checksumValue": "58c439d1d5219898bac1360321db506376ac83eb6ecdcc61a917037c4a88bb7d"
         }
       ]
     },
