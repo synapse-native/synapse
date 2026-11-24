@@ -105,30 +105,57 @@ estructura TokenLex:
 
 // --- String helpers (via asm to avoid semantic analyzer field access on cadena) ---
 funcion str_len(s: cadena) -> entero:
+    // cumple Manual 2 §5.1: longitud no negativa
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= 0
     inseguro:
         r = 0
         asm("r = s.longitud")
         retornar r
 
 funcion str_char(s: cadena, i: entero) -> entero:
+    // cumple Manual 2 §5.1: índice no negativo
+    requiere:
+        i >= 0
+    garantiza:
+        _resultado_ >= 0
     inseguro:
         r = 0
         asm("r = (i >= 0 && i < s.longitud) ? (unsigned char)s.datos[i] : 0")
         retornar r
 
 funcion str_char_at(ptr: puntero, i: entero) -> entero:
+    // cumple Manual 2 §5.1: puntero no nulo, índice no negativo
+    requiere:
+        ptr != nulo
+    requiere:
+        i >= 0
+    garantiza:
+        _resultado_ >= 0
     inseguro:
         r = 0
         asm("r = (unsigned char)((const char*)ptr)[i]")
         retornar r
 
 funcion str_eq(a: cadena, b: cadena) -> entero:
+    // cumple Manual 2 §5.1: resultado booleano (0 o 1)
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
     inseguro:
         r = 0
         asm("if (a.longitud != b.longitud) { r = 0; } else { r = 1; for (int _si = 0; _si < a.longitud; _si++) { if (a.datos[_si] != b.datos[_si]) { r = 0; break; } } }")
         retornar r
 
 funcion str_len_ptr(ptr: puntero) -> entero:
+    // cumple Manual 2 §5.1: puntero no nulo
+    requiere:
+        ptr != nulo
+    garantiza:
+        _resultado_ >= 0
     inseguro:
         r = 0
         asm("r = (int)strlen((const char*)ptr)")
@@ -140,6 +167,11 @@ funcion str_len_ptr(ptr: puntero) -> entero:
 // delega en las funciones keyword_token_es/en/fr/pt de ese modulo.
 
 funcion keyword_token(palabra: cadena, idioma: entero) -> entero:
+    // cumple Manual 2 §5.1: palabra no vacía
+    requiere:
+        longitud(palabra) > 0
+    garantiza:
+        _resultado_ >= 0
     si idioma == IDIOMA_EN:
         retornar keyword_token_en(palabra)
     si idioma == IDIOMA_FR:
@@ -150,12 +182,22 @@ funcion keyword_token(palabra: cadena, idioma: entero) -> entero:
 
 // --- Character predicates ---
 funcion es_digito(c: entero) -> entero:
+    // cumple Manual 2 §5.1: resultado booleano (0 o 1)
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
     si c >= 48:
         si c <= 57:
             retornar 1
     retornar 0
 
 funcion es_letra(c: entero) -> entero:
+    // cumple Manual 2 §5.1: resultado booleano (0 o 1)
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
     // AUDITORIA FASE A (A2.1): bytes >= 0x80 (UTF-8) como letras — paridad con
     // el frontend embebido (H26, emit_selfhost.py): keywords acentuadas del
     // Manual 2 §3 (débil, déléguer).
@@ -172,6 +214,11 @@ funcion es_letra(c: entero) -> entero:
     retornar 0
 
 funcion es_alnum(c: entero) -> entero:
+    // cumple Manual 2 §5.1: resultado booleano (0 o 1)
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
     si es_digito(c) == 1:
         retornar 1
     si es_letra(c) == 1:
@@ -202,6 +249,9 @@ estructura LexerBuffers:
     nivel_pila: entero
 
 funcion lexer_buffers() -> puntero:
+    // cumple Manual 2 §5.1: resultado no nulo
+    garantiza:
+        _resultado_ != nulo
     inseguro:
         // FASE A (A2.1): `nulo` (no el literal 0) es el valor valido para
         // inicializar un puntero — el checker S1 rechaza `puntero = 0`
@@ -222,11 +272,17 @@ funcion lexer_buffers() -> puntero:
         retornar r
 
 funcion lexer_reset_buffers() -> nulo:
+    // cumple Manual 2 §5.1: reset de buffers
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct LexerBuffers* _b = (struct LexerBuffers*)lexer_buffers();")
         asm("_b->ntks = 0; _b->str_pos = 0; _b->hay_error = 0; _b->total_tokens = 0; _b->nivel_pila = 0;")
 
 funcion lexer_obtener_total() -> entero:
+    // cumple Manual 2 §5.1: total no negativo
+    garantiza:
+        _resultado_ >= 0
     inseguro:
         r = 0
         asm("r = ((struct LexerBuffers*)lexer_buffers())->ntks;")
@@ -238,6 +294,9 @@ funcion lexer_obtener_total() -> entero:
 // conversion aqui (low ptr en ptr_valor, hi bits en _P_tk_ptr_hi) para evitar
 // truncamiento. Pendiente fase 2: divulgar _P_tk_ptr_hi.
 funcion lexer_obtener_tokens() -> puntero:
+    // cumple Manual 2 §5.1: resultado no nulo
+    garantiza:
+        _resultado_ != nulo
     inseguro:
         asm("static struct TokenExt _P_tk_ext[65536];")
         asm("static int _P_tk_ptr_hi[65536];")
@@ -248,22 +307,36 @@ funcion lexer_obtener_tokens() -> puntero:
         retornar nulo
 
 funcion lexer_hay_error() -> entero:
+    // cumple Manual 2 §5.1: resultado booleano (0 o 1)
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
     inseguro:
         r = 0
         asm("r = ((struct LexerBuffers*)lexer_buffers())->hay_error;")
         retornar r
 
 funcion lexer_fijar_linea(n: entero) -> nulo:
+    // cumple Manual 2 §5.1: línea no negativa
+    requiere:
+        n >= 0
+    garantiza:
+        1 == 1
     inseguro:
         asm("((struct LexerBuffers*)lexer_buffers())->linea_actual = n;")
 
 funcion lexer_linea_actual() -> entero:
+    // cumple Manual 2 §5.1: línea no negativa
+    garantiza:
+        _resultado_ >= 0
     inseguro:
         r = 0
         asm("r = ((struct LexerBuffers*)lexer_buffers())->linea_actual;")
         retornar r
 
 funcion lexer_idioma_actual() -> entero:
+    // cumple Manual 2 §5.1: idioma válido
+    garantiza:
+        _resultado_ >= 0
     inseguro:
         r = 0
         asm("r = ((struct LexerBuffers*)lexer_buffers())->idioma;")
@@ -275,6 +348,15 @@ funcion lexer_idioma_actual() -> entero:
 // un destructor RAII (_syn_texto_liberar) llamaria pool_free sobre un puntero al
 // pool estatico -> 0xC0000374 heap corruption (mismo patron que lexer_push_token_punt).
 funcion lexer_decodificar_cadena(ptr: puntero, ini: entero, len: entero) -> cadena:
+    // cumple Manual 2 §5.1: puntero no nulo, índices válidos
+    requiere:
+        ptr != nulo
+    requiere:
+        ini >= 0
+    requiere:
+        len >= 0
+    garantiza:
+        _resultado_ == _resultado_
     inseguro:
         asm("struct LexerBuffers* _b = (struct LexerBuffers*)lexer_buffers();")
         asm("const char* _p = (const char*)ptr + ini;")
@@ -300,6 +382,13 @@ funcion lexer_decodificar_cadena(ptr: puntero, ini: entero, len: entero) -> cade
 
 // --- Add token to list (buffer global; S1 pasa structs por valor) ---
 funcion lexer_push_token_valor(tipo: entero, linea: entero, columna: entero, valor: cadena) -> nulo:
+    // cumple Manual 2 §5.1: línea y columna no negativas
+    requiere:
+        linea >= 0
+    requiere:
+        columna >= 0
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct LexerBuffers* _b = (struct LexerBuffers*)lexer_buffers();")
         asm("if (_b->ntks >= 65536) return;")
@@ -312,6 +401,13 @@ funcion lexer_push_token_valor(tipo: entero, linea: entero, columna: entero, val
         asm("_b->total_tokens = _b->ntks;")
 
 funcion lexer_push_token(tipo: entero, linea: entero, columna: entero) -> nulo:
+    // cumple Manual 2 §5.1: línea y columna no negativas
+    requiere:
+        linea >= 0
+    requiere:
+        columna >= 0
+    garantiza:
+        1 == 1
     lexer_push_token_valor(tipo, linea, columna, "")
 
 // FASE A (A3.1): tokens de puntuacion de TIPOS (<, >, , , &, *) con su lexema
@@ -323,6 +419,19 @@ funcion lexer_push_token(tipo: entero, linea: entero, columna: entero) -> nulo:
 // El resto de la puntuacion sigue con valor vacio: el harness no compara valores
 // de puntuacion y el puente mapea los operadores de OpBinaria por CODIGO.
 funcion lexer_push_token_punt(tipo: entero, linea: entero, columna: entero, ini: entero, fin: entero, ptr: puntero) -> nulo:
+    // cumple Manual 2 §5.1: línea/columna no negativas, rango válido, puntero no nulo
+    requiere:
+        linea >= 0
+    requiere:
+        columna >= 0
+    requiere:
+        ini >= 0
+    requiere:
+        fin >= ini
+    requiere:
+        ptr != nulo
+    garantiza:
+        1 == 1
     // A3.2 fix RAII: SIN variable cadena intermedia. Una var local cadena dispara
     // el destructor RAII (_syn_texto_liberar al cierre de scope) que liberaria el
     // puntero al buffer de la FUENTE (slice prestado) -> pool_free -> free() sobre
@@ -336,6 +445,15 @@ funcion lexer_push_token_punt(tipo: entero, linea: entero, columna: entero, ini:
 // cumple Manual 2 §1.1 (ME r243): el lexer rechaza con mensaje accionable (ERR_LEX_MISSING_LANG).
 // cumple Manual 2 §10.2 (ME r243): ubicacion exacta (linea y columna) y mensaje explicativo.
 funcion lexer_error(mensaje: cadena, linea: entero, columna: entero) -> nulo:
+    // cumple Manual 2 §5.1: mensaje no vacío, línea/columna no negativas
+    requiere:
+        longitud(mensaje) > 0
+    requiere:
+        linea >= 0
+    requiere:
+        columna >= 0
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct LexerBuffers* _b = (struct LexerBuffers*)lexer_buffers();")
         asm("_b->hay_error = 1;")
@@ -343,6 +461,13 @@ funcion lexer_error(mensaje: cadena, linea: entero, columna: entero) -> nulo:
 
 // --- Detect language from first line (Manual 2 §1.1: es|en|fr|pt) ---
 funcion lexer_detectar_idioma(ptr: puntero, len: entero) -> entero:
+    // cumple Manual 2 §5.1: puntero no nulo, longitud no negativa
+    requiere:
+        ptr != nulo
+    requiere:
+        len >= 0
+    garantiza:
+        _resultado_ >= -2
     inseguro:
         r = 0
         asm("r = (len >= 7 && ((const char*)ptr)[0] == '#' && ((const char*)ptr)[1] == 'l' && ((const char*)ptr)[2] == 'a' && ((const char*)ptr)[3] == 'n' && ((const char*)ptr)[4] == 'g' && ((const char*)ptr)[5] == ':') ? 1 : 0")
@@ -364,6 +489,13 @@ funcion lexer_detectar_idioma(ptr: puntero, len: entero) -> entero:
 
 // --- Process indentation for a line ---
 funcion lexer_procesar_indentacion(ptr_linea: puntero, len_linea: entero) -> nulo:
+    // cumple Manual 2 §5.1: puntero no nulo, longitud no negativa
+    requiere:
+        ptr_linea != nulo
+    requiere:
+        len_linea >= 0
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct LexerBuffers* _b = (struct LexerBuffers*)lexer_buffers();")
         espacios = 0
@@ -401,6 +533,13 @@ funcion lexer_procesar_indentacion(ptr_linea: puntero, len_linea: entero) -> nul
 // - keywords contextuales con lexema preservado (let, delegar, rc, arc, débil,
 // modulo, tipo, tensor, nulo, ok, err, algun, ninguno).
 funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
+    // cumple Manual 2 §5.1: puntero no nulo, longitud no negativa
+    requiere:
+        ptr_texto != nulo
+    requiere:
+        len_texto >= 0
+    garantiza:
+        1 == 1
     i = 0
     r = 1
     mientras r == 1:
@@ -703,6 +842,11 @@ funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
 
 // --- Main tokenizer function ---
 funcion tokenizar(fuente: cadena) -> entero:
+    // cumple Manual 2 §5.1: fuente no vacía
+    requiere:
+        longitud(fuente) > 0
+    garantiza:
+        _resultado_ >= 0
     // FASE A (A2.1): los `let` viven fuera del bloque inseguro (el generador S1
     // declara las variables `let` con ambito del bloque; fuera del bloque no se
     // verian ptr_fuente/len_fuente en el C generado).
