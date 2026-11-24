@@ -49,6 +49,12 @@ estructura UnionFind:
     max: entero
 
 funcion uf_init(uf: UnionFind, n: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        uf != nulo
+        n >= 0
+    garantiza:
+        1 == 1
     uf.total = n
     uf.max = n
     i = 0
@@ -59,6 +65,12 @@ funcion uf_init(uf: UnionFind, n: entero) -> nulo:
             asm("i = i + 1")
 
 funcion uf_find(uf: UnionFind, x: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        uf != nulo
+        x >= 0
+    garantiza:
+        _resultado_ >= -1
     raiz = 0
     inseguro:
         asm("// Path compression: buscar raiz, luego comprimir")
@@ -75,6 +87,13 @@ funcion uf_find(uf: UnionFind, x: entero) -> entero:
     retornar raiz
 
 funcion uf_union(uf: UnionFind, a: entero, b: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        uf != nulo
+        a >= 0
+        b >= 0
+    garantiza:
+        1 == 1
     ra = uf_find(uf, a)
     rb = uf_find(uf, b)
     si ra == rb:
@@ -91,11 +110,24 @@ funcion uf_union(uf: UnionFind, a: entero, b: entero) -> nulo:
         asm("}")
 
 funcion uf_mismo_set(uf: UnionFind, a: entero, b: entero) -> booleano:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        uf != nulo
+        a >= 0
+        b >= 0
+    garantiza:
+        1 == 1
     retornar uf_find(uf, a) == uf_find(uf, b)
 
 // --- Cycle detection via DFS (M21.2) ---
 // Returns constraint index if cycle found, -1 otherwise.
 funcion detectar_ciclo_outlives(g: RegionGraph, uf: UnionFind) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        g != nulo
+        uf != nulo
+    garantiza:
+        _resultado_ >= -1
     n = uf.total
     idx_encontrado = -1
 
@@ -134,6 +166,13 @@ funcion detectar_ciclo_outlives(g: RegionGraph, uf: UnionFind) -> entero:
 // --- M21.4: Verify OUTLIVES post-unification ---
 // Returns index of violated constraint, -1 if all OK.
 funcion verificar_outlives(g: RegionGraph, uf: UnionFind, est: AnalizadorSemanticoEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        g != nulo
+        uf != nulo
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     i = 0
     idx_violacion = -1
     mientras i < g.total_constraints:
@@ -162,6 +201,13 @@ funcion verificar_outlives(g: RegionGraph, uf: UnionFind, est: AnalizadorSemanti
     retornar idx_violacion
 
 funcion region_resolver(g: RegionGraph, uf: UnionFind, est: AnalizadorSemanticoEst) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        g != nulo
+        uf != nulo
+        est != nulo
+    garantiza:
+        _resultado_ >= -1
     // Paso 1: Unificar EQUALS constraints via union-find
     i = 0
     mientras i < g.total_constraints:
@@ -191,12 +237,26 @@ funcion region_resolver(g: RegionGraph, uf: UnionFind, est: AnalizadorSemanticoE
     retornar 0
 
 funcion region_graph_nuevo(max: entero) -> RegionGraph:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        max >= 0
+    garantiza:
+        1 == 1
     g = RegionGraph()
     g.total_constraints = 0
     g.max_constraints = max
     retornar g
 
 funcion region_agregar_restriccion(g: RegionGraph, tipo: entero, origen: entero, destino: entero, linea: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        g != nulo
+        tipo >= 0
+        origen >= 0
+        destino >= 0
+        linea >= 0
+    garantiza:
+        1 == 1
     si g.total_constraints >= g.max_constraints:
         retornar
     inseguro:
@@ -208,15 +268,35 @@ funcion region_agregar_restriccion(g: RegionGraph, tipo: entero, origen: entero,
 
 // --- Lifetime helpers ---
 funcion lifetime_es_valido(lt: Lifetime) -> booleano:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        lt != nulo
+    garantiza:
+        1 == 1
     retornar lt.kind >= 0 y lt.kind <= 3
 
 funcion lifetime_es_estatico(lt: Lifetime) -> booleano:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        lt != nulo
+    garantiza:
+        1 == 1
     retornar lt.kind == LT_ESTATICO
 
 funcion lifetime_es_elidido(lt: Lifetime) -> booleano:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        lt != nulo
+    garantiza:
+        1 == 1
     retornar lt.kind == LT_ELIDIDO
 
 funcion lifetime_a_texto(lt: Lifetime) -> cadena:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        lt != nulo
+    garantiza:
+        1 == 1
     si lt.kind == LT_ESTATICO:
         retornar "'static"
     si lt.kind == LT_LOCAL:

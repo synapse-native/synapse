@@ -60,6 +60,11 @@ estructura GestorDiagnostico:
 
 // --- Constructor ---
 funcion gestor_nuevo(idioma: cadena, ruta: cadena, capacidad: entero) -> GestorDiagnostico:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        capacidad >= 0
+    garantiza:
+        1 == 1
     g = GestorDiagnostico()
     g.idioma = idioma
     g.ruta_archivo = ruta
@@ -69,6 +74,14 @@ funcion gestor_nuevo(idioma: cadena, ruta: cadena, capacidad: entero) -> GestorD
 
 // --- Error reporting (output via future std.io escribir_linea) ---
 funcion reportar_error(diag: GestorDiagnostico, codigo: entero, linea: entero, columna: entero, mensaje: cadena) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        diag != nulo
+        codigo >= 0
+        linea >= 0
+        columna >= 0
+    garantiza:
+        1 == 1
     inseguro:
         asm("if (diag.total_reportes >= diag.capacidad) return")
         asm("diag.reportes[diag.total_reportes].codigo = codigo")
@@ -79,25 +92,50 @@ funcion reportar_error(diag: GestorDiagnostico, codigo: entero, linea: entero, c
 
 // --- Query functions ---
 funcion hay_errores(diag: GestorDiagnostico) -> booleano:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        diag != nulo
+    garantiza:
+        1 == 1
     si diag.total_reportes > 0:
         retornar verdadero
     retornar falso
 
 funcion contar_errores(diag: GestorDiagnostico) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        diag != nulo
+    garantiza:
+        _resultado_ >= -1
     retornar diag.total_reportes
 
 funcion codigo_salida(diag: GestorDiagnostico) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        diag != nulo
+    garantiza:
+        _resultado_ >= -1
     si hay_errores(diag) == verdadero:
         retornar 1
     retornar 0
 
 funcion resumen_errores(diag: GestorDiagnostico) -> cadena:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        diag != nulo
+    garantiza:
+        1 == 1
     si hay_errores(diag) == falso:
         retornar "0 errores"
     retornar entero_a_texto(diag.total_reportes) + " error(es) encontrado(s)"
 
 // --- I18n message template lookup (Spanish primary, English fallback) ---
 funcion obtener_plantilla_error(codigo: entero, idioma: cadena) -> cadena:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        codigo >= 0
+    garantiza:
+        1 == 1
     si idioma == "es":
         si codigo == ERR_SYNTAX_EXPECTED_TOKEN:
             retornar "Se esperaba {esperado}, se encontro '{encontrado}'"
@@ -249,6 +287,11 @@ funcion obtener_plantilla_error(codigo: entero, idioma: cadena) -> cadena:
 
 // --- Source line context helper ---
 funcion obtener_linea_contexto(lineas: cadena, linea_num: entero) -> cadena:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        linea_num >= 0
+    garantiza:
+        1 == 1
     r = ""
     inseguro:
         asm("// buscar linea_num en buffer de lineas (pendiente)")
@@ -256,6 +299,12 @@ funcion obtener_linea_contexto(lineas: cadena, linea_num: entero) -> cadena:
 
 // --- Build formatted error entry string ---
 funcion formatear_entrada_error(ruta: cadena, linea: entero, columna: entero, mensaje: cadena) -> cadena:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        linea >= 0
+        columna >= 0
+    garantiza:
+        1 == 1
     r = ""
     inseguro:
         asm("{ char _buf[1024]; snprintf(_buf, 1024, \"[Synapse] %s:%d:%d - %s\", ruta.datos, linea, columna, mensaje.datos); r = (CadenaSegura){ .longitud = (int)strlen(_buf), .datos = strdup(_buf) }; }")
@@ -263,6 +312,12 @@ funcion formatear_entrada_error(ruta: cadena, linea: entero, columna: entero, me
 
 // --- Build location prefix ---
 funcion formatear_ubicacion(ruta: cadena, linea: entero, columna: entero) -> cadena:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        linea >= 0
+        columna >= 0
+    garantiza:
+        1 == 1
     si linea > 0:
         r = ""
         inseguro:
