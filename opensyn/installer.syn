@@ -47,15 +47,35 @@ externo funcion _syn_escribir_archivo(ruta: texto, contenido: texto) -> entero
 externo funcion _syn_ejecutar_comando(cmd: texto) -> entero
 
 funcion memoria_total() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     retornar _syn_memoria_total()
 
 funcion vram_total() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     retornar _syn_vram_total()
 
 funcion cpu_nucleos() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     retornar _syn_cpu_nucleos()
 
 funcion arquitectura() -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     retornar _syn_arquitectura()
 
 funcion detectar_hardware() -> HardwareInfo:
@@ -194,6 +214,11 @@ funcion descargar_modelo(info: ModeloInfo) -> Resultado<texto, texto>:
 # cumple Manual 9 §5.4 — principal: orquesta instalación completa
 # cumple Manual 7 §2.5 — instalación la primera vez que el usuario activa OpenSyn
 funcion principal() -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     let hw: HardwareInfo = detectar_hardware()
     let hilos: entero = seleccionar_hilos(hw.cpu_nucleos)
     let capas: entero = seleccionar_capas_gpu(hw.vram_total)

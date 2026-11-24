@@ -158,7 +158,7 @@ funcion memoria_guardar_patron(
     patron: texto,
     contexto: texto,
     exito: decimal
-) -> MemoriaCifrada:
+    ) -> MemoriaCifrada:
     requiere:
         longitud(patron) > 0 y longitud(contexto) > 0
         exito >= 0.0 y exito <= 1.0
@@ -235,7 +235,7 @@ funcion memoria_registrar_fallo(
     intento: texto,
     razon: texto,
     solucion: texto
-) -> MemoriaCifrada:
+    ) -> MemoriaCifrada:
     requiere:
         longitud(intento) > 0 y longitud(razon) > 0
         longitud(solucion) > 0
@@ -317,7 +317,7 @@ funcion memoria_guardar_proyecto(
     mem: MemoriaCifrada,
     hash_ast: texto,
     datos: texto
-) -> MemoriaCifrada:
+    ) -> MemoriaCifrada:
     requiere:
         longitud(hash_ast) > 0 y longitud(datos) > 0
     garantiza:

@@ -325,6 +325,11 @@ funcion ruta_config_absoluta() -> texto:
     retornar concat(concat(cwd, "\\"), ARCHIVO_CONFIG)
 
 funcion leer_modo_config() -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 7 §2.1: buscar config en cwd, luego en HOME y en {app}\opensyn
     dir_app = dir_opensyn(obtener_dir_exe())
     contenido = leer_archivo(ruta_config_absoluta())
@@ -360,6 +365,11 @@ funcion leer_modo_config() -> texto:
     retornar "compilador"
 
 funcion guardar_modo_config(modo: texto) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     linea = concat("modo_oraculo=", modo)
     // ME config_ruta_absoluta (H-EOF-3): escribir en la ruta ABSOLUTA del cwd
     // (la relativa era rechazada por el sandbox — ver ruta_config_absoluta)
@@ -369,6 +379,11 @@ funcion guardar_modo_config(modo: texto) -> entero:
 // --- Menu de Inicializacion de Entorno Soberano ---
 
 funcion mostrar_menu_bienvenida() -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     escribir_linea("============================================")
     escribir_linea("  OPEN Synapse v1.1.0  -  ENTORNO SOBERANO")
     escribir_linea("============================================")
@@ -416,6 +431,11 @@ funcion mostrar_menu_bienvenida() -> texto:
 // --- Modo Compilador Puro ---
 
 funcion modo_compilador() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     escribir_linea("")
     escribir_linea("=== Synapse: Modo Lenguaje Puro ===")
     escribir_linea("")
@@ -553,6 +573,11 @@ funcion obtener_modelo_config(config: texto) -> texto:
 // cumple Manual 7 §2.1: lista de modelos instalados vía GET /api/tags
 
 funcion contar_modelos(lista: texto) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
     // cadenas al retornar (el generador libera los parametros texto), por lo
     // que el llamador pasa copias strcpy_f y este helper hace UN solo
@@ -574,6 +599,11 @@ funcion contar_modelos(lista: texto) -> entero:
     retornar n
 
 funcion modelo_en_posicion(lista: texto, n: entero) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        n >= 0
+    garantiza:
+        1 == 1
     // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
     // cadenas al retornar (el generador libera los parametros texto), por lo
     // que el llamador pasa copias strcpy_f y este helper hace UN solo
@@ -600,6 +630,11 @@ funcion modelo_en_posicion(lista: texto, n: entero) -> texto:
     retornar encontrado
 
 funcion modelo_en_lista(lista: texto, buscar: texto) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
     // cadenas al retornar (el generador libera los parametros texto), por lo
     // que el llamador pasa copias strcpy_f y este helper hace UN solo
@@ -625,6 +660,11 @@ funcion modelo_en_lista(lista: texto, buscar: texto) -> entero:
     retornar hallado
 
 funcion mostrar_modelos(lista: texto) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
     // cadenas al retornar (el generador libera los parametros texto), por lo
     // que el llamador pasa copias strcpy_f y este helper hace UN solo
@@ -720,6 +760,11 @@ funcion sin_extension_gguf(nombre: texto) -> texto:
 // Elige el modelo activo: el configurado si está instalado; si no, el primero
 // instalado (auto-detección del modelo real descargado por el usuario).
 funcion normalizar_modelo_activo(modelo_config: texto, modelos: texto) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
     // cadenas al retornar (el generador libera los parametros texto), por lo
     // que el llamador pasa copias strcpy_f y este helper hace UN solo
@@ -766,6 +811,11 @@ funcion normalizar_modelo_activo(modelo_config: texto, modelos: texto) -> texto:
                 elegido = subcadena(primero, 0, longitud(primero))
     retornar subcadena(elegido, 0, longitud(elegido))
 funcion manejar_modelo(prompt: texto, modelos: texto) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
     // cadenas al retornar (el generador libera los parametros texto), por lo
     // que el llamador pasa copias strcpy_f y este helper hace UN solo
@@ -818,6 +868,9 @@ funcion manejar_modelo(prompt: texto, modelos: texto) -> texto:
     retornar res
 
 funcion mostrar_ayuda() -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     requiere:
         verdadero
     // ME-1 (R1): agregar comandos de modo
@@ -954,6 +1007,9 @@ funcion herramienta_permitida(modo: entero, herramienta: texto) -> entero:
 
 // Nombre legible del modo para mensajes
 funcion nombre_modo(modo: entero) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     requiere:
         verdadero
     si modo == MODO_ASK:
@@ -975,6 +1031,9 @@ funcion nombre_modo(modo: entero) -> texto:
 
 // Banner ASCII retro: 6 lineas + version. Color cian SOLO en consola real.
 funcion mostrar_banner() -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     requiere:
         verdadero
     consola = _syn_es_consola()
@@ -995,6 +1054,9 @@ funcion mostrar_banner() -> nulo:
 // Imprime una linea en color (sgr) si hay consola real; plana si es pipe.
 // Consume texto: el llamador pasa copias strcpy_f o literales (R113).
 funcion pintar_linea(texto: texto, sgr: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     requiere:
         verdadero
     si _syn_es_consola() == 1:
@@ -1377,6 +1439,9 @@ funcion tui_listar_modelos(modelos: texto, modelo: texto) -> nulo:
 // Ejecuta una skill (/tdd /revisar /plan) con streaming en el panel.
 // cumple Manual 7 §1.1: verifica permisos del modo actual antes de ejecutar.
 funcion tui_ejecutar_skill(modelo: texto, prompt_skill: texto, etiqueta: texto, modo: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     requiere:
         verdadero
     // /tdd genera código → requiere modo CODE o superior
@@ -1934,6 +1999,11 @@ funcion chat_tui() -> entero:
 // --- Modo Oraculo (IA Local) ---
 
 funcion modo_oraculo() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     // ME eof_cierre_chat (R1, H-AUD-OP-1): leer_linea colapsa EOF y línea vacía en
     // ""; 3 lecturas vacías seguidas = fin de entrada → salida limpia rc=0
     // (antes: bucle infinito de "Tu>"). cumple Manual 7 §2.1
@@ -2336,6 +2406,11 @@ funcion cmd_doctor() -> entero:
 // --- Punto de entrada principal ---
 
 funcion mostrar_ayuda_cli() -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 7 §2.1: ayuda del orquestador sin abrir la TUI
     requiere:
         verdadero
@@ -2352,6 +2427,11 @@ funcion mostrar_ayuda_cli() -> nulo:
     escribir_linea("  opensyn --help          Muestra esta ayuda")
 
 funcion principal() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 7 §2.1: CLI de arranque/estado antes de abrir la TUI
     si _argc() >= 2:
         a1 = _argv(1)

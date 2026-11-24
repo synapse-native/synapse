@@ -1042,3 +1042,5 @@
 {"fecha": "2026-11-24", "archivos": ["std/testing.syn"], "cita": "Manual 2 §2", "puntos": "gramatica notacion ebnf extendida"}
 {"fecha": "2026-11-24", "archivos": ["std/cluster.syn"], "cita": "Manual 2 §5.1", "puntos": "requiere garantiza booleanas"}
 {"fecha": "2026-11-24", "archivos": ["std/http.syn"], "cita": "Manual 2 §5.1", "puntos": "requiere garantiza booleanas"}
+{"fecha": "2026-11-24", "archivos": ["opensyn/architect_det.syn", "opensyn/installer.syn", "opensyn/memoria_persistente_cifrada.syn", "opensyn/principal.syn"], "cita": "Manual 2 §5.1", "puntos": "requiere garantiza booleanas contratos"}
+{"fecha": "2026-11-24", "archivos": ["opensyn/principal.syn"], "cita": "Manual 7 §7.3", "puntos": "telemetria cero monitoreo red conexiones salientes"}

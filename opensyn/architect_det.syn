@@ -171,7 +171,7 @@ funcion buscar_ciclo_desde(
     grafo: GrafoProyecto,
     visitados: Mapa<texto, booleano>,
     pila: Lista<texto>
-) -> Lista<texto>:
+    ) -> Lista<texto>:
     requiere:
         longitud(inicio) > 0 y longitud(actual) > 0
     garantiza:

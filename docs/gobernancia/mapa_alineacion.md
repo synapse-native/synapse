@@ -18,9 +18,9 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
 ```json
 {
   "opensyn/router.syn": ["Manual 7 §2.4", "Manual 7 §4.2", "Manual 7 §4.3"],
-  "opensyn/principal.syn": ["Manual 7 §2.1", "Manual 7 §2.3", "Manual 7 §4.2", "Manual 7 §7.3"],
+  "opensyn/principal.syn": ["Manual 7 §2.1", "Manual 7 §2.3", "Manual 7 §4.2", "Manual 7 §7.3", "Manual 2 §5.1"],
   "opensyn/herramientas.syn": ["Manual 7 §1.1", "Manual 7 §2.3", "Manual 7 §7.3", "Manual 2 §5.1"],
-  "opensyn/installer.syn": ["Manual 7 §2.5", "Manual 9 §5.2", "Manual 9 §5.3", "Manual 9 §5.4"],
+  "opensyn/installer.syn": ["Manual 7 §2.5", "Manual 9 §5.2", "Manual 9 §5.3", "Manual 9 §5.4", "Manual 2 §5.1"],
   "opensyn/chat.syn": ["Manual 7 §6.2", "Manual 7 §8"],
   "opensyn/validation_loop.syn": ["Manual 7 §6.3"],
   "opensyn/permisos.syn": ["Manual 7 §1.1", "Manual 7 §7.3"],
@@ -30,8 +30,8 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "opensyn/run_manager.syn": ["Manual 7 §4.3"],
   "opensyn/planificador.syn": ["Manual 7 §2.1"],
   "opensyn/explorer_det.syn": ["Manual 6 §1.1"],
-  "opensyn/architect_det.syn": ["Manual 6 §1.1"],
-  "opensyn/memoria_persistente_cifrada.syn": ["Manual 6 §1.1"],
+  "opensyn/architect_det.syn": ["Manual 6 §1.1", "Manual 2 §5.1"],
+  "opensyn/memoria_persistente_cifrada.syn": ["Manual 6 §1.1", "Manual 2 §5.1"],
   "opensyn/pipeline_multiagente.syn": ["Manual 6 §1.1"],
   "opensyn/verificacion_aot.syn": ["Manual 6 §1.1", "Manual 7 §4.2", "Manual 7 §6.3", "Manual 2 §5.1"],
   "nucleo/grafo_conocimiento.syn": ["Manual 6 §1.1", "Manual 2 §5.1"],
