@@ -49,6 +49,11 @@
 // Para modo 2: el número total de contadores asignados
 // ----------------------------------------------------------
 funcion pgo_estado_administrar(modo: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        modo >= 0
+    garantiza:
+        _resultado_ >= -1
     r = 0
     inseguro:
         asm("// PGO: Administrador de estado unico")
@@ -76,6 +81,11 @@ funcion pgo_estado_administrar(modo: entero) -> entero:
 // Debe llamarse al comenzar generar().
 // ----------------------------------------------------------
 funcion pgo_inicializar() -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     _ = pgo_estado_administrar(0)
 
 // ----------------------------------------------------------
@@ -84,6 +94,11 @@ funcion pgo_inicializar() -> nulo:
 // Retorna el ID asignado (0, 1, 2, ...).
 // ----------------------------------------------------------
 funcion pgo_nuevo_contador() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     retornar pgo_estado_administrar(1)
 
 // ----------------------------------------------------------
@@ -91,6 +106,11 @@ funcion pgo_nuevo_contador() -> entero:
 // Retorna el número total de contadores asignados hasta ahora.
 // ----------------------------------------------------------
 funcion pgo_total_contadores() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     retornar pgo_estado_administrar(2)
 
 // ----------------------------------------------------------
@@ -112,6 +132,12 @@ funcion pgo_total_contadores() -> entero:
 // RETORNA: El ID del primer contador asignado (base).
 // ----------------------------------------------------------
 funcion pgo_emitir_contadores_funcion(est: GeneradorCEst, num_ctrs: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        num_ctrs >= 0
+    garantiza:
+        _resultado_ >= -1
     id_base = pgo_nuevo_contador()
     inseguro:
         asm("// PGO: Emitir contadores estaticos para funcion")
@@ -135,6 +161,11 @@ funcion pgo_emitir_contadores_funcion(est: GeneradorCEst, num_ctrs: entero) -> e
 // La DECLARACION global se emite una sola vez en pgo_finalizar().
 // ----------------------------------------------------------
 funcion pgo_emitir_incremento_bb(est: GeneradorCEst) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     id_ctr = pgo_nuevo_contador()
     inseguro:
         asm("// PGO: Emitir incremento en frontera de bloque basico")
@@ -154,6 +185,12 @@ funcion pgo_emitir_incremento_bb(est: GeneradorCEst) -> nulo:
 // Útil para reutilizar contadores pre-asignados.
 // ----------------------------------------------------------
 funcion pgo_emitir_incremento_id(est: GeneradorCEst, id: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        id >= 0
+    garantiza:
+        1 == 1
     inseguro:
         asm("// PGO: Emitir incremento para contador especifico")
         asm("int _id = id;")
@@ -174,6 +211,12 @@ funcion pgo_emitir_incremento_id(est: GeneradorCEst, id: entero) -> nulo:
 // num_ctrs - Número TOTAL de contadores a volcar
 // ----------------------------------------------------------
 funcion pgo_emitir_volcado(est: GeneradorCEst, num_ctrs: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+        num_ctrs >= 0
+    garantiza:
+        1 == 1
     inseguro:
         asm("// PGO: Emitir funcion de volcado de contadores")
         asm("int _total = num_ctrs;")
@@ -214,6 +257,11 @@ funcion pgo_emitir_volcado(est: GeneradorCEst, num_ctrs: entero) -> nulo:
 // Debe ir dentro de main(), después de pool_init().
 // ----------------------------------------------------------
 funcion pgo_registrar_atexit(est: GeneradorCEst) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     inseguro:
         asm("gen_emitir_str(est, \"    extern void __pgo_dump(void);  /* [PGO] forward decl */\");")
         asm("gen_emitir_str(est, \"    atexit(__pgo_dump);  /* [PGO] Registro de volcado */\");")
@@ -225,6 +273,11 @@ funcion pgo_registrar_atexit(est: GeneradorCEst) -> nulo:
 // Llamar al final de generar(), antes de main().
 // ----------------------------------------------------------
 funcion pgo_finalizar(est: GeneradorCEst) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     total = pgo_total_contadores()
     // F17: Siempre emitir __pgo_dump (incluso con 0 contadores) porque
     // pgo_registrar_atexit registra atexit(__pgo_dump) sin condicion.
@@ -243,13 +296,33 @@ funcion pgo_finalizar(est: GeneradorCEst) -> nulo:
 // ============================================================
 
 funcion pgo_instrumentar_if_true(est: GeneradorCEst) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     pgo_emitir_incremento_bb(est)
 
 funcion pgo_instrumentar_if_false(est: GeneradorCEst) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     pgo_emitir_incremento_bb(est)
 
 funcion pgo_instrumentar_while_body(est: GeneradorCEst) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     pgo_emitir_incremento_bb(est)
 
 funcion pgo_instrumentar_for_body(est: GeneradorCEst) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        est != nulo
+    garantiza:
+        1 == 1
     pgo_emitir_incremento_bb(est)

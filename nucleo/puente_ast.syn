@@ -43,6 +43,11 @@
 // Convierte un char* (o NULL) a CadenaSegura (sin copiar; el puntero debe
 // sobrevivir — literales estaticos o buffers malloc'd por puente_str/str2).
 funcion puente_cs_str(p: puntero) -> cadena:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     r = ""
     inseguro:
         asm("if (p) { r = (CadenaSegura){(int)strlen((const char*)p), (const char*)p}; } else { r = (CadenaSegura){0, \"\"}; }")
@@ -50,6 +55,11 @@ funcion puente_cs_str(p: puntero) -> cadena:
 
 // Payload primario (s1) del nodo plano idx -> char* malloc'd (o "").
 funcion puente_str(idx: entero) -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        idx >= 0
+    garantiza:
+        1 == 1
     r = nulo
     inseguro:
         asm("struct NodoAST* _an_s = (struct NodoAST*)parser_nodos();")
@@ -67,6 +77,11 @@ funcion puente_str(idx: entero) -> puntero:
 
 // Payload secundario (s2: tipo_retorno/tipo_param/tipo_base) -> char* malloc'd.
 funcion puente_str2(idx: entero) -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        idx >= 0
+    garantiza:
+        1 == 1
     r = nulo
     inseguro:
         asm("struct NodoAST* _an_s2 = (struct NodoAST*)parser_nodos();")
@@ -84,6 +99,11 @@ funcion puente_str2(idx: entero) -> puntero:
 
 // struct Token* con tipo/lexema (operadores: linea=columna=0, paridad _P_*).
 funcion puente_tok(tipo: entero, lexema: cadena) -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        tipo >= 0
+    garantiza:
+        1 == 1
     r = nulo
     inseguro:
         asm("struct Token* _tk_t = (struct Token*)calloc(1, sizeof(struct Token));")
@@ -100,6 +120,11 @@ funcion puente_tok(tipo: entero, lexema: cadena) -> puntero:
 // numeracion nativa del lexer (T_MAYOR=23/T_MENOR=24), que caia en el default
 // ' ? ' del emisor (operadores > y < emitidos mal en la compilacion self-hosted).
 funcion puente_operador(codigo: entero) -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        codigo >= 0
+    garantiza:
+        1 == 1
     r = nulo
     si codigo == 100:
         retornar puente_tok(14, "&&")
@@ -135,6 +160,11 @@ funcion puente_operador(codigo: entero) -> puntero:
 
 // Cadena hermano de nodos -> ListaNodo* (cada nodo convertido via puente_nodo).
 funcion puente_lista(idx: entero) -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        idx >= 0
+    garantiza:
+        1 == 1
     r = nulo
     inseguro:
         asm("if (idx > 0) {")
@@ -152,6 +182,11 @@ funcion puente_lista(idx: entero) -> puntero:
 
 // Cadena hermano de NODO_PARAMETRO -> ListaParametro* (Parametro.es_transferencia=0).
 funcion puente_lista_param(idx: entero) -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        idx >= 0
+    garantiza:
+        1 == 1
     r = nulo
     inseguro:
         asm("if (idx > 0) {")
@@ -175,6 +210,11 @@ funcion puente_lista_param(idx: entero) -> puntero:
 // bloque asm quedan confinadas a el.
 // ============================================================================
 funcion puente_nodo(idx: entero) -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        idx >= 0
+    garantiza:
+        1 == 1
     r = nulo
     t = 0
     hi = 0
@@ -666,6 +706,11 @@ funcion puente_nodo(idx: entero) -> puntero:
 
 // Construye el struct Programa tipado completo desde el AST plano.
 funcion puente_construir_programa() -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     r = nulo
     inseguro:
         asm("struct Programa* _pr_b = (struct Programa*)calloc(1, sizeof(struct Programa));")

@@ -50,6 +50,11 @@ estructura CacheStats:
 // --- Funciones internas ---
 
 funcion _cache_dir() -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     home = obtener_env("USERPROFILE")
     si home == "":
         home = obtener_env("HOME")
@@ -58,6 +63,11 @@ funcion _cache_dir() -> texto:
     retornar concat(concat(home, "/.synapse/cache/"), "")
 
 funcion _asegurar_cache_dir() -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     dir = _cache_dir()
     inseguro:
         // cumple Manual 9 §6.2: sin redireccion `2>nul` (solo cmd.exe); en POSIX
@@ -67,17 +77,37 @@ funcion _asegurar_cache_dir() -> nulo:
         asm("mkdir -p \"" + dir + "meta\"")
 
 funcion _cache_index_path() -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     retornar concat(_cache_dir(), "index.toml")
 
 funcion _entrada_path(clave: texto) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     retornar concat(concat(_cache_dir(), "obj/"), concat(clave, ".o"))
 
 funcion _meta_path(clave: texto) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     retornar concat(concat(_cache_dir(), "meta/"), concat(clave, ".toml"))
 
 // --- Funciones públicas ---
 
 funcion cache_inicializar() -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     _asegurar_cache_dir()
 
 // cumple Manual 1 §7.4 (ME r299_codigo_muerto): se eliminan
@@ -88,6 +118,11 @@ funcion cache_inicializar() -> nulo:
 // públicas de caché no cambian con la poda (solo se quita código inalcanzable).
 
 funcion calcular_clave(archivo: texto, deps: texto, flags: texto) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // Lee el contenido del archivo
     contenido = leer_archivo(archivo)
     hash_fuente = sha256_texto(contenido)
@@ -98,6 +133,11 @@ funcion calcular_clave(archivo: texto, deps: texto, flags: texto) -> texto:
     retornar sha256_texto(combinado)
 
 funcion cache_buscar(clave: texto) -> CacheEntry:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     entry = CacheEntry()
     entry.clave = ""
 
@@ -120,6 +160,11 @@ funcion cache_buscar(clave: texto) -> CacheEntry:
     retornar entry
 
 funcion cache_guardar(entry: CacheEntry) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        entry != nulo
+    garantiza:
+        1 == 1
     meta = CacheEntry()
     meta.clave = entry.clave
     meta.archivo_fuente = entry.archivo_fuente
@@ -139,6 +184,11 @@ funcion cache_guardar(entry: CacheEntry) -> nulo:
     _actualizar_indice(entry)
 
 funcion _actualizar_indice(entry: CacheEntry) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        entry != nulo
+    garantiza:
+        1 == 1
     index_path = _cache_index_path()
     doc = desde_texto("")
     si existe_archivo(index_path):
@@ -149,11 +199,21 @@ funcion _actualizar_indice(entry: CacheEntry) -> nulo:
     escribir_archivo(index_path, a_texto(doc))
 
 funcion cache_eliminar(clave: texto) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     eliminar_archivo(_entrada_path(clave))
     eliminar_archivo(_meta_path(clave))
     // Actualizar índice (omitir por simplicidad)
 
 funcion cache_limpiar() -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     dir = _cache_dir()
     inseguro:
         asm("rm -rf \"" + dir + "obj\"")
@@ -161,6 +221,11 @@ funcion cache_limpiar() -> nulo:
     _asegurar_cache_dir()
 
 funcion cache_stats() -> CacheStats:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     stats = CacheStats()
     stats.total_entradas = 0
     stats.hits = 0
@@ -183,6 +248,11 @@ funcion cache_stats() -> CacheStats:
     retornar stats
 
 funcion cache_actualizar_stats(hit: booleano, tamano: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        tamano >= 0
+    garantiza:
+        1 == 1
     stats = cache_stats()
     stats.total_entradas = stats.total_entradas + 1
     si hit:

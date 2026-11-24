@@ -1033,3 +1033,5 @@
 {"fecha": "2026-11-24", "archivos": ["syquex/traductor.syn"], "cita": "Manual 3 §11", "puntos": "integracion ast canonico synapse backend traduce nodos"}
 {"fecha": "2026-11-24", "archivos": ["nucleo/lifetimes.syn"], "cita": "Manual 4 §4", "puntos": "referencias debiles debil t prevencion ciclos lifetimes region"}
 {"fecha": "2026-11-24", "archivos": ["nucleo/lifetimes.syn", "nucleo/diagnostics.syn", "nucleo/optimizador_ia.syn"], "cita": "Manual 2 §5.1", "puntos": "requiere garantiza booleanas precondiciones poscondiciones dominio"}
+{"fecha": "2026-11-24", "archivos": ["nucleo/cache.syn", "nucleo/generator_pgo.syn", "nucleo/puente_ast.syn"], "cita": "Manual 2 §5.1", "puntos": "requiere garantiza booleanas precondiciones poscondiciones dominio"}
+{"fecha": "2026-11-24", "archivos": ["nucleo/puente_ast.syn"], "cita": "Manual 2 §7", "puntos": "arbol sintaxis abstracta ast nodos semanticos"}

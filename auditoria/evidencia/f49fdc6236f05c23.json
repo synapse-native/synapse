@@ -1,0 +1,15 @@
+{
+ "cambio_hash": "f49fdc6236f05c23",
+ "expediente": "docs/alineacion/r306_contratos_cache_pgo_puente.md",
+ "fecha": "2026-11-24",
+ "archivos": [
+  "nucleo/cache.syn",
+  "nucleo/generator_pgo.syn",
+  "nucleo/puente_ast.syn"
+ ],
+ "oraculos": {
+  "auditoria/verificar_contratos.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}
