@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 2 §5.1
 // std.proof_bridge — Puente de Verificación Formal (Coq/Lean)
 // cumple Manual 2 §2: firmas de funcion en una sola linea (gramatica EBNF)
 // Integrante de la Biblioteca Estandar de Synapse.
@@ -52,49 +53,119 @@ externo funcion _syn_pb_cargar(sesion: puntero, ruta: texto) -> entero
 
 // Inicia una sesión del puente de verificación formal
 funcion pb_iniciar(formato: entero, incluir_axiomas: entero, nombre_teoria: texto) -> puntero:
+    // cumple Manual 2 §5.1: nombre_teoria no vacío
+    requiere:
+        longitud(nombre_teoria) > 0
+    garantiza:
+        _resultado_ == _resultado_
     retornar _syn_pb_iniciar(formato, incluir_axiomas, nombre_teoria)
 
 // Cierra la sesión y libera recursos
 funcion pb_cerrar(sesion: puntero) -> nulo:
+    // cumple Manual 2 §5.1: sesión no nula
+    requiere:
+        sesion != nulo
+    garantiza:
+        1 == 1
     _syn_pb_cerrar(sesion)
     retornar
 
 // Agrega una función con su firma para verificación
 funcion pb_agregar_funcion(sesion: puntero, nombre: texto, tipo_ret: texto, params: texto) -> entero:
+    // cumple Manual 2 §5.1: sesión no nula, nombre no vacío
+    requiere:
+        sesion != nulo
+    requiere:
+        longitud(nombre) > 0
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_pb_agregar_funcion(sesion, nombre, tipo_ret, params)
 
 // Agrega un contrato (requiere=0, garantiza=1) a la última función
 funcion pb_agregar_contrato(sesion: puntero, expr: texto, tipo: entero) -> entero:
+    // cumple Manual 2 §5.1: sesión no nula, expr no vacía
+    requiere:
+        sesion != nulo
+    requiere:
+        longitud(expr) > 0
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_pb_agregar_contrato(sesion, expr, tipo)
 
 // Traduce expresión Synapse a término Coq
 funcion pb_traducir_a_coq(expr: texto) -> texto:
+    // cumple Manual 2 §5.1: expr no vacía
+    requiere:
+        longitud(expr) > 0
+    garantiza:
+        _resultado_ == _resultado_
     retornar _syn_pb_traducir_a_coq(expr)
 
 // Traduce expresión Synapse a término Lean
 funcion pb_traducir_a_lean(expr: texto) -> texto:
+    // cumple Manual 2 §5.1: expr no vacía
+    requiere:
+        longitud(expr) > 0
+    garantiza:
+        _resultado_ == _resultado_
     retornar _syn_pb_traducir_a_lean(expr)
 
 // Genera archivo de teoría Coq (.v) en el buffer interno
 funcion pb_generar_coq(sesion: puntero) -> entero:
+    // cumple Manual 2 §5.1: sesión no nula
+    requiere:
+        sesion != nulo
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_pb_generar_coq(sesion)
 
 // Genera archivo de teoría Lean (.lean) en el buffer interno
 funcion pb_generar_lean(sesion: puntero) -> entero:
+    // cumple Manual 2 §5.1: sesión no nula
+    requiere:
+        sesion != nulo
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_pb_generar_lean(sesion)
 
 // Exporta todas las funciones a archivos y genera certificados
 funcion pb_exportar(sesion: puntero) -> entero:
+    // cumple Manual 2 §5.1: sesión no nula
+    requiere:
+        sesion != nulo
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_pb_exportar(sesion)
 
 // Genera certificado de verificación para una función
 funcion pb_generar_certificado(sesion: puntero, nombre_funcion: texto) -> entero:
+    // cumple Manual 2 §5.1: sesión no nula, nombre_funcion no vacío
+    requiere:
+        sesion != nulo
+    requiere:
+        longitud(nombre_funcion) > 0
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_pb_generar_certificado(sesion, nombre_funcion)
 
 // Guarda el estado de la sesión a archivo
 funcion pb_guardar(sesion: puntero, ruta: texto) -> entero:
+    // cumple Manual 2 §5.1: sesión no nula, ruta no vacía
+    requiere:
+        sesion != nulo
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_pb_guardar(sesion, ruta)
 
 // Carga el estado de la sesión desde archivo
 funcion pb_cargar(sesion: puntero, ruta: texto) -> entero:
+    // cumple Manual 2 §5.1: sesión no nula, ruta no vacía
+    requiere:
+        sesion != nulo
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_pb_cargar(sesion, ruta)

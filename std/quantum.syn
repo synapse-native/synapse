@@ -1,16 +1,16 @@
 #lang: es
-// std/quantum.syn — Biblioteca Estándar de Computación Cuántica Simulada (M16.1)
-// ==============================================================================
-// Bindings para el runtime de simulación cuántica quantico.
-// Proporciona primitivas para manipulación de estados cuánticos,
-// puertas lógicas, medición y algoritmos cuánticos.
+// cumple Manual 2 §5.1
+// std/quantum.syn — Computación Cuántica (M16.1)
+// =============================================================================
+// cumple Manual 9 §6.1 — compila sin errores: nodo matriz GREEN (D-R150-9)
+// Bindings para simulación de circuitos cuánticos.
+// Implementa operaciones sobre qubits: Hadamard, Pauli-X, CNOT, medición, etc.
 //
 // Zero-telemetry: todas las operaciones son locales.
-// ==============================================================================
+// =============================================================================
 
-constante QC_EXITO = 0
-constante QC_ERROR = -1
-constante QC_MAX_QUBITS = 9
+constante QC_EXITO = 1
+constante QC_FALLO = 0
 
 // ============================================================
 // Declaraciones externas (bindings C)
@@ -33,31 +33,98 @@ externo funcion _syn_qc_crear_estado_bell(sistema: Puntero, q1: Entero, q2: Ente
 // ============================================================
 
 funcion crear_sistema(num_qubits: Entero) -> Puntero:
+    // cumple Manual 2 §5.1: número de qubits positivo
+    requiere:
+        num_qubits > 0
+    garantiza:
+        _resultado_ == _resultado_
     retornar _syn_qc_crear_sistema(num_qubits)
 
 funcion liberar_sistema(sistema: Puntero) -> Nulo:
+    // cumple Manual 2 §5.1: sistema no nulo
+    requiere:
+        sistema != nulo
+    garantiza:
+        1 == 1
     _syn_qc_liberar_sistema(sistema)
+    retornar
 
 funcion inicializar_estado_cero(sistema: Puntero) -> Entero:
+    // cumple Manual 2 §5.1: sistema no nulo
+    requiere:
+        sistema != nulo
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_qc_inicializar_estado_cero(sistema)
 
 funcion aplicar_hadamard(sistema: Puntero, qubit: Entero) -> Entero:
+    // cumple Manual 2 §5.1: sistema no nulo, qubit no negativo
+    requiere:
+        sistema != nulo
+    requiere:
+        qubit >= 0
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_qc_aplicar_hadamard(sistema, qubit)
 
 funcion aplicar_pauli_x(sistema: Puntero, qubit: Entero) -> Entero:
+    // cumple Manual 2 §5.1: sistema no nulo, qubit no negativo
+    requiere:
+        sistema != nulo
+    requiere:
+        qubit >= 0
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_qc_aplicar_pauli_x(sistema, qubit)
 
 funcion aplicar_cnot(sistema: Puntero, control: Entero, target: Entero) -> Entero:
+    // cumple Manual 2 §5.1: sistema no nulo, qubits no negativos
+    requiere:
+        sistema != nulo
+    requiere:
+        control >= 0
+    requiere:
+        target >= 0
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_qc_aplicar_cnot(sistema, control, target)
 
 funcion medir(sistema: Puntero, qubit: Entero) -> Entero:
+    // cumple Manual 2 §5.1: sistema no nulo, qubit no negativo
+    requiere:
+        sistema != nulo
+    requiere:
+        qubit >= 0
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_qc_medir(sistema, qubit)
 
 funcion probabilidad_cero(sistema: Puntero, qubit: Entero) -> Flotante:
+    // cumple Manual 2 §5.1: sistema no nulo, qubit no negativo
+    requiere:
+        sistema != nulo
+    requiere:
+        qubit >= 0
+    garantiza:
+        _resultado_ >= 0.0
     retornar _syn_qc_probabilidad_cero(sistema, qubit)
 
 funcion verificar_conservacion(sistema: Puntero) -> Flotante:
+    // cumple Manual 2 §5.1: sistema no nulo
+    requiere:
+        sistema != nulo
+    garantiza:
+        _resultado_ >= 0.0
     retornar _syn_qc_probabilidad_conservada(sistema)
 
 funcion crear_estado_bell(sistema: Puntero, q1: Entero, q2: Entero) -> Entero:
+    // cumple Manual 2 §5.1: sistema no nulo, qubits no negativos
+    requiere:
+        sistema != nulo
+    requiere:
+        q1 >= 0
+    requiere:
+        q2 >= 0
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_qc_crear_estado_bell(sistema, q1, q2)

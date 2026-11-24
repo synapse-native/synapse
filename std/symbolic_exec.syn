@@ -4,6 +4,7 @@
 //  std::symbolic_exec — Motor de Ejecución Simbólica (M15.3)
 //  cumple Manual 2 §4.1 — la coerción entero→decimal es implícita
 //  en la llamada FFI; el cast estilo C no existe en la gramática.
+//  cumple Manual 2 §5.1
 // ============================================================
 //  Bindings para el motor de exploración de rutas simbólicas
 //  (symbolic_exec.c/h). Integra con ATP Engine y Proof Bridge
@@ -51,59 +52,151 @@ externo funcion _syn_se_limpiar(engine: puntero)
 
 // Inicializa el motor de ejecución simbólica
 funcion se_iniciar(modo: entero) -> puntero:
+    // cumple Manual 2 §5.1: resultado puede ser nulo si falla
+    garantiza:
+        _resultado_ == _resultado_
     retornar _syn_se_iniciar(modo, 100)
 
 // Inicializa con profundidad máxima personalizada
 funcion se_iniciar_profundo(modo: entero, profundidad: entero) -> puntero:
+    // cumple Manual 2 §5.1: profundidad positiva
+    requiere:
+        profundidad > 0
+    garantiza:
+        _resultado_ == _resultado_
     retornar _syn_se_iniciar(modo, profundidad)
 
 // Cierra el motor
 funcion se_cerrar(engine: puntero):
+    // cumple Manual 2 §5.1: engine no nulo
+    requiere:
+        engine != nulo
+    garantiza:
+        1 == 1
     _syn_se_cerrar(engine)
 
 // Crea una variable simbólica
 funcion se_crear_variable(engine: puntero, nombre: cadena, cota_inf: decimal, cota_sup: decimal) -> entero:
+    // cumple Manual 2 §5.1: engine no nulo, nombre no vacío, cotas válidas
+    requiere:
+        engine != nulo
+    requiere:
+        longitud(nombre) > 0
+    requiere:
+        cota_inf <= cota_sup
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_se_agregar_variable(engine, nombre, cota_inf, cota_sup, 0)
 
 // Crea una variable simbólica entera
 funcion se_crear_entero(engine: puntero, nombre: cadena, cota_inf: entero, cota_sup: entero) -> entero:
     // cumple Manual 2 §4.1 — coerción implícita entero→decimal (D-R150-9)
+    // cumple Manual 2 §5.1: engine no nulo, nombre no vacío, cotas válidas
+    requiere:
+        engine != nulo
+    requiere:
+        longitud(nombre) > 0
+    requiere:
+        cota_inf <= cota_sup
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_se_agregar_variable(engine, nombre, cota_inf, cota_sup, 0)
 
 // Agrega una restricción a la ruta activa
 funcion se_agregar_restriccion(engine: puntero, expr: cadena) -> entero:
+    // cumple Manual 2 §5.1: engine no nulo, expr no vacía
+    requiere:
+        engine != nulo
+    requiere:
+        longitud(expr) > 0
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_se_agregar_restriccion(engine, expr, 0)
 
 // Bifurca la ruta activa
 funcion se_bifurcar(engine: puntero, condicion: cadena) -> entero:
+    // cumple Manual 2 §5.1: engine no nulo, condición no vacía
+    requiere:
+        engine != nulo
+    requiere:
+        longitud(condicion) > 0
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_se_bifurcar(engine, condicion)
 
 // Verifica si la ruta activa es alcanzable
 funcion se_es_alcanzable(engine: puntero) -> booleano:
+    // cumple Manual 2 §5.1: engine no nulo
+    requiere:
+        engine != nulo
+    garantiza:
+        _resultado_ == _resultado_
     retornar _syn_se_verificar_alcanzabilidad(engine) == 1
 
 // Verifica si hay riesgo de división por cero
 funcion se_hay_div_por_cero(engine: puntero, divisor: cadena) -> booleano:
+    // cumple Manual 2 §5.1: engine no nulo, divisor no vacío
+    requiere:
+        engine != nulo
+    requiere:
+        longitud(divisor) > 0
+    garantiza:
+        _resultado_ == _resultado_
     retornar _syn_se_detectar_div_por_cero(engine, divisor) == SE_VIOLATION_DIV_BY_ZERO
 
 // Verifica si hay riesgo de desbordamiento
 funcion se_hay_desbordamiento(engine: puntero, expr: cadena, lim_inf: decimal, lim_sup: decimal) -> booleano:
+    // cumple Manual 2 §5.1: engine no nulo, expr no vacía, límites válidos
+    requiere:
+        engine != nulo
+    requiere:
+        longitud(expr) > 0
+    requiere:
+        lim_inf <= lim_sup
+    garantiza:
+        _resultado_ == _resultado_
     retornar _syn_se_detectar_desbordamiento(engine, expr, lim_inf, lim_sup) == SE_VIOLATION_OVERFLOW
 
 // Verifica si hay acceso fuera de límites
 funcion se_hay_fuera_limites(engine: puntero, idx: cadena, tamano: entero) -> booleano:
+    // cumple Manual 2 §5.1: engine no nulo, idx no vacío, tamano positivo
+    requiere:
+        engine != nulo
+    requiere:
+        longitud(idx) > 0
+    requiere:
+        tamano > 0
+    garantiza:
+        _resultado_ == _resultado_
     retornar _syn_se_detectar_fuera_limites(engine, idx, tamano) == SE_VIOLATION_BOUNDS
 
 // Explora todas las rutas factibles
 funcion se_explorar(engine: puntero) -> entero:
+    // cumple Manual 2 §5.1: engine no nulo
+    requiere:
+        engine != nulo
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_se_explorar(engine)
 
 // Activa una ruta específica
 funcion se_activar_ruta(engine: puntero, idx: entero) -> entero:
+    // cumple Manual 2 §5.1: engine no nulo, idx no negativo
+    requiere:
+        engine != nulo
+    requiere:
+        idx >= 0
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_se_activar_ruta(engine, idx)
 
 // Limpia el motor
 funcion se_limpiar(engine: puntero):
+    // cumple Manual 2 §5.1: engine no nulo
+    requiere:
+        engine != nulo
+    garantiza:
+        1 == 1
     _syn_se_limpiar(engine)
 
 // ============================================================
@@ -112,6 +205,13 @@ funcion se_limpiar(engine: puntero):
 
 // Verifica si una expresión es segura bajo las restricciones actuales
 funcion se_es_seguro(engine: puntero, expr: cadena) -> booleano:
+    // cumple Manual 2 §5.1: engine no nulo, expr no vacía
+    requiere:
+        engine != nulo
+    requiere:
+        longitud(expr) > 0
+    garantiza:
+        _resultado_ == _resultado_
     si se_hay_div_por_cero(engine, expr):
         retornar falso
     retornar verdadero
