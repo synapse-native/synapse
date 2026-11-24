@@ -10,6 +10,66 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
 
 ## Cola de MEs (prioridad por radio/costo, actualizable)
 
+- **H-SNAP-DEBUG-1 (ABIERTO 2026-11-23, ALTO — Símbolos de snapshots de memoria sin implementar en runtime):**
+  Las funciones `ms_snapshot_contar_vars`, `ms_snapshot_tamano` y `ms_snapshot_contiene`
+  están declaradas en `runtime/core/debug.h` y expuestas a nivel de lenguaje en
+  `std/debug.syn` y en el catálogo de `opensyn/router.syn`. Sin embargo, no existe
+  ninguna definición C en `runtime/core/debug.c` ni en ningún otro módulo del runtime.
+  Cualquier programa de usuario que invoque estas funciones falla en el enlace con
+  `undefined reference to 'ms_snapshot_contar_vars'`. Además, la conftest de pytest
+  emite advertencias al compilar arneses de snapshots de memoria.
+  **Resolución asignada:** ME `r324_ms_snapshot_impl` (Manual 8 §3.4, Manual 3 §8):
+  implementar las tres funciones en `runtime/core/debug.c` analizando la estructura
+  de snapshots generada por `ms_tomar_en`, actualizar contratos y verificar con
+  `tests/test_memory_snapshots.c` compilado y ejecutado con éxito.
+
+- **H-ENCODING-NUL-1 (ABIERTO 2026-11-23, MEDIO — Byte nulo crudo 0x00 en fuente C):**
+  En `runtime/core/string_utils.c` (línea 529), la función `lsp_build_completion_response`
+  contiene un byte nulo literal `0x00` en disco dentro de comillas simples (`dup[rpos] = '\x00';`)
+  en lugar de la secuencia de escape válida `'\0'` o el entero `0`. Esto ocasiona
+  que GCC emita `warning: null character(s) preserved in literal` y que editores,
+  lectores y visores de diffs traten al archivo fuente como un binario corrupto.
+  Además, `auditoria/verificar_encoding.py` actualmente no detecta bytes NUL sueltos en código fuente.
+  **Resolución asignada:** ME `r325_fix_raw_nul_encoding` (Manual 1 §3.1, Manual 2 §1.2):
+  reemplazar el byte crudo por la secuencia canónica `\0` en `string_utils.c` y
+  endurecer `auditoria/verificar_encoding.py` con comprobación obligatoria de `\x00`
+  en todas las fuentes de código versionadas (`.c`, `.h`, `.syn`, `.syq`, `.py`).
+
+- **H-RUNTIME-DEBUG-CHAR-1 (ABIERTO 2026-11-23, MEDIO — Constante multi-carácter en runtime debug.c):**
+  En `runtime/core/debug.c` (líneas 89 y 93), la función `_syn_home_dir()` utiliza
+  `h[0] == '\\0'` y `h[0] != '\\0'` en lugar del carácter terminador nulo `'\0'`.
+  En C, `'\\0'` se interpreta como una constante multi-carácter (0x5C30). Si la variable
+  de entorno `HOME` está definida pero vacía (`""`), la condición no conmuta a
+  `USERPROFILE` y retorna una cadena vacía en lugar de `"."`, corrompiendo la ruta
+  de trazas (`/.synapse/traces`). GCC emite `warning: multi-character character constant [-Wmultichar]`.
+  **Resolución asignada:** ME `r326_fix_debug_home_dir` (Manual 8 §3.4, Manual 9 §6.2):
+  corregir las comparaciones a `'\0'` o `h[0] == 0` en `runtime/core/debug.c` y añadir
+  test de regresión unitaria comprobando el fallback de `_syn_home_dir()`.
+
+- **H-VSCODE-URL-1 (ABIERTO 2026-11-23, MEDIO — URL de instalador obsoleta en extensión VS Code):**
+  En `vscode-synapse/extension.js` (línea 56), la constante `SYNAPSE_INSTALLER_URL` apunta a
+  `https://github.com/gedeon1972-svg/synapse-lang/releases/download/v1.5.0/synapse-v1.5.0-windows-x64.zip`.
+  Si un usuario final instala la extensión `.vsix` en una máquina sin Synapse en el PATH y
+  hace clic en "Instalar Synapse", la extensión descarga un paquete antiguo v1.5.0 desde un
+  fork personal en lugar del release oficial `8.1.0-industrial` de `synapse-native/synapse`.
+  **Resolución asignada:** ME `r327_vscode_release_url` (Manual 9 §4.1, Manual 9 §7):
+  actualizar `SYNAPSE_INSTALLER_URL` en `vscode-synapse/extension.js` al endpoint oficial de
+  GitHub Releases (`synapse-native/synapse/releases/latest`), ajustar la lógica de extracción
+  para el `.exe` del instalador modular y empaquetar un nuevo `synapse-8.1.0-industrial.vsix`.
+
+- **H-RUNTIME-CACHE-COLD-1 (ABIERTO 2026-11-23, MEDIO — Latencia de 90-180 s en compilación limpia por ausencia de runtime cache preconstruida):**
+  El compilador nativo (`dist/bin/synapse.exe`) utiliza la caché en disco `~/.synapse/cache/runtime_obj/`
+  para enlazar objetos precompilados (`.o`) en ~1,25 s (cierre de H-R279-2). Sin embargo, en una
+  instalación nueva en máquina limpia donde dicha caché no existe o no se puede acceder, el compilador
+  recompila los ~50 archivos C del runtime (incluyendo `sqlite3.c` de 8.5 MB) con `-O2` en una sola
+  invocación de GCC, demorando entre 90 y 180 segundos sin barra de progreso. Esto causa fallos
+  por timeout en suites E2E (como `test_compila_y_ejecuta_syquex` en `test_smoke_usuario_final.py`)
+  y genera la percepción de un compilador colgado para el usuario final.
+  **Resolución asignada:** ME `r328_installer_prewarm_runtime_cache` (Manual 8 §4.1, Manual 9 §2.2, Manual 9 §7):
+  incluir los objetos precompilados del runtime (`.o` y `.sha`) en el instalador Inno Setup (`synapse.iss`)
+  bajo `{userappdata}\.synapse\cache\runtime_obj\` o implementar un paso de precalentamiento post-instalación,
+  garantizando que la primera compilación de un usuario sea inmediata (<2 segundos).
+
 - **H-R274-1 (RESUELTO 2026-11-20, MEDIO):** Manual 9 §6.1 exige «Firmas
   Ed25519: todos los artefactos distribuidos están firmados y verificados» y
   §6.3 detalla `.sig` por artefacto; el oráculo r274 sólo verificaba

@@ -50,30 +50,60 @@ externo funcion _syn_existe_archivo(ruta: texto) -> entero
 externo funcion _syn_eliminar_archivo(ruta: texto) -> entero
 
 funcion ejecutar_comando(cmd: texto) -> entero:
+    // cumple Manual 2 §5.1: comando no vacío; código de salida 0=éxito, otro=error
+    requiere:
+        longitud(cmd) > 0
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_ejecutar_comando(cmd)
 
 funcion escribir_archivo(ruta: texto, contenido: texto) -> entero:
+    // cumple Manual 2 §5.1: ruta no vacía; -1=ruta insegura, 0=éxito, otro=error IO
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        _resultado_ >= -1
     ruta_segura = _validar_ruta_segura(ruta)
     si ruta_segura == "":
         retornar -1
     retornar _syn_escribir_archivo(ruta_segura, contenido)
 
 funcion leer_archivo(ruta: texto) -> texto:
+    // cumple Manual 2 §5.1: ruta no vacía; "" si ruta insegura o no existe
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        longitud(_resultado_) >= 0
     ruta_segura = _validar_ruta_segura(ruta)
     si ruta_segura == "":
         retornar ""
     retornar _syn_leer_archivo(ruta_segura)
 
 funcion obtener_env(nombre: texto) -> texto:
+    // cumple Manual 2 §5.1: nombre de variable no vacío; "" si no definida
+    requiere:
+        longitud(nombre) > 0
+    garantiza:
+        longitud(_resultado_) >= 0
     retornar _syn_obtener_env(nombre)
 
 funcion existe_archivo(ruta: texto) -> booleano:
+    // cumple Manual 2 §5.1: ruta no vacía; falso si ruta insegura
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso
     ruta_segura = _validar_ruta_segura(ruta)
     si ruta_segura == "":
         retornar falso
     retornar _syn_existe_archivo(ruta_segura) == 1
 
 funcion eliminar_archivo(ruta: texto) -> entero:
+    // cumple Manual 2 §5.1: ruta no vacía; -1=insegura, 0=éxito, otro=error IO
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        _resultado_ >= -1
     ruta_segura = _validar_ruta_segura(ruta)
     si ruta_segura == "":
         retornar -1

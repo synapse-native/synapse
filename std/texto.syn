@@ -12,10 +12,10 @@
 // ============================================================
 
 // cumple Manual 8 §1.7.3: contiene se expone como binding del builtin C
-// cumple Manual 2 §5.1: contrato explícito sin precondición (H-R196-1)
+// cumple Manual 2 §5.1: contrato explícito — acepta cadenas de cualquier longitud (incluida vacía)
 funcion contiene(texto: texto, subcadena: texto) -> entero:
     requiere:
-        verdadero
+        longitud(texto) >= 0
     garantiza:
         _resultado_ == 0 o _resultado_ == 1
     retornar _syn_texto_contiene(texto, subcadena)

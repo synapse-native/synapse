@@ -195,6 +195,15 @@ externo funcion ms_snapshot_contiene(snapshot: texto, nombre: texto) -> texto
 // registrar_evento — Registra un evento de traza en la sesion actual
 // Retorna ok(0) si exito, err(Error) si fallo (ej. buffer lleno no esperado)
 funcion registrar_evento(evento: TraceEvent) -> Resultado:
+    // cumple Manual 2 §5.1: tipo de evento en rango válido [0,8]; línea >= 0
+    requiere:
+        evento.tipo_evento >= 0
+    requiere:
+        evento.tipo_evento <= 8
+    requiere:
+        evento.linea >= 0
+    garantiza:
+        _resultado_.tag == 0 o _resultado_.tag == 1
     // ME-R2: fix preexistente destapado por la propagacion de errores del pipeline.
     // Bugs corregidos:
     //   1. evento se recibe POR VALOR (struct TraceEvent) -> el cast requiere &evento.
@@ -212,6 +221,11 @@ funcion registrar_evento(evento: TraceEvent) -> Resultado:
 // Util para inspeccionar valores intermedios sin modificar logica
 // Uso: trace(x + y)  -- registra el valor de x+y
 funcion trace(expresion: texto) -> Resultado:
+    // cumple Manual 2 §5.1: expresión no vacía para identificar el punto de traza
+    requiere:
+        longitud(expresion) > 0
+    garantiza:
+        _resultado_.tag == 0 o _resultado_.tag == 1
     // ME-R2: el asm anterior usaba #expr/typeof (no es C valido y nunca compilo).
     // Ahora registra el texto de la expresion; el runtime ignora valor y tipo.
     inseguro:
@@ -223,6 +237,11 @@ funcion trace(expresion: texto) -> Resultado:
 // iniciar_sesion — Crea una nueva sesion de traza para un programa
 // Inicializa el buffer circular (max 50,000 eventos)
 funcion iniciar_sesion(programa: texto) -> texto:
+    // cumple Manual 2 §5.1: nombre de programa no vacío; id de sesión con prefijo "trace_"
+    requiere:
+        longitud(programa) > 0
+    garantiza:
+        longitud(_resultado_) >= 7
     // ME-R2: antes declaraba -> TraceSession (estructura no representable); el
     // runtime retorna el id de sesion (CadenaSegura). El struct TraceSession se
     // mantiene solo como documentacion del estado interno del runtime.
@@ -232,6 +251,9 @@ funcion iniciar_sesion(programa: texto) -> texto:
 // Serializa a ~/.synapse/traces/{id}.trace
 // Retorna la sesion finalizada con estado PERSISTIDA
 funcion finalizar_sesion() -> Resultado:
+    // cumple Manual 2 §5.1: resultado con tag 0 (ok) si la persistencia fue exitosa
+    garantiza:
+        _resultado_.tag == 0 o _resultado_.tag == 1
     // ME-R2: antes declaraba '-> Resultado' pero el runtime retorna CadenaSegura;
     // ahora se construye el Resultado ADT con valor_str = id de sesion persistido.
     inseguro:

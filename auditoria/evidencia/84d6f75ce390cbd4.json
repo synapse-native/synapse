@@ -1,0 +1,22 @@
+{
+ "cambio_hash": "84d6f75ce390cbd4",
+ "expediente": "docs/alineacion/r299b_std_cumple.md",
+ "fecha": "2026-11-24",
+ "archivos": [
+  "std/cripto.syn",
+  "std/debug.syn",
+  "std/json.syn",
+  "std/math.syn",
+  "std/mem.syn",
+  "std/oraculo.syn",
+  "std/sistema.syn",
+  "std/texto.syn",
+  "std/tiempo.syn",
+  "std/toml.syn"
+ ],
+ "oraculos": {
+  "auditoria/verificar_contratos.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

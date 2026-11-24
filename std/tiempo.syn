@@ -12,8 +12,14 @@ externo funcion _syn_ahora_ms() -> entero
 externo funcion _syn_dormir_ms(ms: entero) -> nulo
 
 funcion ahora_ms() -> entero:
+    // cumple Manual 2 §5.1: timestamp de época en milisegundos, siempre no negativo
+    garantiza:
+        _resultado_ >= 0
     retornar _syn_ahora_ms()
 
 funcion dormir_ms(ms: entero) -> nulo:
+    // cumple Manual 2 §5.1: duración de espera no negativa
+    requiere:
+        ms >= 0
     _syn_dormir_ms(ms)
     retornar

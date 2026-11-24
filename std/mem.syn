@@ -8,7 +8,15 @@
 //   libera(-> bloque)
 
 funcion reserva(tamano: int) -> tensor:
+    // cumple Manual 2 §5.1: tamaño positivo; bloque no vacío garantizado
+    requiere:
+        tamano > 0
+    garantiza:
+        longitud(_resultado_) >= tamano
     retornar 0
 
 funcion libera(bloque: tensor) -> nulo:
+    // cumple Manual 2 §5.1: bloque no vacío para liberar
+    requiere:
+        longitud(bloque) > 0
     retornar

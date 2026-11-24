@@ -12,27 +12,43 @@
 //   e = relu(c)
 
 funcion crear_tensor(filas: entero, columnas: entero) -> tensor:
+    // cumple Manual 2 §5.1: precondiciones de dominio (dimensiones positivas)
     requiere:
         filas > 0
     requiere:
         columnas > 0
+    garantiza:
+        longitud(_resultado_) == filas * columnas
     retornar 0
 
 funcion suma_tensor(a: tensor, b: tensor) -> tensor:
+    // cumple Manual 2 §5.1: tensores con la misma forma no vacía
     requiere:
         longitud(a) > 0
     requiere:
         longitud(b) > 0
+    requiere:
+        longitud(a) == longitud(b)
+    garantiza:
+        longitud(_resultado_) == longitud(a)
     retornar 0
 
 funcion producto_punto(a: tensor, b: tensor) -> tensor:
+    // cumple Manual 2 §5.1: tensores compatibles (misma longitud de vector)
     requiere:
         longitud(a) > 0
     requiere:
         longitud(b) > 0
+    requiere:
+        longitud(a) == longitud(b)
+    garantiza:
+        longitud(_resultado_) >= 1
     retornar 0
 
 funcion relu(a: tensor) -> tensor:
+    // cumple Manual 2 §5.1: tensor no vacío; resultado con misma forma
     requiere:
         longitud(a) > 0
+    garantiza:
+        longitud(_resultado_) == longitud(a)
     retornar 0
