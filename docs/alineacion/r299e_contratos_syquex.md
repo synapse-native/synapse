@@ -1,7 +1,7 @@
 # Expediente de alineación r299e_contratos_syquex
 
 base: HEAD  # commit sobre el que se leyó el manual
-cambio_hash:
+cambio_hash: 3a4c6f5519a31d06
 
 > Una ancla por requisito. `estado:` CUMPLE | DESVIACION.
 > CUMPLE exige `evidencia: archivo:linea` con el comentario
