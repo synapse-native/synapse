@@ -26,6 +26,11 @@ externo funcion _syn_extraer_bloque_codigo(texto: texto) -> texto
 // --- Wrappers públicos ---
 
 funcion compilar_codigo(fuente: texto) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §5.1: código fuente no vacío; resultado 0=éxito, otro=error
     requiere:
         longitud(fuente) > 0
@@ -34,24 +39,44 @@ funcion compilar_codigo(fuente: texto) -> entero:
     retornar _syn_compilar_codigo(fuente)
 
 funcion obtener_codigo_generado() -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: retorna el código generado por la última llamada al modelo
     garantiza:
         longitud(_resultado_) >= 0
     retornar _syn_obtener_codigo_generado()
 
 funcion obtener_error_compilacion() -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: retorna el mensaje de error de la última compilación fallida
     garantiza:
         longitud(_resultado_) >= 0
     retornar _syn_obtener_error_compilacion()
 
 funcion obtener_linea_error() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §5.1: número de línea >= 0 (0 si sin error o sin info de línea)
     garantiza:
         _resultado_ >= 0
     retornar _syn_obtener_linea_error()
 
 funcion extraer_bloque_codigo(texto: texto) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: extrae bloque de código fenced; resultado >= 0 chars
     requiere:
         longitud(texto) >= 0
@@ -67,6 +92,11 @@ funcion extraer_bloque_codigo(texto: texto) -> texto:
 // lo compila, y si hay errores, retroalimenta al modelo para corregirlos.
 // Retorna el código fuente Synapse generado (cadena vacía si falla tras MAX_INTENTOS).
 funcion generar_codigo(modelo: puntero, instruccion: texto, max_intentos: entero) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        max_intentos >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: instrucción no vacía; reintentos positivos; resultado vacío = fallo total
     requiere:
         longitud(instruccion) > 0

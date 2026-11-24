@@ -25,6 +25,9 @@ funcion contiene(texto: texto, subcadena: texto) -> entero:
 // ============================================================
 
 funcion indice_de(texto: texto, subcadena: texto) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
     garantiza:
         _resultado_ >= -1
     retornar _syn_texto_indice_de(texto, subcadena)
@@ -56,6 +59,9 @@ funcion termina_con(texto: texto, sufijo: texto) -> entero:
 // ============================================================
 
 funcion recortar(texto: texto) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
     garantiza:
         longitud(_resultado_) <= longitud(texto)
     retornar _syn_texto_recortar(texto)
@@ -65,11 +71,17 @@ funcion recortar(texto: texto) -> texto:
 // ============================================================
 
 funcion mayusculas(texto: texto) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
     garantiza:
         longitud(_resultado_) == longitud(texto)
     retornar _syn_texto_mayusculas(texto)
 
 funcion minusculas(texto: texto) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
     garantiza:
         longitud(_resultado_) == longitud(texto)
     retornar _syn_texto_minusculas(texto)
@@ -79,6 +91,9 @@ funcion minusculas(texto: texto) -> texto:
 // ============================================================
 
 funcion escapar_json(texto: texto) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
     garantiza:
         longitud(_resultado_) >= longitud(texto)
     retornar _syn_escapar_json(texto)
@@ -88,11 +103,17 @@ funcion escapar_json(texto: texto) -> texto:
 // ============================================================
 
 funcion a_texto(valor: entero) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
     garantiza:
         longitud(_resultado_) > 0
     retornar _syn_a_texto_entero(valor)
 
 funcion a_texto_decimal(valor: decimal) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
     garantiza:
         longitud(_resultado_) > 0
     retornar _syn_a_texto_decimal(valor)

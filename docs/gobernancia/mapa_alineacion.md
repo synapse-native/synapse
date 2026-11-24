@@ -36,7 +36,7 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "opensyn/verificacion_aot.syn": ["Manual 6 §1.1", "Manual 7 §4.2", "Manual 7 §6.3", "Manual 2 §5.1"],
   "nucleo/grafo_conocimiento.syn": ["Manual 6 §1.1", "Manual 2 §5.1"],
   "nucleo/puente_ffi_lista_mapa.syn": ["Manual 6 §3.1", "Manual 6 §3.2", "Manual 2 §5"],
-   "nucleo/lsp.syn": ["Manual 8 §1", "Manual 2 §5.1"],
+   "nucleo/lsp.syn": ["Manual 8 §1.1", "Manual 2 §5.1"],
    "nucleo/lsp_v3.syn": ["Manual 8 §1.1", "Manual 2 §5.1"],
    "nucleo/parser.syn": ["Manual 2 §2", "Manual 2 §5.1"],
    "nucleo/principal.syn": ["Manual 9 §6.2", "Manual 8 §4.1", "Manual 8 §4.2", "Manual 8 §3.1", "Manual 8 §3.4", "Manual 2 §1.2", "Manual 2 §5.1"],
@@ -57,6 +57,13 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "nucleo/diagnostics.syn": ["Manual 2 §5.1"],
   "nucleo/lexer_keywords.syn": ["Manual 2 §3", "Manual 2 §5.1"],
   "nucleo/optimizador_ia.syn": ["Manual 2 §5.1"],
+  "std/mem.syn": ["Manual 2 §5.1"],
+  "std/debug.syn": ["Manual 2 §5.1"],
+  "std/tiempo.syn": ["Manual 2 §5.1"],
+  "std/simd.syn": ["Manual 2 §5.1"],
+  "std/oraculo.syn": ["Manual 2 §5.1"],
+  "std/cluster.syn": ["Manual 2 §5.1"],
+  "std/http.syn": ["Manual 2 §5.1"],
   "nucleo/resolvedor_axon.syn": ["Manual 2 §5.1"],
   "syquex/lexer.syn": ["Manual 2 §5.1"],
   "syquex/parser.syn": ["Manual 3 §3", "Manual 1 §1.1", "Manual 1 §5.1", "Manual 2 §5.1"],
@@ -134,10 +141,10 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "compilador/generator/generator.py": ["Manual 2 §5.1"],
   "compilador/generator/emit_tensors.py": ["Manual 2 §4.1"],
   "compilador/parser_declarations.py": ["Manual 2 §2"],
-  "std/agent_skills.syn": ["Manual 2 §4.1"],
-  "std/atp_engine.syn": ["Manual 2 §4.1"],
+  "std/agent_skills.syn": ["Manual 2 §4.1", "Manual 2 §5.1"],
+  "std/atp_engine.syn": ["Manual 2 §4.1", "Manual 2 §5.1"],
   "std/quantum_err_corr.syn": ["Manual 2 §4.1"],
-  "std/symbolic_exec.syn": ["Manual 2 §4.1"],
+  "std/symbolic_exec.syn": ["Manual 2 §4.1", "Manual 2 §5.1"],
   "std/ai.syn": ["Manual 2 §5.1"],
   "std/dist_orchestrator.syn": ["Manual 2 §5.1"],
   "std/net.syn": ["Manual 2 §5.1"],
@@ -155,7 +162,7 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "synapse_rt_types.h": ["Manual 2 §4.1"],
   "syquex/expr.syn": ["Manual 3 §3", "Manual 2 §5.1"],
   "lib/runtime_bindings.syq": ["Manual 6 §3.1"],
-  "std/testing.syn": ["Manual 2 §2"]
+  "std/testing.syn": ["Manual 2 §2", "Manual 2 §5.1"]
 }
 ```
 

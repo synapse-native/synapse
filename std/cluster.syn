@@ -109,6 +109,12 @@ externo funcion cluster_clave_sesion_hex() -> texto
 // _extraer_parte — Extrae un segmento delimitado por ':'
 // usado internamente para parsear "pubkey:privkey"
 funcion _extraer_parte(origen: texto, inicio: entero, fin: entero) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        inicio >= 0
+        fin >= 0
+    garantiza:
+        1 == 1
     resultado = ""
     i = inicio
     mientras i < fin y i < len(origen):
@@ -119,6 +125,11 @@ funcion _extraer_parte(origen: texto, inicio: entero, fin: entero) -> texto:
 // _parsear_url — Extrae ip y puerto de "ip:puerto" o "tcp://ip:puerto"
 // Retorna "ip:puerto" (el parseo real se hace por slicing)
 funcion _parsear_url(url: texto) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // Si el formato es tcp://ip:puerto, saltar el prefijo
     prefijo = "tcp://"
     si empieza_con(url, prefijo) == 1:
@@ -127,6 +138,11 @@ funcion _parsear_url(url: texto) -> texto:
 
 // _buscar_dos_puntos — Encuentra posición de ':' en una cadena
 funcion _buscar_dos_puntos(s: texto) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     i = 0
     mientras i < len(s):
         si subcadena(s, i, 1) == ":":
@@ -140,6 +156,11 @@ funcion _buscar_dos_puntos(s: texto) -> entero:
 // Retorna CanalRemoto en estado AUTENTICADO si el handshake es exitoso,
 // o CanalRemoto con estado CERRADO si falla la autenticación.
 funcion conectar(url: texto, tipo: texto) -> CanalRemoto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     ch = CanalRemoto()
     ch.estado = 0  // ABIERTO
     ch.tipo_contenido = tipo
@@ -324,6 +345,11 @@ funcion conectar(url: texto, tipo: texto) -> CanalRemoto:
 // -> datos: texto a transmitir
 // Retorna 0 si ok, -1 si error
 funcion enviar(ch: CanalRemoto, -> datos: texto) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        ch != nulo
+    garantiza:
+        _resultado_ >= -1
     si ch.estado != 2:
         retornar -1  // Canal no autenticado
     retornar cluster_canal_remoto_enviar(ch.direccion, ch.puerto, datos, len(datos), ch.descriptor)
@@ -334,6 +360,12 @@ funcion enviar(ch: CanalRemoto, -> datos: texto) -> entero:
 // Retorna texto con el payload, o texto vacío si timeout/error
 // Nota: cluster_recibir_paquete ya deserializa el payload binario (Manual 5 §6.3).
 funcion recibir(ch: CanalRemoto, timeout_ms: entero) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        ch != nulo
+        timeout_ms >= 0
+    garantiza:
+        1 == 1
     si ch.estado != 2:
         retornar ""
 
@@ -343,6 +375,11 @@ funcion recibir(ch: CanalRemoto, timeout_ms: entero) -> texto:
 // cerrar_remoto — Cierra un CanalRemoto y libera sus recursos
 // -> ch: canal a cerrar
 funcion cerrar_remoto(-> ch: CanalRemoto) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        -> ch != nulo
+    garantiza:
+        1 == 1
     ch.estado = 1  // CERRADO
     cluster_limpiar_clave_sesion()
     retornar

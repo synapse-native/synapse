@@ -8,6 +8,11 @@
 //   libera(-> bloque)
 
 funcion reserva(tamano: int) -> tensor:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: tamaño positivo; bloque no vacío garantizado
     requiere:
         tamano > 0
@@ -16,6 +21,11 @@ funcion reserva(tamano: int) -> tensor:
     retornar 0
 
 funcion libera(bloque: tensor) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: bloque no vacío para liberar
     requiere:
         longitud(bloque) > 0

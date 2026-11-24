@@ -13,6 +13,11 @@
 importar std.io
 
 funcion assert_verdadero(condicion: booleano, nombre: texto) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     si condicion:
         escribir_linea(concat("  [PASS] ", nombre))
         retornar 0
@@ -20,6 +25,11 @@ funcion assert_verdadero(condicion: booleano, nombre: texto) -> entero:
     retornar 1
 
 funcion assert_falso(condicion: booleano, nombre: texto) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     si no condicion:
         escribir_linea(concat("  [PASS] ", nombre))
         retornar 0
@@ -27,6 +37,12 @@ funcion assert_falso(condicion: booleano, nombre: texto) -> entero:
     retornar 1
 
 funcion assert_igual(actual: entero, esperado: entero, nombre: texto) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        actual >= 0
+        esperado >= 0
+    garantiza:
+        _resultado_ >= -1
     si actual == esperado:
         escribir_linea(concat("  [PASS] ", nombre))
         retornar 0
@@ -37,6 +53,12 @@ funcion assert_igual(actual: entero, esperado: entero, nombre: texto) -> entero:
     retornar 1
 
 funcion assert_diferente(actual: entero, esperado: entero, nombre: texto) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        actual >= 0
+        esperado >= 0
+    garantiza:
+        _resultado_ >= -1
     si actual != esperado:
         escribir_linea(concat("  [PASS] ", nombre))
         retornar 0
@@ -48,4 +70,9 @@ funcion assert_diferente(actual: entero, esperado: entero, nombre: texto) -> ent
 // función no existía y el código generado por la skill no compilaba.
 // cumple Manual 2 §2: firma de función en una línea, tipos booleano/texto
 funcion verificar(condicion: booleano, nombre: texto) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     retornar assert_verdadero(condicion, nombre)

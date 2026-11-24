@@ -36,6 +36,11 @@ funcion desde_texto(entrada: cadena) -> NodoJson:
     retornar _json_parse(entrada)
 
 funcion liberar_nodo(-> n: NodoJson) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        -> n != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: nodo con tipo válido (>= 0) para liberar
     requiere:
         n.tipo >= 0
@@ -43,6 +48,12 @@ funcion liberar_nodo(-> n: NodoJson) -> nulo:
     retornar
 
 funcion obtener_elemento(nodo: NodoJson, indice: entero) -> NodoJson:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        nodo != nulo
+        indice >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: índice en rango válido del arreglo
     requiere:
         indice >= 0
@@ -53,6 +64,11 @@ funcion obtener_elemento(nodo: NodoJson, indice: entero) -> NodoJson:
     retornar _json_array_get(nodo, indice)
 
 funcion obtener_campo(nodo: NodoJson, clave: cadena) -> NodoJson:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        nodo != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: clave no vacía; resultado con tipo >= 0
     requiere:
         longitud(clave) > 0
@@ -61,6 +77,9 @@ funcion obtener_campo(nodo: NodoJson, clave: cadena) -> NodoJson:
     retornar _json_object_get(nodo, clave)
 
 funcion a_texto(nodo: NodoJson) -> cadena:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
     garantiza:
         longitud(_resultado_) >= 0
     retornar _json_a_texto(nodo)

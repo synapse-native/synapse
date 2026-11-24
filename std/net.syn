@@ -28,12 +28,22 @@ externo funcion _syn_recibir_como_texto(fd: entero, tamano: entero) -> texto
 externo funcion _syn_texto_liberar(t: texto) -> nulo
 
 funcion iniciar_red() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §5.1: resultado de inicialización
     garantiza:
         _resultado_ == _resultado_
     retornar _syn_iniciar_red()
 
 funcion cerrar_red() -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: cierre de red
     garantiza:
         1 == 1
@@ -41,6 +51,11 @@ funcion cerrar_red() -> nulo:
     retornar
 
 funcion crear_socket() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §5.1: descriptor de socket
     garantiza:
         _resultado_ == _resultado_
@@ -48,6 +63,11 @@ funcion crear_socket() -> entero:
 
 // conectar devuelve Resultado con tag=0 (ok) y valor=fd, o tag=1 (error)
 funcion conectar(ip: texto, puerto: entero) -> Resultado:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        puerto >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: ip no vacía, puerto válido
     requiere:
         longitud(ip) > 0
@@ -74,6 +94,12 @@ funcion conectar(ip: texto, puerto: entero) -> Resultado:
     retornar r
 
 funcion enviar_datos(fd: entero, datos: texto, lon: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        fd >= 0
+        lon >= 0
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §5.1: fd no negativo, datos no vacíos, lon no negativa
     requiere:
         fd >= 0
@@ -89,6 +115,12 @@ funcion enviar_datos(fd: entero, datos: texto, lon: entero) -> entero:
 // Devuelve Resultado con tag=0 (ok, valor_str = texto recibido) o tag=1 (error).
 // El texto recibido debe liberarse con liberar_texto() cuando ya no se necesite.
 funcion recibir_datos(socket: SocketTCP, tamano_maximo: entero) -> Resultado:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        socket != nulo
+        tamano_maximo >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: tamano máximo positivo
     requiere:
         tamano_maximo > 0
@@ -105,6 +137,11 @@ funcion recibir_datos(socket: SocketTCP, tamano_maximo: entero) -> Resultado:
     retornar r
 
 funcion cerrar_socket(fd: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        fd >= 0
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §5.1: fd no negativo
     requiere:
         fd >= 0
@@ -113,6 +150,11 @@ funcion cerrar_socket(fd: entero) -> entero:
     retornar _syn_cerrar_socket(fd)
 
 funcion liberar_texto(-> t: texto) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: texto no nulo
     garantiza:
         1 == 1

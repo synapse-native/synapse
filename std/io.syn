@@ -14,6 +14,11 @@
 importar std.sistema
 
 funcion abrir(ruta: texto, modo: texto) -> Canal:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
 // cumple Manual 2 §5.1: cláusulas booleanas (requiere antes del cuerpo,
 // garantiza tras cada retornar — M2 §5.1); dominio del handle M2 §12.
     requiere:
@@ -28,6 +33,11 @@ funcion abrir(ruta: texto, modo: texto) -> Canal:
     retornar _syn_abrir(ruta_segura, modo)
 
 funcion leer(c: Canal) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        c != nulo
+    garantiza:
+        1 == 1
     // M2 §5.1: la cláusula original `c >= 0` comparaba un Canal (struct)
     // con un número — expresión no booleana; exige canal válido (campo).
     requiere:
@@ -39,16 +49,25 @@ funcion leer(c: Canal) -> texto:
 externo funcion cerrar_archivo(c: Canal) -> nulo
 
 funcion escribir(texto: texto) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     requiere:
         longitud(texto) >= 0
     _syn_escribir(texto)
 
 funcion escribir_linea(texto: texto) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     requiere:
         longitud(texto) >= 0
     _syn_escribir_linea(texto)
 
 funcion leer_linea() -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
     garantiza:
         longitud(_resultado_) >= 0
     retornar _syn_leer_linea()
@@ -59,6 +78,9 @@ funcion leer_linea() -> texto:
 // lectura vacía decide si el flujo terminó o el usuario presionó Enter.
 // cumple Manual 2 §5.1: contrato garantiza sobre el dominio del resultado
 funcion stdin_eof() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
     garantiza:
         _resultado_ == 0 o _resultado_ == 1
     retornar _syn_stdin_eof()

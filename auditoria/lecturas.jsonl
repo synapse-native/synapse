@@ -1038,3 +1038,7 @@
 {"fecha": "2026-11-24", "archivos": ["nucleo/lexer.syn", "nucleo/lexer_keywords.syn"], "cita": "Manual 2 §3", "puntos": "tokens keywords lexer"}
 {"fecha": "2026-11-24", "archivos": ["nucleo/lexer.syn", "nucleo/lexer_keywords.syn", "nucleo/principal.syn", "nucleo/resolvedor_axon.syn", "nucleo/lsp.syn", "nucleo/lsp_v3.syn", "nucleo/analizador_semantico.syn", "nucleo/optimizador_ia.syn"], "cita": "Manual 2 §5.1", "puntos": "requiere garantiza contratos dominio"}
 {"fecha": "2026-11-24", "archivos": ["nucleo/lsp.syn"], "cita": "Manual 8 §1.1", "puntos": "language server protocol binario nativo syquex syn transparente"}
+{"fecha": "2026-11-24", "archivos": ["std/agent_skills.syn"], "cita": "Manual 2 §4.1", "puntos": "tipo sintactico semantica tamaño abi notas"}
+{"fecha": "2026-11-24", "archivos": ["std/testing.syn"], "cita": "Manual 2 §2", "puntos": "gramatica notacion ebnf extendida"}
+{"fecha": "2026-11-24", "archivos": ["std/cluster.syn"], "cita": "Manual 2 §5.1", "puntos": "requiere garantiza booleanas"}
+{"fecha": "2026-11-24", "archivos": ["std/http.syn"], "cita": "Manual 2 §5.1", "puntos": "requiere garantiza booleanas"}

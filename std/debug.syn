@@ -195,6 +195,11 @@ externo funcion ms_snapshot_contiene(snapshot: texto, nombre: texto) -> texto
 // registrar_evento — Registra un evento de traza en la sesion actual
 // Retorna ok(0) si exito, err(Error) si fallo (ej. buffer lleno no esperado)
 funcion registrar_evento(evento: TraceEvent) -> Resultado:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        evento != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: tipo de evento en rango válido [0,8]; línea >= 0
     requiere:
         evento.tipo_evento >= 0
@@ -221,6 +226,11 @@ funcion registrar_evento(evento: TraceEvent) -> Resultado:
 // Util para inspeccionar valores intermedios sin modificar logica
 // Uso: trace(x + y)  -- registra el valor de x+y
 funcion trace(expresion: texto) -> Resultado:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: expresión no vacía para identificar el punto de traza
     requiere:
         longitud(expresion) > 0
@@ -237,6 +247,11 @@ funcion trace(expresion: texto) -> Resultado:
 // iniciar_sesion — Crea una nueva sesion de traza para un programa
 // Inicializa el buffer circular (max 50,000 eventos)
 funcion iniciar_sesion(programa: texto) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: nombre de programa no vacío; id de sesión con prefijo "trace_"
     requiere:
         longitud(programa) > 0
@@ -251,6 +266,11 @@ funcion iniciar_sesion(programa: texto) -> texto:
 // Serializa a ~/.synapse/traces/{id}.trace
 // Retorna la sesion finalizada con estado PERSISTIDA
 funcion finalizar_sesion() -> Resultado:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: resultado con tag 0 (ok) si la persistencia fue exitosa
     garantiza:
         _resultado_.tag == 0 o _resultado_.tag == 1

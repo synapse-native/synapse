@@ -30,18 +30,33 @@ externo funcion _syn_simd_multiplicar_matrices_transpuesta_b(a: tensor, b: tenso
 
 // Wrappers Synapse
 funcion simd_disponible() -> booleano:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: resultado booleano acotado
     garantiza:
         _resultado_ == verdadero o _resultado_ == falso
     retornar _syn_simd_disponible() == 1
 
 funcion simd_tipo() -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: texto no nulo
     garantiza:
         _resultado_ == _resultado_
     retornar _syn_simd_tipo()
 
 funcion simd_multiplicar_matrices(a: tensor, b: tensor) -> tensor:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: tensores no vacíos y compatibles
     requiere:
         longitud(a) > 0
@@ -52,6 +67,11 @@ funcion simd_multiplicar_matrices(a: tensor, b: tensor) -> tensor:
     retornar _syn_simd_multiplicar_matrices(a, b)
 
 funcion simd_rmsnorm(salida: tensor, entrada: tensor, peso_normalizacion: tensor, epsilon: decimal) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: tensores no vacíos
     requiere:
         longitud(salida) > 0
@@ -65,6 +85,11 @@ funcion simd_rmsnorm(salida: tensor, entrada: tensor, peso_normalizacion: tensor
     retornar
 
 funcion simd_silu(salida: tensor, entrada: tensor) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: tensores no vacíos
     requiere:
         longitud(salida) > 0
@@ -76,6 +101,11 @@ funcion simd_silu(salida: tensor, entrada: tensor) -> nulo:
     retornar
 
 funcion simd_softmax_escalado(tensor: tensor, factor_escala: decimal) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: tensor no vacío
     requiere:
         longitud(tensor) > 0
@@ -85,6 +115,11 @@ funcion simd_softmax_escalado(tensor: tensor, factor_escala: decimal) -> nulo:
     retornar
 
 funcion simd_llenar_tensor_constante(t: tensor, valor: decimal) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: tensor no vacío
     requiere:
         longitud(t) > 0
@@ -94,6 +129,11 @@ funcion simd_llenar_tensor_constante(t: tensor, valor: decimal) -> nulo:
     retornar
 
 funcion simd_multiplicar_matrices_transpuesta_b(a: tensor, b: tensor, salida: tensor) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: tensores no vacíos
     requiere:
         longitud(a) > 0

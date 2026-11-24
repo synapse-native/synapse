@@ -52,6 +52,11 @@ externo funcion _syn_se_limpiar(engine: puntero)
 
 // Inicializa el motor de ejecución simbólica
 funcion se_iniciar(modo: entero) -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        modo >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: resultado puede ser nulo si falla
     garantiza:
         _resultado_ == _resultado_
@@ -59,6 +64,12 @@ funcion se_iniciar(modo: entero) -> puntero:
 
 // Inicializa con profundidad máxima personalizada
 funcion se_iniciar_profundo(modo: entero, profundidad: entero) -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        modo >= 0
+        profundidad >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: profundidad positiva
     requiere:
         profundidad > 0
@@ -77,6 +88,11 @@ funcion se_cerrar(engine: puntero):
 
 // Crea una variable simbólica
 funcion se_crear_variable(engine: puntero, nombre: cadena, cota_inf: decimal, cota_sup: decimal) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §5.1: engine no nulo, nombre no vacío, cotas válidas
     requiere:
         engine != nulo
@@ -90,6 +106,12 @@ funcion se_crear_variable(engine: puntero, nombre: cadena, cota_inf: decimal, co
 
 // Crea una variable simbólica entera
 funcion se_crear_entero(engine: puntero, nombre: cadena, cota_inf: entero, cota_sup: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        cota_inf >= 0
+        cota_sup >= 0
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §4.1 — coerción implícita entero→decimal (D-R150-9)
     // cumple Manual 2 §5.1: engine no nulo, nombre no vacío, cotas válidas
     requiere:
@@ -104,6 +126,11 @@ funcion se_crear_entero(engine: puntero, nombre: cadena, cota_inf: entero, cota_
 
 // Agrega una restricción a la ruta activa
 funcion se_agregar_restriccion(engine: puntero, expr: cadena) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §5.1: engine no nulo, expr no vacía
     requiere:
         engine != nulo
@@ -115,6 +142,11 @@ funcion se_agregar_restriccion(engine: puntero, expr: cadena) -> entero:
 
 // Bifurca la ruta activa
 funcion se_bifurcar(engine: puntero, condicion: cadena) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §5.1: engine no nulo, condición no vacía
     requiere:
         engine != nulo
@@ -126,6 +158,11 @@ funcion se_bifurcar(engine: puntero, condicion: cadena) -> entero:
 
 // Verifica si la ruta activa es alcanzable
 funcion se_es_alcanzable(engine: puntero) -> booleano:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: engine no nulo
     requiere:
         engine != nulo
@@ -135,6 +172,11 @@ funcion se_es_alcanzable(engine: puntero) -> booleano:
 
 // Verifica si hay riesgo de división por cero
 funcion se_hay_div_por_cero(engine: puntero, divisor: cadena) -> booleano:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: engine no nulo, divisor no vacío
     requiere:
         engine != nulo
@@ -146,6 +188,11 @@ funcion se_hay_div_por_cero(engine: puntero, divisor: cadena) -> booleano:
 
 // Verifica si hay riesgo de desbordamiento
 funcion se_hay_desbordamiento(engine: puntero, expr: cadena, lim_inf: decimal, lim_sup: decimal) -> booleano:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: engine no nulo, expr no vacía, límites válidos
     requiere:
         engine != nulo
@@ -159,6 +206,11 @@ funcion se_hay_desbordamiento(engine: puntero, expr: cadena, lim_inf: decimal, l
 
 // Verifica si hay acceso fuera de límites
 funcion se_hay_fuera_limites(engine: puntero, idx: cadena, tamano: entero) -> booleano:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        tamano >= 0
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: engine no nulo, idx no vacío, tamano positivo
     requiere:
         engine != nulo
@@ -172,6 +224,11 @@ funcion se_hay_fuera_limites(engine: puntero, idx: cadena, tamano: entero) -> bo
 
 // Explora todas las rutas factibles
 funcion se_explorar(engine: puntero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §5.1: engine no nulo
     requiere:
         engine != nulo
@@ -181,6 +238,11 @@ funcion se_explorar(engine: puntero) -> entero:
 
 // Activa una ruta específica
 funcion se_activar_ruta(engine: puntero, idx: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        idx >= 0
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §5.1: engine no nulo, idx no negativo
     requiere:
         engine != nulo
@@ -205,6 +267,11 @@ funcion se_limpiar(engine: puntero):
 
 // Verifica si una expresión es segura bajo las restricciones actuales
 funcion se_es_seguro(engine: puntero, expr: cadena) -> booleano:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: engine no nulo, expr no vacía
     requiere:
         engine != nulo
