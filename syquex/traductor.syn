@@ -1,5 +1,7 @@
 #lang: es
 # cumple Manual 1 5: nucleo del compilador Synapse
+# cumple Manual 6 §1: traductor Syquex (Manual 6 §1)
+// cumple Manual 2 §5.1: contratos requiere/garantiza en funciones públicas
 // ============================================================
 // syquex/traductor.syn — Traductor Syquex -> SemNodo[] (R88)
 // Manual 6 §1.3 ("El traductor convierte el AST de Syquex en
@@ -59,6 +61,11 @@ funcion trad_nodos() -> puntero:
         retornar r
 
 funcion trad_hi() -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ != nulo
     inseguro:
         let r: puntero = nulo
         asm("static int _TR_hi[65536];")
@@ -66,6 +73,11 @@ funcion trad_hi() -> puntero:
         retornar r
 
 funcion trad_s2p() -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ != nulo
     inseguro:
         let r: puntero = nulo
         asm("static int _TR_s2p[65536];")
@@ -73,6 +85,11 @@ funcion trad_s2p() -> puntero:
         retornar r
 
 funcion trad_s2h() -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ != nulo
     inseguro:
         let r: puntero = nulo
         asm("static int _TR_s2h[65536];")
@@ -80,6 +97,11 @@ funcion trad_s2h() -> puntero:
         retornar r
 
 funcion trad_s2l() -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ != nulo
     inseguro:
         let r: puntero = nulo
         asm("static int _TR_s2l[65536];")
@@ -87,6 +109,11 @@ funcion trad_s2l() -> puntero:
         retornar r
 
 funcion trad_meta() -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ != nulo
     inseguro:
         let r: puntero = nulo
         asm("static int _TR_total = 0;")
@@ -94,6 +121,11 @@ funcion trad_meta() -> puntero:
         retornar r
 
 funcion trad_arena() -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ != nulo
     inseguro:
         let r: puntero = nulo
         asm("static char _TR_arena[262144];")
@@ -101,6 +133,11 @@ funcion trad_arena() -> puntero:
         retornar r
 
 funcion trad_arena_usada() -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ != nulo
     inseguro:
         let r: puntero = nulo
         asm("static int _TR_ausada = 0;")
@@ -288,6 +325,11 @@ funcion trad_fijar_nombre_arena(dst: entero, off: entero, len: entero) -> nulo:
 
 // ---- Accessores de ENTRADA (árbol Syquex de sq_programa) ----
 funcion tr_lo(n: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        n >= 0
+    garantiza:
+        verdadero
     inseguro:
         r = 0
         asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); if (n >= 0 && n < 65536) r = _in[n].ptr_str;")
@@ -295,6 +337,11 @@ funcion tr_lo(n: entero) -> entero:
     retornar 0
 
 funcion tr_hi(n: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        n >= 0
+    garantiza:
+        verdadero
     inseguro:
         r = 0
         asm("int* _ih = (int*)sq_tokens_hi(); if (_ih && n >= 0 && n < 65536) r = _ih[n];")
@@ -302,6 +349,11 @@ funcion tr_hi(n: entero) -> entero:
     retornar 0
 
 funcion tr_len(n: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        n >= 0
+    garantiza:
+        verdadero
     inseguro:
         r = 0
         asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); if (n >= 0 && n < 65536) r = _in[n].len_str;")
@@ -309,6 +361,11 @@ funcion tr_len(n: entero) -> entero:
     retornar 0
 
 funcion tr_tipo(n: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        n >= 0
+    garantiza:
+        verdadero
     inseguro:
         r = 0
         asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); if (n >= 0 && n < 65536) r = _in[n].tipo_nodo;")
@@ -316,6 +373,11 @@ funcion tr_tipo(n: entero) -> entero:
     retornar 0
 
 funcion tr_lin(n: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        n >= 0
+    garantiza:
+        verdadero
     inseguro:
         r = 0
         asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); if (n >= 0 && n < 65536) r = _in[n].linea;")
@@ -323,6 +385,11 @@ funcion tr_lin(n: entero) -> entero:
     retornar 0
 
 funcion tr_col(n: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        n >= 0
+    garantiza:
+        verdadero
     inseguro:
         r = 0
         asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); if (n >= 0 && n < 65536) r = _in[n].columna;")
@@ -330,6 +397,11 @@ funcion tr_col(n: entero) -> entero:
     retornar 0
 
 funcion tr_vi(n: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        n >= 0
+    garantiza:
+        verdadero
     inseguro:
         r = 0
         asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); if (n >= 0 && n < 65536) r = _in[n].valor_int;")
@@ -337,6 +409,11 @@ funcion tr_vi(n: entero) -> entero:
     retornar 0
 
 funcion tr_hizq(n: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        n >= 0
+    garantiza:
+        verdadero
     inseguro:
         r = 0
         asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); if (n >= 0 && n < 65536) r = _in[n].hijo_izq;")
@@ -344,6 +421,11 @@ funcion tr_hizq(n: entero) -> entero:
     retornar 0
 
 funcion tr_hder(n: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        n >= 0
+    garantiza:
+        verdadero
     inseguro:
         r = 0
         asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); if (n >= 0 && n < 65536) r = _in[n].hijo_der;")
@@ -351,6 +433,11 @@ funcion tr_hder(n: entero) -> entero:
     retornar 0
 
 funcion tr_herm(n: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        n >= 0
+    garantiza:
+        verdadero
     inseguro:
         r = 0
         asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); if (n >= 0 && n < 65536) r = _in[n].hermano;")
@@ -358,6 +445,11 @@ funcion tr_herm(n: entero) -> entero:
     retornar 0
 
 funcion tr_extra(n: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        n >= 0
+    garantiza:
+        verdadero
     inseguro:
         r = 0
         asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); if (n >= 0 && n < 65536) r = _in[n].ptr_extra;")

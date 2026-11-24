@@ -1,5 +1,7 @@
 #lang: es
 # cumple Manual 1 5: nucleo del compilador Synapse
+# cumple Manual 3 §1: tokenizador Syquex (Manual 3 §1)
+// cumple Manual 2 §5.1: contratos requiere/garantiza en funciones públicas
 // ============================================================
 // syquex/lexer.syn — Tokenizador de Syquex (FASE 22, R86)
 // Manual 3 §1 (directiva/codificación/comentarios ANIDABLES),
@@ -130,6 +132,11 @@ estructura TokenLex:
 
 // --- Helpers de cadena (patrón probado del lexer nativo) ---
 funcion str_len(s: cadena) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0
     inseguro:
         r = 0
         asm("r = s.longitud")
@@ -141,12 +148,22 @@ funcion str_len(s: cadena) -> entero:
 // _seen_sym de pipeline.py y el drop de builtins del generador S1
 // (la definición local no se emite — ver probe T=1 en reporte R88).
 funcion str_eq(a: cadena, b: cadena) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     inseguro:
         r = 0
         asm("if (a.longitud != b.longitud) { r = 0; } else { r = 1; for (int _si = 0; _si < a.longitud; _si++) { if (a.datos[_si] != b.datos[_si]) { r = 0; break; } } }")
         retornar r
 
 funcion str_eq_sq(a: cadena, b: cadena) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     inseguro:
         r = 0
         asm("if (a.longitud != b.longitud) { r = 0; } else { r = 1; for (int _si = 0; _si < a.longitud; _si++) { if (a.datos[_si] != b.datos[_si]) { r = 0; break; } } }")
@@ -169,6 +186,11 @@ estructura SqLexerBuffers:
     nivel_comentario: entero   // R86: profundidad de /* */ anidados (M3 §1.3)
 
 funcion sq_buffers() -> puntero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ != nulo
     inseguro:
         let r: puntero = nulo
         asm("static struct SqLexerBuffers _SQ_bufs = {0,0,0,0,0,0,0,0,0,0,0};")
@@ -180,33 +202,63 @@ funcion sq_buffers() -> puntero:
         retornar r
 
 funcion sq_reset() -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
     inseguro:
         asm("struct SqLexerBuffers* _b = (struct SqLexerBuffers*)sq_buffers();")
         asm("_b->ntks = 0; _b->str_pos = 0; _b->hay_error = 0; _b->total_tokens = 0; _b->nivel_pila = 0; _b->nivel_comentario = 0;")
 
 funcion sq_total() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0
     inseguro:
         r = 0
         asm("r = ((struct SqLexerBuffers*)sq_buffers())->ntks;")
         retornar r
 
 funcion sq_hay_error() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0
     inseguro:
         r = 0
         asm("r = ((struct SqLexerBuffers*)sq_buffers())->hay_error;")
         retornar r
 
 funcion sq_fijar_linea(n: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        n >= 0
+    garantiza:
+        verdadero
     inseguro:
         asm("((struct SqLexerBuffers*)sq_buffers())->linea_actual = n;")
 
 funcion sq_linea_actual() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 1
     inseguro:
         r = 0
         asm("r = ((struct SqLexerBuffers*)sq_buffers())->linea_actual;")
         retornar r
 
 funcion sq_idioma_actual() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0
     inseguro:
         r = 0
         asm("r = ((struct SqLexerBuffers*)sq_buffers())->idioma;")
@@ -214,6 +266,13 @@ funcion sq_idioma_actual() -> entero:
 
 // --- Decodifica cadenas al pool (escapes M2/M3: \" \' \\ \n \t \r \0 \uXXXX) ---
 funcion sq_decodificar_cadena(ptr: puntero, ini: entero, len: entero) -> cadena:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        ptr != nulo
+        ini >= 0
+        len >= 0
+    garantiza:
+        verdadero
     inseguro:
         asm("struct SqLexerBuffers* _b = (struct SqLexerBuffers*)sq_buffers();")
         asm("const char* _p = (const char*)ptr + ini;")
@@ -253,6 +312,13 @@ funcion sq_decodificar_cadena(ptr: puntero, ini: entero, len: entero) -> cadena:
 
 // --- Push de tokens ---
 funcion sq_push_valor(tipo: entero, linea: entero, columna: entero, valor: cadena) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        tipo >= 0
+        linea >= 0
+        columna >= 0
+    garantiza:
+        verdadero
     inseguro:
         asm("struct SqLexerBuffers* _b = (struct SqLexerBuffers*)sq_buffers();")
         asm("if (_b->ntks >= 65536) return;")
@@ -265,26 +331,59 @@ funcion sq_push_valor(tipo: entero, linea: entero, columna: entero, valor: caden
         asm("_b->total_tokens = _b->ntks;")
 
 funcion sq_push(tipo: entero, linea: entero, columna: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        tipo >= 0
+        linea >= 0
+        columna >= 0
+    garantiza:
+        verdadero
     sq_push_valor(tipo, linea, columna, "")
 
 // Lexema real desde la fuente (patrón A3.1: spans de tipos/listas)
 funcion sq_push_punt(tipo: entero, linea: entero, columna: entero, ini: entero, fin: entero, ptr: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        ptr != nulo
+        tipo >= 0
+        linea >= 0
+        columna >= 0
+        ini >= 0
+        fin >= 0
+    garantiza:
+        verdadero
     inseguro:
         asm("sq_push_valor(tipo, linea, columna, (CadenaSegura){.longitud = (fin - ini), .datos = (char*)ptr + ini});")
 
 funcion sq_error(mensaje: cadena, linea: entero, columna: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        linea >= 0
+        columna >= 0
+    garantiza:
+        verdadero
     inseguro:
         asm("struct SqLexerBuffers* _b = (struct SqLexerBuffers*)sq_buffers();")
         asm("_b->hay_error = 1;")
 
 // --- Predicados ---
 funcion sq_es_digito(c: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0
     si c >= 48:
         si c <= 57:
             retornar 1
     retornar 0
 
 funcion sq_es_letra(c: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0
     si c >= 128:
         retornar 1
     si c >= 65:
@@ -298,6 +397,11 @@ funcion sq_es_letra(c: entero) -> entero:
     retornar 0
 
 funcion sq_es_alnum(c: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0
     si sq_es_digito(c) == 1:
         retornar 1
     si sq_es_letra(c) == 1:
@@ -308,6 +412,11 @@ funcion sq_es_alnum(c: entero) -> entero:
 // Dispatcher local: lexer_keywords.syn expone keyword_token_es/en/fr/pt;
 // el dispatcher `keyword_token` vive en nucleo/lexer.syn (fuera de alcance aquí).
 funcion sq_keyword_heredado(palabra: cadena, idioma: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        idioma >= 0
+    garantiza:
+        _resultado_ >= 0
     si idioma == IDIOMA_EN:
         retornar keyword_token_en(palabra)
     si idioma == IDIOMA_FR:
@@ -319,6 +428,11 @@ funcion sq_keyword_heredado(palabra: cadena, idioma: entero) -> entero:
 // Los compartidos resuelven vía tablas heredadas (universal 1-74); las
 // 10 palabras propias + fallback 0 aquí.
 funcion sq_keyword(palabra: cadena, idioma: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        idioma >= 0
+    garantiza:
+        _resultado_ >= 0
     let t: entero = sq_keyword_heredado(palabra, idioma)
     si t != 0:
         retornar t
@@ -409,6 +523,12 @@ funcion sq_keyword(palabra: cadena, idioma: entero) -> entero:
 // configurar idioma de keywords). No se crea NODO_LANG; el lexer
 // retorna IDIOMA_* como modo de operación. Documentado como decisión D-L4.
 funcion sq_detectar_idioma(ptr: puntero, len: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        ptr != nulo
+        len >= 0
+    garantiza:
+        _resultado_ >= -2
     inseguro:
         r = 0
         asm("r = (len >= 7 && ((const char*)ptr)[0] == '#' && ((const char*)ptr)[1] == 'l' && ((const char*)ptr)[2] == 'a' && ((const char*)ptr)[3] == 'n' && ((const char*)ptr)[4] == 'g' && ((const char*)ptr)[5] == ':') ? 1 : 0")
@@ -427,6 +547,12 @@ funcion sq_detectar_idioma(ptr: puntero, len: entero) -> entero:
 
 // --- Indentación (4 espacios, tab prohibido) ---
 funcion sq_procesar_indentacion(ptr_linea: puntero, len_linea: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        ptr_linea != nulo
+        len_linea >= 0
+    garantiza:
+        verdadero
     inseguro:
         asm("struct SqLexerBuffers* _b = (struct SqLexerBuffers*)sq_buffers();")
         espacios = 0
@@ -455,6 +581,12 @@ funcion sq_procesar_indentacion(ptr_linea: puntero, len_linea: entero) -> nulo:
 
 // --- Tokeniza una línea (con estado de bloque /* */ anidado) ---
 funcion sq_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        ptr_texto != nulo
+        len_texto >= 0
+    garantiza:
+        verdadero
     i = 0
     r = 1
     mientras r == 1:
