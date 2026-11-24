@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "40618c77d1474b6a",
+ "expediente": "docs/alineacion/r323_darwin_bootstrap_selfhost.md",
+ "fecha": "2026-11-23",
+ "archivos": [
+  "nucleo/generador/compilar.syn",
+  "nucleo/principal.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_r322_darwin_gcc.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

@@ -658,14 +658,18 @@ funcion generar_etapa(ruta: cadena, salida: cadena, modo_validar: entero) -> Res
         // cumple Manual 9 §6.2 (ME r236, H-R234-1): el compilador resuelve el
         // toolchain C por si mismo; antes emitia el literal "gcc" y dependia del
         // PATH, asi que en una instalacion limpia `check` funcionaba pero compilar
-        // no (`"gcc" no se reconoce...`). Orden: SYNAPSE_GCC -> gcc junto al
-        // binario -> tools\mingw64\bin -> mingw64\bin -> ..\toolchain_gcc12\mingw64\bin
-        // (instalador) -> ..\..\toolchain_gcc12\mingw64\bin (checkout) -> "gcc".
+        // no (`"gcc" no se reconoce...`). Orden: SYNAPSE_GCC_PATH ->
+        // SYNAPSE_GCC -> gcc junto al binario -> tools\mingw64\bin ->
+        // mingw64\bin -> ..\toolchain_gcc12\mingw64\bin (instalador) ->
+        // ..\..\toolchain_gcc12\mingw64\bin (checkout) -> "gcc".
+        // cumple Manual 9 §6.2 (r322): en macOS `gcc` es un shim de clang; el
+        // compilador nativo debe usar el GCC real que exporta el workflow.
         asm("char _gcc_exe[1200];")
         asm("{")
         asm("#ifdef _WIN32")
         asm("    extern unsigned long __stdcall GetModuleFileNameA(void*, char*, unsigned long);")
-        asm("    const char* _gcc_env = getenv(\"SYNAPSE_GCC\");")
+        asm("    const char* _gcc_env = getenv(\"SYNAPSE_GCC_PATH\");")
+        asm("    if (!_gcc_env || !_gcc_env[0]) _gcc_env = getenv(\"SYNAPSE_GCC\");")
         asm("    if (_gcc_env && _gcc_env[0]) { snprintf(_gcc_exe, sizeof _gcc_exe, \"%s\", _gcc_env); }")
         asm("    else {")
         asm("        char _mdir[1024]; char _cand[1200]; int _found = 0;")
@@ -676,15 +680,15 @@ funcion generar_etapa(ruta: cadena, salida: cadena, modo_validar: entero) -> Res
         asm("        if (!_found) strcpy(_gcc_exe, \"gcc\");")
         asm("    }")
         asm("#else")
-        asm("    const char* _gcc_env = getenv(\"SYNAPSE_GCC\"); if (_gcc_env && _gcc_env[0]) { snprintf(_gcc_exe, sizeof _gcc_exe, \"%s\", _gcc_env); } else { strcpy(_gcc_exe, \"gcc\"); }")
+        asm("    const char* _gcc_env = getenv(\"SYNAPSE_GCC_PATH\"); if (!_gcc_env || !_gcc_env[0]) _gcc_env = getenv(\"SYNAPSE_GCC\"); if (_gcc_env && _gcc_env[0]) { snprintf(_gcc_exe, sizeof _gcc_exe, \"%s\", _gcc_env); } else { strcpy(_gcc_exe, \"gcc\"); }")
         asm("#endif")
-        // El compilador C se invoca como \"gcc\" sin comillas (paridad con el comando
-        // historico y con las reglas de comillas de cmd.exe: citar el primer token
-        // junto a -I\".\" hacia que cmd no resolviera la ruta). Lo que se ajusta es el
-        // PATH del hijo: se antepone el directorio del toolchain resuelto, una sola
-        // vez, para que gcc y sus binarios auxiliares (as/ld, DLLs) se encuentren.
+        // En Windows el compilador C se invoca como "gcc" sin comillas (paridad
+        // con cmd.exe); en POSIX se cita _gcc_exe para admitir rutas con espacios.
+        // Lo que se ajusta es el PATH del hijo: se antepone el directorio del
+        // toolchain resuelto, una sola vez, para que gcc y sus binarios auxiliares
+        // (as, ld, DLLs) se encuentren.
         asm("if (strcmp(_gcc_exe, \"gcc\") != 0) {")
-        asm("    char _gdir[1200]; strcpy(_gdir, _gcc_exe); char* _gs = strrchr(_gdir, '\\\\'); if (_gs) *_gs = 0;")
+        asm("    char _gdir[1200]; strcpy(_gdir, _gcc_exe); char* _gs = strrchr(_gdir, '/'); char* _gb = strrchr(_gdir, '\\\\\\\\'); if (_gb && (!_gs || _gb > _gs)) _gs = _gb; if (_gs) *_gs = 0;")
         asm("    const char* _pv = getenv(\"PATH\");")
         asm("    if (_pv == 0 || strstr(_pv, _gdir) == 0) {")
         // cumple Manual 9 §6.2: el PATH del hijo se ajusta con el separador y la
@@ -699,6 +703,14 @@ funcion generar_etapa(ruta: cadena, salida: cadena, modo_validar: entero) -> Res
         asm("    }")
         asm("}")
         asm("}")
+        // cumple Manual 9 §6.2 (r322): en POSIX se cita el GCC resuelto para
+        // admitir rutas con espacios; en Windows se conserva el literal `gcc`.
+        asm("char _gcc_cmd[1300];")
+        asm("#ifdef _WIN32")
+        asm("snprintf(_gcc_cmd, sizeof _gcc_cmd, \"gcc\");")
+        asm("#else")
+        asm("snprintf(_gcc_cmd, sizeof _gcc_cmd, \"\\\"%s\\\"\", _gcc_exe);")
+        asm("#endif")
         // cumple Manual 8 §4.2 (ME r236, H-R234-1): el toolchain resuelto se usa
         // con las mismas opciones por modo de compilacion — `--release` (-O3
         // -flto -DNDEBUG), `--debug` (-O0 -g, probe de sanitizadores) —; lo unico
@@ -721,7 +733,7 @@ funcion generar_etapa(ruta: cadena, salida: cadena, modo_validar: entero) -> Res
         // -fsanitize (paridad con pipeline.py: probe de link real). Salida = CWD.
         asm("    const char* _psan = \"_probe_san_r183d.c\";")
         asm("    FILE* _pf = fopen(_psan, \"wb\"); if (_pf) { fwrite(\"int main(void){return 0;}\\n\", 1, 24, _pf); fclose(_pf); }")
-        asm("    char _pcmd[512]; snprintf(_pcmd, 512, \"gcc -fsanitize=address,undefined %s -o %s.exe\", _psan, _psan);")
+        asm("    char _pcmd[2048]; snprintf(_pcmd, 2048, \"%s -fsanitize=address,undefined %s -o %s.exe\", _gcc_cmd, _psan, _psan);")
         asm("    if (system(_pcmd) == 0) { _gcc_opt=\"-O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer\"; remove(\"_probe_san_r183d.c\"); remove(\"_probe_san_r183d.exe\"); }")
         asm("    else { _gcc_opt=\"-O0 -g\"; remove(_psan); remove(\"_probe_san_r183d.exe\"); fprintf(stderr, \"[Synapse] --debug: sanitizadores no disponibles en este toolchain; se usa -O0 -g\\n\"); }")
         asm("}")
@@ -808,12 +820,18 @@ funcion generar_etapa(ruta: cadena, salida: cadena, modo_validar: entero) -> Res
         asm("#ifdef __APPLE__")
         asm("    _dup_flag = \"\";")
         asm("#endif")
+        // cumple Manual 9 §6.2 (r322): ld64 de macOS no conoce --gc-sections;
+        // se usa -dead_strip como en el bootstrap S1.
+        asm("    const char* _gc_flag = \"-Wl,--gc-sections\";")
+        asm("#ifdef __APPLE__")
+        asm("    _gc_flag = \"-Wl,-dead_strip\";")
+        asm("#endif")
         asm("#ifdef _WIN32")
         asm("    _static_flag = \"-static \";")
         asm("    _win_ld = \"-Wl,--no-insert-timestamp -Wl,--stack,8388608 \";")
         asm("    _win_libs = \"-lws2_32 \";")
         asm("#endif")
-        asm("    snprintf(_cmd, 4096, \"gcc %s %s %s%s-fno-ident -Wl,--gc-sections -I\\\"%s\\\" \\\"synapse_unity.c\\\"\", _gcc_opt, _gcc_flags, _win_ld, _static_flag, _rt_dir);")
+        asm("    snprintf(_cmd, 4096, \"%s %s %s %s%s-fno-ident %s -I\\\"%s\\\" \\\"synapse_unity.c\\\"\", _gcc_cmd, _gcc_opt, _gcc_flags, _win_ld, _static_flag, _gc_flag, _rt_dir);")
         // cumple Manual 8 §4.1 (ME r281, H-R279-2): la lista de fuentes del
         // runtime se materializa primero; despues se decide si se enlaza desde
         // fuente o desde los .o que pipeline.py cachea (mismo binario).
