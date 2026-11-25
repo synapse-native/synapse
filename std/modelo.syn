@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 2 §5.1
 // cumple Manual 2 §12
 // std.modelo — Inferencia de modelos de lenguaje locales (transformers GGUF)
 // Integrante de la Biblioteca Estandar de Synapse.
@@ -66,8 +67,6 @@ funcion cargar_modelo(ruta: texto) -> puntero:
     // cumple Manual 2 §5.1: ruta no vacía; resultado puede ser nulo si falla la carga
     requiere:
         longitud(ruta) > 0
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_modelo_cargar(ruta)
 
 funcion cerrar_modelo(ctx: puntero) -> nulo:
@@ -87,8 +86,6 @@ funcion evaluar(ctx: puntero, token_id: entero) -> tensor:
         ctx != nulo
     requiere:
         token_id >= 0
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_modelo_evaluar(ctx, token_id)
 
 funcion generar_token(ctx: puntero, token_id: entero, temperatura: decimal, top_k: entero, top_p: decimal) -> entero:
@@ -149,8 +146,6 @@ funcion decodificar_token(ctx: puntero, token_id: entero) -> texto:
         ctx != nulo
     requiere:
         token_id >= 0
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_modelo_decodificar_token(ctx, token_id)
 
 funcion vocab_tamano(ctx: puntero) -> entero:
@@ -193,8 +188,6 @@ funcion generar_texto(ctx: puntero, prompt: texto, max_tokens: entero, temperatu
         max_tokens > 0
     requiere:
         top_k > 0
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_modelo_generar_texto(ctx, prompt, max_tokens, temperatura, top_k, top_p)
 
 // --- Metadatos ---
@@ -205,16 +198,12 @@ funcion obtener_metadato(ctx: puntero, clave: texto) -> texto:
         ctx != nulo
     requiere:
         longitud(clave) > 0
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_modelo_obtener_metadato(ctx, clave)
 
 funcion obtener_arquitectura(ctx: puntero) -> texto:
     // cumple Manual 2 §5.1: contexto no nulo
     requiere:
         ctx != nulo
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_modelo_obtener_arquitectura(ctx)
 
 funcion obtener_n_layers(ctx: puntero) -> entero:
@@ -352,8 +341,6 @@ funcion generar_texto_simple(ctx: puntero, prompt: texto, max_tokens: entero) ->
         longitud(prompt) > 0
     requiere:
         max_tokens > 0
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_modelo_generar_texto(ctx, prompt, max_tokens, 0.7, 40, 0.9)
 
 // ============================================================

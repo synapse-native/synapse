@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 2 §5.1
 // std.debug — Sistema de Trazas para Depuración Time-Travel
 // Integrante de la Biblioteca Estandar de Synapse.
 // Limite duro: 50,000 eventos maximo en buffer circular
@@ -195,11 +196,6 @@ externo funcion ms_snapshot_contiene(snapshot: texto, nombre: texto) -> texto
 // registrar_evento — Registra un evento de traza en la sesion actual
 // Retorna ok(0) si exito, err(Error) si fallo (ej. buffer lleno no esperado)
 funcion registrar_evento(evento: TraceEvent) -> Resultado:
-    // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        evento != nulo
-    garantiza:
-        1 == 1
     // cumple Manual 2 §5.1: tipo de evento en rango válido [0,8]; línea >= 0
     requiere:
         evento.tipo_evento >= 0

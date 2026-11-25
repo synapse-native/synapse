@@ -56,8 +56,6 @@ funcion pb_iniciar(formato: entero, incluir_axiomas: entero, nombre_teoria: text
     // cumple Manual 2 §5.1: nombre_teoria no vacío
     requiere:
         longitud(nombre_teoria) > 0
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_pb_iniciar(formato, incluir_axiomas, nombre_teoria)
 
 // Cierra la sesión y libera recursos
@@ -97,8 +95,6 @@ funcion pb_traducir_a_coq(expr: texto) -> texto:
     // cumple Manual 2 §5.1: expr no vacía
     requiere:
         longitud(expr) > 0
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_pb_traducir_a_coq(expr)
 
 // Traduce expresión Synapse a término Lean
@@ -106,8 +102,6 @@ funcion pb_traducir_a_lean(expr: texto) -> texto:
     // cumple Manual 2 §5.1: expr no vacía
     requiere:
         longitud(expr) > 0
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_pb_traducir_a_lean(expr)
 
 // Genera archivo de teoría Coq (.v) en el buffer interno

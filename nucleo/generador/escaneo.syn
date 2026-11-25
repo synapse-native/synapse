@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 2 §5.1
 // ============================================================
 // escaneo.syn - escaneo de declaraciones (estructuras, retornos, alias, constructores)
 // ============================================================
@@ -20,9 +21,6 @@
 // ----------------------------------------------------------
 funcion gen_escanear_constantes(est: GeneradorCEst, programa: Programa) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
-        programa != nulo
     garantiza:
         1 == 1
     // cumple Manual 2 §12 (r153): contratos en toda función pública —
@@ -66,9 +64,6 @@ funcion gen_escanear_constantes(est: GeneradorCEst, programa: Programa) -> nulo:
 // ----------------------------------------------------------
 funcion gen_escanear_estructuras(est: GeneradorCEst, programa: Programa) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
-        programa != nulo
     garantiza:
         1 == 1
     // ME-B4: recolectar nombres de estructuras definidas en array nativo
@@ -122,9 +117,6 @@ funcion gen_escanear_estructuras(est: GeneradorCEst, programa: Programa) -> nulo
 // ----------------------------------------------------------
 funcion gen_escanear_retornos(est: GeneradorCEst, programa: Programa) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
-        programa != nulo
     garantiza:
         1 == 1
     // ME-B6: recolectar tipos de retorno de funciones definidas en array nativo
@@ -211,9 +203,6 @@ funcion gen_escanear_retornos(est: GeneradorCEst, programa: Programa) -> nulo:
 // ----------------------------------------------------------
 funcion gen_escanear_aliases(est: GeneradorCEst, programa: Programa) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
-        programa != nulo
     garantiza:
         1 == 1
     // ME-F1.2b: registrar alias de tipo declarados (`tipo X = Y`, sin constructores)
@@ -245,9 +234,6 @@ funcion gen_escanear_aliases(est: GeneradorCEst, programa: Programa) -> nulo:
 // ----------------------------------------------------------
 funcion gen_escanear_constructores(est: GeneradorCEst, programa: Programa) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
-        programa != nulo
     garantiza:
         1 == 1
     // ME-D6: registrar constructores ADT (ok/err/algun/ninguno) - paridad

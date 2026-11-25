@@ -52,8 +52,6 @@ funcion cargar_gguf(ruta: texto) -> GGUF_Contexto:
     // cumple Manual 2 §5.1: ruta no vacía
     requiere:
         longitud(ruta) > 0
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_gguf_abrir(ruta)
 
 funcion cerrar_gguf(ctx: GGUF_Contexto) -> nulo:
@@ -71,8 +69,6 @@ funcion obtener_tensor(ctx: GGUF_Contexto, nombre: texto) -> tensor:
         ctx.datos_internos != nulo
     requiere:
         longitud(nombre) > 0
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_gguf_obtener_tensor(ctx.datos_internos, nombre)
 
 funcion obtener_metadato(ctx: GGUF_Contexto, clave: texto) -> texto:
@@ -81,16 +77,12 @@ funcion obtener_metadato(ctx: GGUF_Contexto, clave: texto) -> texto:
         ctx.datos_internos != nulo
     requiere:
         longitud(clave) > 0
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_gguf_obtener_metadato(ctx.datos_internos, clave)
 
 funcion obtener_arquitectura(ctx: GGUF_Contexto) -> texto:
     // cumple Manual 2 §5.1: contexto válido
     requiere:
         ctx.datos_internos != nulo
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_gguf_obtener_arquitectura(ctx.datos_internos)
 
 funcion argmax(t: tensor) -> entero:
@@ -115,6 +107,4 @@ funcion decodificar_token(ctx: GGUF_Contexto, token_id: entero) -> texto:
         ctx.datos_internos != nulo
     requiere:
         token_id >= 0
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_decodificar_token(ctx.datos_internos, token_id)

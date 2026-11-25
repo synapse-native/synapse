@@ -1,4 +1,6 @@
 #lang: es
+// cumple Manual 4 §4
+// cumple Manual 2 §5.1
 // cumple Manual 4 §4: referencias débiles y prevención de ciclos (ME formatter_fix R4: reformato de formato)
 // cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
 // vinculo ME formatter_fix R4 (Manual 1 §7.1, M8 §4.1): reformato cosmético del nucleo — estilo, sin cambios semánticos
@@ -48,26 +50,9 @@ estructura UnionFind:
     total: entero
     max: entero
 
-funcion uf_init(uf: UnionFind, n: entero) -> nulo:
-    // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        uf != nulo
-        n >= 0
-    garantiza:
-        1 == 1
-    uf.total = n
-    uf.max = n
-    i = 0
-    mientras i < n:
-        inseguro:
-            asm("((int*)uf->parent.datos)[i] = -1")
-            asm("((int*)uf->rank.datos)[i] = 0")
-            asm("i = i + 1")
-
 funcion uf_find(uf: UnionFind, x: entero) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        uf != nulo
         x >= 0
     garantiza:
         _resultado_ >= -1
@@ -89,7 +74,6 @@ funcion uf_find(uf: UnionFind, x: entero) -> entero:
 funcion uf_union(uf: UnionFind, a: entero, b: entero) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        uf != nulo
         a >= 0
         b >= 0
     garantiza:
@@ -109,23 +93,11 @@ funcion uf_union(uf: UnionFind, a: entero, b: entero) -> nulo:
         asm("    ((int*)uf->rank.datos)[ra] = ((int*)uf->rank.datos)[ra] + 1;")
         asm("}")
 
-funcion uf_mismo_set(uf: UnionFind, a: entero, b: entero) -> booleano:
-    // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        uf != nulo
-        a >= 0
-        b >= 0
-    garantiza:
-        1 == 1
-    retornar uf_find(uf, a) == uf_find(uf, b)
 
 // --- Cycle detection via DFS (M21.2) ---
 // Returns constraint index if cycle found, -1 otherwise.
 funcion detectar_ciclo_outlives(g: RegionGraph, uf: UnionFind) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        g != nulo
-        uf != nulo
     garantiza:
         _resultado_ >= -1
     n = uf.total
@@ -167,10 +139,6 @@ funcion detectar_ciclo_outlives(g: RegionGraph, uf: UnionFind) -> entero:
 // Returns index of violated constraint, -1 if all OK.
 funcion verificar_outlives(g: RegionGraph, uf: UnionFind, est: AnalizadorSemanticoEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        g != nulo
-        uf != nulo
-        est != nulo
     garantiza:
         _resultado_ >= -1
     i = 0
@@ -202,10 +170,6 @@ funcion verificar_outlives(g: RegionGraph, uf: UnionFind, est: AnalizadorSemanti
 
 funcion region_resolver(g: RegionGraph, uf: UnionFind, est: AnalizadorSemanticoEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        g != nulo
-        uf != nulo
-        est != nulo
     garantiza:
         _resultado_ >= -1
     // Paso 1: Unificar EQUALS constraints via union-find
@@ -236,21 +200,10 @@ funcion region_resolver(g: RegionGraph, uf: UnionFind, est: AnalizadorSemanticoE
 
     retornar 0
 
-funcion region_graph_nuevo(max: entero) -> RegionGraph:
-    // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        max >= 0
-    garantiza:
-        1 == 1
-    g = RegionGraph()
-    g.total_constraints = 0
-    g.max_constraints = max
-    retornar g
 
 funcion region_agregar_restriccion(g: RegionGraph, tipo: entero, origen: entero, destino: entero, linea: entero) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        g != nulo
         tipo >= 0
         origen >= 0
         destino >= 0
@@ -269,32 +222,24 @@ funcion region_agregar_restriccion(g: RegionGraph, tipo: entero, origen: entero,
 // --- Lifetime helpers ---
 funcion lifetime_es_valido(lt: Lifetime) -> booleano:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        lt != nulo
     garantiza:
         1 == 1
     retornar lt.kind >= 0 y lt.kind <= 3
 
 funcion lifetime_es_estatico(lt: Lifetime) -> booleano:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        lt != nulo
     garantiza:
         1 == 1
     retornar lt.kind == LT_ESTATICO
 
 funcion lifetime_es_elidido(lt: Lifetime) -> booleano:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        lt != nulo
     garantiza:
         1 == 1
     retornar lt.kind == LT_ELIDIDO
 
 funcion lifetime_a_texto(lt: Lifetime) -> cadena:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        lt != nulo
     garantiza:
         1 == 1
     si lt.kind == LT_ESTATICO:

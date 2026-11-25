@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 2 §5.1
 # std/surface_code.syn — Bindings para Surface Code (M16.3)
 # cumple Manual 2 §2: firmas de funcion en una sola linea (gramatica EBNF)
 # =====================================================================
@@ -47,8 +48,6 @@ funcion crear_rejilla(L: Entero) -> Puntero:
     // cumple Manual 2 §5.1: L dentro del rango permitido
     requiere:
         L >= 2 y L <= SC_MAX_L
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_sc_crear_rejilla(L)
 
 funcion liberar_rejilla(rejilla: Puntero) -> nulo:

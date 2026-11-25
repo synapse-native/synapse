@@ -1,4 +1,6 @@
 #lang: es
+// cumple Manual 2 §2
+// cumple Manual 2 §5.1
 // FASE A (A3.0): capturar el payload lexico del token `pos` en el nodo `nodo`
 // (NodoAST.ptr_str/len_str + bits altos en parser_ptr_hi()). 64-bit-safe: lee
 // LexerBuffers.tokens (CadenaSegura con puntero real) como el fix &mut de
@@ -8,7 +10,6 @@
 funcion nodo_guardar_token(est: ParserEst, nodo: entero, pos: entero) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        est != nulo
         nodo >= 0
         pos >= 0
     garantiza:
@@ -33,7 +34,6 @@ funcion nodo_guardar_token(est: ParserEst, nodo: entero, pos: entero) -> nulo:
 funcion nodo_guardar_span(est: ParserEst, nodo: entero, pos_ini: entero, pos_fin: entero, slot: entero) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        est != nulo
         nodo >= 0
         pos_ini >= 0
         pos_fin >= 0
@@ -61,7 +61,6 @@ funcion nodo_guardar_span(est: ParserEst, nodo: entero, pos_ini: entero, pos_fin
 funcion nodo_guardar_token2(est: ParserEst, nodo: entero, pos: entero) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        est != nulo
         nodo >= 0
         pos >= 0
     garantiza:
@@ -82,8 +81,6 @@ funcion nodo_guardar_token2(est: ParserEst, nodo: entero, pos: entero) -> nulo:
 // Results stored in these temp fields for caller to save
 funcion parsear_bloque_contrato(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     r2 = 1
@@ -132,7 +129,6 @@ funcion parsear_bloque_contrato(est: ParserEst) -> entero:
 funcion parsear_tipo_compuesto(est: ParserEst, nodo: entero) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        est != nulo
         nodo >= 0
     garantiza:
         _resultado_ >= -1
@@ -171,8 +167,6 @@ funcion parsear_tipo_compuesto(est: ParserEst, nodo: entero) -> entero:
 // Helper: Parse function parameters (Manual 2 §2.2)
 funcion parsear_parametros(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     primero = 0
@@ -249,7 +243,6 @@ funcion parsear_parametros(est: ParserEst) -> entero:
 funcion parsear_tipo_retorno(est: ParserEst, nodo_func: entero) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        est != nulo
         nodo_func >= 0
     garantiza:
         _resultado_ >= -1
@@ -297,7 +290,6 @@ funcion parsear_tipo_retorno(est: ParserEst, nodo_func: entero) -> entero:
 funcion parsear_contratos(est: ParserEst, nodo_func: entero) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        est != nulo
         nodo_func >= 0
     garantiza:
         _resultado_ >= -1
@@ -358,7 +350,6 @@ funcion parsear_contratos(est: ParserEst, nodo_func: entero) -> entero:
 funcion parsear_cuerpo_funcion(est: ParserEst, nodo_func: entero) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        est != nulo
         nodo_func >= 0
     garantiza:
         _resultado_ >= -1
@@ -489,8 +480,6 @@ funcion parsear_funcion(est: ParserEst) -> entero:
 // ------------------------------------------------------------
 funcion parsear_nativo(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     inseguro:

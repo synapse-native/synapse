@@ -64,8 +64,6 @@ funcion orch_iniciar(epochs: entero, lr: decimal, assign_mode: entero, sync_mode
         epochs > 0
     requiere:
         lr > 0.0
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_orch_iniciar(epochs, lr, assign_mode, sync_mode)
 
 // Cierra el orquestador y libera recursos
@@ -105,8 +103,6 @@ funcion orch_ejecutar_epoch(sesion: puntero) -> decimal:
     // cumple Manual 2 §5.1: sesión no nula
     requiere:
         sesion != nulo
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_orch_ejecutar_epoch(sesion)
 
 // Ejecuta entrenamiento distribuido completo
@@ -114,8 +110,6 @@ funcion orch_entrenar(sesion: puntero) -> decimal:
     // cumple Manual 2 §5.1: sesión no nula
     requiere:
         sesion != nulo
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_orch_entrenar(sesion)
 
 // Maneja fallo de un worker

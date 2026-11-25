@@ -1,4 +1,9 @@
 #lang: es
+// cumple Manual 2 §1.1
+// cumple Manual 2 §1.2
+// cumple Manual 2 §3
+// cumple Manual 8 §4.1
+// cumple Manual 2 §5.1
 # cumple Manual 1 1: infraestructura del compilador Synapse
 # cumple Manual 8 4: toolchain de construcción
 // cumple Manual 2 §3: tabla de palabras reservadas multi-idioma (r153: token contextual 'en' para bucle_para_rango)
@@ -446,8 +451,6 @@ funcion lexer_decodificar_cadena(ptr: puntero, ini: entero, len: entero) -> cade
         ini >= 0
     requiere:
         len >= 0
-    garantiza:
-        _resultado_ == _resultado_
     inseguro:
         asm("struct LexerBuffers* _b = (struct LexerBuffers*)lexer_buffers();")
         asm("const char* _p = (const char*)ptr + ini;")

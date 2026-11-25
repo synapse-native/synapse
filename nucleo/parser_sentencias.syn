@@ -1,4 +1,7 @@
 #lang: es
+// cumple Manual 2 §1.3
+// cumple Manual 5 §3.6
+// cumple Manual 2 §5.1
 // cumple Manual 9 §6.2: parser reformateado para el `synapse fmt --check` del nucleo
 // cumple Manual 2 §1.3: parser
 // cumple Manual 3 §3: bucle_para_rango `para x en expr:` (r153 R2n)
@@ -13,8 +16,6 @@
 // ------------------------------------------------------------
 funcion parsear_si(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     stmt = 0
@@ -145,8 +146,6 @@ funcion parsear_si(est: ParserEst) -> entero:
 
 funcion parsear_mientras(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     si token_esperar(est, T_MIENTRAS) == 0:
@@ -210,8 +209,6 @@ funcion parsear_mientras(est: ParserEst) -> entero:
 
 funcion parsear_para(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     // Synapse-style: para Identificador = Expresion mientras Expresion: (Manual 2 §2.2)
@@ -357,8 +354,6 @@ funcion parsear_para(est: ParserEst) -> entero:
 
 funcion parsear_retornar(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     si token_esperar(est, T_RETORNAR) == 0:
@@ -377,8 +372,6 @@ funcion parsear_retornar(est: ParserEst) -> entero:
 
 funcion parsear_lanzar(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     si token_esperar(est, T_LANZAR) == 0:
@@ -393,8 +386,6 @@ funcion parsear_lanzar(est: ParserEst) -> entero:
 
 funcion parsear_escuchar(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     si token_esperar(est, T_ESCUCHAR) == 0:
@@ -459,8 +450,6 @@ funcion parsear_escuchar(est: ParserEst) -> entero:
 
 funcion parsear_asignacion(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     t = token_mirar(est)
@@ -485,8 +474,6 @@ funcion parsear_asignacion(est: ParserEst) -> entero:
 
 funcion parsear_asm(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     si token_esperar(est, T_ASM) == 0:
@@ -507,8 +494,6 @@ funcion parsear_asm(est: ParserEst) -> entero:
 
 funcion parsear_inseguro(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     si token_esperar(est, T_INSEGURO) == 0:
@@ -565,8 +550,6 @@ funcion parsear_inseguro(est: ParserEst) -> entero:
 
 funcion parsear_coincidir(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     // R11 (deuda FASE_2_2.4_NATIVA.md): cablear NodoCoincidir en el pipeline

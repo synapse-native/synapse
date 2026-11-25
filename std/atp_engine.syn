@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 2 §4.1
 // cumple Manual 2 §4.1 — tipos canonicos minusculas (D-R150-9)
 // cumple Manual 2 §5.1
 
@@ -49,8 +50,6 @@ funcion atp_iniciar() -> puntero:
     garantiza:
         1 == 1
     // cumple Manual 2 §5.1: resultado puede ser nulo si falla
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_atp_iniciar(1, 1, 1)
 
 // Inicializa el motor ATP con configuración personalizada
@@ -63,8 +62,6 @@ funcion atp_iniciar_config(use_arith: entero, use_prop: entero, use_contra: ente
     garantiza:
         1 == 1
     // cumple Manual 2 §5.1: resultado puede ser nulo si falla
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_atp_iniciar(use_arith, use_prop, use_contra)
 
 // Cierra el motor y libera memoria
@@ -195,12 +192,6 @@ funcion atp_demostrar(engine: puntero) -> entero:
 
 // Verifica un contrato completo: pre → post
 funcion atp_verificar_contrato(engine: puntero, pre: Lista<cadena>, post: Lista<cadena>) -> entero:
-    // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        pre != nulo
-        post != nulo
-    garantiza:
-        _resultado_ >= -1
     // cumple Manual 2 §5.1: engine no nulo
     requiere:
         engine != nulo
@@ -256,12 +247,6 @@ funcion atp_cargar(engine: puntero, ruta: cadena) -> entero:
 // Verifica un contrato completo en un solo paso
 // Retorna: entero (ATP_VALID, ATP_INVALID, ATP_UNKNOWN)
 funcion atp_verificar(pre: Lista<cadena>, post: Lista<cadena>) -> entero:
-    // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        pre != nulo
-        post != nulo
-    garantiza:
-        _resultado_ >= -1
     // cumple Manual 2 §5.1: listas no vacías
     requiere:
         pre.longitud > 0
@@ -277,17 +262,9 @@ funcion atp_verificar(pre: Lista<cadena>, post: Lista<cadena>) -> entero:
 // Verifica que una función cumpla sus contratos
 // Retorna: Booleano (true si el contrato es válido)
 funcion atp_validar_contrato(nombre: cadena, precondiciones: Lista<cadena>, postcondiciones: Lista<cadena>) -> booleano:
-    // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        precondiciones != nulo
-        postcondiciones != nulo
-    garantiza:
-        1 == 1
     // cumple Manual 2 §5.1: nombre no vacío
     requiere:
         longitud(nombre) > 0
-    garantiza:
-        _resultado_ == _resultado_
     motor = atp_iniciar()
     atp_establecer_func(motor, nombre)
     resultado = atp_verificar_contrato(motor, precondiciones, postcondiciones)

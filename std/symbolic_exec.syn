@@ -1,4 +1,6 @@
 #lang: es
+// cumple Manual 2 §4.1
+// cumple Manual 2 §5.1
 
 // ============================================================
 //  std::symbolic_exec — Motor de Ejecución Simbólica (M15.3)
@@ -58,8 +60,6 @@ funcion se_iniciar(modo: entero) -> puntero:
     garantiza:
         1 == 1
     // cumple Manual 2 §5.1: resultado puede ser nulo si falla
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_se_iniciar(modo, 100)
 
 // Inicializa con profundidad máxima personalizada
@@ -73,8 +73,6 @@ funcion se_iniciar_profundo(modo: entero, profundidad: entero) -> puntero:
     // cumple Manual 2 §5.1: profundidad positiva
     requiere:
         profundidad > 0
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_se_iniciar(modo, profundidad)
 
 // Cierra el motor
@@ -166,8 +164,6 @@ funcion se_es_alcanzable(engine: puntero) -> booleano:
     // cumple Manual 2 §5.1: engine no nulo
     requiere:
         engine != nulo
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_se_verificar_alcanzabilidad(engine) == 1
 
 // Verifica si hay riesgo de división por cero
@@ -182,8 +178,6 @@ funcion se_hay_div_por_cero(engine: puntero, divisor: cadena) -> booleano:
         engine != nulo
     requiere:
         longitud(divisor) > 0
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_se_detectar_div_por_cero(engine, divisor) == SE_VIOLATION_DIV_BY_ZERO
 
 // Verifica si hay riesgo de desbordamiento
@@ -200,8 +194,6 @@ funcion se_hay_desbordamiento(engine: puntero, expr: cadena, lim_inf: decimal, l
         longitud(expr) > 0
     requiere:
         lim_inf <= lim_sup
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_se_detectar_desbordamiento(engine, expr, lim_inf, lim_sup) == SE_VIOLATION_OVERFLOW
 
 // Verifica si hay acceso fuera de límites
@@ -218,8 +210,6 @@ funcion se_hay_fuera_limites(engine: puntero, idx: cadena, tamano: entero) -> bo
         longitud(idx) > 0
     requiere:
         tamano > 0
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_se_detectar_fuera_limites(engine, idx, tamano) == SE_VIOLATION_BOUNDS
 
 // Explora todas las rutas factibles
@@ -277,8 +267,6 @@ funcion se_es_seguro(engine: puntero, expr: cadena) -> booleano:
         engine != nulo
     requiere:
         longitud(expr) > 0
-    garantiza:
-        _resultado_ == _resultado_
     si se_hay_div_por_cero(engine, expr):
         retornar falso
     retornar verdadero

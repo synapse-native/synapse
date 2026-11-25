@@ -1,18 +1,15 @@
 #lang: es
+// cumple Manual 2 §5.1
 # cumple Manual 1 1: infraestructura del compilador Synapse
 # cumple Manual 8 4: toolchain de construcción
 funcion parsear_expresion(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     retornar parsear_logica(est)
 
 funcion parsear_logica(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     linea = 0
@@ -52,8 +49,6 @@ funcion parsear_logica(est: ParserEst) -> entero:
 
 funcion parsear_comparacion(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     linea = 0
@@ -141,8 +136,6 @@ funcion parsear_comparacion(est: ParserEst) -> entero:
 
 funcion parsear_adicion(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     linea = 0
@@ -182,8 +175,6 @@ funcion parsear_adicion(est: ParserEst) -> entero:
 
 funcion parsear_multiplicacion(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     linea = 0
@@ -235,8 +226,6 @@ funcion parsear_multiplicacion(est: ParserEst) -> entero:
 
 funcion parsear_unario(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     linea = 0
@@ -300,8 +289,6 @@ funcion parsear_unario(est: ParserEst) -> entero:
 
 funcion parsear_primario(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     linea = 0

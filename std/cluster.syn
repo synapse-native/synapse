@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 2 §5.1
 // std.cluster — Red de Nodos Synapse (M8.1 + M8.2)
 // Transporte UDP cifrado con autenticación mutua Ed25519
 // Canales remotos asíncronos para comunicación entre nodos
@@ -347,7 +348,7 @@ funcion conectar(url: texto, tipo: texto) -> CanalRemoto:
 funcion enviar(ch: CanalRemoto, -> datos: texto) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        ch != nulo
+        ch.estado >= 0
     garantiza:
         _resultado_ >= -1
     si ch.estado != 2:
@@ -362,7 +363,7 @@ funcion enviar(ch: CanalRemoto, -> datos: texto) -> entero:
 funcion recibir(ch: CanalRemoto, timeout_ms: entero) -> texto:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        ch != nulo
+        ch.estado >= 0
         timeout_ms >= 0
     garantiza:
         1 == 1
@@ -377,7 +378,7 @@ funcion recibir(ch: CanalRemoto, timeout_ms: entero) -> texto:
 funcion cerrar_remoto(-> ch: CanalRemoto) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        -> ch != nulo
+        ch.estado >= 0
     garantiza:
         1 == 1
     ch.estado = 1  // CERRADO

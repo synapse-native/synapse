@@ -33,8 +33,6 @@ funcion multiplicar_matrices(a: tensor, b: tensor) -> tensor:
         longitud(a) > 0
     requiere:
         longitud(b) > 0
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_multiplicar_matrices(a, b)
 
 funcion extraer_fila(salida: tensor, tabla_embeddings: tensor, indice_token: entero) -> nulo:

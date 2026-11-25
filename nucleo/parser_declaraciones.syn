@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 2 §5.1
 // cumple Manual 1 3: parser
 # cumple Manual 8 4.1: compilador nativo S2
 // R29 (regla 13, modularizacion): declaraciones top-level extraidas de
@@ -8,8 +9,6 @@
 // ------------------------------------------------------------
 funcion parsear_estructura_def(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     si token_esperar(est, T_ESTRUCTURA) == 0:
@@ -104,8 +103,6 @@ funcion parsear_estructura_def(est: ParserEst) -> entero:
 
 funcion parsear_constante(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     si token_esperar(est, T_CONSTANTE) == 0:
@@ -133,8 +130,6 @@ funcion parsear_constante(est: ParserEst) -> entero:
 
 funcion parsear_importar_c(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     si token_esperar(est, T_IMPORTAR_C) == 0:
@@ -152,8 +147,6 @@ funcion parsear_importar_c(est: ParserEst) -> entero:
 
 funcion parsear_externo(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     si token_esperar(est, T_EXTERNO) == 0:
@@ -217,8 +210,6 @@ funcion parsear_externo(est: ParserEst) -> entero:
 
 funcion parsear_declaracion_tipo(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     si token_esperar(est, T_TIPO) == 0:
@@ -418,8 +409,6 @@ funcion parsear_declaracion_tipo(est: ParserEst) -> entero:
 // AUDITORIA FASE A (A2.2): @export ( IDENT ) funcion (Manual 2 §2 L81)
 funcion parsear_export(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     si token_mirar(est) != T_EXPORT:

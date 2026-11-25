@@ -1,5 +1,5 @@
 {
-  "generado": "2026-11-21",
+  "generado": "2026-11-25",
   "medido": {
     "e2e": {
       "duracion_s": 271.98,
@@ -11,10 +11,11 @@
       "skipped": 0
     }
   },
+  "plataforma": "win32",
   "suites": {
     "auditoria": {
-      "recogidos": 314,
-      "skips_declarados": 19
+      "recogidos": 421,
+      "skips_declarados": 22
     },
     "e2e": {
       "recogidos": 8,
@@ -25,7 +26,7 @@
       "skips_declarados": 5
     },
     "integration": {
-      "recogidos": 1669,
+      "recogidos": 1679,
       "skips_declarados": 199
     },
     "nucleo": {

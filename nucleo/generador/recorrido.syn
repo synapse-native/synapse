@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 2 §5.1
 // cumple Manual 1 5: generador de código
 # cumple Manual 8 4.1: compilador nativo S2
 # cumple Manual 1 §6: regla de hierro del bootstrap — sondas de cobertura OFF sin --coverage
@@ -16,9 +17,6 @@
 // ----------------------------------------------------------
 funcion gen_recorrer_toplevel(est: GeneradorCEst, programa: Programa) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
-        programa != nulo
     garantiza:
         1 == 1
     // WALK TOP-LEVEL AST

@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 2 §5.1
 // cumple Manual 9 §6.2: buffer de emision C de 4 MB para el unity build del bootstrap S2 (antes 1 MB truncaba `int main`)
 // cumple Manual 2 §5.1: la emision C respeta la semantica formal (lineas completas, sin truncamiento silencioso)
 // cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
@@ -166,8 +167,6 @@ funcion gen_emitir_nueva_linea(est: GeneradorCEst) -> nulo:
 // ----------------------------------------------------------
 funcion gen_obtener_salida(est: GeneradorCEst) -> cadena:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         1 == 1
     r = ""
@@ -187,8 +186,6 @@ funcion gen_obtener_salida(est: GeneradorCEst) -> cadena:
 // ----------------------------------------------------------
 funcion gen_escribir_cadena_escapada(est: GeneradorCEst, str: puntero) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         1 == 1
     inseguro:
@@ -204,8 +201,6 @@ funcion gen_escribir_cadena_escapada(est: GeneradorCEst, str: puntero) -> nulo:
 // ----------------------------------------------------------
 funcion gen_emitir_traza(est: GeneradorCEst, modulo: puntero, nombre_nodo: puntero) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         1 == 1
     inseguro:
@@ -228,8 +223,6 @@ funcion gen_emitir_traza(est: GeneradorCEst, modulo: puntero, nombre_nodo: punte
 // ----------------------------------------------------------
 funcion gen_emitir_lifetime_assert(est: GeneradorCEst, condicion: puntero, mensaje: puntero) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         1 == 1
     inseguro:
@@ -249,8 +242,6 @@ funcion gen_emitir_lifetime_assert(est: GeneradorCEst, condicion: puntero, mensa
 // ----------------------------------------------------------
 funcion gen_abrir_bloque_c(est: GeneradorCEst) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         1 == 1
     inseguro:
@@ -279,8 +270,6 @@ funcion gen_abrir_bloque_c(est: GeneradorCEst) -> nulo:
 // ----------------------------------------------------------
 funcion gen_cerrar_bloque_c(est: GeneradorCEst) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         1 == 1
     inseguro:

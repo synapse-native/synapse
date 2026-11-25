@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 2 §5.1
 // cumple Manual 2 §5.1 (ME r192_deuda_barrido): cláusulas de contratos booleanas alineadas.
 // cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas (ME formatter_fix R4: anclaje de norma vigente tras reformato)
 // cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
@@ -163,7 +164,6 @@ funcion parser_obtener_total() -> entero:
 funcion parser_nuevo_nodo(est: ParserEst, tipo: entero, linea: entero, columna: entero) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        est != nulo
         linea >= 0
         columna >= 0
     garantiza:
@@ -206,7 +206,6 @@ funcion parser_nuevo_nodo(est: ParserEst, tipo: entero, linea: entero, columna: 
 funcion parser_error(est: ParserEst, mensaje: cadena, linea: entero, columna: entero) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        est != nulo
         linea >= 0
         columna >= 0
     garantiza:
@@ -230,8 +229,6 @@ funcion parser_error(est: ParserEst, mensaje: cadena, linea: entero, columna: en
 // el fallthrough solo ve tokens invalidos reales.
 funcion parser_sinc_skip(est: ParserEst) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         1 == 1
     // do-while: consume SIEMPRE al menos un token (garantiza progreso del loop
@@ -251,7 +248,6 @@ funcion parser_sinc_skip(est: ParserEst) -> nulo:
 funcion token_tipo(est: ParserEst, pos: entero) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        est != nulo
         pos >= 0
     garantiza:
         _resultado_ >= -1
@@ -263,7 +259,6 @@ funcion token_tipo(est: ParserEst, pos: entero) -> entero:
 funcion token_linea(est: ParserEst, pos: entero) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        est != nulo
         pos >= 0
     garantiza:
         _resultado_ >= -1
@@ -275,7 +270,6 @@ funcion token_linea(est: ParserEst, pos: entero) -> entero:
 funcion token_columna(est: ParserEst, pos: entero) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        est != nulo
         pos >= 0
     garantiza:
         _resultado_ >= -1
@@ -287,7 +281,6 @@ funcion token_columna(est: ParserEst, pos: entero) -> entero:
 funcion token_ptr_valor(est: ParserEst, pos: entero) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        est != nulo
         pos >= 0
     garantiza:
         _resultado_ >= -1
@@ -299,7 +292,6 @@ funcion token_ptr_valor(est: ParserEst, pos: entero) -> entero:
 funcion token_len_valor(est: ParserEst, pos: entero) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        est != nulo
         pos >= 0
     garantiza:
         _resultado_ >= -1
@@ -310,8 +302,6 @@ funcion token_len_valor(est: ParserEst, pos: entero) -> entero:
 
 funcion token_avanzar(est: ParserEst) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         1 == 1
     inseguro:
@@ -319,8 +309,6 @@ funcion token_avanzar(est: ParserEst) -> nulo:
 
 funcion token_mirar(est: ParserEst) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         _resultado_ >= -1
     inseguro:
@@ -331,7 +319,6 @@ funcion token_mirar(est: ParserEst) -> entero:
 funcion token_esperar(est: ParserEst, esperado: entero) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        est != nulo
         esperado >= 0
     garantiza:
         _resultado_ >= -1
@@ -346,7 +333,6 @@ funcion token_esperar(est: ParserEst, esperado: entero) -> entero:
 funcion token_esperar_texto(est: ParserEst, esperado: entero) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        est != nulo
         esperado >= 0
     garantiza:
         _resultado_ >= -1

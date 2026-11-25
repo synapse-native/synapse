@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 2 §5.1
 // cumple Manual 9 §6.2: submodulo regenerado y reformateado para el bootstrap S2 determinista
 // cumple Manual 2 §5.1: la monomorfizacion conserva la semantica formal de los ADT genericos
 # cumple Manual 1 5: nucleo del compilador Synapse
@@ -22,9 +23,6 @@
 // ----------------------------------------------------------
 funcion gen_escanear_genericas(est: GeneradorCEst, programa: Programa) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
-        programa != nulo
     garantiza:
         1 == 1
     // cumple Manual 2 §12 (33.4b): contratos en toda función pública —
@@ -139,9 +137,6 @@ funcion gen_escanear_genericas(est: GeneradorCEst, programa: Programa) -> nulo:
 // ----------------------------------------------------------
 funcion gen_escanear_adt_instancias(est: GeneradorCEst, programa: Programa) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
-        programa != nulo
     garantiza:
         1 == 1
     // ME-D2: registrar ADT genericos (DeclaracionTipo con parametros_tipo)

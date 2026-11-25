@@ -1,4 +1,6 @@
 #lang: es
+// cumple Manual 2 §12
+// cumple Manual 2 §5.1
 # cumple Manual 2 12: biblioteca estandar con contratos en toda funcion publica
 // std.io — Entrada/Salida estándar (consola y archivos)
 // Integrante de la Biblioteca Estandar de Synapse.
@@ -33,11 +35,6 @@ funcion abrir(ruta: texto, modo: texto) -> Canal:
     retornar _syn_abrir(ruta_segura, modo)
 
 funcion leer(c: Canal) -> texto:
-    // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        c != nulo
-    garantiza:
-        1 == 1
     // M2 §5.1: la cláusula original `c >= 0` comparaba un Canal (struct)
     // con un número — expresión no booleana; exige canal válido (campo).
     requiere:

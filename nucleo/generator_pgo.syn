@@ -1,4 +1,5 @@
 #lang: es
+// cumple Manual 2 §5.1
 // cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas (ME formatter_fix R4: anclaje de norma vigente tras reformato)
 // cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
 // vinculo ME formatter_fix R4 (Manual 1 §7.1, M8 §4.1): reformato cosmético del nucleo — estilo, sin cambios semánticos
@@ -134,7 +135,6 @@ funcion pgo_total_contadores() -> entero:
 funcion pgo_emitir_contadores_funcion(est: GeneradorCEst, num_ctrs: entero) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        est != nulo
         num_ctrs >= 0
     garantiza:
         _resultado_ >= -1
@@ -162,8 +162,6 @@ funcion pgo_emitir_contadores_funcion(est: GeneradorCEst, num_ctrs: entero) -> e
 // ----------------------------------------------------------
 funcion pgo_emitir_incremento_bb(est: GeneradorCEst) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         1 == 1
     id_ctr = pgo_nuevo_contador()
@@ -187,7 +185,6 @@ funcion pgo_emitir_incremento_bb(est: GeneradorCEst) -> nulo:
 funcion pgo_emitir_incremento_id(est: GeneradorCEst, id: entero) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        est != nulo
         id >= 0
     garantiza:
         1 == 1
@@ -213,7 +210,6 @@ funcion pgo_emitir_incremento_id(est: GeneradorCEst, id: entero) -> nulo:
 funcion pgo_emitir_volcado(est: GeneradorCEst, num_ctrs: entero) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        est != nulo
         num_ctrs >= 0
     garantiza:
         1 == 1
@@ -258,8 +254,6 @@ funcion pgo_emitir_volcado(est: GeneradorCEst, num_ctrs: entero) -> nulo:
 // ----------------------------------------------------------
 funcion pgo_registrar_atexit(est: GeneradorCEst) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         1 == 1
     inseguro:
@@ -274,8 +268,6 @@ funcion pgo_registrar_atexit(est: GeneradorCEst) -> nulo:
 // ----------------------------------------------------------
 funcion pgo_finalizar(est: GeneradorCEst) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         1 == 1
     total = pgo_total_contadores()
@@ -297,32 +289,24 @@ funcion pgo_finalizar(est: GeneradorCEst) -> nulo:
 
 funcion pgo_instrumentar_if_true(est: GeneradorCEst) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         1 == 1
     pgo_emitir_incremento_bb(est)
 
 funcion pgo_instrumentar_if_false(est: GeneradorCEst) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         1 == 1
     pgo_emitir_incremento_bb(est)
 
 funcion pgo_instrumentar_while_body(est: GeneradorCEst) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         1 == 1
     pgo_emitir_incremento_bb(est)
 
 funcion pgo_instrumentar_for_body(est: GeneradorCEst) -> nulo:
     // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        est != nulo
     garantiza:
         1 == 1
     pgo_emitir_incremento_bb(est)

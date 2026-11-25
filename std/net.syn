@@ -34,8 +34,6 @@ funcion iniciar_red() -> entero:
     garantiza:
         _resultado_ >= -1
     // cumple Manual 2 §5.1: resultado de inicialización
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_iniciar_red()
 
 funcion cerrar_red() -> nulo:
@@ -57,8 +55,6 @@ funcion crear_socket() -> entero:
     garantiza:
         _resultado_ >= -1
     // cumple Manual 2 §5.1: descriptor de socket
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_socket()
 
 // conectar devuelve Resultado con tag=0 (ok) y valor=fd, o tag=1 (error)
@@ -73,8 +69,6 @@ funcion conectar(ip: texto, puerto: entero) -> Resultado:
         longitud(ip) > 0
     requiere:
         puerto > 0
-    garantiza:
-        _resultado_ == _resultado_
     r = Resultado()
     fd = _syn_socket()
     si fd < 0:
@@ -107,25 +101,16 @@ funcion enviar_datos(fd: entero, datos: texto, lon: entero) -> entero:
         longitud(datos) > 0
     requiere:
         lon >= 0
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_enviar(fd, datos, lon)
 
 // recibir_datos: recibe datos del socket.
 // Devuelve Resultado con tag=0 (ok, valor_str = texto recibido) o tag=1 (error).
 // El texto recibido debe liberarse con liberar_texto() cuando ya no se necesite.
 funcion recibir_datos(socket: SocketTCP, tamano_maximo: entero) -> Resultado:
-    // cumple Manual 2 §5.1: contrato de dominio
+    // cumple Manual 2 §5.1: socket válido y tamano máximo positivo
     requiere:
-        socket != nulo
-        tamano_maximo >= 0
-    garantiza:
-        1 == 1
-    // cumple Manual 2 §5.1: tamano máximo positivo
-    requiere:
+        socket.descriptor >= 0
         tamano_maximo > 0
-    garantiza:
-        _resultado_ == _resultado_
     r = Resultado()
     recibido = _syn_recibir_como_texto(socket.descriptor, tamano_maximo)
     si recibido == "":
@@ -145,8 +130,6 @@ funcion cerrar_socket(fd: entero) -> entero:
     // cumple Manual 2 §5.1: fd no negativo
     requiere:
         fd >= 0
-    garantiza:
-        _resultado_ == _resultado_
     retornar _syn_cerrar_socket(fd)
 
 funcion liberar_texto(-> t: texto) -> nulo:
