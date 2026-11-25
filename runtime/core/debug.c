@@ -80,17 +80,19 @@ long long _get_timestamp_ns(void) {
 
 
 
+// cumple Manual 2 §1.2: fuente UTF-8 sin BOM (r326)
+// cumple Manual 9 §6.1: compilacion sin errores (r326)
 static const char* _syn_home_dir(void) {
 
     const char* h = getenv("HOME");
 
 #ifdef _WIN32
 
-    if (h == NULL || h[0] == '\\0') h = getenv("USERPROFILE");
+    if (h == NULL || h[0] == '\0') h = getenv("USERPROFILE");
 
 #endif
 
-    return (h != NULL && h[0] != '\\0') ? h : ".";
+    return (h != NULL && h[0] != '\0') ? h : ".";
 
 }
 

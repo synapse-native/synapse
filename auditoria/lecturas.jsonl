@@ -1046,3 +1046,5 @@
 {"fecha": "2026-11-24", "archivos": ["opensyn/principal.syn"], "cita": "Manual 7 §7.3", "puntos": "telemetria cero monitoreo red conexiones salientes"}
 {"fecha": "2026-11-24", "archivos": ["runtime/core/debug.c"], "cita": "Manual 9 §1", "puntos": "binarios autocontenidos, cache incremental bajo ~/.synapse/cache, firma Ed25519, distribucion offline-first"}
 {"fecha": "2026-11-24", "archivos": ["runtime/core/string_utils.c"], "cita": "Manual 5 §1", "puntos": "comunicacion, fibras ligeras, canales tipados"}
+{"fecha": "2026-11-24", "archivos": ["std/json.syn", "std/cluster.syn"], "cita": "Manual 2 §5.1", "puntos": "requiere se evalua antes del cuerpo; garantiza antes de retornar; expresiones booleanas"}
+{"fecha": "2026-11-24", "archivos": ["runtime/core/debug.c"], "cita": "Manual 8 §3.4", "puntos": "depuracion time-travel breakpoints reversibles CLI synapse debug"}
