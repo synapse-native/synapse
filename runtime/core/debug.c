@@ -1769,6 +1769,134 @@ CadenaSegura ms_tomar_en(int secuencia) {
 }
 
 
+// --- Snapshot inspection helpers ---
+// cumple Manual 8 §3.4 (r324): implementacion de ms_snapshot_* sin fuente.
+// cumple Manual 2 §1.2: fuente UTF-8 sin BOM (r324).
+// cumple Manual 9 §6.1 (r324): compilacion sin errores.
+
+int ms_snapshot_contar_vars(CadenaSegura snapshot) {
+
+    if (!snapshot.datos || snapshot.longitud <= 0) return 0;
+
+    const char* p = snapshot.datos;
+
+    const char* end = snapshot.datos + snapshot.longitud;
+
+    int count = 0;
+
+    while (p < end) {
+
+        const char* nl = strchr(p, '\n');
+
+        int line_len = nl ? (int)(nl - p) : (int)(end - p);
+
+        if (line_len > 0) {
+
+            const char* pipe = NULL;
+
+            for (int i = 0; i < line_len; i++) {
+
+                if (p[i] == '|') { pipe = p + i; break; }
+
+            }
+
+            if (pipe && pipe > p) count++;
+
+        }
+
+        p = nl ? nl + 1 : end;
+
+    }
+
+    return count;
+
+}
+
+
+
+int ms_snapshot_tamano(CadenaSegura snapshot) {
+
+    if (!snapshot.datos) return 0;
+
+    return snapshot.longitud;
+
+}
+
+
+
+CadenaSegura ms_snapshot_contiene(CadenaSegura snapshot, CadenaSegura nombre) {
+
+    if (!snapshot.datos || snapshot.longitud <= 0) {
+
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+
+    }
+
+    if (!nombre.datos || nombre.longitud <= 0) {
+
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+
+    }
+
+    char namebuf[64];
+
+    int nlen = nombre.longitud;
+
+    if (nlen >= 64) nlen = 63;
+
+    memcpy(namebuf, nombre.datos, (size_t)nlen);
+
+    namebuf[nlen] = '\0';
+
+    const char* p = snapshot.datos;
+
+    const char* end = snapshot.datos + snapshot.longitud;
+
+    while (p < end) {
+
+        const char* nl = strchr(p, '\n');
+
+        int line_len = nl ? (int)(nl - p) : (int)(end - p);
+
+        if (line_len > 0) {
+
+            char lname[64];
+
+            char ltipo[16];
+
+            char lval[64];
+
+            if (_ms_parse_line(p, line_len, lname, 64, ltipo, 16, lval, 64)) {
+
+                if (strcmp(lname, namebuf) == 0) {
+
+                    int cap = (int)strlen(ltipo) + (int)strlen(lval) + 2;
+
+                    char* buf = (char*)pool_alloc((size_t)cap);
+
+                    if (!buf) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+
+                    int pos = snprintf(buf, (size_t)cap, "%s:%s", ltipo, lval);
+
+                    if (pos < 0) pos = 0;
+
+                    return (CadenaSegura){ .longitud = pos, .datos = buf };
+
+                }
+
+            }
+
+        }
+
+        p = nl ? nl + 1 : end;
+
+    }
+
+    return (CadenaSegura){ .longitud = 0, .datos = NULL };
+
+}
+
+
 
 // --- Compare two snapshots and produce a structural diff ---
 
@@ -1913,5 +2041,32 @@ CadenaSegura ms_diferenciar(CadenaSegura snap_a, CadenaSegura snap_b) {
     }
 
     return (CadenaSegura){ .longitud = pos, .datos = buf };
+
+}
+
+// --- Convenience: diff between two sequence numbers ---
+// cumple Manual 8 §3.4 (r324): implementacion de ms_diff_entre sin fuente.
+
+CadenaSegura ms_diff_entre(int seq_a, int seq_b) {
+
+    if (seq_a == seq_b) {
+
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+
+    }
+
+    CadenaSegura sa = ms_tomar_en(seq_a);
+
+    CadenaSegura sb = ms_tomar_en(seq_b);
+
+    CadenaSegura d = ms_diferenciar(sa, sb);
+
+    if (!d.datos || d.longitud <= 0) {
+
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+
+    }
+
+    return d;
 
 }
