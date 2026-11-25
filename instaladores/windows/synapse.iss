@@ -156,6 +156,9 @@ Source: "{#SourcePath}\..\..\opensyn\*"; DestDir: "{app}/opensyn"; Components: o
 Source: "{#SourcePath}\..\..\vscode-synapse\synapse-{#MyAppVersion}.vsix"; DestDir: "{app}/vscode"; Components: vscode; Flags: ignoreversion skipifsourcedoesntexist
 ; cumple Manual 9 §2.5: MinGW toolchain provisioning script (scripts/install.ps1 existe — provisioning real)
 Source: "{#SourcePath}\scripts\install.ps1"; DestDir: "{app}"; Components: synapse; Flags: ignoreversion
+; cumple Manual 9 §7 (H-RUNTIME-CACHE-COLD-1): precalentamiento de la cache de objetos del runtime
+; (prewarm_runtime_cache.ps1 compila los .o con el toolchain incluido en %USERPROFILE%\.synapse\cache\runtime_obj)
+Source: "{#SourcePath}\prewarm_runtime_cache.ps1"; DestDir: "{app}"; Components: synapse; Flags: ignoreversion
 ; cumple Manual 9 §7 + Manual 9 §2.2: toolchain C empaquetado (H-R234-2) — nucleo/principal.syn busca
 ; ..\toolchain_gcc12\mingw64\bin desde {app}\bin, así que el destino replica ese layout.
 ; El subset lo prepara instaladores/windows/empaquetar_toolchain.py en dist/ (artefacto de release).
@@ -182,6 +185,8 @@ Name: "{autodesktop}\OpenSyn (IA local)"; Filename: "{app}\bin\opensyn.exe"; Wor
 ; cumple Manual 9 §2.5: post-install hooks
 ; Flags: nowait para instalacion silenciosa no-bloqueante; runasoriginaluser para VS Code extension (no abre ventana, per-user)
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NoProfile -File ""{app}\install.ps1"""; Description: "Provisionar MinGW Toolchain"; Flags: runhidden nowait; Components: synapse; StatusMsg: "Configurando MinGW Toolchain..."
+; cumple Manual 9 §7 (H-RUNTIME-CACHE-COLD-1): precalentamiento de la cache de runtime (~90 s una vez)
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NoProfile -File ""{app}\prewarm_runtime_cache.ps1"""; Description: "Precalentando cache de runtime..."; Flags: runhidden; Components: synapse; StatusMsg: "Precalentando cache de runtime..."
 ; [fix-31] Paso [Run] OpenSyn eliminado: synapse.exe solo COMPILA installer.syn (nunca lo ejecuta) y fallaba en silencio (~240 ms, sin GCC en cwd). La configuracion de OpenSyn la realiza el wizard en [Code] DownloadAIComponents (Manual 9 §5.2-5.3) y opensyn.exe lee la config ya instalada.
 Filename: "cmd.exe"; Parameters: "/c code --install-extension ""{app}\vscode\synapse-8.1.0-industrial.vsix"" --force"; Components: vscode; StatusMsg: "Instalando extensión VS Code..."; Flags: runhidden runasoriginaluser nowait
 ; cumple Manual 9 §2.5: VS Code via Run runasoriginaluser (no abre ventana, evita elevacion que causa exit 1)
