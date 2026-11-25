@@ -1,7 +1,7 @@
 # Expediente de alineación r324_ms_snapshot_impl
 
 base: HEAD  # commit sobre el que se leyó el manual
-cambio_hash:
+cambio_hash: 0306660b3f387528
 
 > Una ancla por requisito. `estado:` CUMPLE | DESVIACION.
 > CUMPLE exige `evidencia: archivo:linea` con el comentario
@@ -24,4 +24,4 @@ cambio_hash:
   tipo: comportamiento
   estado: CUMPLE
   evidencia: runtime/core/debug.c:1775
-  oraculo: tests/integration/test_memory_snapshots.py
+  oraculo: tests/integration/test_memory_snapshots.py
