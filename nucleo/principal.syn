@@ -708,7 +708,9 @@ funcion generar_etapa(ruta: cadena, salida: cadena, modo_validar: entero) -> Res
         // toolchain resuelto, una sola vez, para que gcc y sus binarios auxiliares
         // (as, ld, DLLs) se encuentren.
         asm("if (strcmp(_gcc_exe, \"gcc\") != 0) {")
-        asm("    char _gdir[1200]; strcpy(_gdir, _gcc_exe); char* _gs = strrchr(_gdir, '/'); char* _gb = strrchr(_gdir, '\\\\\\\\'); if (_gb && (!_gs || _gb > _gs)) _gs = _gb; if (_gs) *_gs = 0;")
+        // cumple Manual 9 §6.2 (r323b): cuatro barras en la fuente Synapse
+        // producen '\\' en C (un backslash); ocho producen un literal multicaracter.
+        asm("    char _gdir[1200]; strcpy(_gdir, _gcc_exe); char* _gs = strrchr(_gdir, '/'); char* _gb = strrchr(_gdir, '\\\\'); if (_gb && (!_gs || _gb > _gs)) _gs = _gb; if (_gs) *_gs = 0;")
         asm("    const char* _pv = getenv(\"PATH\");")
         asm("    if (_pv == 0 || strstr(_pv, _gdir) == 0) {")
         // cumple Manual 9 §6.2: el PATH del hijo se ajusta con el separador y la
