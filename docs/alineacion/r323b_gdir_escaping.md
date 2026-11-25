@@ -1,7 +1,7 @@
 # Expediente de alineacion r323b_gdir_escaping
 
 base: HEAD
-cambio_hash: 49935b87ae35cf16
+cambio_hash: cf45ed74d54ad723
 
 > Una ancla por requisito. `estado:` CUMPLE | DESVIACION.
 
