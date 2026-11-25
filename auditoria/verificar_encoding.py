@@ -95,6 +95,10 @@ def auditar_archivo(ruta: Path) -> tuple[list[str], bool]:
         return [], False
     tiene_bom = datos.startswith(b"\xef\xbb\xbf")
     defectos: list[str] = []
+    # H-R280 (r325): byte NUL crudo en fuente de código es defecto bloqueante
+    # (no es UTF-8 válido para el lexer; corrompe editores/diffs).
+    if b"\x00" in datos:
+        defectos.append(f"NUL:{datos.count(bytes([0]))}")
     try:
         texto = datos.decode("utf-8")
     except UnicodeDecodeError as error:
@@ -199,7 +203,7 @@ def main(argv: list[str] | None = None) -> int:
               f"sobre {datos['revisados']} revisados")
         return 1
     print(f"OK: encoding — {datos['revisados']} archivos en UTF-8, 0 U+FFFD, "
-          f"0 C1, 0 doble codificación, 0 BOM nuevos "
+          f"0 C1, 0 doble codificación, 0 NUL, 0 BOM nuevos "
           f"({len(datos['bom_deuda'])} BOM en deuda congelada, "
           f"{len(datos['exentos'])} exenciones declaradas)")
     return 0

@@ -526,6 +526,8 @@ CadenaSegura lsp_build_completion_response(int64_t id) {
     char* dup = (char*)pool_alloc((size_t)(rpos + 1));
     if (!dup) return (CadenaSegura){0, ""};
     memcpy(dup, resp_buf, (size_t)rpos);
-    dup[rpos] = ' ';
+    // cumple Manual 2 §1.2: fuente UTF-8 sin BOM (r325)
+    // cumple Manual 8 §1.1: LSP nativo (r325)
+    dup[rpos] = '\0';
     return (CadenaSegura){ .longitud = rpos, .datos = dup, };
 }

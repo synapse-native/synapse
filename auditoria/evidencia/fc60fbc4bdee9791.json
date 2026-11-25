@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "fc60fbc4bdee9791",
+ "expediente": "docs/alineacion/r325_fix_raw_nul_encoding.md",
+ "fecha": "2026-11-24",
+ "archivos": [
+  "runtime/core/string_utils.c"
+ ],
+ "oraculos": {
+  "auditoria/verificar_encoding.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}
