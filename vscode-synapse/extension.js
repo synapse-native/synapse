@@ -53,7 +53,7 @@ const SYNAPSE_INSTALL_DIRS = [
     path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Synapse'),
 ];
 const SYNAPSE_LSP_PATH = path.join(SYNAPSE_INSTALL_DIRS[0], 'bin', 'synapse_lsp.exe');
-const SYNAPSE_INSTALLER_URL = 'https://github.com/gedeon1972-svg/synapse-lang/releases/download/v1.5.0/synapse-v1.5.0-windows-x64.zip';
+const SYNAPSE_INSTALLER_URL = 'https://github.com/synapse-native/synapse/releases/latest/download/synapse-windows-x64.zip';
 
 // ---------------------------------------------------------------------------
 // Auto-descubrimiento e instalación automática del binario LSP

@@ -7,6 +7,8 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
+**2026-11-24 (ME `r327_vscode_release_url` CERRADO — H-VSCODE-URL-1):** commit fuente+docs — actualiza `SYNAPSE_INSTALLER_URL` en `vscode-synapse/extension.js` del fork personal v1.5.0 al release oficial `synapse-native/synapse`. Gates: URL actualizada. Reporte: `docs/reportes/R327.md`. **H-VSCODE-URL-1 CERRADO.** Siguiente: H-RUNTIME-CACHE-COLD-1 (r328).
+
 **2026-11-24 (ME `r326_fix_debug_home_dir` CERRADO — H-RUNTIME-DEBUG-CHAR-1):** commit fuente+docs — corrige la constante multi-caracter `'\\0'` (0x5C30) en `_syn_home_dir()` de `runtime/core/debug.c` (lineas 88 y 93) por el escape canonico `'\0'`, eliminando el warning `-Wmultichar` y el fallback incorrecto con `HOME=""`. Gates: `alineacion.py --verificar r326` 0 brechas (evidencia `auditoria/evidencia/1413de67e69ca778.json`), `contrastar.py` PASS. Reporte: `docs/reportes/R326.md`. **H-RUNTIME-DEBUG-CHAR-1 CERRADO.** Siguiente: H-VSCODE-URL-1 (r327).
 
 **2026-11-24 (ME `r325_fix_raw_nul_encoding` CERRADO — H-ENCODING-NUL-1):** commit fuente+docs — reemplaza el byte NUL crudo (0x00) en `runtime/core/string_utils.c` (`lsp_build_completion_response`) por la secuencia de escape `\0` y endurece `auditoria/verificar_encoding.py` con deteccion obligatoria de bytes NUL en fuentes versionadas. Gates: `verificar_encoding.py` 0 defectos/0 NUL, `pytest test_verificar_encoding` 7 passed, `alineacion.py --verificar r325` 0 brechas (evidencia `auditoria/evidencia/fc60fbc4bdee9791.json`), `contrastar.py` PASS. Reporte: `docs/reportes/R325.md`. **H-ENCODING-NUL-1 CERRADO.** Siguiente: H-RUNTIME-DEBUG-CHAR-1 (r326).
