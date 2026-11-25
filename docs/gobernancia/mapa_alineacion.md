@@ -39,6 +39,7 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
    "nucleo/lsp.syn": ["Manual 8 §1.1", "Manual 2 §5.1"],
    "nucleo/lsp_v3.syn": ["Manual 8 §1.1", "Manual 2 §5.1"],
    "nucleo/parser.syn": ["Manual 2 §2", "Manual 2 §5.1"],
+  "nucleo/wasm_backend.syn": ["Manual 2 §1.3", "Manual 2 §5.1", "Manual 2 §12"],
    "nucleo/principal.syn": ["Manual 9 §6.2", "Manual 8 §4.1", "Manual 8 §4.2", "Manual 8 §3.1", "Manual 8 §3.4", "Manual 2 §1.2", "Manual 2 §5.1"],
   "nucleo/cache.syn": ["Manual 9 §6.2", "Manual 2 §5.1"],
   "nucleo/generador/compilar.syn": ["Manual 9 §6.2"],

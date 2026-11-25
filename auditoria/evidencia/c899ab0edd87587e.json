@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "c899ab0edd87587e",
+ "expediente": "docs/alineacion/r330_contratos_wasm.md",
+ "fecha": "2026-11-25",
+ "archivos": [
+  "nucleo/diagnostics.syn",
+  "nucleo/wasm_backend.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_r330_contratos_wasm.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

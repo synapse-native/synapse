@@ -88,14 +88,6 @@ funcion hay_errores(diag: GestorDiagnostico) -> booleano:
         retornar verdadero
     retornar falso
 
-funcion contar_errores(diag: GestorDiagnostico) -> entero:
-    // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        1 == 1
-    garantiza:
-        _resultado_ >= -1
-    retornar diag.total_reportes
-
 funcion codigo_salida(diag: GestorDiagnostico) -> entero:
     // cumple Manual 2 §5.1: contrato de dominio
     requiere:
@@ -105,13 +97,3 @@ funcion codigo_salida(diag: GestorDiagnostico) -> entero:
     si hay_errores(diag) == verdadero:
         retornar 1
     retornar 0
-
-funcion resumen_errores(diag: GestorDiagnostico) -> cadena:
-    // cumple Manual 2 §5.1: contrato de dominio
-    requiere:
-        1 == 1
-    garantiza:
-        1 == 1
-    si hay_errores(diag) == falso:
-        retornar "0 errores"
-    retornar entero_a_texto(diag.total_reportes) + " error(es) encontrado(s)"
