@@ -1,4 +1,4 @@
-﻿"""Oráculo r328: contratos sin comparaciones inválidas con `nulo`.
+"""Oráculo r328: contratos sin comparaciones inválidas con `nulo`.
 
 Manual 2 §5.1: `requiere`/`garantiza` solo admiten expresiones booleanas
 válidas. `nulo` es un valor de tipo `nulo`; compararlo con un struct pasado
