@@ -9,7 +9,7 @@
       "Tool: synapse-sbom-2.0",
       "Organization: Synapse Project"
     ],
-    "created": "2026-11-26T01:28:36Z"
+    "created": "2026-11-26T02:26:29Z"
   },
   "packages": [
     {
@@ -20,12 +20,12 @@
       "downloadLocation": "NOASSERTION",
       "filesAnalyzed": true,
       "packageVerificationCode": {
-        "packageVerificationCodeValue": "c73f1c6101e1b43073322fe14f0091033c5316e5"
+        "packageVerificationCodeValue": "1e8b1fa209866fb14ad7e014425d086cb0be52d7"
       },
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "d6ab87607b387fc5c0faba1d915be3c15943507a33a0cdf94a666eeedc3099d1"
+          "checksumValue": "36f6329d422c49a7d379aeadd6bb8ddd8e094c524fce1ca020b22bf0f8802836"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -9826,14 +9826,14 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "ccdcc4b9ac1f163a63fec2c84f8c9ac7ccc3bcbc43c425d995dbfd464772d4da"
+          "checksumValue": "73a6c5e0ec30e9143ff20134176c7e1e88f327223eb2fd75adff844417ba0116"
         }
       ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "primaryPackagePurpose": "SOURCE",
-      "size": 520779
+      "size": 520988
     },
     {
       "SPDXID": "SPDXRef-FILE-516",
@@ -16552,14 +16552,14 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "4bea14267b7af13a1190ef09ef07f7d8287a08ee8bce3ac54e58ad5516233119"
+          "checksumValue": "ea8579b2f1f79f41d96c8be629710b42b7826d10a855051a3ca1e87f234d2022"
         }
       ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "primaryPackagePurpose": "SOURCE",
-      "size": 71866
+      "size": 72254
     },
     {
       "SPDXID": "SPDXRef-FILE-870",
@@ -52438,7 +52438,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "ccdcc4b9ac1f163a63fec2c84f8c9ac7ccc3bcbc43c425d995dbfd464772d4da"
+          "checksumValue": "73a6c5e0ec30e9143ff20134176c7e1e88f327223eb2fd75adff844417ba0116"
         }
       ]
     },
@@ -55978,7 +55978,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "4bea14267b7af13a1190ef09ef07f7d8287a08ee8bce3ac54e58ad5516233119"
+          "checksumValue": "ea8579b2f1f79f41d96c8be629710b42b7826d10a855051a3ca1e87f234d2022"
         }
       ]
     },

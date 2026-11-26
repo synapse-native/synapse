@@ -167,6 +167,12 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   (`.github/workflows/release_matrix.yml` aborta a propósito sin el secreto).
   Ver `docs/reportes/R316.md`–`R321.md`. Cierre cuando el Arquitecto cargue
   `ED25519_PRIVATE_KEY` y la matriz publique `PASS` en las cuatro plataformas.
+  **Progreso 2026-11-26:** el secreto se cargó desde
+  `release_keys/private.pem` (32 bytes; pareja verificada de `public.pem`).
+  Run `45739735189`: los cuatro jobs `release_matrix` (linux_x64, linux_arm64,
+  darwin_arm64, win_x64) compilan, firman y verifican `SIGNATURE_VALID=YES`.
+  Queda el smoke de Linux (2 fallos) y macOS (en cola) y la VM limpia de R234
+  para cerrar H-R276-2.
 - **H-R277-1 (ABIERTO 2026-11-20, MEDIO — deuda medida):** la primera medición
   de contratos del ME `r277_contracts_audit` (commit `3eff2fa`) cuenta **600
   funciones públicas sin `requiere` + `garantiza`** en 68 archivos (de 1.161

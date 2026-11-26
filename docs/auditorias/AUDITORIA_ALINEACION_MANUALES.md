@@ -876,7 +876,9 @@ clave pública versionada y privada ignorada. 87 tests verdes, 19 artefactos/7
 firmas `SIGNATURE_VALID=YES`. Evidencia r202 `a48ecf5a77bedfc0`; `contrastar`
 5/5 y `verificar_alineacion` 0 brechas.
 Pendiente externo: `ED25519_PRIVATE_KEY` en GitHub Actions y validación en
-runner limpio.
+runner limpio. **Actualización 2026-11-26:** secreto cargado desde
+`release_keys/private.pem` (pareja de `public.pem`); run `45739735189`, 4/4
+`release_matrix` firmando y verificando. Queda smoke Linux/macOS y VM limpia.
 Reporte: `docs/reportes/R202.md` | f1a4a02 |
 Manual 9 §6.3/§4.1/§2.1 |
 
