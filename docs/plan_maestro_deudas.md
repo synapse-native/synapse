@@ -142,14 +142,23 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   fuente de `dl_helper` ni se compila en CI; el componente `opensyn` mantiene
   `skipifsourcedoesntexist` y el fallback `curl`, y el oráculo r314 impide que
   vuelva a exigir el artefacto. Se cierra como aceptado.
-- **H-R331-1 (ABIERTO 2026-11-25, MEDIO):** el build modular de
+- **H-R331-1 (CERRADO 2026-11-26, MEDIO):** el build modular de
   `opensyn/principal.syn` falla en CI: `_modelo.c` llama `longitud` sin
   declaración y `_oraculo.c` referencia `generar_texto` sin definición (runs
   45734531006 y 45734530794). El build unity no lo detecta porque concatena
   todos los módulos en una sola unidad. **Resolución asignada:** declarar los
   prototipos del runtime de texto en el recorte modular y asegurar que
   `generar_texto` se emita/enlace; oráculo: jobs `Build Windows Installer` y
-  `Cross-Compile Synapse` en CI.
+  `Cross-Compile Synapse` en CI. **Cierre 2026-11-26 (commits `694cd92` y
+  `c8af8f4`):** `generator.py` declara `int64_t longitud(CadenaSegura)` en el
+  header modular; `emit_expressions.py` traduce `longitud(tensor)` a
+  `filas * columnas` (antes emitía una llamada sin firma C); y
+  `verificar_release_limpio.py` acepta `<fuente>.exe` en POSIX y resuelve el
+  cwd a absoluto (el smoke de ARM fallaba con `FileNotFoundError` sobre una
+  ruta relativa). Verificado en local: `opensyn.exe` = `OpenSyn 1.1.0`; 4
+  passed en los oráculos; `Cross-Compile` y `Build Installer` en success sobre
+  `c8af8f4`. La matriz de release compila, firma y verifica 4/4; el smoke
+  Linux/ARM queda en cola detrás del runner macOS.
 - **H-R276-2 (ABIERTO 2026-11-20, MEDIO):** la certificación de release quedó
   medida sólo en Windows local. El gate `scripts/verificar_release_limpio.py` y
   el job `smoke_release_limpio` de `release_matrix.yml` ya cubren integridad,
@@ -173,6 +182,10 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   darwin_arm64, win_x64) compilan, firman y verifican `SIGNATURE_VALID=YES`.
   Queda el smoke de Linux (2 fallos) y macOS (en cola) y la VM limpia de R234
   para cerrar H-R276-2.
+  **Progreso 2026-11-26 (H-R331-1):** run `45782162841` sobre `c8af8f4`:
+  `release_matrix` 4/4 success (Linux x64/ARM64, macOS, Windows); los smokes
+  esperan al runner macOS (en cola). El smoke de ARM del run anterior falló por
+  ruta relativa y quedó corregido en `c8af8f4`.
 - **H-R277-1 (ABIERTO 2026-11-20, MEDIO — deuda medida):** la primera medición
   de contratos del ME `r277_contracts_audit` (commit `3eff2fa`) cuenta **600
   funciones públicas sin `requiere` + `garantiza`** en 68 archivos (de 1.161
