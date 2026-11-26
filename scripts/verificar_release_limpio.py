@@ -152,6 +152,9 @@ def raiz_proyecto(dist: Path) -> Path:
 def smoke(binario: Path, trabaja: Path, cwd: Path,
           verbose: bool) -> tuple[bool, list[str]]:
     """Compila y ejecuta un programa real con el binario distribuido."""
+    # cumple Manual 9 §6.1 (H-R331-1): `raiz_proyecto` puede devolver `.`; sin
+    # resolver, el ejecutable temporal queda relativo y subprocess no lo halla.
+    cwd = cwd.resolve()
     pasos: list[str] = []
     rc, salida = ejecutar([str(binario), "--version"])
     if rc != 0 or "synapse" not in salida.lower():
