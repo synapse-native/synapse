@@ -405,9 +405,29 @@ def _construir_objetos_runtime() -> None:
         print(f"[ME-R7] WARNING: runtime objects no auto-compilados: {e}")
 
 
+def _quitar_winsock_en_posix() -> None:
+    """`-lws2_32` es una librería de Windows; en Linux/macOS el linker falla.
+
+    Muchos comandos gcc de los tests son inmutables y la incluyen siempre.
+    Se filtra en el límite de `subprocess.run`: el comportamiento del test no
+    cambia, sólo se omite una dependencia que no existe fuera de Windows.
+    """
+    if sys.platform == "win32":
+        return
+    original = subprocess.run
+
+    def _run_sin_winsock(cmd, *args, **kwargs):
+        if isinstance(cmd, (list, tuple)):
+            cmd = [c for c in cmd if c != "-lws2_32"]
+        return original(cmd, *args, **kwargs)
+
+    subprocess.run = _run_sin_winsock  # type: ignore[assignment]
+
+
 def pytest_configure(config):
     # cumple Manual 9 §6.2 (ME r184_r185_e2e, H-R186-1): PRE-colección — los
     # objetos existen cuando los tests capturan RT_OBJS al importar.
+    _quitar_winsock_en_posix()
     _construir_objetos_runtime()
 
 
