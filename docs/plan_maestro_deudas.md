@@ -142,6 +142,14 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   fuente de `dl_helper` ni se compila en CI; el componente `opensyn` mantiene
   `skipifsourcedoesntexist` y el fallback `curl`, y el oráculo r314 impide que
   vuelva a exigir el artefacto. Se cierra como aceptado.
+- **H-R331-1 (ABIERTO 2026-11-25, MEDIO):** el build modular de
+  `opensyn/principal.syn` falla en CI: `_modelo.c` llama `longitud` sin
+  declaración y `_oraculo.c` referencia `generar_texto` sin definición (runs
+  45734531006 y 45734530794). El build unity no lo detecta porque concatena
+  todos los módulos en una sola unidad. **Resolución asignada:** declarar los
+  prototipos del runtime de texto en el recorte modular y asegurar que
+  `generar_texto` se emita/enlace; oráculo: jobs `Build Windows Installer` y
+  `Cross-Compile Synapse` en CI.
 - **H-R276-2 (ABIERTO 2026-11-20, MEDIO):** la certificación de release quedó
   medida sólo en Windows local. El gate `scripts/verificar_release_limpio.py` y
   el job `smoke_release_limpio` de `release_matrix.yml` ya cubren integridad,

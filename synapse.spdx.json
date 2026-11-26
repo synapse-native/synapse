@@ -9,7 +9,7 @@
       "Tool: synapse-sbom-2.0",
       "Organization: Synapse Project"
     ],
-    "created": "2026-11-26T01:23:39Z"
+    "created": "2026-11-26T01:28:36Z"
   },
   "packages": [
     {
@@ -20,12 +20,12 @@
       "downloadLocation": "NOASSERTION",
       "filesAnalyzed": true,
       "packageVerificationCode": {
-        "packageVerificationCodeValue": "37b0cce4c1f95aa7ef6318b4b6c1a91da49779ea"
+        "packageVerificationCodeValue": "c73f1c6101e1b43073322fe14f0091033c5316e5"
       },
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "353b8f4c8730aa64640f386bddb68782afc8283ceff95620962562a08aa63871"
+          "checksumValue": "d6ab87607b387fc5c0faba1d915be3c15943507a33a0cdf94a666eeedc3099d1"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -16552,14 +16552,14 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "8603f10ed642470950bcb63f25eb789afc012738adfea119df04e5d8735a7496"
+          "checksumValue": "4bea14267b7af13a1190ef09ef07f7d8287a08ee8bce3ac54e58ad5516233119"
         }
       ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "primaryPackagePurpose": "SOURCE",
-      "size": 71313
+      "size": 71866
     },
     {
       "SPDXID": "SPDXRef-FILE-870",
@@ -55978,7 +55978,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "8603f10ed642470950bcb63f25eb789afc012738adfea119df04e5d8735a7496"
+          "checksumValue": "4bea14267b7af13a1190ef09ef07f7d8287a08ee8bce3ac54e58ad5516233119"
         }
       ]
     },
