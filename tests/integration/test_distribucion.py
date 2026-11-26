@@ -8,6 +8,7 @@ repo + MANIFEST.sha256 + SBOM SPDX 2.3 + attestation SLSA + firma Ed25519
 """
 import json
 import os
+import sys
 import pytest
 
 pytestmark = pytest.mark.integration
@@ -18,8 +19,7 @@ DIST = os.path.join(RAIZ, "instaladores", "dist", "distribucion")
 
 def _correr_distribuir():
     import subprocess
-    py = os.path.join(RAIZ, ".venv", "Scripts", "python.exe")
-    py = py if os.path.exists(py) else os.path.join(RAIZ, ".venv", "bin", "python")
+    py = sys.executable
     if not os.path.exists(py):
         py = "python"
     return subprocess.run([py, os.path.join(RAIZ, "distribuir.py")],

@@ -14,7 +14,6 @@ pytestmark = pytest.mark.unit
 _RT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 _GCC_CANDIDATES = [
     os.path.join(_RT_ROOT, "toolchain_gcc12", "mingw64", "bin", "gcc.exe"),
-    "D:/proyecto_synapse/toolchain_gcc12/mingw64/bin/gcc.exe",
     "gcc",
     "gcc.exe",
 ]

@@ -17,7 +17,7 @@ import pytest
 pytestmark = pytest.mark.integration
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-PYTHON = os.path.join(RAIZ, ".venv", "Scripts", "python.exe")
+PYTHON = sys.executable
 MAIN = os.path.join(RAIZ, "main.py")
 
 CODIGO_INVALIDO = """#lang: es

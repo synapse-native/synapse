@@ -10,12 +10,13 @@ sin depender de compilación real (stub de bajo nivel).
 """
 import subprocess
 import os
+import sys
 import re
 import pytest
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SYN = os.path.join(RAIZ, "opensyn", "verificacion_aot.syn")
-PYTHON = os.path.join(RAIZ, ".venv", "Scripts", "python.exe")
+PYTHON = sys.executable
 
 
 @pytest.mark.tdd

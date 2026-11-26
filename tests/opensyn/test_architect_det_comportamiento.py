@@ -11,6 +11,7 @@ Compila un driver real con `python main.py`, lo ejecuta y verifica:
 No se modifica ningun test existente.
 """
 import os
+import sys
 import subprocess
 
 import pytest
@@ -18,7 +19,7 @@ import pytest
 pytestmark = pytest.mark.integration
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-PYTHON = os.path.join(RAIZ, ".venv", "Scripts", "python.exe")
+PYTHON = sys.executable
 
 DRIVER = '''#lang: es
 importar std.io

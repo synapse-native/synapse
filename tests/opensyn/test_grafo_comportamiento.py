@@ -3,6 +3,7 @@
 OBL-M32-02 | Manual 32 §2.4/§2.5/§2.6 | grafo de conocimiento | integracion | GREEN
 """
 import os
+import sys
 import subprocess
 
 import pytest
@@ -10,7 +11,7 @@ import pytest
 pytestmark = pytest.mark.integration
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-PYTHON = os.path.join(RAIZ, ".venv", "Scripts", "python.exe")
+PYTHON = sys.executable
 RUTA_JSON = "logs/grafo_test_r205.json"
 
 

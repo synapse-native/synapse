@@ -2,6 +2,7 @@
 """Comportamiento E2E de sesiones reanudables + deshacer (ME r254)."""
 import json
 import os
+import sys
 import subprocess
 
 import pytest
@@ -9,7 +10,7 @@ import pytest
 pytestmark = pytest.mark.integration
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-PYTHON = os.path.join(RAIZ, ".venv", "Scripts", "python.exe")
+PYTHON = sys.executable
 MAIN = os.path.join(RAIZ, "main.py")
 
 DRIVER = '''#lang: es

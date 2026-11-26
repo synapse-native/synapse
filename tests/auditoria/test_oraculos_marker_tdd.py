@@ -24,7 +24,7 @@ import pytest
 
 pytestmark = pytest.mark.unit
 
-RAIZ = Path(r"D:\proyecto_synapse")
+RAIZ = Path(__file__).resolve().parents[2]
 PYTEST_INI = RAIZ / "pytest.ini"
 ORACULO_EOF = RAIZ / "tests" / "auditoria" / "test_oraculos_eof_cierre.py"
 PYTHON = sys.executable

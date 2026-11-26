@@ -3,6 +3,7 @@
 Verifica que --help/--version salen con código 0 y NO invocan el linker (gcc),
 validando comportamiento real del CLI (no sniff de texto).
 """
+import os
 import sys
 import subprocess
 import subprocess as sp
@@ -30,7 +31,7 @@ class TestCLIHelpFlag:
         """Test that --help exits with code 0 without invoking linker."""
         result = subprocess.run(
             [sys.executable, "-m", "cli", "--help"],
-            cwd="D:/proyecto_synapse",
+            cwd=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
             capture_output=True,
             text=True
         )
@@ -44,7 +45,7 @@ class TestCLIHelpFlag:
         """Test that --version exits with code 0 without invoking linker."""
         result = subprocess.run(
             [sys.executable, "-m", "cli", "--version"],
-            cwd="D:/proyecto_synapse",
+            cwd=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
             capture_output=True,
             text=True
         )
@@ -71,7 +72,7 @@ class TestCLIVersionFlag:
     def test_version_flag_exits_with_code_zero(self):
         result = subprocess.run(
             [sys.executable, "-m", "cli", "--version"],
-            cwd="D:/proyecto_synapse",
+            cwd=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
             capture_output=True,
             text=True
         )

@@ -136,12 +136,21 @@ def skips_declarados(raiz: Path) -> dict[str, int]:
     return cuenta
 
 
-def medir_suite(raiz: Path, suite: str, red: bool = False) -> dict:
-    """Ejecuta una suite y devuelve recuentos y duración real."""
+def medir_suite(raiz: Path, suite: str, red: bool = False,
+                jobs: str = "auto") -> dict:
+    """Ejecuta una suite y devuelve recuentos y duración real.
+
+    `jobs` paraleliza con xdist usando `--dist loadfile`: cada archivo cae en un
+    solo worker, que es la condición que los shards de CI ya validaron para no
+    chocar en rutas fijas (`tests/fixtures`, `dist/bin`). Con `jobs="0"` la
+    medición queda secuencial para depurar un fallo de aislamiento.
+    """
     ruta = raiz / "tests" / suite
+    args = [str(ruta.relative_to(raiz)), "-q", "--tb=no"] + _marca(red)
+    if jobs and jobs != "0":
+        args += ["-n", str(jobs), "--dist", "loadfile"]
     inicio = time.monotonic()
-    salida, rc = _pytest(raiz, [str(ruta.relative_to(raiz)), "-q", "--tb=no"]
-                         + _marca(red))
+    salida, rc = _pytest(raiz, args)
     duracion = round(time.monotonic() - inicio, 2)
     ultima = ""
     for linea in reversed(salida.splitlines()):
@@ -261,6 +270,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="ejecuta las suites y cronometra passed/skipped/failed")
     parser.add_argument("--suite", action="append", default=None,
                         help="limita --medir a una suite (repetible)")
+    parser.add_argument("--jobs", default="auto",
+                        help="workers xdist por suite (default auto; 0 = secuencial)")
     parser.add_argument("--comparar", action="store_true",
                         help="exige los mismos recuentos que la línea base medida")
     parser.add_argument("--guardar-medido", action="store_true",
@@ -296,7 +307,7 @@ def main(argv: list[str] | None = None) -> int:
             if suite not in SUITES:
                 print(f"[error] suite desconocida: {suite}")
                 return 1
-            medido[suite] = medir_suite(raiz, suite, args.red)
+            medido[suite] = medir_suite(raiz, suite, args.red, args.jobs)
             print(f"[medido] {suite}: {medido[suite]['resumen']} "
                   f"({medido[suite]['duracion_s']}s)")
         if args.guardar_medido:

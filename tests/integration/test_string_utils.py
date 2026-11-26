@@ -4,11 +4,12 @@
 
 import subprocess
 import os
+import sys
 import pytest
 
 TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(os.path.dirname(TESTS_DIR))
-VENV_PYTHON = os.path.join(ROOT_DIR, ".venv", "Scripts", "python.exe")
+VENV_PYTHON = sys.executable
 
 
 def compilar_y_ejecutar(codigo_synapse: str, nombre: str) -> str:

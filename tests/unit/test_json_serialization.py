@@ -11,7 +11,7 @@ import pytest
 pytestmark = pytest.mark.unit
 
 _RT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-_GCC = "D:/proyecto_synapse/toolchain_gcc12/mingw64/bin/gcc.exe"
+_GCC = os.path.join(_RT_ROOT, "toolchain_gcc12", "mingw64", "bin", "gcc.exe")
 
 
 def _compile_and_run_c(code_str):

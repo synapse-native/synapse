@@ -33,7 +33,7 @@ import pytest
 
 pytestmark = pytest.mark.unit
 
-RAIZ = Path(r"D:\proyecto_synapse")
+RAIZ = Path(__file__).resolve().parents[2]
 PRINCIPAL = RAIZ / "opensyn" / "principal.syn"
 EXE = RAIZ / "dist" / "bin" / "opensyn.exe"
 PYTHON = sys.executable

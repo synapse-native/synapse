@@ -29,7 +29,7 @@ import pytest
 
 pytestmark = pytest.mark.unit
 
-RAIZ = Path(r"D:\proyecto_synapse")
+RAIZ = Path(__file__).resolve().parents[2]
 STAGE1 = RAIZ / "synapse_stage1.exe"
 STAGE2 = RAIZ / "synapse_stage2.exe"
 TESTS = RAIZ / "tests"

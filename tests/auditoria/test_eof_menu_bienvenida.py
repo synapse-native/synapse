@@ -30,7 +30,7 @@ import pytest
 
 pytestmark = pytest.mark.unit
 
-RAIZ = Path(r"D:\proyecto_synapse")
+RAIZ = Path(__file__).resolve().parents[2]
 PRINCIPAL = RAIZ / "opensyn" / "principal.syn"
 PYTHON = sys.executable
 # Fallbacks hardcodeados en leer_modo_config (paso 3): si existen, el menu de

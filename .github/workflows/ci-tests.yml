@@ -79,6 +79,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: 'pip'
 
       - name: Instalar dependencias
         run: |
@@ -93,25 +94,28 @@ jobs:
           python -c "import pytest; print(f'pytest {pytest.__version__}')"
           python -c "import flake8; print(f'flake8 {flake8.__version__}')"
 
-      - name: Ejecutar tests unitarios y de integración
+      - name: Construir nativo (S1/S2)
+        shell: bash
+        # La suite usa los binarios y el runtime compilado; sin este paso los
+        # oráculos E2E fallan por "binario no encontrado" en un runner limpio.
+        run: python build.py --skip-test
+
+      - name: Ejecutar suite completa (release, paralela)
         shell: bash
         # La matriz std↔runtime (35 enlaces completos) corre en SU job aparte
         # (matriz-compilacion, D-R150-7): aquí se excluye para no duplicar el
         # costo en la matriz 3×3 de SO/Python.
-        run: |
-          python -m pytest tests/ -v --tb=short --ignore=tests/auditoria/test_matriz_compilacion.py --cov=. --cov-report=term-missing --cov-report=html:coverage_reports/
+        # Se ejecuta UNA vez en modo release (más estricto que el modo normal)
+        # y con `--dist loadfile`, que es el aislamiento ya validado en shards:
+        # antes la suite corría dos veces y en serie (2 h por job).
         env:
           PYTHONPATH: ${{ github.workspace }}
-
-      - name: Ejecutar oráculos en modo release
+          SYNAPSE_BUILD_MODE: release
+          CFLAGS: "-DNDEBUG -O3"
         run: |
-          # NDEBUG se activa en release para comprobar que los oráculos (tests)
-          # verifican el comportamiento de producción, evitando olvidos de validación real.
-          export SYNAPSE_BUILD_MODE=release
-          export CFLAGS="-DNDEBUG -O3"
-          python -m pytest tests/ -v --tb=short --ignore=tests/auditoria/test_matriz_compilacion.py
-        env:
-          PYTHONPATH: ${{ github.workspace }}
+          python -m pytest tests/ -q --tb=short -n auto --dist loadfile \
+            --ignore=tests/auditoria/test_matriz_compilacion.py \
+            --cov=. --cov-report=term-missing --cov-report=html:coverage_reports/
 
       - name: Compilar runtime (C) - Unix
         if: matrix.os != 'windows-latest'
@@ -168,6 +172,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest pytest-cov pytest-md pytest-emoji
           pip install -r requirements.txt
+
+      - name: Construir nativo (S1/S2)
+        shell: bash
+        run: python build.py --skip-test
 
       - name: Shard ${{ matrix.shard }} (sin red, en paralelo)
         env:

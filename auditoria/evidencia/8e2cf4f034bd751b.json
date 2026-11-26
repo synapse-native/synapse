@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "8e2cf4f034bd751b",
+ "expediente": "docs/alineacion/r333_std_texto_strcpy.md",
+ "fecha": "2026-11-26",
+ "archivos": [
+  "std/texto.syn"
+ ],
+ "oraculos": {
+  "tests/unit/test_std_contracts.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

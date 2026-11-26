@@ -7,6 +7,7 @@ test `synapse` invoca `python main.py <archivo> --check --no-emit`, porque el
 """
 import json
 import os
+import sys
 import subprocess
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -16,7 +17,7 @@ import pytest
 pytestmark = pytest.mark.integration
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-PYTHON = os.path.join(RAIZ, ".venv", "Scripts", "python.exe")
+PYTHON = sys.executable
 MAIN = os.path.join(RAIZ, "main.py")
 
 CODIGO_CODER = """Aquí está el código:

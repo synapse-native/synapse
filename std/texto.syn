@@ -145,6 +145,50 @@ funcion cmp_texto(a: texto, b: texto) -> entero:
     garantiza:
         _resultado_ == 0 o _resultado_ < 0 o _resultado_ > 0
     retornar _syn_strcmp(a, b)
+// cumple Manual 2 §5.1: API historica de texto restaurada (H-R222-1)
+funcion strlen_s(a: texto) -> entero:
+    requiere:
+        longitud(a) >= 0
+    garantiza:
+        _resultado_ >= 0
+    retornar _syn_strlen(a)
+
+funcion strstr_f(texto: texto, patron: texto) -> entero:
+    requiere:
+        longitud(patron) > 0
+    garantiza:
+        _resultado_ >= -1
+    retornar _syn_strstr(texto, patron)
+
+funcion strchr_f(texto: texto, caracter: entero) -> entero:
+    requiere:
+        caracter >= 0
+    garantiza:
+        _resultado_ >= -1
+    retornar _syn_strchr(texto, caracter)
+
+funcion atoi_f(texto: texto) -> entero:
+    requiere:
+        longitud(texto) > 0
+    garantiza:
+        _resultado_ >= -2147483648 y _resultado_ <= 2147483647
+    retornar _syn_atoi(texto)
+
+// cumple Manual 2 §5.1: envoltorio publico historico de _syn_strcpy (H-R222-1)
+funcion strcpy_f(texto: texto) -> texto:
+    requiere:
+        longitud(texto) >= 0
+    garantiza:
+        longitud(_resultado_) == longitud(texto)
+    retornar _syn_strcpy(texto)
+
+funcion strncpy_f(texto: texto, max_len: entero) -> texto:
+    requiere:
+        max_len > 0
+    garantiza:
+        longitud(_resultado_) <= max_len
+    retornar _syn_strncpy(texto, max_len)
+
 externo funcion _syn_strlen(a: texto) -> entero
 externo funcion _syn_strstr(texto: texto, patron: texto) -> entero
 externo funcion _syn_strchr(texto: texto, caracter: entero) -> entero

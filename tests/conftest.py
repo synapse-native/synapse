@@ -390,7 +390,14 @@ def _construir_objetos_runtime() -> None:
                 continue
             # cumple Manual 9 5.7: detect_hardware.c (DXGI/COM) necesita estas libs al linkar (A2)
             link_extras_win = ["-lole32", "-ldxgi", "-luuid"] if sys.platform == "win32" else []
-            cmd = [gcc, "-O2", "-I.", "-I" + root, src_path] + rt_objs + ["-lm", "-lpthread", "-lws2_32"] + link_extras_win + extra_flags + ["-o", exe_path]
+            # `ws2_32` sólo existe en Windows; en Linux/macOS el enlace fallaba
+            # antes de compilar los binarios extra (test_os_hw.exe, etc.).
+            link_libs = ["-lm", "-lpthread"]
+            if sys.platform == "win32":
+                link_libs += ["-lws2_32"]
+            extra_flags = [f for f in extra_flags
+                           if sys.platform == "win32" or f != "-lws2_32"]
+            cmd = [gcc, "-O2", "-I.", "-I" + root, src_path] + rt_objs + link_libs + link_extras_win + extra_flags + ["-o", exe_path]
             res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
             if res.returncode != 0:
                 raise RuntimeError(f"no se pudo compilar {bin_name}.exe: {res.stderr[:400]}")

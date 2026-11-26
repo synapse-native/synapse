@@ -32,7 +32,7 @@ import pytest
 
 pytestmark = pytest.mark.unit
 
-RAIZ = Path(r"D:\proyecto_synapse")
+RAIZ = Path(__file__).resolve().parents[2]
 PYTHON = sys.executable
 
 PROBE_CWD = """#lang: es

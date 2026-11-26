@@ -12,6 +12,7 @@ _syn_capturar_comando_timeout. Para el oráculo se compila un wrapper mínimo
   synapse <archivo> -o <exe>         -> main.py <archivo> -o <exe>
 """
 import os
+import sys
 import subprocess
 
 import pytest
@@ -19,7 +20,7 @@ import pytest
 pytestmark = pytest.mark.integration
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-PYTHON = os.path.join(RAIZ, ".venv", "Scripts", "python.exe")
+PYTHON = sys.executable
 MAIN = os.path.join(RAIZ, "main.py")
 GCC = os.path.join(RAIZ, "toolchain_gcc12", "mingw64", "bin", "gcc.exe")
 
