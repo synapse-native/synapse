@@ -131,16 +131,17 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   `opensyn/installer.syn`, `std/os.syn`) y la cubre
   `tests/opensyn/test_installer.py` (1 passed). El id `r276` queda para
   `r276_multiplataforma_release`.
-- **H-R314-1 (ABIERTO 2026-11-23, BAJO):** `instaladores/windows/synapse.iss`
+- **H-R314-1 (CERRADO ACEPTADO 2026-11-25, BAJO):** `instaladores/windows/synapse.iss`
   referencia `dl_helper.exe` (helper de descarga con ventana de progreso), pero
   el ejecutable no está versionado ni existe su fuente en el repositorio: solo
   aparecía en árboles de trabajo locales. **Resolución aplicada:** la entrada
   lleva `skipifsourcedoesntexist`, y el `.iss` ya degrada a `curl` cuando el
   helper no está (`DownloadFile`); el oráculo
   `tests/auditoria/test_r314_installer_workflow.py` impide que vuelva a exigir
-  artefactos ausentes. **Resolución asignada (Arquitecto):** decidir si se
-  versiona la fuente de `dl_helper` (y se compila en CI) o se retira del
-  componente `opensyn`; mientras tanto la descarga usa el fallback documentado.
+  artefactos ausentes. **Decisión (Arquitecto, 2026-11-25):** no se versiona la
+  fuente de `dl_helper` ni se compila en CI; el componente `opensyn` mantiene
+  `skipifsourcedoesntexist` y el fallback `curl`, y el oráculo r314 impide que
+  vuelva a exigir el artefacto. Se cierra como aceptado.
 - **H-R276-2 (ABIERTO 2026-11-20, MEDIO):** la certificación de release quedó
   medida sólo en Windows local. El gate `scripts/verificar_release_limpio.py` y
   el job `smoke_release_limpio` de `release_matrix.yml` ya cubren integridad,
@@ -677,6 +678,11 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   cerrar en firma malformada activa la continuación multilínea r153 y
   suprime NEWLINE/INDENT/DEDENT del resto del archivo — ruido de cascada,
   decisión del Arquitecto). Reporte: docs/reportes/R187.md.
+  **H-R187-1 CERRADO ACEPTADO (2026-11-25):** el diagnóstico primario
+  (`Se esperaba RPAREN`) es correcto y el parser aborta; el ruido posterior no
+  cambia el rc ni oculta un éxito. Corregir la profundidad de paréntesis exige
+  una regla nueva de continuación multilínea (S1 y S2), fuera del alcance de un
+  cierre documental. Se registra como limitación aceptada.
 
 ### ME R178 — check_cli (H-R176-2) — `synapse check` en cli.py
 requisito: Manual 8 §4 (+ subfase 26.1 del ROADMAP: flag `--check`/`--no-emit`
