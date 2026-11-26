@@ -173,6 +173,12 @@ gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocad
   relleno) y privatización con prefijo `_` de funciones internas. Cierre cuando
   `python auditoria/verificar_contratos.py --estricto` dé rc=0 con
   `auditoria/contratos_baseline.txt` sin entradas (sólo cabecera).
+  **Progreso 2026-11-25 (ME `r330_contratos_wasm`, commit `160e5a8`):** la
+  deuda bajó a **111 funciones** (672 auditadas) al contratar las 83 de
+  `nucleo/wasm_backend.syn`; el resto se concentra en `nodos_flujo.syn` (14),
+  `parser_sentencias.syn` (10), `std/modelo.syn` (7) y
+  `parser_expr.syn`/`lifetimes.syn`/`generator_pgo.syn` (7 cada uno). El
+  baseline sigue siendo el criterio: `--estricto` exige vaciarlo.
 - **H-PARIDAD-S1-S2 (ABIERTO 2026-11-21, ALTO — divergencia dual de compiladores):**
   Actualmente coexisten dos implementaciones del compilador: S1 en Python
   (`compilador/*.py`) y S2 nativo en Synapse (`nucleo/*.syn`), con 89 tests
