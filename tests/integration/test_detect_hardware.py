@@ -6,7 +6,9 @@ TDD: tests/test_detect_hardware.c es la especificación (43 asserts). Si las
 primitivas de synapse_detectar_hardware no existen, el binario no enlaza.
 """
 import os
+import shutil
 import subprocess
+import sys
 
 import pytest
 
@@ -23,9 +25,11 @@ def exe_path():
     if os.path.exists(BIN):
         return BIN
     gcc = os.path.join(PROJECT_ROOT, "toolchain_gcc12", "mingw64", "bin", "gcc.exe")
+    if not os.path.exists(gcc):
+        gcc = shutil.which("gcc") or shutil.which("gcc.exe") or gcc
+    libs = ["-lm"] + (["-lgdi32", "-ldxgi", "-lole32", "-luuid"] if sys.platform == "win32" else [])
     r = subprocess.run(
-        [gcc, "-I", PROJECT_ROOT, "-I.", "-o", BIN, SRC, HW_SRC,
-         "-lm", "-lgdi32", "-ldxgi", "-lole32", "-luuid"],
+        [gcc, "-I", PROJECT_ROOT, "-I.", "-o", BIN, SRC, HW_SRC] + libs,
         capture_output=True, text=True, timeout=120,
     )
     if r.returncode != 0:

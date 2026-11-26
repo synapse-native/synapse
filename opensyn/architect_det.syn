@@ -1,6 +1,7 @@
 #lang: es
 // opensyn/architect_det.syn - Architect determinista: DFS invertido + ciclos
 // cumple Manual 6 §1.1: grafo construido desde el AST canonico SemNodo[]
+// cumple Manual 9 §6.2: simbolos propios para enlazar con explorer_det en todos los targets (ME r334)
 // cumple Manual 2 §5.1: contratos requiere/garantiza en funciones publicas
 // cumple Manual 7 §2.3: metricas de impacto para el contexto RAG del pipeline
 // Referencia funcional Manual FASE 32 §4.4: analisis de impacto sin LLM, DFS invertido + Tarjan
@@ -126,7 +127,7 @@ funcion dfs_invertido(id_inicio: texto, grafo: GrafoProyecto) -> Lista<DFSEntrad
     distancias.poner(id_inicio, 0)
 
     mientras longitud(pila_ids) > 0:
-        let actual = elemento_texto(pila_ids, longitud(pila_ids) - 1)
+        let actual = elemento_texto_arch(pila_ids, longitud(pila_ids) - 1)
         pila_ids.eliminar(longitud(pila_ids) - 1)
         si visitados.contiene(actual) == falso:
             visitados.poner(actual, verdadero)
@@ -222,7 +223,7 @@ funcion extraer_archivo(id_nodo: texto) -> texto:
     retornar id_nodo
 
 // cumple Manual 2 §5.1: lectura de pila sin exponer el indice al analizador
-funcion elemento_texto(lista: Lista<texto>, indice: entero) -> texto:
+funcion elemento_texto_arch(lista: Lista<texto>, indice: entero) -> texto:
     requiere:
         indice >= 0
     garantiza:

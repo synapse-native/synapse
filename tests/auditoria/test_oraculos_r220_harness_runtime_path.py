@@ -19,6 +19,7 @@ r4: el C de FFI compila con el `-I runtime/core` dirigido que usa el harness
 """
 import os
 import subprocess
+import sys
 
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 TOOLCHAIN_BIN = os.path.join(RAIZ, "toolchain_gcc12", "mingw64", "bin")
@@ -39,7 +40,15 @@ def _partes(nombre):
 
 
 def test_oraculo_r220_path_incluye_toolchain():
-    """r1: el harness antepone el bin canónico a PATH."""
+    """r1: el harness antepone el bin canónico a PATH.
+
+    El toolchain Mingw es propio de Windows; en POSIX el compilador canónico
+    es el gcc del sistema y ya está en PATH.
+    """
+    if sys.platform != "win32":
+        from shutil import which
+        assert which("gcc") or which("cc"), "no hay compilador C en PATH"
+        return
     assert os.path.isdir(TOOLCHAIN_BIN), f"falta toolchain: {TOOLCHAIN_BIN}"
     assert TOOLCHAIN_BIN in _partes("PATH"), (
         "PATH no contiene el bin del toolchain; los exes no cargarán "

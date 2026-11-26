@@ -6,6 +6,7 @@ TDD: tests/test_rc_cleanup.c es la especificación. Si _syn_rc_*/_syn_arc_*
 no existen, el binario no compila/enlaza.
 """
 import os
+import shutil
 import subprocess
 
 import pytest
@@ -22,6 +23,8 @@ def exe_path():
     if os.path.exists(BIN):
         return BIN
     gcc = os.path.join(PROJECT_ROOT, "toolchain_gcc12", "mingw64", "bin", "gcc.exe")
+    if not os.path.exists(gcc):
+        gcc = shutil.which("gcc") or shutil.which("gcc.exe") or gcc
     sqlite_o = os.path.join(PROJECT_ROOT, "vendor", "sqlite3", "sqlite3.o")
     r = subprocess.run(
         [gcc, "-O2", "-I", PROJECT_ROOT, "-I.", "-o", BIN, SRC,

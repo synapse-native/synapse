@@ -395,12 +395,18 @@ def _construir_objetos_runtime() -> None:
             link_libs = ["-lm", "-lpthread"]
             if sys.platform == "win32":
                 link_libs += ["-lws2_32"]
+            # `--stack` es un flag del linker PE (Windows); en ELF/Mach-O no
+            # existe y hacía abortar TODA la construcción de binarios extra.
             extra_flags = [f for f in extra_flags
-                           if sys.platform == "win32" or f != "-lws2_32"]
+                           if sys.platform == "win32"
+                           or (f != "-lws2_32" and not f.startswith("-Wl,--stack"))]
             cmd = [gcc, "-O2", "-I.", "-I" + root, src_path] + rt_objs + link_libs + link_extras_win + extra_flags + ["-o", exe_path]
             res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
             if res.returncode != 0:
-                raise RuntimeError(f"no se pudo compilar {bin_name}.exe: {res.stderr[:400]}")
+                # Un binario roto no debe impedir construir los demás: se
+                # reporta y el test que lo necesite fallará con su diagnóstico.
+                print(f"[ME-R7] WARNING: no se pudo compilar {bin_name}.exe: {res.stderr[:400]}")
+                continue
     except Exception as e:
         print(f"[ME-R7] WARNING: runtime objects no auto-compilados: {e}")
 

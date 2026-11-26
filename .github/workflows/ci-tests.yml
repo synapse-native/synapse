@@ -114,11 +114,42 @@ jobs:
           fi
           echo "SYNAPSE_GCC_PATH=$GCC_REAL" >> "$GITHUB_ENV"
 
+      - name: Instalar WABT (wat2wasm)
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update && sudo apt-get install -y wabt
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            brew install wabt || brew upgrade wabt
+          else
+            choco install wabt -y --no-progress
+          fi
+
       - name: Construir nativo (S1/S2)
         shell: bash
         # La suite usa los binarios y el runtime compilado; sin este paso los
         # oráculos E2E fallan por "binario no encontrado" en un runner limpio.
         run: python build.py --skip-test
+
+      - name: Construir CLI y LSP nativos
+        shell: bash
+        # `build.py` produce stage2/stage3, pero la suite también ejerce el CLI
+        # unificado (`synapse`) y el LSP nativo (`lsp_v3.exe`). Sin estos
+        # artefactos los tests fallan por binario ausente en un runner limpio.
+        run: |
+          set -eu
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            cp synapse_stage2.exe synapse.exe
+          else
+            cp synapse_stage2.exe synapse
+            chmod +x synapse
+          fi
+          python main.py nucleo/lsp_v3.syn
+          # H-R302-1: los dumps .c del S1 retirado no deben quedar en disco;
+          # el build puede regenerarlos, así que se limpian antes de la suite.
+          rm -f nucleo/analizador_semantico.c nucleo/ast_nodes.c \
+                nucleo/diagnostics.c nucleo/errores.c nucleo/estado_global.c \
+                nucleo/generator_constants.c
 
       - name: Ejecutar suite completa (release, paralela)
         shell: bash

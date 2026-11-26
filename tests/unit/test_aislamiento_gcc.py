@@ -16,7 +16,11 @@ class TestAislamientoGCC:
         with patch('pipeline.SYNAPSE_BIN', os.path.join(os.path.dirname(__file__), '..', '..')):
             ruta = _resolver_toolchain_gcc()
             esperado = 'gcc.exe' if os.name == 'nt' else 'gcc'
-            assert esperado in ruta, f"Ruta del toolchain no contiene {esperado}: {ruta}"
+            # Windows puede devolver gcc.EXE (case-insensitive); el contrato es
+            # que la ruta apunte al compilador, no la capitalización del sufijo.
+            assert esperado.lower() in ruta.lower(), (
+                f"Ruta del toolchain no contiene {esperado}: {ruta}")
+
 
     def test_gcc_invocation_uses_internal_toolchain_not_path(self, monkeypatch, tmp_path):
         """Test que la invocación a GCC usa la ruta interna, no el PATH del sistema."""

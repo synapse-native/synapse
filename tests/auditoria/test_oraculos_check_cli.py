@@ -30,7 +30,8 @@ def _frescura(exe):
     m = os.path.getmtime(exe)
     nucleo = os.path.join(RAIZ, "nucleo")
     for f in os.listdir(nucleo):
-        if f.endswith(".syn"):
+        # Los probes efímeros de otros tests no son fuentes del núcleo.
+        if f.endswith(".syn") and not f.startswith("_tmp_"):
             assert os.path.getmtime(os.path.join(nucleo, f)) <= m, (
                 f"exe stale: {f} más nuevo que {os.path.basename(exe)}")
 
@@ -78,12 +79,12 @@ def test_r2_cli_py_parity(tmp_path):
     """M8 §4.1: `python cli.py check` despacha al backend nativo y propaga rc
     (paridad con el dispatcher nativo)."""
     ruta_ok = _escribir(tmp_path, OK_SRC)
-    r = _run([PY, os.path.join("cli.py"), "check", "--no-emit", ruta_ok])
+    r = _run([PY, os.path.join(RAIZ, "cli.py"), "check", "--no-emit", ruta_ok])
     assert r.returncode == 0, f"cli.py check válido debe rc=0: {r.stderr[-300:]}"
     assert "[Check]" in (r.stderr or "")
 
     ruta_bad = _escribir(tmp_path, BAD_SRC)
-    r2 = _run([PY, os.path.join("cli.py"), "check", "BADSRC_MARKER", ruta_bad])
+    r2 = _run([PY, os.path.join(RAIZ, "cli.py"), "check", "BADSRC_MARKER", ruta_bad])
     assert r2.returncode != 0, "cli.py check inválido debe rc!=0"
 
 
@@ -110,7 +111,7 @@ def test_r3_binario_synapse_check(tmp_path):
 def test_r4_fase2_inmutable_GREEN():
     """El test de integración inmutable tests/integration/test_cli_check.py
     (M8 §9) debe estar GREEN con esta reparación (la deuda era del código)."""
-    r = _run([PY, "-m", "pytest", "tests/integration/test_cli_check.py", "-q",
-              "--no-header", "-p", "no:cacheprovider"], timeout=600)
+    r = _run([PY, "-m", "pytest", os.path.join(RAIZ, "tests/integration/test_cli_check.py"),
+              "-q", "--no-header", "-p", "no:cacheprovider"], timeout=600)
     assert r.returncode == 0, r.stdout[-500:]
     assert "3 passed" in (r.stdout or ""), r.stdout[-300:]

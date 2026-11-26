@@ -1,8 +1,9 @@
 #lang: es
 // cumple Manual 2 §1.2: fuente UTF-8 sin BOM (r280).
 
+// cumple Manual 9 §6.2: API disponible en todos los targets (ME r334)
 // std.texto — Manipulación de cadenas
-// Manual 8 §1.7.3: contiene, indice_de, reemplazar (builtins existentes)
+// Manual 8 §1.7.3 (ME r196): contiene, indice_de, reemplazar (builtins existentes)
 // Manual 8 §1.7.1-2: leer_bytes, escapar_json, a_texto (nuevos externos)
 // Cumple Manual 2 §12: contratos requiere/garantiza en todas las funciones públicas.
 // PIEDRA: esta biblioteca sin CRLF.
