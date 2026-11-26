@@ -33,12 +33,15 @@ def test_texto_sin_funciones_duplicadas():
 def test_texto_mantiene_tamano_deduplicado():
     lineas = len(_fuente().splitlines())
     funciones = RE_FUNCION.findall(_fuente())
-    assert len(funciones) <= 12, (
+    # r333 restauró la API histórica de bajo nivel (strlen_s, strstr_f,
+    # strchr_f, atoi_f, strcpy_f, strncpy_f) que exigen los tests de contratos
+    # y los drivers de OpenSyn; no son duplicados, son envoltorios FFI.
+    assert len(funciones) <= 18, (
         f"std/texto.syn tiene {len(funciones)} funciones; el estado "
-        "deduplicado es 10 (H-R196-2)"
+        "deduplicado + API FFI es 17 (H-R196-2)"
     )
-    assert lineas <= 160, (
-        f"std/texto.syn tiene {lineas} líneas; el estado deduplicado es 129"
+    assert lineas <= 220, (
+        f"std/texto.syn tiene {lineas} líneas; el límite con la API FFI es 220"
     )
 
 
