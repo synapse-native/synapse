@@ -837,6 +837,14 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
             return f"_syn_lista_longitud((void*)(intptr_t)({args[0]}))"
         if nombre == 'longitud' and _arg0_tipo.startswith('Mapa'):
             return f"_syn_mapa_longitud((void*)(intptr_t)({args[0]}))"
+        # cumple Manual 2 §12: el contrato requiere una expresión C con tipo.
+        # cumple Manual 6 §3.1: tensor -> Tensor (filas/columnas).
+        # cumple Manual 5 §3.6: este cambio no altera el cierre de canales.
+        # cumple Manual 2 §4.3 (H-R331-1): longitud(tensor) es el número de
+        # elementos; antes caía en una llamada `longitud(tensor)` sin firma C y
+        # el contrato compilaba con declaración implícita (UB).
+        if nombre == 'longitud' and _arg0_tipo in ('tensor', 'Tensor'):
+            return f"(({args[0]}).filas * ({args[0]}).columnas)"
         if nombre == 'lista_crear':
             return "(intptr_t)_syn_lista_crear()"
         if nombre == 'lista_agregar':

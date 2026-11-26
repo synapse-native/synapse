@@ -768,6 +768,12 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line(
         "typedef struct { int longitud; const char* datos; } CadenaSegura;  // cumple Manual 2 4.1"
     )
+    # cumple Manual 2 §5.1 (H-R331-1): el prototipo hace verificable el
+    # contrato de longitud(texto) en cada módulo (sin declaración implícita).
+    # cumple Manual 2 §4.3 (H-R331-1): el builtin longitud(texto) se define en
+    # _texto.c; en modo modular los demás módulos necesitan el prototipo o el
+    # gcc de CI (C99+) rechaza la declaración implícita y falta _modelo.o.
+    ctx.write_line("int64_t longitud(CadenaSegura texto);")
     ctx.write_line("")
     # A2.4 (paridad con synapse_rt_types.h:14 / generator.c:2501): el runtime
     # de lifetimes (emit_declarations.py:430) accede `t.es_mapeado`; el typedef

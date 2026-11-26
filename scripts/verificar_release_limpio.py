@@ -163,19 +163,24 @@ def smoke(binario: Path, trabaja: Path, cwd: Path,
     sello = f"_release_smoke_{os.getpid()}"
     fuente = trabaja / f"{sello}.syn"
     fuente.write_text(HOLA_SYN, encoding="utf-8", newline="")
-    ejecutable = cwd / (sello + (".exe" if os.name == "nt" else ""))
+    # cumple Manual 9 §6.1 (H-R331-1): el fallback del compilador usa
+    # `<base>.exe` también en POSIX; el smoke acepta ambas variantes y limpia
+    # la que exista (en Windows solo existe la variante .exe).
+    candidatos = [cwd / sello, cwd / (sello + ".exe")]
     try:
         rc, salida = ejecutar([str(binario), str(fuente)], cwd=cwd)
         if rc != 0:
             return False, pasos + [f"compilación rc={rc}: {salida.strip()[-300:]}"]
-        if not ejecutable.is_file():
+        ejecutable = next((p for p in candidatos if p.is_file()), None)
+        if ejecutable is None:
             return False, pasos + ["compilación sin error pero sin ejecutable de salida"]
         rc, salida = ejecutar([str(ejecutable)])
         if rc != 0 or "Hola Mundo" not in salida:
             return False, pasos + [f"ejecución rc={rc}: {salida.strip()[:200]}"]
         pasos.append(f"compilar+ejecutar: {salida.strip()[:40]}")
     finally:
-        ejecutable.unlink(missing_ok=True)
+        for candidato in candidatos:
+            candidato.unlink(missing_ok=True)
         for resto in cwd.glob(f"{sello}.c"):
             resto.unlink(missing_ok=True)
 
