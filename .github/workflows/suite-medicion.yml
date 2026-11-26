@@ -5,6 +5,8 @@
 name: Suite medida
 
 on:
+  push:
+    branches: ['release/**']
   workflow_dispatch:
     inputs:
       comparar:
