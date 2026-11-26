@@ -15,7 +15,8 @@ class TestAislamientoGCC:
         """Test que la ruta del toolchain se resuelve relativa al ejecutable."""
         with patch('pipeline.SYNAPSE_BIN', os.path.join(os.path.dirname(__file__), '..', '..')):
             ruta = _resolver_toolchain_gcc()
-            assert 'gcc.exe' in ruta, f"Ruta del toolchain no contiene gcc.exe: {ruta}"
+            esperado = 'gcc.exe' if os.name == 'nt' else 'gcc'
+            assert esperado in ruta, f"Ruta del toolchain no contiene {esperado}: {ruta}"
 
     def test_gcc_invocation_uses_internal_toolchain_not_path(self, monkeypatch, tmp_path):
         """Test que la invocación a GCC usa la ruta interna, no el PATH del sistema."""
