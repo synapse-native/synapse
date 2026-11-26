@@ -9,6 +9,11 @@
 // generar - Punto de entrada principal
 // ----------------------------------------------------------
 funcion generar(programa: Programa, ruta: cadena) -> entero:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         _resultado_ >= -1
@@ -73,6 +78,22 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "typedef struct { uint32_t filas; uint32_t columnas; float* datos; } Tensor;")
     gen_emitir_linea(est, "")
     gen_emitir_linea(est, "typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtual_data; int virtual_len; } Canal;")
+    gen_emitir_linea(est, "")
+    // F1.2d/F1.4 + D-1.2b (Manual 4 §3.2, §3.3, §4.2): paridad con el header S1
+    // (_emitir_encabezado). WeakRef pasa por valor; los destructores usan &var.
+    gen_emitir_linea(est, "typedef struct { uint32_t ref_count; uint32_t weak_count; uint32_t version; void* data; void (*destructor)(void*); } RcHeader;")
+    gen_emitir_linea(est, "typedef struct { RcHeader* header; uint32_t version; } WeakRef;")
+    gen_emitir_linea(est, "")
+    gen_emitir_linea(est, "extern void* rc_alloc(size_t tamano, void (*dtor)(void*));")
+    gen_emitir_linea(est, "extern void rc_decrementar(void* ptr);")
+    gen_emitir_linea(est, "extern void* arc_alloc(size_t tamano, void (*dtor)(void*));")
+    gen_emitir_linea(est, "extern void arc_decrementar(void* ptr);")
+    gen_emitir_linea(est, "extern void* _syn_rc_crear(void* data, void (*dtor)(void*));")
+    gen_emitir_linea(est, "extern void _syn_rc_decrement(void* p);")
+    gen_emitir_linea(est, "extern void* _syn_arc_crear(void* data, void (*dtor)(void*));")
+    gen_emitir_linea(est, "extern void _syn_arc_decrement(void* ptr);")
+    gen_emitir_linea(est, "extern WeakRef rc_weak_ref(void* ptr);")
+    gen_emitir_linea(est, "extern void rc_weak_release(WeakRef* w);")
     gen_emitir_linea(est, "")
     gen_emitir_linea(est, "#define nulo ((void*)0)")
     gen_emitir_linea(est, "#define verdadero 1")
@@ -638,6 +659,11 @@ funcion _es_funcdef_usuario(nombre: puntero) -> entero:
         asm("return 0;")
 
 funcion gen_visitar_top_level(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1

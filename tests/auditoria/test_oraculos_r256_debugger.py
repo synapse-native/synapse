@@ -9,7 +9,10 @@ RAIZ = Path(__file__).resolve().parents[2]
 
 
 def _binario():
+    # r331: en POSIX el .exe de la raiz es un PE de Windows; el binario
+    # nativo del bootstrap se llama synapse_stage2.exe también en Linux.
     for cand in (RAIZ / "dist" / "bin" / "synapse.exe",
+                 RAIZ / "synapse_stage2.exe",
                  RAIZ / "synapse.exe",
                  RAIZ / "synapse_bootstrap.exe"):
         if cand.exists():

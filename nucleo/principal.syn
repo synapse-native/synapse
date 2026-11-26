@@ -646,7 +646,9 @@ funcion generar_etapa(ruta: cadena, salida: cadena, modo_validar: entero) -> Res
         asm("// bootstrap 0 'Error semantico'); el aborto global es ahora seguro y alinea rc.")
         asm("if (_sem_est.hay_error_2_4 || _sem_est.hay_error) {")
         asm("    fprintf(stderr,\"[Synapse] Analisis semantico fallido \\n\");")
-        asm("    struct ResultadoEtapa _e = {1, 10}; return _e; }")
+        // cumple Manual 2 §8.2: paridad de rc con el oraculo de aridad (19 -> 7)
+        asm("    int _rc_sem = (_sem_est.codigo_error == 19) ? 7 : 10;")
+        asm("    struct ResultadoEtapa _e = {1, _rc_sem}; return _e; }")
         asm("fprintf(stderr,\"[Synapse] F8: Analisis completado\\n\");")
         // cumple Manual 8 §4.2 (ME check_cli R1): modo de validación — corta
         // tras el análisis semántico (sintaxis + semántica verificadas) sin

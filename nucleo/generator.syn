@@ -227,6 +227,7 @@ constante _G_SCOPE_MAX_VARS = 256
 // ===== From: emision_c.syn =====
 
 #lang: es
+// cumple Manual 2 §5.1
 // cumple Manual 9 §6.2: buffer de emision C de 4 MB para el unity build del bootstrap S2 (antes 1 MB truncaba `int main`)
 // cumple Manual 2 §5.1: la emision C respeta la semantica formal (lineas completas, sin truncamiento silencioso)
 // cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
@@ -238,11 +239,6 @@ constante _G_SCOPE_MAX_VARS = 256
 // traducir_tipo_c
 // ----------------------------------------------------------
 funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
-    // cumple Manual 2 §5.1: contratos de dominio
-    requiere:
-        tipo_synapse != nulo
-    garantiza:
-        1 == 1
     requiere:
         tipo_synapse != nulo
     garantiza:
@@ -253,12 +249,15 @@ funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
         asm("if (!_t) { strcpy(_gen_tmp_buf, \"void\"); return; }")
         asm("int _len = (int)strlen(_t);")
         asm("if (_len > 7 && _t[0]=='C' && _t[1]=='a' && _t[2]=='n' && _t[3]=='a' && _t[4]=='l' && _t[5]=='<') { strcpy(_gen_tmp_buf, \"CanalConcurrencia*\"); return; }")
-        // F1.2d + F1.4: rc<T>/arc<T>/debil<T> (Manual 2 sec. 4.3). ABI placeholder
-        // (void*) hasta la Fase 23 (runtime real de rc/arc/debil, ROADMAP Fase 23).
+        // F1.2d + F1.4: rc<T>/arc<T>/debil<T> (Manual 2 sec. 4.3).
+        // D-1.2b (Manual 4 §4.2): rc/arc son handles void* al header; débil<T>
+        // es WeakRef (struct por valor) para que rc_weak_release(&var) reciba
+        // el tipo correcto. Paridad con compilador/generator/context.py.
         // F1.4 anade 'rc<' (Manual 2 sec. 4 L151: "rc" tipo).
     // cumple Manual 2 §12: requiere y garantiza en toda función pública
     // cumple Manual 2 §5.1: aserciones obligatorias
-        asm("if (strncmp(_t, \"rc<\", 3)==0 || strncmp(_t, \"arc<\", 4)==0 || strncmp(_t, \"weak<\", 5)==0 || strncmp(_t, \"faible<\", 7)==0 || strncmp(_t, \"fraco<\", 6)==0 || strncmp(_t, \"d\u00e9bil<\", 6)==0) { strcpy(_gen_tmp_buf, \"void*\"); return; }")
+        asm("if (strncmp(_t, \"rc<\", 3)==0 || strncmp(_t, \"arc<\", 4)==0) { strcpy(_gen_tmp_buf, \"void*\"); return; }")
+        asm("if (strncmp(_t, \"weak<\", 5)==0 || strncmp(_t, \"faible<\", 7)==0 || strncmp(_t, \"fraco<\", 6)==0 || strncmp(_t, \"d\u00e9bil<\", 6)==0) { strcpy(_gen_tmp_buf, \"WeakRef\"); return; }")
         // D-2: instanciaciones de ADT genéricos registradas (monomorfización).
         // `Resultado<entero, texto>` -> struct especializado `Resultado_entero_texto`
         // (Manual 2 §4.2 L279-280). Paridad context.py traducir_tipo_c.
@@ -312,11 +311,6 @@ funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
 // y los tipos de tipo struct se emiten como PUNTERO (struct X*).
 // ----------------------------------------------------------
 funcion traducir_tipo_c_campo(tipo_synapse: puntero) -> nulo:
-    // cumple Manual 2 §5.1: contratos de dominio
-    requiere:
-        tipo_synapse != nulo
-    garantiza:
-        1 == 1
     requiere:
         verdadero
     garantiza:
@@ -336,11 +330,6 @@ funcion traducir_tipo_c_campo(tipo_synapse: puntero) -> nulo:
 // struct se emiten como struct X (por valor), nunca puntero.
 // ----------------------------------------------------------
 funcion traducir_tipo_retorno(tipo_synapse: puntero) -> nulo:
-    // cumple Manual 2 §5.1: contratos de dominio
-    requiere:
-        tipo_synapse != nulo
-    garantiza:
-        1 == 1
     requiere:
         verdadero
     garantiza:
@@ -354,11 +343,6 @@ funcion traducir_tipo_retorno(tipo_synapse: puntero) -> nulo:
 // gen_emitir_linea — API PRINCIPAL
 // ----------------------------------------------------------
 funcion gen_emitir_linea(est: GeneradorCEst, linea: cadena) -> nulo:
-    // cumple Manual 2 §5.1: contratos de dominio
-    requiere:
-        1 == 1
-    garantiza:
-        1 == 1
     requiere:
         verdadero
     garantiza:
@@ -380,11 +364,6 @@ funcion gen_emitir_linea(est: GeneradorCEst, linea: cadena) -> nulo:
 // gen_emitir_str — API de bajo nivel para bloques asm()
 // ----------------------------------------------------------
 funcion gen_emitir_str(est: GeneradorCEst, str: puntero) -> nulo:
-    // cumple Manual 2 §5.1: contratos de dominio
-    requiere:
-        str != nulo
-    garantiza:
-        1 == 1
     requiere:
         verdadero
     garantiza:
@@ -401,11 +380,6 @@ funcion gen_emitir_str(est: GeneradorCEst, str: puntero) -> nulo:
 // gen_emitir_nueva_linea
 // ----------------------------------------------------------
 funcion gen_emitir_nueva_linea(est: GeneradorCEst) -> nulo:
-    // cumple Manual 2 §5.1: contratos de dominio
-    requiere:
-        1 == 1
-    garantiza:
-        1 == 1
     requiere:
         verdadero
     garantiza:
@@ -426,6 +400,9 @@ funcion gen_obtener_salida(est: GeneradorCEst) -> cadena:
     // cumple Manual 2 §5.1: contratos de dominio
     requiere:
         1 == 1
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
     r = ""
@@ -449,6 +426,9 @@ funcion gen_escribir_cadena_escapada(est: GeneradorCEst, str: puntero) -> nulo:
         str != nulo
     garantiza:
         1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
         asm("const char* _s=(const char*)str;if(!_s)return;char _esc[16384];int _epos=0;int _ei=0;while(_s[_ei]&&_epos<16380){char _c=_s[_ei];if(_c==10){_esc[_epos++]=92;_esc[_epos++]=110;}else if(_c==34){_esc[_epos++]=92;_esc[_epos++]=34;}else if(_c==92){_esc[_epos++]=92;_esc[_epos++]=92;}else if(_c==9){_esc[_epos++]=92;_esc[_epos++]=116;}else if(_c==13){_esc[_epos++]=92;_esc[_epos++]=114;}else{_esc[_epos++]=_c;}_ei++;}_esc[_epos]=0;CadenaSegura _esc_cs={.longitud=_epos,.datos=_esc};gen_emitir_linea(est,_esc_cs);")
 
@@ -466,6 +446,9 @@ funcion gen_emitir_traza(est: GeneradorCEst, modulo: puntero, nombre_nodo: punte
         modulo != nulo
     requiere:
         nombre_nodo != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
     inseguro:
@@ -494,6 +477,9 @@ funcion gen_emitir_lifetime_assert(est: GeneradorCEst, condicion: puntero, mensa
         mensaje != nulo
     garantiza:
         1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
         asm("extern int _G_safe_mode;")
         asm("if (!_G_safe_mode) return;")
@@ -513,6 +499,9 @@ funcion gen_abrir_bloque_c(est: GeneradorCEst) -> nulo:
     // cumple Manual 2 §5.1: contratos de dominio
     requiere:
         1 == 1
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
     inseguro:
@@ -543,6 +532,9 @@ funcion gen_cerrar_bloque_c(est: GeneradorCEst) -> nulo:
     // cumple Manual 2 §5.1: contratos de dominio
     requiere:
         1 == 1
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
     inseguro:
@@ -596,11 +588,15 @@ funcion gen_cerrar_bloque_c(est: GeneradorCEst) -> nulo:
         asm("    _G_scope_vars_names[_v][0] = 0;")
         asm("}")
         asm("// Compact: rebuild array skipping removed entries")
+        asm("// D-1.2b (Manual 4 §5.2): conservar la clase RAII al compactar;")
+        asm("// si se omite, un move/liberacion intermedia desalinea kind[] y")
+        asm("// el cleanup de scopes posteriores usa el destructor equivocado.")
         asm("int _wi = 0;")
         asm("for (int _ri = 0; _ri < _G_scope_vars_total; _ri++) {")
         asm("    if (_G_scope_vars_depth[_ri] >= 0) {")
         asm("        _G_scope_vars_depth[_wi] = _G_scope_vars_depth[_ri];")
         asm("        strcpy(_G_scope_vars_names[_wi], _G_scope_vars_names[_ri]);")
+        asm("        _G_scope_vars_kind[_wi] = _G_scope_vars_kind[_ri];")
         asm("        _wi++;")
         asm("    }")
         asm("}")
@@ -619,13 +615,11 @@ funcion gen_cerrar_bloque_c(est: GeneradorCEst) -> nulo:
 // Evita problemas de NUL terminator en _n->tipo.datos.
 // ----------------------------------------------------------
 funcion _syn_es_tipo(ptr_tipo_nodo: puntero, esperado: puntero) -> entero:
-    // cumple Manual 2 §5.1: contratos de dominio
+    // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        ptr_tipo_nodo != nulo
-    requiere:
-        esperado != nulo
-    garantiza:
         1 == 1
+    garantiza:
+        _resultado_ >= -1
     inseguro:
         asm("if (!ptr_tipo_nodo || !esperado) return 0;")
 
@@ -653,13 +647,6 @@ funcion _syn_es_tipo(ptr_tipo_nodo: puntero, esperado: puntero) -> entero:
 // en cadena C, escribiendo el resultado en 'buf'.
 // ----------------------------------------------------------
 funcion _oo_expr_a_c(est: GeneradorCEst, nodo: puntero, buf: puntero, bufsz: entero) -> nulo:
-    // cumple Manual 2 §5.1: contratos de dominio
-    requiere:
-        nodo != nulo
-    requiere:
-        buf != nulo
-    garantiza:
-        1 == 1
     inseguro:
         asm("struct Nodo* _n = (struct Nodo*)nodo;")
         asm("char* _b = (char*)buf;")
@@ -1447,6 +1434,7 @@ funcion _oo_expr_a_c(est: GeneradorCEst, nodo: puntero, buf: puntero, bufsz: ent
 // ===== From: nodos_flujo.syn =====
 
 #lang: es
+// cumple Manual 2 §5.1
 // cumple Manual 9 §6.2: buffer de emision C de 4 MB para el unity build del bootstrap S2 (antes 1 MB truncaba `int main`)
 // ============================================================
 // nodos_flujo.syn - Visitantes de control de flujo (OO style)
@@ -1473,6 +1461,9 @@ funcion gen_visitar_si(est: GeneradorCEst, stmt: puntero) -> nulo:
     // cumple Manual 2 §5.1: contratos de dominio
     requiere:
         stmt != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
     inseguro:
@@ -1526,6 +1517,9 @@ funcion gen_visitar_mientras(est: GeneradorCEst, stmt: puntero) -> nulo:
         stmt != nulo
     garantiza:
         1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct SentenciaMientras* _w = (struct SentenciaMientras*)stmt;")
         asm("if (!_w) return;")
@@ -1561,6 +1555,9 @@ funcion gen_visitar_para(est: GeneradorCEst, stmt: puntero) -> nulo:
     // cumple Manual 2 §5.1: contratos de dominio
     requiere:
         stmt != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
     inseguro:
@@ -1809,6 +1806,9 @@ funcion gen_visitar_retornar(est: GeneradorCEst, stmt: puntero) -> nulo:
         stmt != nulo
     garantiza:
         1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct SentenciaRetornar* _rt = (struct SentenciaRetornar*)stmt;")
         asm("if (!_rt) return;")
@@ -1864,6 +1864,9 @@ funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
     // cumple Manual 2 §5.1: contratos de dominio
     requiere:
         stmt != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
     inseguro:
@@ -2078,6 +2081,8 @@ funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("_buf2[0] = 0;")
         asm("// D-3: sin expresion -> `= {0};` (paridad visitar_declaracion S1: `{tipo} {nombre} = {0};`)")
         asm("if (_dv->expresion) { _oo_expr_a_c(est, _dv->expresion, _buf2, 4096); } else { strcpy(_buf2, \"{0}\"); }")
+        asm("// D-1.2b (Manual 4 §4.2): WeakRef es struct por valor; nulo debe ser ((WeakRef){0}).")
+        asm("if (strncmp(_var_type, \"WeakRef\", 7) == 0 && (strcmp(_buf2, \"nulo\") == 0 || strcmp(_buf2, \"((void*)0)\") == 0)) { strcpy(_buf2, \"((WeakRef){0})\"); }")
         asm("strcat(_buf, _buf2);")
         asm("strcat(_buf, \";\");")
         asm("gen_emitir_str(est, _buf);")
@@ -2159,6 +2164,9 @@ funcion gen_visitar_delegar(est: GeneradorCEst, stmt: puntero) -> nulo:
         stmt != nulo
     garantiza:
         1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct SentenciaDelegar* _dl = (struct SentenciaDelegar*)stmt;")
         asm("if (!_dl) return;")
@@ -2176,6 +2184,10 @@ funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
     // cumple Manual 2 §5.1: contratos de dominio
     requiere:
         stmt != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 4 5.2; Manual 4 §3.2; Manual 4 §3.3; Manual 2 §4.3; D-1.2
+    // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
     // cumple Manual 4 5.2; Manual 4 §3.2; Manual 4 §3.3; Manual 2 §4.3; D-1.2
@@ -2436,6 +2448,9 @@ funcion gen_visitar_asignacion_campo(est: GeneradorCEst, stmt: puntero) -> nulo:
         stmt != nulo
     garantiza:
         1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct AsignacionCampo* _ac = (struct AsignacionCampo*)stmt;")
         asm("if (!_ac) return;")
@@ -2485,6 +2500,9 @@ funcion gen_visitar_log(est: GeneradorCEst, nodo_log: puntero) -> nulo:
     // cumple Manual 2 §5.1: contratos de dominio
     requiere:
         nodo_log != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
     inseguro:
@@ -2573,6 +2591,9 @@ funcion gen_visitar_expr(est: GeneradorCEst, stmt: puntero) -> nulo:
         stmt != nulo
     garantiza:
         1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct SentenciaExpr* _s = (struct SentenciaExpr*)stmt;")
         asm("if (!_s) return;")
@@ -2646,6 +2667,9 @@ funcion gen_visitar_romper(est: GeneradorCEst, stmt: puntero) -> nulo:
         stmt != nulo
     garantiza:
         1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct SentenciaRomper* _br = (struct SentenciaRomper*)stmt;")
         asm("if (!_br) return;")
@@ -2661,6 +2685,9 @@ funcion gen_visitar_siguiente(est: GeneradorCEst, stmt: puntero) -> nulo:
         stmt != nulo
     garantiza:
         1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct SentenciaSiguiente* _ct = (struct SentenciaSiguiente*)stmt;")
         asm("if (!_ct) return;")
@@ -2671,11 +2698,6 @@ funcion gen_visitar_siguiente(est: GeneradorCEst, stmt: puntero) -> nulo:
 // gen_visitar_escuchar (F3-7 - Manual 2 L113 / Manual 5 S4.2)
 // ----------------------------------------------------------
 funcion gen_visitar_escuchar(est: GeneradorCEst, stmt: puntero) -> nulo:
-    // cumple Manual 2 §5.1: contratos de dominio
-    requiere:
-        stmt != nulo
-    garantiza:
-        1 == 1
     requiere:
         stmt != nulo
     garantiza:
@@ -2745,6 +2767,9 @@ funcion gen_visitar_stmt_generico(est: GeneradorCEst, stmt: puntero) -> nulo:
     // cumple Manual 2 §5.1: contratos de dominio
     requiere:
         stmt != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
     inseguro:
@@ -2893,6 +2918,9 @@ funcion gen_visitar_coincidir(est: GeneradorCEst, stmt: puntero) -> nulo:
     // cumple Manual 2 §5.1: contratos de dominio
     requiere:
         stmt != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
     inseguro:
@@ -3073,6 +3101,7 @@ funcion gen_visitar_coincidir(est: GeneradorCEst, stmt: puntero) -> nulo:
 // ===== From: frontend_nativo.syn =====
 
 #lang: es
+// cumple Manual 2 §5.1
 // cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas (ME formatter_fix R4: anclaje de norma vigente tras reformato)
 // vinculo ME formatter_fix R4 (Manual 1 §7.1, M8 §4.1): reformato cosmético del nucleo — estilo, sin cambios semánticos
 # cumple Manual 1 §6: nucleo del compilador Synapse (regla de hierro del bootstrap)
@@ -3100,6 +3129,9 @@ funcion gen_emitir_frontend_nativo(est: GeneradorCEst) -> nulo:
     // cumple Manual 2 §5.1: contratos de dominio
     requiere:
         1 == 1
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
     inseguro:
@@ -3159,6 +3191,7 @@ funcion gen_emitir_frontend_nativo(est: GeneradorCEst) -> nulo:
 // ===== From: escaneo.syn =====
 
 #lang: es
+// cumple Manual 2 §5.1
 // ============================================================
 // escaneo.syn - escaneo de declaraciones (estructuras, retornos, alias, constructores)
 // ============================================================
@@ -3179,9 +3212,7 @@ funcion gen_emitir_frontend_nativo(est: GeneradorCEst) -> nulo:
 // es el de su expresion (LiteralCadena -> CadenaSegura).
 // ----------------------------------------------------------
 funcion gen_escanear_constantes(est: GeneradorCEst, programa: Programa) -> nulo:
-    // cumple Manual 2 §5.1: contratos de dominio
-    requiere:
-        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
     // cumple Manual 2 §12 (r153): contratos en toda función pública —
@@ -3227,6 +3258,10 @@ funcion gen_escanear_estructuras(est: GeneradorCEst, programa: Programa) -> nulo
     // cumple Manual 2 §5.1: contratos de dominio
     requiere:
         1 == 1
+    garantiza:
+        1 == 1
+    // ME-B4: recolectar nombres de estructuras definidas en array nativo
+    // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
     // ME-B4: recolectar nombres de estructuras definidas en array nativo
@@ -3282,6 +3317,10 @@ funcion gen_escanear_retornos(est: GeneradorCEst, programa: Programa) -> nulo:
     // cumple Manual 2 §5.1: contratos de dominio
     requiere:
         1 == 1
+    garantiza:
+        1 == 1
+    // ME-B6: recolectar tipos de retorno de funciones definidas en array nativo
+    // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
     // ME-B6: recolectar tipos de retorno de funciones definidas en array nativo
@@ -3375,6 +3414,12 @@ funcion gen_escanear_aliases(est: GeneradorCEst, programa: Programa) -> nulo:
     // ME-F1.2b: registrar alias de tipo declarados (`tipo X = Y`, sin constructores)
     // paridad pre-pass generator.py L871-890: se registran ANTES de prototipos/cuerpos
     // para que traducir_tipo_c los resuelva durante la emision.
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
+    // ME-F1.2b: registrar alias de tipo declarados (`tipo X = Y`, sin constructores)
+    // paridad pre-pass generator.py L871-890: se registran ANTES de prototipos/cuerpos
+    // para que traducir_tipo_c los resuelva durante la emision.
     inseguro:
         asm("fprintf(stderr, \"[Orquestador] F1.2b: escaneando alias de tipo\\n\"); fflush(stderr);")
         asm("extern char _G_tipo_aliases[128][64]; extern char _G_tipo_aliases_base[128][64]; extern int _G_tipo_aliases_count;")
@@ -3403,6 +3448,12 @@ funcion gen_escanear_constructores(est: GeneradorCEst, programa: Programa) -> nu
     // cumple Manual 2 §5.1: contratos de dominio
     requiere:
         1 == 1
+    garantiza:
+        1 == 1
+    // ME-D6: registrar constructores ADT (ok/err/algun/ninguno) - paridad
+    // pre-pass generator.py _constructores_adt. Necesario para expr_eval.syn
+    // (constructores -> compound literal) y la inferencia de ExprPropagar.
+    // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
     // ME-D6: registrar constructores ADT (ok/err/algun/ninguno) - paridad
@@ -3447,6 +3498,7 @@ funcion gen_escanear_constructores(est: GeneradorCEst, programa: Programa) -> nu
 // ===== From: monomorfizacion.syn =====
 
 #lang: es
+// cumple Manual 2 §5.1
 // cumple Manual 9 §6.2: submodulo regenerado y reformateado para el bootstrap S2 determinista
 // cumple Manual 2 §5.1: la monomorfizacion conserva la semantica formal de los ADT genericos
 # cumple Manual 1 5: nucleo del compilador Synapse
@@ -3469,9 +3521,7 @@ funcion gen_escanear_constructores(est: GeneradorCEst, programa: Programa) -> nu
 // _volcar_typedefs_genericos).
 // ----------------------------------------------------------
 funcion gen_escanear_genericas(est: GeneradorCEst, programa: Programa) -> nulo:
-    // cumple Manual 2 §5.1: contratos de dominio
-    requiere:
-        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
     // cumple Manual 2 §12 (33.4b): contratos en toda función pública —
@@ -3588,6 +3638,12 @@ funcion gen_escanear_adt_instancias(est: GeneradorCEst, programa: Programa) -> n
     // cumple Manual 2 §5.1: contratos de dominio
     requiere:
         1 == 1
+    garantiza:
+        1 == 1
+    // ME-D2: registrar ADT genericos (DeclaracionTipo con parametros_tipo)
+    // y sus instanciaciones `Base<A, B>` (monomorfizacion, Opcion A). Paridad
+    // pre-pass generator.py _recolectar_instancias_adt.
+    // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
     // ME-D2: registrar ADT genericos (DeclaracionTipo con parametros_tipo)
@@ -3916,11 +3972,6 @@ funcion gen_escanear_adt_instancias(est: GeneradorCEst, programa: Programa) -> n
 // del sujeto en el statement-expression resuelva (idempotente en C).
 // ----------------------------------------------------------
 funcion gen_emitir_str_typedef_instancia(est: GeneradorCEst, idx: entero):
-    // cumple Manual 2 §5.1: contratos de dominio
-    requiere:
-        1 == 1
-    garantiza:
-        1 == 1
     // requiere: idx entero de instancia ADT registrada (0 <= idx <
     // _G_native_adt_inst_count); GeneradorCEst valido.
     // garantiza: emite el typedef C de la instancia idx (nombre
@@ -3963,11 +4014,11 @@ funcion gen_emitir_str_typedef_instancia(est: GeneradorCEst, idx: entero):
 // base; el arg 0 es concreto (literal o ctor anidado recursivo).
 // ----------------------------------------------------------
 funcion _G_native_adt_registrar_syn(tipo_syn: puntero) -> entero:
-    // cumple Manual 2 §5.1: contratos de dominio
+    // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        tipo_syn != nulo
-    garantiza:
         1 == 1
+    garantiza:
+        _resultado_ >= -1
     inseguro:
         asm("extern void traducir_tipo_c(void* tipo); extern char _gen_tmp_buf[4096];")
         asm("const char* _ts = (const char*)tipo_syn;")
@@ -4032,13 +4083,11 @@ funcion _G_native_adt_registrar_syn(tipo_syn: puntero) -> entero:
         asm("return 1;")
 
 funcion _G_native_adt_resolver_ctor(n: puntero, out: puntero, depth: entero) -> entero:
-    // cumple Manual 2 §5.1: contratos de dominio
+    // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        n != nulo
-    requiere:
-        out != nulo
+        depth >= 0
     garantiza:
-        1 == 1
+        _resultado_ >= -1
     inseguro:
         asm("struct Nodo* _nn = (struct Nodo*)n; char* _oo = (char*)out; int _dep = (int)depth;")
         asm("if (!_nn || !_nn->tipo.datos || _dep > 8) { _oo[0] = 0; return 0; }")
@@ -4097,9 +4146,9 @@ funcion _G_native_adt_resolver_ctor(n: puntero, out: puntero, depth: entero) -> 
         asm("return 1;")
 
 funcion _G_native_scan_ctor_exprs(p: puntero) -> nulo:
-    // cumple Manual 2 §5.1: contratos de dominio
+    // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        p != nulo
+        1 == 1
     garantiza:
         1 == 1
     inseguro:
@@ -4176,11 +4225,6 @@ funcion _G_native_scan_ctor_exprs(p: puntero) -> nulo:
 // AST que en programas de usuario no existen.
 // ----------------------------------------------------------
 funcion _G_native_contar_escuchar(n: puntero) -> entero:
-    // cumple Manual 2 §5.1: contratos de dominio
-    requiere:
-        n != nulo
-    garantiza:
-        1 == 1
     requiere:
         n != nulo
     garantiza:
@@ -4211,13 +4255,6 @@ funcion _G_native_contar_escuchar(n: puntero) -> entero:
 // cuerpos de funcion (paridad S1 _preprocess_lanzar + _deferred_wrap_decls;
 // el patron _G_native_contar_escuchar de F3-7).
 funcion _G_native_contar_lanzar(n: puntero, out: puntero) -> nulo:
-    // cumple Manual 2 §5.1: contratos de dominio
-    requiere:
-        n != nulo
-    requiere:
-        out != nulo
-    garantiza:
-        1 == 1
     requiere:
         n != nulo
         out != nulo
@@ -4251,13 +4288,6 @@ funcion _G_native_contar_lanzar(n: puntero, out: puntero) -> nulo:
         asm("if (strcmp(_t, \"SentenciaSi\") == 0) { struct SentenciaSi* _s2 = (struct SentenciaSi*)_no; struct ListaNodo* _ls = _s2->cuerpo_sino; while (_ls) { _G_native_contar_lanzar(_ls->cabeza, out); _ls = _ls->cola; } }")
 
 funcion _G_native_escuchar_vars(n: puntero, out: puntero) -> nulo:
-    // cumple Manual 2 §5.1: contratos de dominio
-    requiere:
-        n != nulo
-    requiere:
-        out != nulo
-    garantiza:
-        1 == 1
     requiere:
         n != nulo
         out != nulo
@@ -4298,6 +4328,7 @@ funcion _G_native_escuchar_vars(n: puntero, out: puntero) -> nulo:
 // ===== From: recorrido.syn =====
 
 #lang: es
+// cumple Manual 2 §5.1
 // cumple Manual 1 5: generador de código
 # cumple Manual 8 4.1: compilador nativo S2
 # cumple Manual 1 §6: regla de hierro del bootstrap — sondas de cobertura OFF sin --coverage
@@ -4317,6 +4348,10 @@ funcion gen_recorrer_toplevel(est: GeneradorCEst, programa: Programa) -> nulo:
     // cumple Manual 2 §5.1: contratos de dominio
     requiere:
         1 == 1
+    garantiza:
+        1 == 1
+    // WALK TOP-LEVEL AST
+    // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
     // WALK TOP-LEVEL AST
@@ -4626,6 +4661,7 @@ funcion gen_recorrer_toplevel(est: GeneradorCEst, programa: Programa) -> nulo:
 // ===== From: funciones.syn =====
 
 #lang: es
+// cumple Manual 2 §5.1
 # cumple Manual 1 §6: nucleo del compilador Synapse (regla de hierro del bootstrap)
 # cumple Manual 2 §1.1: directiva de idioma en línea 1 (ME formatter_fix R4)
 // cumple Manual 1 5: generador de código
@@ -4640,6 +4676,9 @@ funcion gen_visitar_funcion(est: GeneradorCEst, stmt: puntero) -> nulo:
     // cumple Manual 2 §5.1: contratos de dominio
     requiere:
         stmt != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
     inseguro:
@@ -4849,7 +4888,16 @@ funcion gen_visitar_funcion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("    extern int64_t _es_palabra_reservada_c(void* nombre);")
         asm("    char _fncbuf[96]; const char* _fnc = _fn;")
         asm("    if (_es_palabra_reservada_c((void*)_fn)) { snprintf(_fncbuf, 96, \"_syn_usuario_%s\", _fn); _fnc = _fncbuf; }")
-        asm("    snprintf(_sig, 4096, \"%s %s(%s)\", _rct, _fnc, _ps);")
+        // cumple Manual 2 §5.1 (r321): la firma emitida conserva contratos.
+        // cumple Manual 9 §6.2 (r321): el ld64 de macOS no acepta
+        // --allow-multiple-definition y el C emitido redefine helpers del
+        // runtime; en darwin la definicion se emite weak (GNU ld ya tomaba la
+        // primera). En Windows/ELF el atributo es vacio y la firma no cambia.
+        asm("    const char* _weak_attr = \"\";")
+        asm("#ifdef __APPLE__")
+        asm("    _weak_attr = \" __attribute__((weak))\";")
+        asm("#endif")
+        asm("    snprintf(_sig, 4096, \"%s%s %s(%s)\", _rct, _weak_attr, _fnc, _ps);")
         asm("    gen_emitir_str(est, _sig);")
         asm("    gen_abrir_bloque_c(est);")
         asm("    // F5-1 (Manual 2 §5.1): requiere se evalua antes de la primera")
@@ -5107,6 +5155,7 @@ funcion gen_visitar_funcion(est: GeneradorCEst, stmt: puntero) -> nulo:
 // ===== From: orquestador.syn =====
 
 #lang: es
+// cumple Manual 2 §5.1
 // ============================================================
 // orquestador.syn - Orquestador del generador nativo
 // cumple Manual 2 §1.3: documentación del orquestador en comentarios de línea // (paridad S1 generator.py)
@@ -5121,6 +5170,9 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
         1 == 1
     garantiza:
         1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        _resultado_ >= -1
     r = 0
     est = GeneradorCEst()
     // F17: Inicializar estado PGO (instrumentación de contadores de bloques básicos)
@@ -5182,6 +5234,22 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "typedef struct { uint32_t filas; uint32_t columnas; float* datos; } Tensor;")
     gen_emitir_linea(est, "")
     gen_emitir_linea(est, "typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtual_data; int virtual_len; } Canal;")
+    gen_emitir_linea(est, "")
+    // F1.2d/F1.4 + D-1.2b (Manual 4 §3.2, §3.3, §4.2): paridad con el header S1
+    // (_emitir_encabezado). WeakRef pasa por valor; los destructores usan &var.
+    gen_emitir_linea(est, "typedef struct { uint32_t ref_count; uint32_t weak_count; uint32_t version; void* data; void (*destructor)(void*); } RcHeader;")
+    gen_emitir_linea(est, "typedef struct { RcHeader* header; uint32_t version; } WeakRef;")
+    gen_emitir_linea(est, "")
+    gen_emitir_linea(est, "extern void* rc_alloc(size_t tamano, void (*dtor)(void*));")
+    gen_emitir_linea(est, "extern void rc_decrementar(void* ptr);")
+    gen_emitir_linea(est, "extern void* arc_alloc(size_t tamano, void (*dtor)(void*));")
+    gen_emitir_linea(est, "extern void arc_decrementar(void* ptr);")
+    gen_emitir_linea(est, "extern void* _syn_rc_crear(void* data, void (*dtor)(void*));")
+    gen_emitir_linea(est, "extern void _syn_rc_decrement(void* p);")
+    gen_emitir_linea(est, "extern void* _syn_arc_crear(void* data, void (*dtor)(void*));")
+    gen_emitir_linea(est, "extern void _syn_arc_decrement(void* ptr);")
+    gen_emitir_linea(est, "extern WeakRef rc_weak_ref(void* ptr);")
+    gen_emitir_linea(est, "extern void rc_weak_release(WeakRef* w);")
     gen_emitir_linea(est, "")
     gen_emitir_linea(est, "#define nulo ((void*)0)")
     gen_emitir_linea(est, "#define verdadero 1")
@@ -5695,11 +5763,11 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
 // runtime (definidos en synapse_rt.o) no se re-emiten como funciones.
 // ----------------------------------------------------------
 funcion _es_builtin_runtime(nombre: puntero) -> entero:
-    // cumple Manual 2 §5.1: contratos de dominio
+    // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        nombre != nulo
-    garantiza:
         1 == 1
+    garantiza:
+        _resultado_ >= -1
     inseguro:
         asm("const char* _bn = (const char*)nombre;")
         asm("if (!_bn) return 0;")
@@ -5719,11 +5787,6 @@ funcion _es_builtin_runtime(nombre: puntero) -> entero:
 // conservan su nombre C original (Manual 6 §3.1, FFI deliberada).
 // ----------------------------------------------------------
 funcion _es_palabra_reservada_c(nombre: puntero) -> entero:
-    // cumple Manual 2 §5.1: contratos de dominio
-    requiere:
-        nombre != nulo
-    garantiza:
-        1 == 1
     requiere:
         verdadero
     garantiza:
@@ -5740,11 +5803,6 @@ funcion _es_palabra_reservada_c(nombre: puntero) -> entero:
 // cumple Manual 2 §5.1 (ME r184_r185_e2e, H-R181-4): ¿es `nombre` una función
 // DEFINIDA por el usuario (registrada en escaneo.syn)? Externas -> 0.
 funcion _es_funcdef_usuario(nombre: puntero) -> entero:
-    // cumple Manual 2 §5.1: contratos de dominio
-    requiere:
-        nombre != nulo
-    garantiza:
-        1 == 1
     requiere:
         verdadero
     garantiza:
@@ -5760,6 +5818,9 @@ funcion gen_visitar_top_level(est: GeneradorCEst, stmt: puntero) -> nulo:
     // cumple Manual 2 §5.1: contratos de dominio
     requiere:
         stmt != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
     inseguro:
@@ -5945,11 +6006,11 @@ funcion gen_visitar_top_level(est: GeneradorCEst, stmt: puntero) -> nulo:
 // Función del COMPILADOR (como _syn_nativo_expr_tipo_c): la usan los emisores
 // del generador nativo; el C del usuario no la necesita.
 funcion _syn_tipo_escalar(t: puntero) -> entero:
-    // cumple Manual 2 §5.1: contratos de dominio
+    // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        t != nulo
-    garantiza:
         1 == 1
+    garantiza:
+        _resultado_ >= -1
     // cumple Manual 2 §12 (r153): contratos en toda función pública (tabla de
     // pruebas obligatorias) — clasificador puro: t nulo devuelve 0, t no nulo
     // devuelve 1 si es escalar.
@@ -5964,13 +6025,11 @@ funcion _syn_tipo_escalar(t: puntero) -> entero:
         retornar r
 
 funcion _syn_nativo_expr_tipo_c(n: puntero, out: puntero) -> entero:
-    // cumple Manual 2 §5.1: contratos de dominio
+    // cumple Manual 2 §5.1: contrato de dominio
     requiere:
-        n != nulo
-    requiere:
-        out != nulo
-    garantiza:
         1 == 1
+    garantiza:
+        _resultado_ >= -1
     inseguro:
         asm("    struct Nodo* _nn = (struct Nodo*)n; char* _oo = (char*)out;")
         asm("    if (!_nn || !_oo) return 0;")

@@ -21,12 +21,15 @@ funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
         asm("if (!_t) { strcpy(_gen_tmp_buf, \"void\"); return; }")
         asm("int _len = (int)strlen(_t);")
         asm("if (_len > 7 && _t[0]=='C' && _t[1]=='a' && _t[2]=='n' && _t[3]=='a' && _t[4]=='l' && _t[5]=='<') { strcpy(_gen_tmp_buf, \"CanalConcurrencia*\"); return; }")
-        // F1.2d + F1.4: rc<T>/arc<T>/debil<T> (Manual 2 sec. 4.3). ABI placeholder
-        // (void*) hasta la Fase 23 (runtime real de rc/arc/debil, ROADMAP Fase 23).
+        // F1.2d + F1.4: rc<T>/arc<T>/debil<T> (Manual 2 sec. 4.3).
+        // D-1.2b (Manual 4 §4.2): rc/arc son handles void* al header; débil<T>
+        // es WeakRef (struct por valor) para que rc_weak_release(&var) reciba
+        // el tipo correcto. Paridad con compilador/generator/context.py.
         // F1.4 anade 'rc<' (Manual 2 sec. 4 L151: "rc" tipo).
     // cumple Manual 2 §12: requiere y garantiza en toda función pública
     // cumple Manual 2 §5.1: aserciones obligatorias
-        asm("if (strncmp(_t, \"rc<\", 3)==0 || strncmp(_t, \"arc<\", 4)==0 || strncmp(_t, \"weak<\", 5)==0 || strncmp(_t, \"faible<\", 7)==0 || strncmp(_t, \"fraco<\", 6)==0 || strncmp(_t, \"d\u00e9bil<\", 6)==0) { strcpy(_gen_tmp_buf, \"void*\"); return; }")
+        asm("if (strncmp(_t, \"rc<\", 3)==0 || strncmp(_t, \"arc<\", 4)==0) { strcpy(_gen_tmp_buf, \"void*\"); return; }")
+        asm("if (strncmp(_t, \"weak<\", 5)==0 || strncmp(_t, \"faible<\", 7)==0 || strncmp(_t, \"fraco<\", 6)==0 || strncmp(_t, \"d\u00e9bil<\", 6)==0) { strcpy(_gen_tmp_buf, \"WeakRef\"); return; }")
         // D-2: instanciaciones de ADT genéricos registradas (monomorfización).
         // `Resultado<entero, texto>` -> struct especializado `Resultado_entero_texto`
         // (Manual 2 §4.2 L279-280). Paridad context.py traducir_tipo_c.
@@ -166,6 +169,11 @@ funcion gen_emitir_nueva_linea(est: GeneradorCEst) -> nulo:
 // gen_obtener_salida
 // ----------------------------------------------------------
 funcion gen_obtener_salida(est: GeneradorCEst) -> cadena:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
@@ -185,6 +193,11 @@ funcion gen_obtener_salida(est: GeneradorCEst) -> cadena:
 // gen_escribir_cadena_escapada
 // ----------------------------------------------------------
 funcion gen_escribir_cadena_escapada(est: GeneradorCEst, str: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        str != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
@@ -200,6 +213,13 @@ funcion gen_escribir_cadena_escapada(est: GeneradorCEst, str: puntero) -> nulo:
 // Emite: /* [Traza: modulo.syn - NombreNodo] */
 // ----------------------------------------------------------
 funcion gen_emitir_traza(est: GeneradorCEst, modulo: puntero, nombre_nodo: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        modulo != nulo
+    requiere:
+        nombre_nodo != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
@@ -222,6 +242,13 @@ funcion gen_emitir_traza(est: GeneradorCEst, modulo: puntero, nombre_nodo: punte
 // Formato: assert(condition && "mensaje");
 // ----------------------------------------------------------
 funcion gen_emitir_lifetime_assert(est: GeneradorCEst, condicion: puntero, mensaje: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        condicion != nulo
+    requiere:
+        mensaje != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
@@ -241,6 +268,11 @@ funcion gen_emitir_lifetime_assert(est: GeneradorCEst, condicion: puntero, mensa
 // M22.2: Incrementa scope_depth global y emite marcador de entrada.
 // ----------------------------------------------------------
 funcion gen_abrir_bloque_c(est: GeneradorCEst) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
@@ -269,6 +301,11 @@ funcion gen_abrir_bloque_c(est: GeneradorCEst) -> nulo:
 // NOTA: La indentacion la gestiona el visitante llamante.
 // ----------------------------------------------------------
 funcion gen_cerrar_bloque_c(est: GeneradorCEst) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
@@ -323,11 +360,15 @@ funcion gen_cerrar_bloque_c(est: GeneradorCEst) -> nulo:
         asm("    _G_scope_vars_names[_v][0] = 0;")
         asm("}")
         asm("// Compact: rebuild array skipping removed entries")
+        asm("// D-1.2b (Manual 4 §5.2): conservar la clase RAII al compactar;")
+        asm("// si se omite, un move/liberacion intermedia desalinea kind[] y")
+        asm("// el cleanup de scopes posteriores usa el destructor equivocado.")
         asm("int _wi = 0;")
         asm("for (int _ri = 0; _ri < _G_scope_vars_total; _ri++) {")
         asm("    if (_G_scope_vars_depth[_ri] >= 0) {")
         asm("        _G_scope_vars_depth[_wi] = _G_scope_vars_depth[_ri];")
         asm("        strcpy(_G_scope_vars_names[_wi], _G_scope_vars_names[_ri]);")
+        asm("        _G_scope_vars_kind[_wi] = _G_scope_vars_kind[_ri];")
         asm("        _wi++;")
         asm("    }")
         asm("}")

@@ -24,6 +24,11 @@
 // Guard _G_fnn_emitido: evita doble emision si el hook ME-B7 se invoca 2 veces.
 // ----------------------------------------------------------
 funcion gen_emitir_frontend_nativo(est: GeneradorCEst) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1

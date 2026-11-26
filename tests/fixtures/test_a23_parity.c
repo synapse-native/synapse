@@ -217,7 +217,7 @@ typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Pro
 
 extern char _gen_tmp_buf[4096];
 
-extern char _G_emit_buf[1048576];
+extern char _G_emit_buf[4194304];
 extern int _G_emit_pos;
 extern FILE* _G_fp;
 
@@ -404,7 +404,7 @@ __attribute__((weak)) void _simd_detectar(void) { }
 
 char _gen_tmp_buf[4096];
 
-char _G_emit_buf[1048576];
+char _G_emit_buf[4194304];
 int _G_emit_pos;
 FILE* _G_fp;
 int _G_scope_depth;

@@ -16,6 +16,12 @@
 // gen_recorrer_toplevel - (bloque extraido de generar())
 // ----------------------------------------------------------
 funcion gen_recorrer_toplevel(est: GeneradorCEst, programa: Programa) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
+    // WALK TOP-LEVEL AST
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1

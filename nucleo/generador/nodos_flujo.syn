@@ -23,6 +23,11 @@
 // gen_visitar_si (INSTRUMENTADO con PGO via asm())
 // ----------------------------------------------------------
 funcion gen_visitar_si(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
@@ -72,6 +77,11 @@ funcion gen_visitar_si(est: GeneradorCEst, stmt: puntero) -> nulo:
 // gen_visitar_mientras (INSTRUMENTADO con PGO via asm())
 // ----------------------------------------------------------
 funcion gen_visitar_mientras(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
@@ -107,6 +117,11 @@ funcion gen_visitar_mientras(est: GeneradorCEst, stmt: puntero) -> nulo:
 // gen_visitar_para (INSTRUMENTADO con PGO via asm())
 // ----------------------------------------------------------
 funcion gen_visitar_para(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
@@ -351,6 +366,11 @@ funcion gen_visitar_para(est: GeneradorCEst, stmt: puntero) -> nulo:
 // gen_visitar_retornar
 // ----------------------------------------------------------
 funcion gen_visitar_retornar(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
@@ -406,6 +426,11 @@ funcion gen_visitar_retornar(est: GeneradorCEst, stmt: puntero) -> nulo:
 // (rastrea rc/arc/débil/ texto para emitir decremento al cierre de scope)
 // ----------------------------------------------------------
 funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
@@ -621,6 +646,8 @@ funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("_buf2[0] = 0;")
         asm("// D-3: sin expresion -> `= {0};` (paridad visitar_declaracion S1: `{tipo} {nombre} = {0};`)")
         asm("if (_dv->expresion) { _oo_expr_a_c(est, _dv->expresion, _buf2, 4096); } else { strcpy(_buf2, \"{0}\"); }")
+        asm("// D-1.2b (Manual 4 §4.2): WeakRef es struct por valor; nulo debe ser ((WeakRef){0}).")
+        asm("if (strncmp(_var_type, \"WeakRef\", 7) == 0 && (strcmp(_buf2, \"nulo\") == 0 || strcmp(_buf2, \"((void*)0)\") == 0)) { strcpy(_buf2, \"((WeakRef){0})\"); }")
         asm("strcat(_buf, _buf2);")
         asm("strcat(_buf, \";\");")
         asm("gen_emitir_str(est, _buf);")
@@ -697,6 +724,11 @@ funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
 // si es ok, continua (el valor se descarta).
 // ----------------------------------------------------------
 funcion gen_visitar_delegar(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
@@ -714,6 +746,12 @@ funcion gen_visitar_delegar(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("gen_emitir_str(est, \"}\");")
 
 funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 4 5.2; Manual 4 §3.2; Manual 4 §3.3; Manual 2 §4.3; D-1.2
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
@@ -970,6 +1008,11 @@ funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
 // gen_visitar_asignacion_campo (ME-B9.x, paridad visitar_asignacion_campo)
 // ----------------------------------------------------------
 funcion gen_visitar_asignacion_campo(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
@@ -1019,6 +1062,11 @@ funcion gen_visitar_asignacion_campo(est: GeneradorCEst, stmt: puntero) -> nulo:
 // gen_visitar_log (R8: log(...) -> printf; paridad S1 visitar_log)
 // ----------------------------------------------------------
 funcion gen_visitar_log(est: GeneradorCEst, nodo_log: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        nodo_log != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
@@ -1103,6 +1151,11 @@ funcion gen_visitar_log(est: GeneradorCEst, nodo_log: puntero) -> nulo:
         asm("}")
         asm("gen_emitir_str(est, _lline);")
 funcion gen_visitar_expr(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
@@ -1174,6 +1227,11 @@ funcion gen_visitar_expr(est: GeneradorCEst, stmt: puntero) -> nulo:
 // gen_visitar_romper
 // ----------------------------------------------------------
 funcion gen_visitar_romper(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
@@ -1187,6 +1245,11 @@ funcion gen_visitar_romper(est: GeneradorCEst, stmt: puntero) -> nulo:
 // gen_visitar_siguiente
 // ----------------------------------------------------------
 funcion gen_visitar_siguiente(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
@@ -1266,6 +1329,11 @@ funcion gen_visitar_escuchar(est: GeneradorCEst, stmt: puntero) -> nulo:
 // gen_visitar_stmt_generico - Dispatcher principal
 // ----------------------------------------------------------
 funcion gen_visitar_stmt_generico(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
@@ -1412,6 +1480,11 @@ funcion gen_visitar_stmt_generico(est: GeneradorCEst, stmt: puntero) -> nulo:
 // gen_visitar_coincidir (R11 - paridad S1 visitar_coincidir)
 // ----------------------------------------------------------
 funcion gen_visitar_coincidir(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1

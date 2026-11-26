@@ -137,6 +137,10 @@ estructura AnalizadorSemanticoEst:
     en_coincidir: booleano
     dentro_de_inseguro: booleano
     hay_error: booleano
+    // cumple Manual 2 §5.1: codigo_error observable para paridad de rc
+    // r331: primer codigo de error semantico (19 = argumentos invalidos) para
+    // que el pipeline nativo pueda mapear el rc del proceso con paridad de oraculo.
+    codigo_error: entero
     // 2.4 nativa (Fase 2): flag especifico de la validacion de instanciaciones
     // de ADT (aridad/base/argumentos). Separa la validacion 2.4 del flag global
     // hay_error (que el pipeline nativo pre-existente no aborta, paridad S1).
@@ -195,6 +199,9 @@ funcion sem_error(est: AnalizadorSemanticoEst, codigo: entero, idx_nodo: entero,
         asm("linea = (idx_nodo >= 0 && idx_nodo < est->total_nodos) ? est->nodos[idx_nodo].linea : 0")
         asm("columna = (idx_nodo >= 0 && idx_nodo < est->total_nodos) ? est->nodos[idx_nodo].columna : 0")
     est.hay_error = verdadero
+    // cumple Manual 2 §8.1: trazabilidad del primer diagnostico semantico
+    si est.codigo_error == 0:
+        est.codigo_error = codigo
     // Checklist 2.3 (Manual 2 §10.1): diagnostico observable con paridad S1
     // ("[Synapse] Error semantico (linea L, columna C): mensaje"). El S1 los
     // imprime; el nativo los tragaba (solo marcaba hay_error). Se excluye

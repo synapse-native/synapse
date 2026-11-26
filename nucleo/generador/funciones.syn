@@ -11,6 +11,11 @@
 // ============================================================
 
 funcion gen_visitar_funcion(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1

@@ -135,6 +135,16 @@ externo funcion _syn_texto_mayusculas(texto: texto) -> texto
 externo funcion _syn_texto_minusculas(texto: texto) -> texto
 externo funcion _syn_texto_longitud(texto: texto) -> entero
 externo funcion _syn_strcmp(a: texto, b: texto) -> entero
+
+// cumple Manual 8 §1.7.3: comparación de texto usada por el LSP nativo
+// cumple Manual 2 §5.1: contrato de dominio (restaurada en r331; había sido
+// eliminada en 8a2f82b creyéndola duplicada de un builtin inexistente)
+funcion cmp_texto(a: texto, b: texto) -> entero:
+    requiere:
+        a.longitud >= 0 y b.longitud >= 0
+    garantiza:
+        _resultado_ == 0 o _resultado_ < 0 o _resultado_ > 0
+    retornar _syn_strcmp(a, b)
 externo funcion _syn_strlen(a: texto) -> entero
 externo funcion _syn_strstr(texto: texto, patron: texto) -> entero
 externo funcion _syn_strchr(texto: texto, caracter: entero) -> entero

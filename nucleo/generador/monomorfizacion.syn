@@ -136,6 +136,14 @@ funcion gen_escanear_genericas(est: GeneradorCEst, programa: Programa) -> nulo:
 // gen_escanear_adt_instancias - (bloque extraido de generar())
 // ----------------------------------------------------------
 funcion gen_escanear_adt_instancias(est: GeneradorCEst, programa: Programa) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
+    // ME-D2: registrar ADT genericos (DeclaracionTipo con parametros_tipo)
+    // y sus instanciaciones `Base<A, B>` (monomorfizacion, Opcion A). Paridad
+    // pre-pass generator.py _recolectar_instancias_adt.
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1

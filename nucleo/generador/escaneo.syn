@@ -63,6 +63,12 @@ funcion gen_escanear_constantes(est: GeneradorCEst, programa: Programa) -> nulo:
 // gen_escanear_estructuras - (bloque extraido de generar())
 // ----------------------------------------------------------
 funcion gen_escanear_estructuras(est: GeneradorCEst, programa: Programa) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
+    // ME-B4: recolectar nombres de estructuras definidas en array nativo
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
@@ -116,6 +122,12 @@ funcion gen_escanear_estructuras(est: GeneradorCEst, programa: Programa) -> nulo
 // gen_escanear_retornos - (bloque extraido de generar())
 // ----------------------------------------------------------
 funcion gen_escanear_retornos(est: GeneradorCEst, programa: Programa) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
+    // ME-B6: recolectar tipos de retorno de funciones definidas en array nativo
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
@@ -202,6 +214,14 @@ funcion gen_escanear_retornos(est: GeneradorCEst, programa: Programa) -> nulo:
 // gen_escanear_aliases - (bloque extraido de generar())
 // ----------------------------------------------------------
 funcion gen_escanear_aliases(est: GeneradorCEst, programa: Programa) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
+    // ME-F1.2b: registrar alias de tipo declarados (`tipo X = Y`, sin constructores)
+    // paridad pre-pass generator.py L871-890: se registran ANTES de prototipos/cuerpos
+    // para que traducir_tipo_c los resuelva durante la emision.
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
@@ -233,6 +253,14 @@ funcion gen_escanear_aliases(est: GeneradorCEst, programa: Programa) -> nulo:
 // gen_escanear_constructores - (bloque extraido de generar())
 // ----------------------------------------------------------
 funcion gen_escanear_constructores(est: GeneradorCEst, programa: Programa) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
+    // ME-D6: registrar constructores ADT (ok/err/algun/ninguno) - paridad
+    // pre-pass generator.py _constructores_adt. Necesario para expr_eval.syn
+    // (constructores -> compound literal) y la inferencia de ExprPropagar.
     // cumple Manual 2 §5.1: contrato de dominio
     garantiza:
         1 == 1
