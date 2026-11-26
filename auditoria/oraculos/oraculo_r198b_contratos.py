@@ -7,7 +7,7 @@
 import subprocess, sys, os
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-PY = os.path.join(RAIZ, ".venv", "Scripts", "python.exe")
+PY = sys.executable
 FALLOS = []
 
 def chequeo(nombre, rc, salida=""):

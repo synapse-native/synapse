@@ -270,8 +270,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="ejecuta las suites y cronometra passed/skipped/failed")
     parser.add_argument("--suite", action="append", default=None,
                         help="limita --medir a una suite (repetible)")
-    parser.add_argument("--jobs", default="auto",
-                        help="workers xdist por suite (default auto; 0 = secuencial)")
+    parser.add_argument("--jobs", default="0",
+                        help="workers xdist por suite (default 0 = secuencial; 'auto' en CI)")
     parser.add_argument("--comparar", action="store_true",
                         help="exige los mismos recuentos que la línea base medida")
     parser.add_argument("--guardar-medido", action="store_true",

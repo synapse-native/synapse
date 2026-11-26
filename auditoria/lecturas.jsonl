@@ -1064,3 +1064,4 @@
 {"fecha": "2026-11-26", "archivos": ["compilador/generator/generator.py"], "cita": "Manual 1 §1.1", "puntos": "Synapse es el lenguaje nativo compilado y de grado de sistemas; el codegen debe emitir C verificable y sin declaraciones implícitas"}
 {"fecha": "2026-11-26", "archivos": ["compilador/generator/emit_expressions.py"], "cita": "Manual 1 §1.1", "puntos": "Synapse es el lenguaje nativo compilado y de grado de sistemas; el codegen debe emitir C verificable y sin declaraciones implícitas"}
 {"fecha": "2026-11-26", "archivos": ["std/texto.syn"], "cita": "Manual 2 §5.1", "puntos": "requiere se evalua antes de la primera instruccion; garantiza antes de cada retornar; strcpy_f restaurado con contrato"}
+{"fecha": "2026-11-26", "archivos": ["validate_synapse_rag.c"], "cita": "Manual 1 §1.1", "puntos": "Synapse es el lenguaje nativo compilado; el validador RAG es herramienta de soporte del repositorio"}
