@@ -124,10 +124,11 @@ jobs:
           else
             # El paquete Chocolatey de WABT no está disponible de forma estable;
             # se usa el release oficial Windows x64.
-            ASSET_URL="$(curl -s https://api.github.com/repos/WebAssembly/wabt/releases/latest | grep -o 'https://[^\"]*windows[^\"]*\.zip' | head -1)"
-            curl -L -o wabt.zip "$ASSET_URL"
-            unzip -o wabt.zip -d /c/wabt
-            WABT_BIN="$(find /c/wabt -type d -name bin | head -1)"
+            ASSET_URL="$(python -c "import json,urllib.request; d=json.load(urllib.request.urlopen('https://api.github.com/repos/WebAssembly/wabt/releases/latest')); print(next(a['browser_download_url'] for a in d['assets'] if 'windows' in a['name'].lower() and a['name'].endswith('.tar.gz')))")"
+            curl -L -o wabt.tar.gz "$ASSET_URL"
+            mkdir -p /c/wabt
+            tar -xzf wabt.tar.gz -C /c/wabt
+            WABT_BIN="$(dirname "$(find /c/wabt -type f -name wat2wasm.exe | head -1)")"
             echo "$WABT_BIN" >> "$GITHUB_PATH"
           fi
 
