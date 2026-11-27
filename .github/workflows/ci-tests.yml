@@ -124,10 +124,11 @@ jobs:
           else
             # El paquete Chocolatey de WABT no está disponible de forma estable;
             # se usa el release oficial Windows x64.
-            curl -L -o wabt.zip \
-              https://github.com/WebAssembly/wabt/releases/download/1.0.36/wabt-1.0.36-windows-x64.zip
+            ASSET_URL="$(curl -s https://api.github.com/repos/WebAssembly/wabt/releases/latest | grep -o 'https://[^\"]*windows[^\"]*\.zip' | head -1)"
+            curl -L -o wabt.zip "$ASSET_URL"
             unzip -o wabt.zip -d /c/wabt
-            echo "/c/wabt/wabt-1.0.36/bin" >> "$GITHUB_PATH"
+            WABT_BIN="$(find /c/wabt -type d -name bin | head -1)"
+            echo "$WABT_BIN" >> "$GITHUB_PATH"
           fi
 
       - name: Construir nativo (S1/S2)
