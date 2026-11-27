@@ -250,7 +250,7 @@ funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
         asm("int _len = (int)strlen(_t);")
         asm("if (_len > 7 && _t[0]=='C' && _t[1]=='a' && _t[2]=='n' && _t[3]=='a' && _t[4]=='l' && _t[5]=='<') { strcpy(_gen_tmp_buf, \"CanalConcurrencia*\"); return; }")
         // F1.2d + F1.4: rc<T>/arc<T>/debil<T> (Manual 2 sec. 4.3).
-        // D-1.2b (Manual 4 §4.2): rc/arc son handles void* al header; débil<T>
+        // cumple Manual 4 §4.2 (D-1.2b): rc/arc son handles void* al header; débil<T>
         // es WeakRef (struct por valor) para que rc_weak_release(&var) reciba
         // el tipo correcto. Paridad con compilador/generator/context.py.
         // F1.4 anade 'rc<' (Manual 2 sec. 4 L151: "rc" tipo).
@@ -588,7 +588,7 @@ funcion gen_cerrar_bloque_c(est: GeneradorCEst) -> nulo:
         asm("    _G_scope_vars_names[_v][0] = 0;")
         asm("}")
         asm("// Compact: rebuild array skipping removed entries")
-        asm("// D-1.2b (Manual 4 §5.2): conservar la clase RAII al compactar;")
+        asm("// cumple Manual 4 §5.2 (D-1.2b): conservar la clase RAII al compactar;")
         asm("// si se omite, un move/liberacion intermedia desalinea kind[] y")
         asm("// el cleanup de scopes posteriores usa el destructor equivocado.")
         asm("int _wi = 0;")
@@ -2081,7 +2081,7 @@ funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("_buf2[0] = 0;")
         asm("// D-3: sin expresion -> `= {0};` (paridad visitar_declaracion S1: `{tipo} {nombre} = {0};`)")
         asm("if (_dv->expresion) { _oo_expr_a_c(est, _dv->expresion, _buf2, 4096); } else { strcpy(_buf2, \"{0}\"); }")
-        asm("// D-1.2b (Manual 4 §4.2): WeakRef es struct por valor; nulo debe ser ((WeakRef){0}).")
+        asm("// cumple Manual 4 §4.2 (D-1.2b): WeakRef es struct por valor; nulo debe ser ((WeakRef){0}).")
         asm("if (strncmp(_var_type, \"WeakRef\", 7) == 0 && (strcmp(_buf2, \"nulo\") == 0 || strcmp(_buf2, \"((void*)0)\") == 0)) { strcpy(_buf2, \"((WeakRef){0})\"); }")
         asm("strcat(_buf, _buf2);")
         asm("strcat(_buf, \";\");")
@@ -5235,8 +5235,9 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "")
     gen_emitir_linea(est, "typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtual_data; int virtual_len; } Canal;")
     gen_emitir_linea(est, "")
-    // F1.2d/F1.4 + D-1.2b (Manual 4 §3.2, §3.3, §4.2): paridad con el header S1
+    // cumple Manual 4 §4.2 (F1.2d/F1.4 + D-1.2b): paridad con el header S1
     // (_emitir_encabezado). WeakRef pasa por valor; los destructores usan &var.
+    // Manual 4 §3.2/§3.3: RcHeader/rc/arc externs del header nativo.
     gen_emitir_linea(est, "typedef struct { uint32_t ref_count; uint32_t weak_count; uint32_t version; void* data; void (*destructor)(void*); } RcHeader;")
     gen_emitir_linea(est, "typedef struct { RcHeader* header; uint32_t version; } WeakRef;")
     gen_emitir_linea(est, "")

@@ -63,5 +63,5 @@ def test_header_nativo_declara_weakref_y_destructores():
 
 def test_declaracion_weak_nulo_emite_weakref_cero():
     texto = _texto(RAIZ / "nucleo" / "generator.syn")
-    assert 'strncmp(_var_type, \\"WeakRef\\", 7)==0' in texto
+    assert 'strncmp(_var_type, \\"WeakRef\\", 7) == 0' in texto
     assert "((WeakRef){0})" in texto

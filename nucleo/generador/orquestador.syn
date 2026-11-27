@@ -79,8 +79,9 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "")
     gen_emitir_linea(est, "typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtual_data; int virtual_len; } Canal;")
     gen_emitir_linea(est, "")
-    // F1.2d/F1.4 + D-1.2b (Manual 4 §3.2, §3.3, §4.2): paridad con el header S1
+    // cumple Manual 4 §4.2 (F1.2d/F1.4 + D-1.2b): paridad con el header S1
     // (_emitir_encabezado). WeakRef pasa por valor; los destructores usan &var.
+    // Manual 4 §3.2/§3.3: RcHeader/rc/arc externs del header nativo.
     gen_emitir_linea(est, "typedef struct { uint32_t ref_count; uint32_t weak_count; uint32_t version; void* data; void (*destructor)(void*); } RcHeader;")
     gen_emitir_linea(est, "typedef struct { RcHeader* header; uint32_t version; } WeakRef;")
     gen_emitir_linea(est, "")

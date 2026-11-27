@@ -22,7 +22,7 @@ funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
         asm("int _len = (int)strlen(_t);")
         asm("if (_len > 7 && _t[0]=='C' && _t[1]=='a' && _t[2]=='n' && _t[3]=='a' && _t[4]=='l' && _t[5]=='<') { strcpy(_gen_tmp_buf, \"CanalConcurrencia*\"); return; }")
         // F1.2d + F1.4: rc<T>/arc<T>/debil<T> (Manual 2 sec. 4.3).
-        // D-1.2b (Manual 4 §4.2): rc/arc son handles void* al header; débil<T>
+        // cumple Manual 4 §4.2 (D-1.2b): rc/arc son handles void* al header; débil<T>
         // es WeakRef (struct por valor) para que rc_weak_release(&var) reciba
         // el tipo correcto. Paridad con compilador/generator/context.py.
         // F1.4 anade 'rc<' (Manual 2 sec. 4 L151: "rc" tipo).
@@ -360,7 +360,7 @@ funcion gen_cerrar_bloque_c(est: GeneradorCEst) -> nulo:
         asm("    _G_scope_vars_names[_v][0] = 0;")
         asm("}")
         asm("// Compact: rebuild array skipping removed entries")
-        asm("// D-1.2b (Manual 4 §5.2): conservar la clase RAII al compactar;")
+        asm("// cumple Manual 4 §5.2 (D-1.2b): conservar la clase RAII al compactar;")
         asm("// si se omite, un move/liberacion intermedia desalinea kind[] y")
         asm("// el cleanup de scopes posteriores usa el destructor equivocado.")
         asm("int _wi = 0;")

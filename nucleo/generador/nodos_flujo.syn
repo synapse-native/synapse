@@ -646,7 +646,7 @@ funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("_buf2[0] = 0;")
         asm("// D-3: sin expresion -> `= {0};` (paridad visitar_declaracion S1: `{tipo} {nombre} = {0};`)")
         asm("if (_dv->expresion) { _oo_expr_a_c(est, _dv->expresion, _buf2, 4096); } else { strcpy(_buf2, \"{0}\"); }")
-        asm("// D-1.2b (Manual 4 §4.2): WeakRef es struct por valor; nulo debe ser ((WeakRef){0}).")
+        asm("// cumple Manual 4 §4.2 (D-1.2b): WeakRef es struct por valor; nulo debe ser ((WeakRef){0}).")
         asm("if (strncmp(_var_type, \"WeakRef\", 7) == 0 && (strcmp(_buf2, \"nulo\") == 0 || strcmp(_buf2, \"((void*)0)\") == 0)) { strcpy(_buf2, \"((WeakRef){0})\"); }")
         asm("strcat(_buf, _buf2);")
         asm("strcat(_buf, \";\");")
