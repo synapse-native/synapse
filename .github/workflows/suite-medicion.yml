@@ -1,0 +1,57 @@
+# cumple Manual 9 §6.2: corrida cronometrada de las diez suites en CI.
+# H-R279-1 exige evidencia de CI con --medir/--comparar; este job la publica.
+# La primera corrida usa --guardar-medido para fijar la línea base medida;
+# la segunda, con comparar=true, exige los mismos recuentos.
+name: Suite medida
+
+on:
+  push:
+    branches: ['release/**']
+  workflow_dispatch:
+    inputs:
+      comparar:
+        description: "Exigir los recuentos de la línea base medida"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  medir:
+    runs-on: windows-latest
+    timeout-minutes: 350
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Construir el nativo
+        run: python build.py --skip-test
+
+      - name: Medir las diez suites
+        shell: bash
+        run: |
+          set -eu
+          if [ "${{ inputs.comparar }}" = "true" ]; then
+            python auditoria/verificar_suite.py --medir --comparar --jobs auto --json suite_medicion.json
+          else
+            python auditoria/verificar_suite.py --medir --guardar-medido --jobs auto --json suite_medicion.json
+          fi
+
+      - name: Publicar evidencia
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: suite-medicion
+          path: |
+            suite_medicion.json
+            auditoria/suite_baseline.json
+          if-no-files-found: warn

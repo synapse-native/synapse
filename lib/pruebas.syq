@@ -1,0 +1,98 @@
+#lang: es
+// lib/pruebas.syq — Framework de testing nativo sin genéricos
+// cumple Manual 3 §12: biblioteca estándar de Syquex (módulo pruebas)
+// Fase 31.2: sobrecarga estática explícita para tipos primitivos
+
+// --- ASSERTIONS BÁSICAS ---
+
+funcion assert(condicion: booleano) -> Resultado<nulo, texto>:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ es ok o _resultado_ es err
+    si no condicion:
+        retornar err("Assertion failed")
+    retornar ok()
+
+funcion assert_eq_int(esperado: entero, actual: entero) -> Resultado<nulo, texto>:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ es ok o _resultado_ es err
+    si esperado != actual:
+        retornar err("Expected " + a_texto(esperado) + " but got " + a_texto(actual))
+    retornar ok()
+
+funcion assert_eq_decimal(esperado: decimal, actual: decimal) -> Resultado<nulo, texto>:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ es ok o _resultado_ es err
+    si esperado != actual:
+        retornar err("Expected " + a_texto(esperado) + " but got " + a_texto(actual))
+    retornar ok()
+
+funcion assert_eq_texto(esperado: texto, actual: texto) -> Resultado<nulo, texto>:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ es ok o _resultado_ es err
+    si esperado != actual:
+        retornar err("Expected " + esperado + " but got " + actual)
+    retornar ok()
+
+funcion assert_eq_booleano(esperado: booleano, actual: booleano) -> Resultado<nulo, texto>:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ es ok o _resultado_ es err
+    si esperado != actual:
+        retornar err("Expected " + a_texto(esperado) + " but got " + a_texto(actual))
+    retornar ok()
+
+funcion assert_eq_tensor(esperado: tensor, actual: tensor) -> Resultado<nulo, texto>:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ es ok o _resultado_ es err
+    // Comparación de tensores: mismas dimensiones y datos
+    si esperado.filas != actual.filas o esperado.columnas != actual.columnas:
+        retornar err("Tensors have different dimensions")
+    para i = 0 mientras i < esperado.filas * esperado.columnas:
+        si esperado.datos[i] != actual.datos[i]:
+            retornar err("Tensors differ at index " + a_texto(i))
+    retornar ok()
+
+// --- ESTRUCTURA DE PRUEBAS ---
+
+funcion test(nombre: texto, fn: funcion() -> Resultado<nulo, texto>) -> Resultado<nulo, texto>:
+    requiere:
+        longitud(nombre) > 0
+    garantiza:
+        _resultado_ es ok o _resultado_ es err
+    io.escribir("Running test: " + nombre + "... ")
+    let resultado = fn()
+    coincidir resultado:
+        ok() => io.escribir_linea("PASS")
+        err(e) => io.escribir_linea("FAIL: " + e)
+    retornar resultado
+
+funcion suite(nombre: texto, tests: Lista<funcion() -> Resultado<nulo, texto>>) -> Resultado<nulo, texto>:
+    requiere:
+        longitud(nombre) > 0
+    garantiza:
+        _resultado_ es ok o _resultado_ es err
+    io.escribir_linea("Suite: " + nombre)
+    let fallos = 0
+    para test_fn en tests:
+        let r = test_fn()
+        si r es err:
+            fallos = fallos + 1
+    si fallos == 0:
+        io.escribir_linea("All tests passed")
+        retornar ok()
+    sino:
+        retornar err("" + a_texto(fallos) + " tests failed")
+
+// --- Externs ---
+// a_texto() es proporcionado por el runtime (std/texto.syn)

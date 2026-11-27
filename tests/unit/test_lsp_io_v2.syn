@@ -1,0 +1,237 @@
+#lang: es
+// tests/unit/test_lsp_io_v2.syn — TDD Tests for LSP I/O v2 functions
+// Manual 8 §1.7: fgetc, fprintf, fflush, strcmp, strlen, strstr, strchr, atoi, strcpy, strncpy
+//
+// FLUJO TDD:
+//   1. Estos tests se escriben PRIMERO (antes del código)
+//   2. Se compila y verifica que FALLA (funciones no existen)
+//   3. Se implementa string_utils.c + io.c
+//   4. Se recompila hasta que TODOS pasen
+
+importar std.io
+importar std.texto
+
+// ============================================================
+// Contadores
+// ============================================================
+
+let t_pasados: entero = 0
+let t_fallidos: entero = 0
+
+funcion pasar(nombre: texto) -> nulo:
+    escribir_linea("  PASS: " + nombre)
+    t_pasados = t_pasados + 1
+
+funcion fallar(nombre: texto, esp: texto, obs: texto) -> nulo:
+    escribir_linea("  FAIL: " + nombre)
+    escribir_linea("    Esperado: \"" + esp + "\"")
+    escribir_linea("    Obtenido: \"" + obs + "\"")
+    t_fallidos = t_fallidos + 1
+
+funcion fallar_e(nombre: texto, esp: entero, obs: entero) -> nulo:
+    escribir_linea("  FAIL: " + nombre)
+    escribir_linea("    Esperado: " + entero_a_texto(esp))
+    escribir_linea("    Obtenido: " + entero_a_texto(obs))
+    t_fallidos = t_fallidos + 1
+
+// ============================================================
+// TEST 1-3: strcmp
+// ============================================================
+
+funcion test_cmp_texto_igual() -> nulo:
+    let r = cmp_texto("hola", "hola")
+    si r == 0:
+        pasar("cmp_texto('hola','hola') == 0")
+    sino:
+        fallar_e("cmp_texto igual", 0, r)
+
+funcion test_cmp_texto_menor() -> nulo:
+    let r = cmp_texto("abc", "abd")
+    si r < 0:
+        pasar("cmp_texto('abc','abd') < 0")
+    sino:
+        fallar_e("cmp_texto menor", -1, r)
+
+funcion test_cmp_texto_mayor() -> nulo:
+    let r = cmp_texto("abd", "abc")
+    si r > 0:
+        pasar("cmp_texto('abd','abc') > 0")
+    sino:
+        fallar_e("cmp_texto mayor", 1, r)
+
+// ============================================================
+// TEST 4-5: strlen_s
+// ============================================================
+
+funcion test_strlen_normal() -> nulo:
+    let r = strlen_s("hola")
+    si r == 4:
+        pasar("strlen_s('hola') == 4")
+    sino:
+        fallar_e("strlen normal", 4, r)
+
+funcion test_strlen_vacio() -> nulo:
+    let r = strlen_s("")
+    si r == 0:
+        pasar("strlen_s('') == 0")
+    sino:
+        fallar_e("strlen vacio", 0, r)
+
+// ============================================================
+// TEST 6-7: strstr_f
+// ============================================================
+
+funcion test_strstr_encontrado() -> nulo:
+    let r = strstr_f("Content-Length: 50", "Length")
+    si r == 8:
+        pasar("strstr_f('Content-Length: 50', 'Length') == 8")
+    sino:
+        fallar_e("strstr encontrado", 8, r)
+
+funcion test_strstr_no_encontrado() -> nulo:
+    let r = strstr_f("hola", "z")
+    si r == -1:
+        pasar("strstr_f('hola', 'z') == -1")
+    sino:
+        fallar_e("strstr no encontrado", -1, r)
+
+// ============================================================
+// TEST 8-9: strchr_f
+// ============================================================
+
+funcion test_strchr_encontrado() -> nulo:
+    let r = strchr_f("a:b:c", 58)
+    si r == 1:
+        pasar("strchr_f('a:b:c', ':') == 1")
+    sino:
+        fallar_e("strchr encontrado", 1, r)
+
+funcion test_strchr_no_encontrado() -> nulo:
+    let r = strchr_f("abc", 58)
+    si r == -1:
+        pasar("strchr_f('abc', ':') == -1")
+    sino:
+        fallar_e("strchr no encontrado", -1, r)
+
+// ============================================================
+// TEST 10-11: atoi_f
+// ============================================================
+
+funcion test_atoi_normal() -> nulo:
+    let r = atoi_f("42")
+    si r == 42:
+        pasar("atoi_f('42') == 42")
+    sino:
+        fallar_e("atoi normal", 42, r)
+
+funcion test_atoi_negativo() -> nulo:
+    let r = atoi_f("-7")
+    si r == -7:
+        pasar("atoi_f('-7') == -7")
+    sino:
+        fallar_e("atoi negativo", -7, r)
+
+// ============================================================
+// TEST 12: strcpy_f
+// ============================================================
+
+funcion test_strcpy_normal() -> nulo:
+    let r = strcpy_f("hola")
+    si r == "hola":
+        pasar("strcpy_f('hola') == 'hola'")
+    sino:
+        fallar("strcpy normal", "hola", r)
+
+// ============================================================
+// TEST 13: strncpy_f
+// ============================================================
+
+funcion test_strncpy_normal() -> nulo:
+    let r = strncpy_f("hola mundo", 4)
+    si r == "hola":
+        pasar("strncpy_f('hola mundo', 4) == 'hola'")
+    sino:
+        fallar("strncpy normal", "hola", r)
+
+// ============================================================
+// TEST 14: a_texto (entero)
+// ============================================================
+
+funcion test_a_texto_entero() -> nulo:
+    let r = a_texto(123)
+    si r == "123":
+        pasar("a_texto(123) == '123'")
+    sino:
+        fallar("a_texto entero", "123", r)
+
+// ============================================================
+// TEST 15: contiene (builtin)
+// ============================================================
+
+funcion test_contiene_basico() -> nulo:
+    let r = contiene("synapse_lsp", "lsp")
+    si r == 1:
+        pasar("contiene('synapse_lsp', 'lsp') == 1")
+    sino:
+        fallar_e("contiene basico", 1, r)
+
+// ============================================================
+// PRINCIPAL
+// ============================================================
+
+funcion principal() -> entero:
+    escribir_linea("=== test_lsp_io_v2.syn — TDD Tests LSP I/O v2 ===")
+    escribir_linea("")
+
+    escribir_linea("--- cmp_texto ---")
+    test_cmp_texto_igual()
+    test_cmp_texto_menor()
+    test_cmp_texto_mayor()
+    escribir_linea("")
+
+    escribir_linea("--- strlen_s ---")
+    test_strlen_normal()
+    test_strlen_vacio()
+    escribir_linea("")
+
+    escribir_linea("--- strstr_f ---")
+    test_strstr_encontrado()
+    test_strstr_no_encontrado()
+    escribir_linea("")
+
+    escribir_linea("--- strchr_f ---")
+    test_strchr_encontrado()
+    test_strchr_no_encontrado()
+    escribir_linea("")
+
+    escribir_linea("--- atoi_f ---")
+    test_atoi_normal()
+    test_atoi_negativo()
+    escribir_linea("")
+
+    escribir_linea("--- strcpy_f ---")
+    test_strcpy_normal()
+    escribir_linea("")
+
+    escribir_linea("--- strncpy_f ---")
+    test_strncpy_normal()
+    escribir_linea("")
+
+    escribir_linea("--- a_texto ---")
+    test_a_texto_entero()
+    escribir_linea("")
+
+    escribir_linea("--- contiene ---")
+    test_contiene_basico()
+    escribir_linea("")
+
+    escribir_linea("=== RESUMEN ===")
+    escribir_linea("Pasados: " + entero_a_texto(t_pasados))
+    escribir_linea("Fallidos: " + entero_a_texto(t_fallidos))
+
+    si t_fallidos > 0:
+        escribir_linea("RESULTADO: FAIL")
+        retornar 1
+    sino:
+        escribir_linea("RESULTADO: PASS")
+        retornar 0

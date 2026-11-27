@@ -1,0 +1,110 @@
+#lang: es
+// cumple Manual 2 §5.1 (ME r192_deuda_barrido): cláusulas de contratos booleanas alineadas.
+// std.sistema — Interfaz con el sistema operativo
+// Integrante de la Biblioteca Estandar de Synapse.
+//
+// Uso:
+importar std.io
+importar std.cripto
+
+// Externos de bajo nivel para path traversal protection
+externo funcion _syn_normalizar_ruta(ruta: texto) -> texto
+externo funcion _syn_obtener_cwd() -> texto
+externo funcion _syn_ruta_en_directorio(ruta: texto, dir: texto) -> entero
+
+// Helper: Valida y normaliza ruta para prevenir path traversal
+// Retorna ruta normalizada si es segura, "" si es insegura
+// ME config_ruta_absoluta (H-EOF-3): una ruta RELATIVA al cwd se resuelve a
+// absoluta (cwd + "/" + ruta) ANTES de normalizar — el normalizador no antepone
+// el cwd por sí solo y el comparador exige contener al cwd como prefijo, así
+// que toda ruta relativa era rechazada por longitud y leer_modo_config caía
+// siempre a los fallbacks HOME/Program Files (menú inrunnable en instalación
+// pre-configurada). El escape ".." que sale del cwd sigue rechazado por el
+// comparador de prefijos (no se acepta ".." como cwd: también colapsa a ".").
+funcion _validar_ruta_segura(ruta: texto) -> texto:
+    // cumple Manual 2 §5.1: contratos de dominio sobre el resultado
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        // cumple Manual 2 §5.1; ME r198b: subcadena(t, inicio, largo) usa SEMÁNTICA (inicio, largo) —
+        // runtime _syn_texto_subcadena fin EXCLUSIVO (runtime/core/texto.c); el patrón canónico del
+        // detección de absoluta Windows es 1 char en posición 1 == ":" (subcadena(_resultado_, 1, 1)).
+        _resultado_ == "" o subcadena(_resultado_, 1, 1) == ":" o subcadena(_resultado_, 0, 1) == "/"
+    cwd = _syn_normalizar_ruta(_syn_obtener_cwd())
+    absoluta = ruta
+    // ME r198b: mismas 3 comparaciones alineadas a la semántica (inicio, largo).
+    si subcadena(ruta, 1, 1) != ":" y subcadena(ruta, 0, 1) != "/" y subcadena(ruta, 0, 2) != "\\\\":
+        // Ruta relativa: resolver contra el cwd ("/" lo absorbe el normalizador
+        // y emite el separador de plataforma en Windows y POSIX)
+        absoluta = concat(concat(cwd, "/"), ruta)
+    normalizada = _syn_normalizar_ruta(absoluta)
+    si no _syn_ruta_en_directorio(normalizada, cwd):
+        retornar ""
+    retornar normalizada
+
+externo funcion _syn_ejecutar_comando(cmd: texto) -> entero
+externo funcion _syn_escribir_archivo(ruta: texto, contenido: texto) -> entero
+externo funcion _syn_leer_archivo(ruta: texto) -> texto
+externo funcion _syn_obtener_env(nombre: texto) -> texto
+externo funcion _syn_existe_archivo(ruta: texto) -> entero
+externo funcion _syn_eliminar_archivo(ruta: texto) -> entero
+
+funcion ejecutar_comando(cmd: texto) -> entero:
+    // cumple Manual 2 §5.1: comando no vacío; código de salida 0=éxito, otro=error
+    requiere:
+        longitud(cmd) > 0
+    garantiza:
+        _resultado_ >= 0
+    retornar _syn_ejecutar_comando(cmd)
+
+funcion escribir_archivo(ruta: texto, contenido: texto) -> entero:
+    // cumple Manual 2 §5.1: ruta no vacía; -1=ruta insegura, 0=éxito, otro=error IO
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        _resultado_ >= -1
+    ruta_segura = _validar_ruta_segura(ruta)
+    si ruta_segura == "":
+        retornar -1
+    retornar _syn_escribir_archivo(ruta_segura, contenido)
+
+funcion leer_archivo(ruta: texto) -> texto:
+    // cumple Manual 2 §5.1: ruta no vacía; "" si ruta insegura o no existe
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    ruta_segura = _validar_ruta_segura(ruta)
+    si ruta_segura == "":
+        retornar ""
+    retornar _syn_leer_archivo(ruta_segura)
+
+funcion obtener_env(nombre: texto) -> texto:
+    // cumple Manual 2 §5.1: nombre de variable no vacío; "" si no definida
+    requiere:
+        longitud(nombre) > 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    retornar _syn_obtener_env(nombre)
+
+funcion existe_archivo(ruta: texto) -> booleano:
+    // cumple Manual 2 §5.1: ruta no vacía; falso si ruta insegura
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso
+    ruta_segura = _validar_ruta_segura(ruta)
+    si ruta_segura == "":
+        retornar falso
+    retornar _syn_existe_archivo(ruta_segura) == 1
+
+funcion eliminar_archivo(ruta: texto) -> entero:
+    // cumple Manual 2 §5.1: ruta no vacía; -1=insegura, 0=éxito, otro=error IO
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        _resultado_ >= -1
+    ruta_segura = _validar_ruta_segura(ruta)
+    si ruta_segura == "":
+        retornar -1
+    retornar _syn_eliminar_archivo(ruta_segura)

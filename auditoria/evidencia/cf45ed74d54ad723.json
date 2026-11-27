@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "cf45ed74d54ad723",
+ "expediente": "docs/alineacion/r323b_gdir_escaping.md",
+ "fecha": "2026-11-24",
+ "archivos": [
+  "nucleo/principal.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_r323b_gdir_escaping.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

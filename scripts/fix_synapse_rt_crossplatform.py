@@ -6,7 +6,7 @@ import sys
 # ======================================================================
 # Fix 1: tweetnacl.c — randombytes extern declaration
 # ======================================================================
-with open("tweetnacl.c", "r", encoding="utf-8") as f:
+with open("axon/tweetnacl.c", "r", encoding="utf-8") as f:
     tn = f.read()
 
 old_rb = "//extern void randombytes(u8 *,u64);"
@@ -14,7 +14,7 @@ new_rb = "extern void randombytes(unsigned char* x, unsigned long long xlen);"
 
 if old_rb in tn:
     tn = tn.replace(old_rb, new_rb, 1)
-    with open("tweetnacl.c", "w", encoding="utf-8") as f:
+    with open("axon/tweetnacl.c", "w", encoding="utf-8") as f:
         f.write(tn)
     print("[FIX] tweetnacl.c: randombytes declaration uncommented")
 elif new_rb in tn:

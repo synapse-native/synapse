@@ -1,0 +1,17 @@
+{
+ "cambio_hash": "bdf56b5aea7c6db9",
+ "expediente": "docs/alineacion/r180_coincidir_nativo.md",
+ "fecha": "2026-10-05",
+ "archivos": [
+  "compilador/parser_control.py",
+  "nucleo/generador/nodos_flujo.syn",
+  "nucleo/generator.syn",
+  "nucleo/parser_base.syn",
+  "nucleo/parser_sentencias.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r180_coincidir_nativo.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

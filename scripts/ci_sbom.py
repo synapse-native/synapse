@@ -7,13 +7,27 @@ import time
 from pathlib import Path
 import sys
 
+def _version_canonica(project_root: str) -> str:
+    """Lee la versión canónica del archivo VERSION (Manual 1 §6: versión unificada)."""
+    version_file = Path(project_root) / 'VERSION'
+    if version_file.is_file():
+        v = version_file.read_text(encoding='utf-8').strip()
+        if v:
+            return v
+    return os.environ.get('SYNAPSE_VERSION', '0.0.0-dev')
+
+
 def generar_sbom_standalone(project_root, artifact_name):
     files = []
     packages = []
     
+    # Directorios que NO forman parte del SBOM: entornos, builds y distribución.
+    EXCLUIR = {'.git', '__pycache__', 'toolchain_gcc12', '.venv', 'venv', 'build',
+               'dist', 'distbin', '.pytest_cache', '.synapse', '.axon_cache'}
+
     root_hash = hashlib.sha256()
     for f in sorted(Path(project_root).rglob('*')):
-        if f.is_file() and not any(p in str(f) for p in ['.git', '__pycache__', 'toolchain_gcc12']):
+        if f.is_file() and not any(p in str(f).split(os.sep) for p in EXCLUIR):
             try:
                 root_hash.update(f.read_bytes())
                 files.append({
@@ -35,7 +49,7 @@ def generar_sbom_standalone(project_root, artifact_name):
         'packages': [{
             'SPDXID': 'SPDXRef-RootPackage',
             'name': artifact_name,
-            'versionInfo': os.environ.get('SYNAPSE_VERSION', '5.0.0-dev'),
+            'versionInfo': _version_canonica(project_root),
             'supplier': 'Organization: Synapse Lang',
             'downloadLocation': 'NOASSERTION',
             'filesAnalyzed': True,

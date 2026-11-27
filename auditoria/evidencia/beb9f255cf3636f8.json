@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "beb9f255cf3636f8",
+ "expediente": "docs/alineacion/r222_std_texto_contracts.md",
+ "fecha": "2026-11-14",
+ "archivos": [
+  "std/texto.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r222_std_texto.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

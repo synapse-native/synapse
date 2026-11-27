@@ -1,0 +1,13 @@
+#lang: es
+// Prueba: std.io — escribir, escribir_linea, leer_linea
+
+importar std.io
+
+funcion principal() -> nulo:
+    escribir("std.io cargada correctamente")
+    escribir("escribir: escrito")
+    escribir_linea("escribir_linea: linea con salto")
+    escribir("escribe tu nombre: ")
+    nombre = leer_linea()
+    escribir("hola, ")
+    escribir_linea(nombre)

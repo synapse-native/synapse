@@ -1,0 +1,26 @@
+#lang: es
+// 08_ownership.syq — Ownership y borrowing
+// cumple Manual 2 9: Ownership & Borrowing
+
+importar std.io
+
+funcion recibir(dato: texto) -> nulo:
+    escribir_linea("Recibido: " + dato)
+
+funcion longitud(s: texto) -> entero:
+    retornar len(s)
+
+funcion principal() -> nulo:
+    mensaje = "hola mundo"
+
+    // Préstamo inmutable (puede haber múltiples)
+    len1 = longitud(mensaje)
+    len2 = longitud(mensaje)
+    escribir_linea("Longitud: " + entero_a_texto(len1))
+
+    // Transferencia de ownership con ->
+    recibir(mensaje)
+    // mensaje ya no es válido después de recibir()
+    // escribir_linea(mensaje)  // ERROR: use after move
+
+    escribir_linea("Programa completado")

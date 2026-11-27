@@ -1,11 +1,15 @@
 """tests/integration/test_axon_lock.py — Manual 6 §6.8
 
+Cumple MTO OBL-M6-03.
+
 Valida el lockfile axon.lock: estructura TOML, verificacion de hash SHA-256.
 """
 import pytest
 import os
 import hashlib
 import json
+
+pytestmark = pytest.mark.integration
 
 RAIZ = os.path.join(os.path.dirname(__file__), "..", "..")
 

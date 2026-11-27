@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "74f53ae26613e627",
+ "expediente": "docs/alineacion/r222b_wrappers_regression.md",
+ "fecha": "2026-11-15",
+ "archivos": [
+  "nucleo/lsp_v3.syn",
+  "opensyn/router.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r222b_wrappers.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

@@ -1,0 +1,20 @@
+{
+ "cambio_hash": "a04150e75dc30879",
+ "expediente": "docs/alineacion/r307_contratos_nucleo_bloque9.md",
+ "fecha": "2026-11-24",
+ "archivos": [
+  "nucleo/lexer.syn",
+  "nucleo/lexer_keywords.syn",
+  "nucleo/principal.syn",
+  "nucleo/resolvedor_axon.syn",
+  "nucleo/lsp.syn",
+  "nucleo/lsp_v3.syn",
+  "nucleo/analizador_semantico.syn",
+  "nucleo/optimizador_ia.syn"
+ ],
+ "oraculos": {
+  "auditoria/verificar_contratos.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

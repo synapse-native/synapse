@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "1413de67e69ca778",
+ "expediente": "docs/alineacion/r326_fix_debug_home_dir.md",
+ "fecha": "2026-11-24",
+ "archivos": [
+  "runtime/core/debug.c"
+ ],
+ "oraculos": {
+  "auditoria/verificar_encoding.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

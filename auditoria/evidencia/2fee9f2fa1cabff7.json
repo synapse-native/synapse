@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "2fee9f2fa1cabff7",
+ "expediente": "docs/alineacion/m7_s73_restauracion.md",
+ "fecha": "2026-10-01",
+ "archivos": [
+  "opensyn/permisos.syn"
+ ],
+ "oraculos": {
+  "tests/integration/test_permisos_opensyn.py": true
+ },
+ "citas_muertas_repo": 39,
+ "modo": "block"
+}

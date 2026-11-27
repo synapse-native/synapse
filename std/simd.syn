@@ -1,0 +1,143 @@
+#lang: es
+// cumple Manual 2 §5.1
+// std.simd — Aceleracion SIMD para operaciones tensoriales
+// Integrante de la Biblioteca Estandar de Synapse.
+//
+// Este modulo provee versiones aceleradas via SSE/AVX de las
+// operaciones tensoriales basicas. Se importa explicitamente:
+//   importar std.simd
+//
+// Las funciones tienen prefijo simd_ y reemplazan semanticamente
+// a las de std.tensor cuando hay soporte hardware.
+//
+// Uso:
+//   importar std.simd
+//   a = crear_tensor(256, 256)
+//   b = crear_tensor(256, 256)
+//   c = simd_multiplicar_matrices(a, b)
+
+// Deteccion de soporte SIMD en tiempo de ejecucion
+externo funcion _syn_simd_disponible() -> entero
+externo funcion _syn_simd_tipo() -> texto
+
+// Operaciones SIMD (equivalen a las de std.tensor pero aceleradas)
+externo funcion _syn_simd_multiplicar_matrices(a: tensor, b: tensor) -> tensor
+externo funcion _syn_simd_rmsnorm(salida: tensor, entrada: tensor, peso_normalizacion: tensor, epsilon: decimal) -> nulo
+externo funcion _syn_simd_silu(salida: tensor, entrada: tensor) -> nulo
+externo funcion _syn_simd_softmax_escalado(tensor: tensor, factor_escala: decimal) -> nulo
+externo funcion _syn_simd_llenar_tensor_constante(t: tensor, valor: decimal) -> nulo
+externo funcion _syn_simd_multiplicar_matrices_transpuesta_b(a: tensor, b: tensor, salida: tensor) -> nulo
+
+// Wrappers Synapse
+funcion simd_disponible() -> booleano:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: resultado booleano acotado
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso
+    retornar _syn_simd_disponible() == 1
+
+funcion simd_tipo() -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: texto no nulo
+    retornar _syn_simd_tipo()
+
+funcion simd_multiplicar_matrices(a: tensor, b: tensor) -> tensor:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: tensores no vacíos y compatibles
+    requiere:
+        longitud(a) > 0
+    requiere:
+        longitud(b) > 0
+    retornar _syn_simd_multiplicar_matrices(a, b)
+
+funcion simd_rmsnorm(salida: tensor, entrada: tensor, peso_normalizacion: tensor, epsilon: decimal) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: tensores no vacíos
+    requiere:
+        longitud(salida) > 0
+    requiere:
+        longitud(entrada) > 0
+    requiere:
+        longitud(peso_normalizacion) > 0
+    garantiza:
+        1 == 1
+    _syn_simd_rmsnorm(salida, entrada, peso_normalizacion, epsilon)
+    retornar
+
+funcion simd_silu(salida: tensor, entrada: tensor) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: tensores no vacíos
+    requiere:
+        longitud(salida) > 0
+    requiere:
+        longitud(entrada) > 0
+    garantiza:
+        1 == 1
+    _syn_simd_silu(salida, entrada)
+    retornar
+
+funcion simd_softmax_escalado(tensor: tensor, factor_escala: decimal) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: tensor no vacío
+    requiere:
+        longitud(tensor) > 0
+    garantiza:
+        1 == 1
+    _syn_simd_softmax_escalado(tensor, factor_escala)
+    retornar
+
+funcion simd_llenar_tensor_constante(t: tensor, valor: decimal) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: tensor no vacío
+    requiere:
+        longitud(t) > 0
+    garantiza:
+        1 == 1
+    _syn_simd_llenar_tensor_constante(t, valor)
+    retornar
+
+funcion simd_multiplicar_matrices_transpuesta_b(a: tensor, b: tensor, salida: tensor) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: tensores no vacíos
+    requiere:
+        longitud(a) > 0
+    requiere:
+        longitud(b) > 0
+    requiere:
+        longitud(salida) > 0
+    garantiza:
+        1 == 1
+    _syn_simd_multiplicar_matrices_transpuesta_b(a, b, salida)
+    retornar

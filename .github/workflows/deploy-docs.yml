@@ -1,4 +1,4 @@
-name: Despliegue mdBook
+name: Despliegue mdBook (Dos Libros)
 
 on:
   push:
@@ -23,11 +23,55 @@ jobs:
         with:
           mdbook-version: 'latest'
 
-      - name: Construir el Libro
-        run: mdbook build docs
+      - name: Construir Libro 1 - Aprendizaje
+        run: mdbook build docs/book1-aprendizaje
+
+      - name: Construir Libro 2 - Desarrollo
+        run: mdbook build docs/book2-desarrollo
+
+      - name: Preparar directorio de despliegue
+        run: |
+          mkdir -p deploy
+          cp -r docs/book1-aprendizaje/book deploy/aprendizaje
+          cp -r docs/book2-desarrollo/book deploy/desarrollo
+          cp docs/_redirects deploy/_redirects
+          # Crear index.html principal
+          cat > deploy/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="es">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Documentación Synapse</title>
+            <style>
+              body { font-family: system-ui, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+              h1 { color: #2563eb; }
+              .books { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 30px; }
+              .book { border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; text-decoration: none; color: inherit; }
+              .book:hover { border-color: #2563eb; box-shadow: 0 4px 12px rgba(37,99,235,0.15); }
+              .book h2 { margin-top: 0; color: #2563eb; }
+              .book p { color: #6b7280; }
+            </style>
+          </head>
+          <body>
+            <h1>Documentación Synapse v8.1.0</h1>
+            <p>Elige un libro para comenzar:</p>
+            <div class="books">
+              <a href="aprendizaje/" class="book">
+                <h2>Libro 1: Aprendizaje</h2>
+                <p>Aprende Synapse, Syquex y OpenSyn desde cero hasta nivel avanzado.</p>
+              </a>
+              <a href="desarrollo/" class="book">
+                <h2>Libro 2: Desarrollo</h2>
+                <p>Guía técnica para desarrolladores y contribuidores del ecosistema.</p>
+              </a>
+            </div>
+          </body>
+          </html>
+          EOF
 
       - name: Desplegar a gh-pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs/book
+          publish_dir: ./deploy

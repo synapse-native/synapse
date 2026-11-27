@@ -1,0 +1,117 @@
+// =============================================================================
+// syquex.syn — Compilador migrado al Core de Syquex
+// Cumple Manual 8 §1.7.3: contenga, indice_de, reemplazar (builtins existentes)
+// =============================================================================
+
+// ============================================================
+// §1.7 — Funciones de cadena básicas (heredadas de texto.c)
+// ============================================================
+
+funcion contiene(texto: texto, subcadena: texto) -> entero:
+    requiere:
+        longitud(subcadena) > 0
+    garantiza:
+        resultado == 0 o resultado == 1
+    retornar _syn_texto_contiene(texto, subcadena)
+
+funcion indice_de(texto: texto, subcadena: texto) -> entero:
+    requiere:
+        longitud(subcadena) > 0
+    garantiza:
+        resultado >= -1
+    retornar _syn_texto_indice_de(texto, subcadena)
+
+funcion reemplazar(texto: texto, buscar: texto, reemplazar: texto) -> texto:
+    requiere:
+        longitud(buscar) > 0
+    garantiza:
+        longitud(resultado) >= 0
+    retornar _syn_texto_reemplazar(texto, buscar, reemplazar)
+
+funcion termina_con(texto: texto, sufijo: texto) -> entero:
+    requiere:
+        longitud(sufijo) > 0
+    garantiza:
+        resultado == 0 o resultado == 1
+    retornar _syn_texto_termina_con(texto, sufijo)
+
+// ============================================================
+// §1.8 — Análisis de alcance (AST)
+// ============================================================
+
+externo funcion analizador_alcance(astro: astro) -> astro_node:
+    requiere:
+        tipo(astro) == "astro"
+    garantiza:
+        tipo(resultado) == "astro_node"
+    retornar _syn_analizador_alcance(astro)
+
+// ============================================================
+// §1.9 — Expresión (parser)
+// ============================================================
+
+externo funcion expr(programa: texto) -> expr_tree:
+    requiere:
+        tipo(programa) == "programa"
+    garantiza:
+        tipo(resultado) == "expr_tree"
+    retornar _syn_expr(programa)
+
+// ============================================================
+// §1.10 — Traductor (core de traducción)
+// ============================================================
+
+externo funcion traductor(programa: texto, lenguaje: string) -> resultado:
+    requiere:
+        tipo(lenguaje) == "string"
+        tipo(programa) == "programa"
+    garantiza:
+        tipo(resultado) == "resultado"
+    retornar _syn_traductor(programa, lenguaje)
+
+// ============================================================
+// §1.11 — JSON (external)
+// ============================================================
+
+externo funcion escapar_json(texto: texto) -> texto:
+    requiere:
+        tipo(texto) == "texto"
+    garantiza:
+        longitud(resultado) >= longitud(texto)
+    retornar _syn_escapar_json(texto)
+
+// ============================================================
+// §1.12 — Conversión a tipos primitivos
+// ============================================================
+
+externo funcion a_texto(valor: entero) -> texto:
+    requiere:
+        tipo(valor) == "entero"
+    garantiza:
+        longitud(resultado) > 0
+    retornar _syn_a_texto_entero(valor)
+
+externo funcion a_texto_decimal(valor: decimal) -> texto:
+    requiere:
+        tipo(valor) == "decimal"
+    garantiza:
+        longitud(resultado) > 0
+    retornar _syn_a_texto_decimal(valor)
+
+// ============================================================
+// §1.13 — Entrada/salida básica
+// ============================================================
+
+externo funcion leer_entrada() -> texto:
+    requiere:
+        // entrada estándar disponible
+    garantiza:
+        tipo(resultado) == "texto"
+    retornar _syn_leer_entrada()
+
+externo funcion escribir_salida(texto: texto) -> void:
+    requiere:
+        // salida estándar disponible
+    garantiza:
+        // no hay liberación de recursos
+    // implementación opcional

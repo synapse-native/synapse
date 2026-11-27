@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "07ba3f460c6d0bee",
+ "expediente": "docs/alineacion/cli_lint_fmt.md",
+ "fecha": "2026-09-29",
+ "archivos": [
+  "cli.py"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_cli_lint_fmt.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

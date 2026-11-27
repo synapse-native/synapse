@@ -1,0 +1,15 @@
+{
+ "cambio_hash": "91767dd6c13f4cec",
+ "expediente": "docs/alineacion/eof_runtime_api.md",
+ "fecha": "2026-09-26",
+ "archivos": [
+  "opensyn/principal.syn",
+  "runtime/core/io.c",
+  "std/io.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_eof_runtime.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

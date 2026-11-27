@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "0491b2530072b608",
+ "expediente": "docs/alineacion/r197.md",
+ "fecha": "2026-10-25",
+ "archivos": [
+  "opensyn/installer.syn",
+  "runtime/core/modelo.c"
+ ],
+ "oraculos": {
+  "auditoria/oraculos/oraculo_r197_instalador.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

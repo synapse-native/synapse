@@ -1,0 +1,9 @@
+# Baseline de modulos de produccion de Fase 32 que HOY no compilan.
+#
+# El gate tests/integration/test_compilacion_fase32.py falla si:
+#   - un modulo de produccion FUERA de esta lista no compila, o
+#   - un modulo de esta lista YA compila (trinquete: hay que quitarlo).
+#
+# Cada linea es una ruta relativa a la raiz del repo. Los comentarios y las
+# lineas vacias se ignoran.
+# BASELINE VACIO: todos los modulos de produccion de Fase 32 compilan.

@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "9b81b728d54fd769",
+ "expediente": "docs/alineacion/r322_darwin_gcc.md",
+ "fecha": "2026-11-23",
+ "archivos": [
+  "pipeline.py"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_r322_darwin_gcc.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

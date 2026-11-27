@@ -1,0 +1,13 @@
+#lang: es
+// Prueba: std.math — crear_tensor, suma_tensor, producto_punto, relu
+
+importar std.io
+importar std.math
+
+funcion principal() -> nulo:
+    a = crear_tensor(2, 2)
+    b = crear_tensor(2, 2)
+    c = suma_tensor(a, b)
+    d = producto_punto(a, b)
+    e = relu(c)
+    escribir_linea("std.math: tensores 2x2 creados, sumados, multiplicados y relu aplicados")

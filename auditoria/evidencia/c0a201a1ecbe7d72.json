@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "c0a201a1ecbe7d72",
+ "expediente": "docs/alineacion/r219_verificacion_aot.md",
+ "fecha": "2026-11-13",
+ "archivos": [
+  "opensyn/verificacion_aot.syn"
+ ],
+ "oraculos": {
+  "tests/integration/test_verificacion_aot_e2e.py": true,
+  "tests/opensyn/test_verificacion_aot.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

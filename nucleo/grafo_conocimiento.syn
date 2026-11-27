@@ -1,0 +1,652 @@
+#lang: es
+// cumple Manual 2 §1.2 (ME r243): fuente UTF-8 sin BOM — el BOM inicial impedia detectar #lang.
+// Fase 32.1: grafo dirigido desde el AST canónico, sin heurísticas
+// Fase 32.1: estructuras y 6 pasadas del grafo
+// Fase 32.1: persistencia JSON y reutilización por hash
+// Fase 32.1: determinismo SHA-256
+// cumple Manual 6 §1.1: AST canónico unificado
+// cumple Manual 2 §5.1: contratos requiere/garantiza
+// cumple Manual 2 §7.3: AST aplanado y adaptador desde el registro ABI
+// nucleo/grafo_conocimiento.syn — Grafo de conocimiento desde AST canónico
+// Fase 32.1: construye grafo dirigido de dependencias, contratos y relaciones
+
+importar parser_constantes
+importar std.cripto
+importar std.json
+importar std.sistema
+importar std.tiempo
+
+externo funcion _syn_escapar_json(texto: texto) -> texto
+externo funcion _syn_texto_duplicar(texto: texto) -> texto
+
+constante NODO_TIPO_USO = NODO_DECLARACION_TIPO
+constante UMBRAL_CONTRATO_CRITICO = 5
+constante UMBRAL_RIESGO_MEDIO = 5
+constante UMBRAL_RIESGO_ALTO = 10
+constante UMBRAL_RIESGO_CRITICO = 20
+
+estructura ContratoInfo:
+    tipo: texto
+    expresion: texto
+    linea: entero
+
+estructura NodoGrafo:
+    id: texto
+    tipo: texto
+    archivo: texto
+    linea: entero
+    columna: entero
+    firma: texto
+    num_dependientes: entero
+    num_dependencias: entero
+    contratos: Lista<ContratoInfo>
+    es_publico: booleano
+    nivel_riesgo: texto
+
+estructura AristaGrafo:
+    origen_id: texto
+    destino_id: texto
+    tipo: texto
+    es_contrato_critico: booleano
+    linea: entero
+
+estructura MetricasGrafo:
+    total_nodos: entero
+    total_aristas: entero
+    max_dependientes: entero
+    densidad: decimal
+    ciclos_detectados: entero
+
+estructura GrafoProyecto:
+    proyecto: texto
+    hash_ast: texto
+    timestamp: entero
+    nodos: Lista<NodoGrafo>
+    aristas: Lista<AristaGrafo>
+    indice_por_id: Mapa<texto, entero>
+    metricas: Lista<MetricasGrafo>
+
+estructura NodoSemantico:
+    tipo_nodo: entero
+    nombre: texto
+    archivo: texto
+    linea: entero
+    columna: entero
+    firma: texto
+    es_publico: booleano
+    contratos: Lista<ContratoInfo>
+    referencia: texto
+    span_ptr: entero
+    span_len: entero
+
+estructura RegistroAST:
+    tipo_nodo: entero
+    linea: entero
+    columna: entero
+    valor_int: entero
+    valor_dec: decimal
+    ptr_str: entero
+    len_str: entero
+    hijo_izq: entero
+    hijo_der: entero
+    hermano: entero
+
+estructura ContextoNodo:
+    nombre: texto
+    archivo: texto
+    firma: texto
+    es_publico: booleano
+    contratos: Lista<ContratoInfo>
+    referencia: texto
+
+estructura TarjanEstado:
+    indices: Mapa<texto, entero>
+    lowlinks: Mapa<texto, entero>
+    en_pila: Mapa<texto, entero>
+    pila: Lista<texto>
+    escalares: Mapa<texto, entero>
+
+estructura ResultadoGuardado:
+    ok: booleano
+    error: texto
+
+funcion construir_grafo_desde_semnodo(semnodos: Lista<NodoSemantico>, total: entero, proyecto: texto) -> GrafoProyecto:
+    requiere:
+        total >= 0
+    requiere:
+        total <= longitud(semnodos)
+    garantiza:
+        _resultado_.proyecto == proyecto
+    let nodos = Lista<NodoGrafo>()
+    let indice = Mapa<texto, entero>()
+    let aristas = Lista<AristaGrafo>()
+
+    // PASADA 1: Crear nodos (funciones y estructuras)
+    let pos = 0
+    para sn en semnodos:
+        si pos < total:
+            si sn.tipo_nodo == NODO_FUNCION o sn.tipo_nodo == NODO_ESTRUCTURA:
+                let id = construir_id_nodo(sn, _syn_texto_duplicar(proyecto))
+                si indice.contiene(id) == falso:
+                    let nodo = NodoGrafo(_syn_texto_duplicar(id), tipo_nodo_a_texto(sn.tipo_nodo), _syn_texto_duplicar(sn.archivo), sn.linea, sn.columna, _syn_texto_duplicar(sn.firma), 0, 0, copiar_contratos(sn.contratos), sn.es_publico, "bajo")
+                    indice.poner(id, longitud(nodos))
+                    nodos.agregar(nodo)
+        pos = pos + 1
+
+    // PASADA 2: Crear aristas (llamadas, importaciones, uso de tipos)
+    pos = 0
+    para sn en semnodos:
+        si pos < total:
+            si sn.tipo_nodo == NODO_LLAMADA:
+                si longitud(sn.referencia) > 0:
+                    _agregar_arista(aristas, buscar_contenedor(semnodos, pos, _syn_texto_duplicar(proyecto)), sn.archivo + "." + sn.referencia, "llamada", sn.linea)
+            si sn.tipo_nodo == NODO_IMPORTAR:
+                let origen = _syn_texto_duplicar(sn.archivo)
+                si longitud(origen) == 0:
+                    origen = _syn_texto_duplicar(proyecto)
+                _agregar_arista(aristas, _syn_texto_duplicar(origen), _syn_texto_duplicar(sn.referencia), "importacion", sn.linea)
+            si sn.tipo_nodo == NODO_TIPO_USO:
+                si longitud(sn.referencia) > 0:
+                    _agregar_arista(aristas, buscar_contenedor(semnodos, pos, _syn_texto_duplicar(proyecto)), _syn_texto_duplicar(sn.referencia), "uso_tipo", sn.linea)
+        pos = pos + 1
+
+    // PASADA 3: Calcular dependientes y dependencias (índice invertido)
+    let dependientes = Mapa<texto, entero>()
+    let dependencias = Mapa<texto, entero>()
+    para a en aristas:
+        si indice.contiene(a.origen_id):
+            dependencias.poner(a.origen_id, obtener_entero(dependencias, _syn_texto_duplicar(a.origen_id)) + 1)
+        si indice.contiene(a.destino_id):
+            dependientes.poner(a.destino_id, obtener_entero(dependientes, _syn_texto_duplicar(a.destino_id)) + 1)
+
+    // PASADA 4: Calcular nivel de riesgo y marcar contratos críticos
+    let nodos_finales = Lista<NodoGrafo>()
+    para n en nodos:
+        let nd = obtener_entero(dependientes, _syn_texto_duplicar(n.id))
+        let nk = obtener_entero(dependencias, _syn_texto_duplicar(n.id))
+        nodos_finales.agregar(NodoGrafo(n.id, n.tipo, n.archivo, n.linea, n.columna, n.firma, nd, nk, n.contratos, n.es_publico, calcular_nivel_riesgo(nd, n.es_publico)))
+    let aristas_finales = Lista<AristaGrafo>()
+    para a en aristas:
+        let critico = falso
+        si indice.contiene(a.destino_id):
+            si obtener_entero(dependientes, _syn_texto_duplicar(a.destino_id)) > UMBRAL_CONTRATO_CRITICO:
+                critico = verdadero
+        aristas_finales.agregar(AristaGrafo(a.origen_id, a.destino_id, a.tipo, critico, a.linea))
+
+    // PASADA 5: Detectar ciclos (Tarjan)
+    let ciclos = contar_ciclos_tarjan(nodos_finales, aristas_finales, indice)
+
+    // PASADA 6: Calcular métricas agregadas
+    let total_nodos = longitud(nodos_finales)
+    let total_aristas = longitud(aristas_finales)
+    let max_dep = max_dependientes(nodos_finales)
+    let densidad = calcular_densidad(nodos_finales, aristas_finales)
+    let metricas = Lista<MetricasGrafo>()
+    metricas.agregar(MetricasGrafo(total_nodos, total_aristas, max_dep, densidad, ciclos))
+
+    let timestamp = tiempo_actual()
+    retornar GrafoProyecto(_syn_texto_duplicar(proyecto), calcular_hash_ast(semnodos, total), timestamp, nodos_finales, aristas_finales, indice, metricas)
+
+funcion nodo_semantico_desde_abi(registro: RegistroAST, contexto: ContextoNodo) -> NodoSemantico:
+    requiere:
+        registro.tipo_nodo >= 0
+    garantiza:
+        _resultado_.tipo_nodo == registro.tipo_nodo
+    retornar NodoSemantico(registro.tipo_nodo, contexto.nombre, contexto.archivo, registro.linea, registro.columna, contexto.firma, contexto.es_publico, copiar_contratos(contexto.contratos), contexto.referencia, registro.ptr_str, registro.len_str)
+
+funcion copiar_contratos(contratos: Lista<ContratoInfo>) -> Lista<ContratoInfo>:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    let copia = Lista<ContratoInfo>()
+    para c en contratos:
+        copia.agregar(ContratoInfo(_syn_texto_duplicar(c.tipo), _syn_texto_duplicar(c.expresion), c.linea))
+    retornar copia
+
+funcion construir_id_nodo(semnodo: NodoSemantico, proyecto: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) > 0
+    si longitud(semnodo.archivo) > 0:
+        retornar semnodo.archivo + "." + semnodo.nombre
+    retornar proyecto + "." + semnodo.nombre
+
+funcion tipo_nodo_a_texto(tipo: entero) -> texto:
+    requiere:
+        tipo >= 0
+    garantiza:
+        longitud(_resultado_) > 0
+    si tipo == NODO_FUNCION:
+        retornar "funcion"
+    si tipo == NODO_ESTRUCTURA:
+        retornar "estructura"
+    si tipo == NODO_CONSTANTE:
+        retornar "constante"
+    retornar "modulo"
+
+funcion buscar_contenedor(semnodos: Lista<NodoSemantico>, indice_llamada: entero, proyecto: texto) -> texto:
+    requiere:
+        indice_llamada >= 0
+    garantiza:
+        longitud(_resultado_) > 0
+    let resultado = _syn_texto_duplicar(proyecto)
+    let pos = 0
+    para sn en semnodos:
+        si pos < indice_llamada:
+            si sn.tipo_nodo == NODO_FUNCION o sn.tipo_nodo == NODO_ESTRUCTURA:
+                resultado = construir_id_nodo(sn, _syn_texto_duplicar(proyecto))
+        pos = pos + 1
+    retornar _syn_texto_duplicar(resultado)
+
+funcion _agregar_arista(aristas: Lista<AristaGrafo>, origen: texto, destino: texto, tipo_arista: texto, linea: entero):
+    requiere:
+        longitud(tipo_arista) > 0
+    garantiza:
+        verdadero
+    let duplicada = falso
+    para a en aristas:
+        si a.origen_id == origen y a.destino_id == destino:
+            duplicada = verdadero
+            romper
+    si duplicada == falso:
+        aristas.agregar(AristaGrafo(_syn_texto_duplicar(origen), _syn_texto_duplicar(destino), _syn_texto_duplicar(tipo_arista), falso, linea))
+    retornar
+
+funcion obtener_entero(mapa: Mapa<texto, entero>, clave: texto) -> entero:
+    requiere:
+        longitud(clave) > 0
+    garantiza:
+        _resultado_ >= 0
+    si mapa.contiene(clave):
+        retornar mapa[clave]
+    retornar 0
+
+funcion calcular_nivel_riesgo(num_dependientes: entero, es_publico: booleano) -> texto:
+    requiere:
+        num_dependientes >= 0
+    garantiza:
+        longitud(_resultado_) > 0
+    si num_dependientes > UMBRAL_RIESGO_CRITICO o es_publico:
+        retornar "crítico"
+    si num_dependientes > UMBRAL_RIESGO_ALTO:
+        retornar "alto"
+    si num_dependientes > UMBRAL_RIESGO_MEDIO:
+        retornar "medio"
+    retornar "bajo"
+
+funcion contar_ciclos_tarjan(nodos: Lista<NodoGrafo>, aristas: Lista<AristaGrafo>, indice: Mapa<texto, entero>) -> entero:
+    requiere:
+        longitud(nodos) >= 0
+    garantiza:
+        _resultado_ >= 0
+    let estado = TarjanEstado(Mapa<texto, entero>(), Mapa<texto, entero>(), Mapa<texto, entero>(), Lista<texto>(), Mapa<texto, entero>())
+    estado.escalares.poner("index", 0)
+    estado.escalares.poner("ciclos", 0)
+    para n en nodos:
+        si estado.indices.contiene(n.id) == falso:
+            tarjan_visitar(nodos, aristas, indice, estado, _syn_texto_duplicar(n.id))
+    retornar estado.escalares["ciclos"]
+
+funcion tarjan_visitar(nodos: Lista<NodoGrafo>, aristas: Lista<AristaGrafo>, indice: Mapa<texto, entero>, estado: TarjanEstado, nodo_id: texto):
+    requiere:
+        longitud(nodo_id) > 0
+    garantiza:
+        verdadero
+    let idx_actual = estado.escalares["index"]
+    estado.indices.poner(nodo_id, idx_actual)
+    estado.lowlinks.poner(nodo_id, idx_actual)
+    estado.escalares.poner("index", idx_actual + 1)
+    estado.pila.agregar(nodo_id)
+    estado.en_pila.poner(nodo_id, 1)
+    para a en aristas:
+        si a.origen_id == nodo_id:
+            let destino = _syn_texto_duplicar(a.destino_id)
+            si indice.contiene(destino):
+                si estado.indices.contiene(destino) == falso:
+                    tarjan_visitar(nodos, aristas, indice, estado, _syn_texto_duplicar(destino))
+                    estado.lowlinks.poner(nodo_id, minimo(estado.lowlinks[nodo_id], estado.lowlinks[destino]))
+                sino:
+                    si estado.en_pila.contiene(destino):
+                        si estado.en_pila[destino] == 1:
+                            estado.lowlinks.poner(nodo_id, minimo(estado.lowlinks[nodo_id], estado.indices[destino]))
+    si estado.lowlinks[nodo_id] == estado.indices[nodo_id]:
+        let miembros = 0
+        let terminado = 0
+        mientras terminado == 0:
+            let tope = longitud(estado.pila) - 1
+            let w = ""
+            let pos = 0
+            para x en estado.pila:
+                si pos == tope:
+                    w = x
+                pos = pos + 1
+            estado.pila.eliminar(tope)
+            estado.en_pila.poner(w, 0)
+            miembros = miembros + 1
+            si w == nodo_id:
+                terminado = 1
+        si miembros > 1:
+            estado.escalares.poner("ciclos", estado.escalares["ciclos"] + 1)
+    retornar
+
+funcion minimo(a: entero, b: entero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ <= a
+    si a < b:
+        retornar a
+    retornar b
+
+funcion max_dependientes(nodos: Lista<NodoGrafo>) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0
+    let maximo = 0
+    para n en nodos:
+        si n.num_dependientes > maximo:
+            maximo = n.num_dependientes
+    retornar maximo
+
+funcion calcular_densidad(nodos: Lista<NodoGrafo>, aristas: Lista<AristaGrafo>) -> decimal:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0.0
+    let n = longitud(nodos)
+    si n <= 1:
+        retornar 0.0
+    let max_aristas = n * (n - 1)
+    si max_aristas == 0:
+        retornar 0.0
+    retornar (longitud(aristas) * 1.0) / (max_aristas * 1.0)
+
+funcion calcular_hash_ast(semnodos: Lista<NodoSemantico>, total: entero) -> texto:
+    requiere:
+        total >= 0
+    requiere:
+        total <= longitud(semnodos)
+    garantiza:
+        longitud(_resultado_) > 0
+    let serializado = "["
+    let pos = 0
+    para sn en semnodos:
+        si pos < total:
+            si pos > 0:
+                serializado = serializado + ","
+            serializado = serializado + nodo_semantico_a_json(sn)
+        pos = pos + 1
+    serializado = serializado + "]"
+    retornar sha256_texto(serializado)
+
+funcion nodo_semantico_a_json(nodo: NodoSemantico) -> texto:
+    requiere:
+        nodo.tipo_nodo >= 0
+    garantiza:
+        longitud(_resultado_) > 0
+    let json = "{"
+    json = json + "\"archivo\":\"" + _syn_escapar_json(nodo.archivo) + "\","
+    json = json + "\"columna\":" + entero_a_texto(nodo.columna) + ","
+    json = json + "\"contratos\":" + contratos_a_json(nodo.contratos) + ","
+    json = json + "\"es_publico\":" + booleano_a_json(nodo.es_publico) + ","
+    json = json + "\"firma\":\"" + _syn_escapar_json(nodo.firma) + "\","
+    json = json + "\"linea\":" + entero_a_texto(nodo.linea) + ","
+    json = json + "\"nombre\":\"" + _syn_escapar_json(nodo.nombre) + "\","
+    json = json + "\"referencia\":\"" + _syn_escapar_json(nodo.referencia) + "\","
+    json = json + "\"tipo_nodo\":" + entero_a_texto(nodo.tipo_nodo)
+    json = json + "}"
+    retornar json
+
+funcion contratos_a_json(contratos: Lista<ContratoInfo>) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) > 0
+    let json = "["
+    let pos = 0
+    para c en contratos:
+        si pos > 0:
+            json = json + ","
+        json = json + "{\"expresion\":\"" + _syn_escapar_json(c.expresion) + "\",\"linea\":" + entero_a_texto(c.linea) + ",\"tipo\":\"" + _syn_escapar_json(c.tipo) + "\"}"
+        pos = pos + 1
+    json = json + "]"
+    retornar json
+
+funcion booleano_a_json(valor: booleano) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) > 0
+    si valor:
+        retornar "true"
+    retornar "false"
+
+funcion tiempo_actual() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0
+    retornar ahora_ms()
+
+funcion grafo_guardar(grafo: GrafoProyecto, ruta: texto) -> ResultadoGuardado:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        verdadero
+    let json = grafo_a_json(grafo)
+    let rc = escribir_archivo(_syn_texto_duplicar(ruta), _syn_texto_duplicar(json))
+    si rc == 0:
+        retornar ResultadoGuardado(verdadero, "")
+    retornar ResultadoGuardado(falso, "No se pudo escribir el grafo")
+
+funcion grafo_cargar(ruta: texto) -> Lista<GrafoProyecto>:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    let grafos = Lista<GrafoProyecto>()
+    let contenido = leer_archivo(_syn_texto_duplicar(ruta))
+    si longitud(contenido) > 0:
+        let doc = desde_texto(_syn_texto_duplicar(contenido))
+        let grafo = json_a_grafo(doc)
+        grafos.agregar(grafo)
+        liberar_nodo(doc)
+    retornar grafos
+
+funcion grafo_a_json(grafo: GrafoProyecto) -> texto:
+    requiere:
+        longitud(grafo.proyecto) > 0
+    garantiza:
+        longitud(_resultado_) > 0
+    let metricas_json = "{}"
+    para m en grafo.metricas:
+        metricas_json = metricas_a_json(m)
+    let json = "{"
+    json = json + "\"aristas\":" + aristas_a_json(grafo.aristas) + ","
+    json = json + "\"hash_ast\":\"" + _syn_escapar_json(grafo.hash_ast) + "\","
+    json = json + "\"indice_por_id\":" + indice_a_json(grafo) + ","
+    json = json + "\"metricas\":" + metricas_json + ","
+    json = json + "\"nodos\":" + nodos_a_json(grafo.nodos) + ","
+    json = json + "\"proyecto\":\"" + _syn_escapar_json(grafo.proyecto) + "\","
+    json = json + "\"timestamp\":" + entero_a_texto(grafo.timestamp)
+    json = json + "}"
+    retornar json
+
+funcion nodos_a_json(nodos: Lista<NodoGrafo>) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) > 0
+    let json = "["
+    let pos = 0
+    para n en nodos:
+        si pos > 0:
+            json = json + ","
+        json = json + "{\"archivo\":\"" + _syn_escapar_json(n.archivo) + "\","
+        json = json + "\"columna\":" + entero_a_texto(n.columna) + ","
+        json = json + "\"contratos\":" + contratos_a_json(n.contratos) + ","
+        json = json + "\"es_publico\":" + booleano_a_json(n.es_publico) + ","
+        json = json + "\"firma\":\"" + _syn_escapar_json(n.firma) + "\","
+        json = json + "\"id\":\"" + _syn_escapar_json(n.id) + "\","
+        json = json + "\"linea\":" + entero_a_texto(n.linea) + ","
+        json = json + "\"nivel_riesgo\":\"" + _syn_escapar_json(n.nivel_riesgo) + "\","
+        json = json + "\"num_dependencias\":" + entero_a_texto(n.num_dependencias) + ","
+        json = json + "\"num_dependientes\":" + entero_a_texto(n.num_dependientes) + ","
+        json = json + "\"tipo\":\"" + _syn_escapar_json(n.tipo) + "\"}"
+        pos = pos + 1
+    json = json + "]"
+    retornar json
+
+funcion aristas_a_json(aristas: Lista<AristaGrafo>) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) > 0
+    let json = "["
+    let pos = 0
+    para a en aristas:
+        si pos > 0:
+            json = json + ","
+        json = json + "{\"destino_id\":\"" + _syn_escapar_json(a.destino_id) + "\","
+        json = json + "\"es_contrato_critico\":" + booleano_a_json(a.es_contrato_critico) + ","
+        json = json + "\"linea\":" + entero_a_texto(a.linea) + ","
+        json = json + "\"origen_id\":\"" + _syn_escapar_json(a.origen_id) + "\","
+        json = json + "\"tipo\":\"" + _syn_escapar_json(a.tipo) + "\"}"
+        pos = pos + 1
+    json = json + "]"
+    retornar json
+
+funcion indice_a_json(grafo: GrafoProyecto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) > 0
+    let json = "{"
+    let pos = 0
+    para n en grafo.nodos:
+        si pos > 0:
+            json = json + ","
+        json = json + "\"" + _syn_escapar_json(n.id) + "\":" + entero_a_texto(grafo.indice_por_id[n.id])
+        pos = pos + 1
+    json = json + "}"
+    retornar json
+
+funcion metricas_a_json(metricas: MetricasGrafo) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) > 0
+    let json = "{"
+    json = json + "\"ciclos_detectados\":" + entero_a_texto(metricas.ciclos_detectados) + ","
+    json = json + "\"densidad\":" + decimal_a_texto(metricas.densidad) + ","
+    json = json + "\"max_dependientes\":" + entero_a_texto(metricas.max_dependientes) + ","
+    json = json + "\"total_aristas\":" + entero_a_texto(metricas.total_aristas) + ","
+    json = json + "\"total_nodos\":" + entero_a_texto(metricas.total_nodos)
+    json = json + "}"
+    retornar json
+
+funcion json_a_grafo(doc: NodoJson) -> GrafoProyecto:
+    requiere:
+        doc.tipo >= 0
+    garantiza:
+        verdadero
+    let nodos = json_a_nodos(doc)
+    let aristas = json_a_aristas(doc)
+    let indice = Mapa<texto, entero>()
+    let pos = 0
+    para n en nodos:
+        indice.poner(n.id, pos)
+        pos = pos + 1
+    let metricas = Lista<MetricasGrafo>()
+    let metricas_leidas = json_a_metricas(doc)
+    metricas.agregar(metricas_leidas)
+    retornar GrafoProyecto(json_texto(doc, "proyecto"), json_texto(doc, "hash_ast"), json_entero(doc, "timestamp"), nodos, aristas, indice, metricas)
+
+funcion json_a_nodos(doc: NodoJson) -> Lista<NodoGrafo>:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    let nodos = Lista<NodoGrafo>()
+    let arr = obtener_campo(doc, "nodos")
+    let i = 0
+    mientras i < arr.longitud:
+        let n = obtener_elemento(arr, i)
+        let contratos = json_a_contratos(n, "contratos")
+        nodos.agregar(NodoGrafo(json_texto(n, "id"), json_texto(n, "tipo"), json_texto(n, "archivo"), json_entero(n, "linea"), json_entero(n, "columna"), json_texto(n, "firma"), json_entero(n, "num_dependientes"), json_entero(n, "num_dependencias"), contratos, json_booleano(n, "es_publico"), json_texto(n, "nivel_riesgo")))
+        i = i + 1
+    retornar nodos
+
+funcion json_a_aristas(doc: NodoJson) -> Lista<AristaGrafo>:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    let aristas = Lista<AristaGrafo>()
+    let arr = obtener_campo(doc, "aristas")
+    let i = 0
+    mientras i < arr.longitud:
+        let a = obtener_elemento(arr, i)
+        aristas.agregar(AristaGrafo(json_texto(a, "origen_id"), json_texto(a, "destino_id"), json_texto(a, "tipo"), json_booleano(a, "es_contrato_critico"), json_entero(a, "linea")))
+        i = i + 1
+    retornar aristas
+
+funcion json_a_contratos(doc: NodoJson, clave: texto) -> Lista<ContratoInfo>:
+    requiere:
+        longitud(clave) > 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    let contratos = Lista<ContratoInfo>()
+    let arr = obtener_campo(doc, clave)
+    let i = 0
+    mientras i < arr.longitud:
+        let c = obtener_elemento(arr, i)
+        contratos.agregar(ContratoInfo(json_texto(c, "tipo"), json_texto(c, "expresion"), json_entero(c, "linea")))
+        i = i + 1
+    retornar contratos
+
+funcion json_a_metricas(doc: NodoJson) -> MetricasGrafo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    let m = obtener_campo(doc, "metricas")
+    retornar MetricasGrafo(json_entero(m, "total_nodos"), json_entero(m, "total_aristas"), json_entero(m, "max_dependientes"), json_decimal(m, "densidad"), json_entero(m, "ciclos_detectados"))
+
+funcion json_texto(doc: NodoJson, clave: texto) -> texto:
+    requiere:
+        longitud(clave) > 0
+    garantiza:
+        verdadero
+    let campo = obtener_campo(doc, clave)
+    retornar _syn_texto_duplicar(campo.valor_str)
+
+funcion json_entero(doc: NodoJson, clave: texto) -> entero:
+    requiere:
+        longitud(clave) > 0
+    garantiza:
+        verdadero
+    let campo = obtener_campo(doc, clave)
+    // cumple Manual 6 §1.1: usa el conversor JSON del AST canónico sin
+    // colisionar con std.texto.a_texto cuando ambos módulos se importan.
+    retornar texto_a_entero(_json_a_texto(campo))
+
+funcion json_decimal(doc: NodoJson, clave: texto) -> decimal:
+    requiere:
+        longitud(clave) > 0
+    garantiza:
+        verdadero
+    let campo = obtener_campo(doc, clave)
+    // cumple Manual 6 §1.1: conversor JSON canónico (ver json_entero).
+    retornar texto_a_decimal(_json_a_texto(campo))
+
+funcion json_booleano(doc: NodoJson, clave: texto) -> booleano:
+    requiere:
+        longitud(clave) > 0
+    garantiza:
+        verdadero
+    let campo = obtener_campo(doc, clave)
+    retornar campo.valor_bool == 1

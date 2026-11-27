@@ -1,0 +1,4 @@
+#lang: es
+
+funcion principal() -> entero:
+    retornar 42

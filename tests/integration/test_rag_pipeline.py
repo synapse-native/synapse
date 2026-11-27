@@ -5,6 +5,8 @@ Valida el pipeline RAG: extraccion de contexto de 11 lineas, presupuesto de toke
 import pytest
 import os
 
+pytestmark = pytest.mark.integration
+
 
 def test_contexto_extrae_11_lineas():
     """El RAG debe extraer 5 lineas antes y 5 despues del cursor (11 total)."""

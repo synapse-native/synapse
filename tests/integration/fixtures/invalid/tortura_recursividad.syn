@@ -1,0 +1,3 @@
+#lang: es
+funcion principal() -> nulo:
+    desconocida()

@@ -1,0 +1,51 @@
+#lang: es
+// lib/io.syq — Entrada/Salida estándar de Syquex
+// Manual 3 §12.1: Módulo IO (consola, archivos)
+//
+// Uso desde Syquex:
+//   importar lib.io
+//   io.escribir("hola")
+//   io.escribir_linea("mundo")
+//   entrada = io.leer_linea()
+
+// --- Funciones de consola ---
+
+funcion escribir(texto: texto) -> nulo:
+    _syn_escribir(texto)
+
+funcion escribir_linea(texto: texto) -> nulo:
+    _syn_escribir_linea(texto)
+
+funcion leer_linea() -> texto:
+    retornar _syn_leer_linea()
+
+// --- Funciones de archivo ---
+
+funcion leer_archivo(ruta: texto) -> texto:
+    let c = _syn_abrir(ruta, "r")
+    si c == 0:
+        retornar ""
+    let contenido = _syn_leer(c)
+    _syn_cerrar(c)
+    retornar contenido
+
+funcion escribir_archivo(ruta: texto, contenido: texto) -> nulo:
+    let c = _syn_abrir(ruta, "w")
+    si c == 0:
+        retornar
+    _syn_escribir_a(c, contenido)
+    _syn_cerrar(c)
+
+funcion existe_archivo(ruta: texto) -> booleano:
+    retornar _syn_existe(ruta)
+
+// --- Externs del runtime C ---
+
+externo funcion _syn_escribir(texto: texto) -> nulo
+externo funcion _syn_escribir_linea(texto: texto) -> nulo
+externo funcion _syn_leer_linea() -> texto
+externo funcion _syn_abrir(ruta: texto, modo: texto) -> entero
+externo funcion _syn_leer(c: entero) -> texto
+externo funcion _syn_escribir_a(c: entero, contenido: texto) -> nulo
+externo funcion _syn_cerrar(c: entero) -> nulo
+externo funcion _syn_existe(ruta: texto) -> booleano

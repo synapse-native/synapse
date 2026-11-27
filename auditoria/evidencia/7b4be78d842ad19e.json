@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "7b4be78d842ad19e",
+ "expediente": "docs/alineacion/r237_instalador_toolchain.md",
+ "fecha": "2026-11-17",
+ "archivos": [
+  "instaladores/windows/empaquetar_toolchain.py"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r237_instalador_toolchain.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

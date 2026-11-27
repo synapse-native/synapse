@@ -1,0 +1,31 @@
+{
+ "cambio_hash": "ce98bfd3fccb28f9",
+ "expediente": "docs/alineacion/f31_deficiencias.md",
+ "fecha": "2026-09-15",
+ "archivos": [
+  "axon/axon_rt.c",
+  "axon/axon_rt.h",
+  "compilador/generator/emit_declarations.py",
+  "compilador/generator/emit_expressions.py",
+  "compilador/generator/generator.py",
+  "compilador/parser_control.py",
+  "compilador/puente_canonico.py",
+  "nucleo/parser_sentencias.syn",
+  "nucleo/principal.syn",
+  "runtime/core/axon.c",
+  "runtime/core/concurrency.c",
+  "runtime/core/sistema.c",
+  "synapse_rt_types.h",
+  "syquex/expr.syn",
+  "syquex/parser.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_gate_mts_oraculos.py": true,
+  "tests/axon/test_workspace.py": true,
+  "tests/nucleo/test_fmt.py": true,
+  "tests/nucleo/test_lint.py": true,
+  "tests/test_auditoria_alineacion.py": true
+ },
+ "citas_muertas_repo": 70,
+ "modo": "block"
+}

@@ -1,3 +1,0 @@
-#lang: es
-funcion principal() -> nulo:
-    log("hola mundo")

@@ -10,21 +10,28 @@ import sys
 import tempfile
 import shutil
 
+from conftest import rt_objs
+import pytest
+
+pytestmark = pytest.mark.integration
+
+RT_OBJS = rt_objs()  # F3-15: objetos del runtime derivados de runtime/core/*.c (sin hardcoding)
+
 TEST_C_SRC = os.path.join(os.path.dirname(__file__), "..", "test_reversible_debug.c")
-RUNTIME_O = os.path.join(os.path.dirname(__file__), "..", "..", "synapse_rt.o")
-RUNTIME_MEM_O = os.path.join(os.path.dirname(__file__), "..", "..", "synapse_rt_memory.o")
-RUNTIME_CONC_O = os.path.join(os.path.dirname(__file__), "..", "..", "synapse_rt_concurrency.o")
-TWEETNACL_O = os.path.join(os.path.dirname(__file__), "..", "..", "tweetnacl.o")
+
+
 COMPILADOR_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "compilador")
-ERR_SYN = os.path.join(os.path.dirname(__file__), "..", "..", "librerias", "std", "err.syn")
+ERR_SYN = os.path.join(os.path.dirname(__file__), "..", "..", "std", "err.syn")
 BIN = "test_reversible_debug.exe"
 BIN_ABS = os.path.abspath(BIN)
 
 
 def test_compila_y_pasa_todos():
-    """Compila el test C y ejecuta la suite completa. Verifica 0 fallos."""
+    """Compila el test C y ejecuta la suite completa. Verifica 0 fallos.
+Manual 2
+"""
     rc = subprocess.run(
-        ["gcc", "-I.", "-I" + COMPILADOR_DIR, "-o", BIN_ABS, TEST_C_SRC, RUNTIME_O, RUNTIME_MEM_O, RUNTIME_CONC_O, TWEETNACL_O, "-lm", "-lws2_32", "-static"],
+        ["gcc", "-I.", "-I" + COMPILADOR_DIR, "-o", BIN_ABS, TEST_C_SRC, *RT_OBJS, "-lm", "-lws2_32", "-static"],
         capture_output=True, text=True, cwd=os.path.dirname(TEST_C_SRC)
     )
     assert rc.returncode == 0, f"Compilación falló:\n{rc.stderr}"
@@ -55,7 +62,7 @@ def test_sin_errores_valgrind():
 
 def test_imports_debug_syn_rp():
     """Verifica que debug.syn contenga las funciones rp_* esperadas."""
-    debug_syn = os.path.join(os.path.dirname(__file__), "..", "..", "librerias", "std", "debug.syn")
+    debug_syn = os.path.join(os.path.dirname(__file__), "..", "..", "std", "debug.syn")
     with open(debug_syn, "r", encoding="utf-8") as f:
         content = f.read()
     expected_funcs = [

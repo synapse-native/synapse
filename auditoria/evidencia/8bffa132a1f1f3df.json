@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "8bffa132a1f1f3df",
+ "expediente": "docs/alineacion/r235_fallback_blanco.md",
+ "fecha": "2026-11-17",
+ "archivos": [
+  "runtime/core/ollama.c"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r235_fallback_blanco.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

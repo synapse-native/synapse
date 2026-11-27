@@ -1,0 +1,442 @@
+#lang: es
+// opensyn/pipeline_multiagente.syn - Pipeline multi-agente optimizado
+// cumple Manual 2 §5.1: contratos requiere/garantiza
+// cumple Manual 6 §1.1: AST canónico unificado (SemNodo[]) y grafo de conocimiento
+// cumple Manual 7 §2.3: contexto RAG desde explorer/architect hacia el prompt
+// Fase 32.4: Pipeline con 2-3 inferencias máximo
+
+importar std.io
+importar std.tiempo
+importar std.texto
+importar std.sistema
+importar nucleo.grafo_conocimiento
+importar opensyn.validation_loop
+importar opensyn.explorer_det
+importar opensyn.architect_det
+
+// El cliente Ollama se importa de opensyn.validation_loop (r206).
+
+// ============================================================
+// ESTRUCTURAS
+// ============================================================
+
+estructura ModoOperacion:
+    nombre: texto
+    fases_activas: Lista<texto>
+    herramientas_permitidas: Lista<texto>
+
+estructura ContextoPipeline:
+    instruccion: texto
+    archivo: texto
+    archivos_relevantes: Lista<ArchivoRelevante>
+    total_afectados: entero
+    profundidad_maxima: entero
+    contratos_criticos: entero
+    ciclos_potenciales: entero
+    codigo_generado: texto
+    criticas: texto
+    codigo_final: texto
+
+estructura ResultadoPipeline:
+    exito: booleano
+    codigo: texto
+    razonamiento: texto
+    num_inferencias: entero
+    tiempo_total_ms: entero
+
+estructura ResultadoCorreccion:
+    exito: booleano
+    codigo: texto
+    error: texto
+    intentos: entero
+
+// ============================================================
+// MODOS DE OPERACIÓN
+// ============================================================
+
+funcion crear_modo_ask() -> ModoOperacion:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_.nombre == "ask"
+    let fases = Lista<texto>()
+    fases.agregar("explanacion")
+    let herramientas = Lista<texto>()
+    herramientas.agregar("lectura")
+    retornar ModoOperacion("ask", fases, herramientas)
+
+funcion crear_modo_plan() -> ModoOperacion:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_.nombre == "plan"
+    let fases = Lista<texto>()
+    fases.agregar("explorer")
+    fases.agregar("architect")
+    let herramientas = Lista<texto>()
+    herramientas.agregar("lectura")
+    herramientas.agregar("escritura_plan")
+    retornar ModoOperacion("plan", fases, herramientas)
+
+funcion crear_modo_code() -> ModoOperacion:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_.nombre == "code"
+    let fases = Lista<texto>()
+    fases.agregar("explorer")
+    fases.agregar("architect")
+    fases.agregar("coder")
+    fases.agregar("reviewer")
+    fases.agregar("fixer")
+    let herramientas = Lista<texto>()
+    herramientas.agregar("edicion")
+    herramientas.agregar("validacion")
+    retornar ModoOperacion("code", fases, herramientas)
+
+funcion crear_modo_debug() -> ModoOperacion:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_.nombre == "debug"
+    let fases = Lista<texto>()
+    fases.agregar("explorer")
+    fases.agregar("coder")
+    fases.agregar("reviewer")
+    let herramientas = Lista<texto>()
+    herramientas.agregar("lectura")
+    herramientas.agregar("edicion_limitada")
+    retornar ModoOperacion("debug", fases, herramientas)
+
+funcion crear_modo_orchestrator() -> ModoOperacion:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_.nombre == "orchestrator"
+    let fases = Lista<texto>()
+    fases.agregar("explorer")
+    fases.agregar("architect")
+    let herramientas = Lista<texto>()
+    herramientas.agregar("solo_coordinacion")
+    retornar ModoOperacion("orchestrator", fases, herramientas)
+
+funcion tiene_fase(modo: ModoOperacion, fase: texto) -> booleano:
+    requiere:
+        longitud(fase) > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso
+    para f en modo.fases_activas:
+        si f == fase:
+            retornar verdadero
+    retornar falso
+
+// ============================================================
+// PIPELINE PRINCIPAL
+// ============================================================
+
+funcion ejecutar_pipeline(instruccion: texto, archivo: texto) -> ResultadoPipeline:
+    requiere:
+        longitud(instruccion) > 0
+    garantiza:
+        _resultado_.num_inferencias >= 0 y _resultado_.num_inferencias <= 3
+    retornar ejecutar_con_modo(instruccion, archivo, crear_modo_code())
+
+funcion ejecutar_con_modo(instruccion: texto, archivo: texto, modo: ModoOperacion) -> ResultadoPipeline:
+    requiere:
+        longitud(instruccion) > 0
+    garantiza:
+        _resultado_.num_inferencias >= 0 y _resultado_.num_inferencias <= 3
+    let inicio = ahora_ms()
+    let grafo = cargar_grafo_proyecto()
+
+    let contexto = ContextoPipeline(
+        _syn_strcpy(instruccion),
+        _syn_strcpy(archivo),
+        Lista<ArchivoRelevante>(),
+        0,
+        0,
+        0,
+        0,
+        "",
+        "",
+        ""
+    )
+
+    let num_inferencias = 0
+    let correccion_usada = falso
+
+    // ============================================================
+    // FASE 1: EXPLORER (determinista, sin LLM)
+    // ============================================================
+    si tiene_fase(modo, "explorer"):
+        contexto.archivos_relevantes = explorar_contexto(archivo, grafo, 2)
+
+    // ============================================================
+    // FASE 2: ARCHITECT (determinista, sin LLM)
+    // ============================================================
+    si tiene_fase(modo, "architect"):
+        let impacto = analizar_impacto_completo(archivo, grafo)
+        contexto.total_afectados = impacto.metricas_total_afectados
+        contexto.profundidad_maxima = impacto.metricas_profundidad_maxima
+        contexto.contratos_criticos = impacto.metricas_contratos_criticos
+        contexto.ciclos_potenciales = impacto.metricas_ciclos_potenciales
+
+    // ============================================================
+    // FASE 3: CODER (LLM)
+    // ============================================================
+    si tiene_fase(modo, "coder"):
+        let prompt_coder = construir_prompt_coder(contexto)
+        let respuesta_coder = llama_client_completar(prompt_coder, 2048, 0.3)
+        contexto.codigo_generado = extraer_codigo(respuesta_coder)
+        num_inferencias = num_inferencias + 1
+
+        // Validar con el compilador real
+        si no validar_codigo(_syn_strcpy(contexto.codigo_generado)):
+            let corregido = validation_loop_corregir(_syn_strcpy(contexto.codigo_generado), archivo)
+            num_inferencias = num_inferencias + corregido.intentos
+            si no corregido.exito:
+                retornar ResultadoPipeline(
+                    falso,
+                    contexto.codigo_generado,
+                    corregido.error,
+                    num_inferencias,
+                    ahora_ms() - inicio
+                )
+            contexto.codigo_generado = corregido.codigo
+            correccion_usada = verdadero
+
+    // ============================================================
+    // FASE 4: REVIEWER (LLM)
+    // ============================================================
+    si tiene_fase(modo, "reviewer") y longitud(contexto.codigo_generado) > 0:
+        let prompt_reviewer = construir_prompt_reviewer(contexto)
+        let respuesta_reviewer = llama_client_completar(prompt_reviewer, 1024, 0.2)
+        contexto.criticas = respuesta_reviewer
+        num_inferencias = num_inferencias + 1
+
+    // ============================================================
+    // FASE 5: FIXER (LLM, solo si hay críticas y no hubo corrección)
+    // ============================================================
+    si tiene_fase(modo, "fixer") y no correccion_usada y tiene_criticas_relevantes(contexto.criticas):
+        let prompt_fixer = construir_prompt_fixer(contexto)
+        let respuesta_fixer = llama_client_completar(prompt_fixer, 2048, 0.3)
+        contexto.codigo_final = extraer_codigo(respuesta_fixer)
+        num_inferencias = num_inferencias + 1
+    sino:
+        contexto.codigo_final = contexto.codigo_generado
+
+    // Validación final con el compilador real
+    si tiene_fase(modo, "coder") y no validar_codigo(_syn_strcpy(contexto.codigo_final)):
+        retornar ResultadoPipeline(
+            falso,
+            contexto.codigo_final,
+            "Código final no compila",
+            num_inferencias,
+            ahora_ms() - inicio
+        )
+
+    retornar ResultadoPipeline(
+        verdadero,
+        contexto.codigo_final,
+        contexto.criticas,
+        num_inferencias,
+        ahora_ms() - inicio
+    )
+
+// ============================================================
+// CONSTRUCCIÓN DE PROMPTS
+// ============================================================
+
+funcion construir_prompt_coder(contexto: ContextoPipeline) -> texto:
+    requiere:
+        longitud(contexto.instruccion) > 0
+    garantiza:
+        longitud(_resultado_) > 0
+    let prompt = "# CONTEXTO DEL PROYECTO\n\n"
+
+    // Archivos relevantes
+    prompt = prompt + "## Archivos relevantes:\n"
+    let contador = 0
+    para arch en contexto.archivos_relevantes:
+        si contador < 5:
+            prompt = prompt + "- `" + arch.archivo + "` (" + arch.razon + ")\n"
+            contador = contador + 1
+
+    // Análisis de impacto
+    prompt = prompt + "\n## Análisis de impacto:\n"
+    prompt = prompt + "- Archivos afectados: " + entero_a_texto(contexto.total_afectados) + "\n"
+    prompt = prompt + "- Profundidad máxima: " + entero_a_texto(contexto.profundidad_maxima) + "\n"
+    prompt = prompt + "- Contratos críticos: " + entero_a_texto(contexto.contratos_criticos) + "\n"
+    prompt = prompt + "- Ciclos potenciales: " + entero_a_texto(contexto.ciclos_potenciales) + "\n"
+
+    // Reglas del lenguaje
+    prompt = prompt + "\n# REGLAS DE SINTAXIS (SYNAPSE/SYQUEX)\n"
+    prompt = prompt + reglas_sintaxis_estaticas()
+
+    // Instrucción
+    prompt = prompt + "\n# INSTRUCCIÓN\n" + _syn_strcpy(contexto.instruccion) + "\n"
+    prompt = prompt + "\nGenera SOLO el código, sin explicaciones.\n"
+
+    retornar prompt
+
+funcion construir_prompt_reviewer(contexto: ContextoPipeline) -> texto:
+    requiere:
+        longitud(contexto.codigo_generado) > 0
+    garantiza:
+        longitud(_resultado_) > 0
+    let prompt = "# REVISIÓN DE CÓDIGO\n\n"
+    prompt = prompt + "## Código a revisar:\n```\n" + _syn_strcpy(contexto.codigo_generado) + "\n```\n\n"
+    prompt = prompt + "## Contexto:\n" + _syn_strcpy(contexto.instruccion) + "\n\n"
+    prompt = prompt + "## Analiza y critica:\n"
+    prompt = prompt + "1. ¿Compila correctamente?\n"
+    prompt = prompt + "2. ¿Maneja casos límite?\n"
+    prompt = prompt + "3. ¿Rompe contratos críticos?\n"
+    prompt = prompt + "4. ¿Sigue las reglas de sintaxis?\n"
+    prompt = prompt + "5. ¿Hay problemas de rendimiento?\n\n"
+    prompt = prompt + "Sé brutalmente honesto. Si el código es bueno, dilo. Si tiene problemas, sé específico.\n"
+    retornar prompt
+
+funcion construir_prompt_fixer(contexto: ContextoPipeline) -> texto:
+    requiere:
+        longitud(contexto.codigo_generado) > 0 y longitud(contexto.criticas) > 0
+    garantiza:
+        longitud(_resultado_) > 0
+    let prompt = "# CORRECCIÓN DE CÓDIGO\n\n"
+    prompt = prompt + "## Código original:\n```\n" + _syn_strcpy(contexto.codigo_generado) + "\n```\n\n"
+    prompt = prompt + "## Críticas:\n" + _syn_strcpy(contexto.criticas) + "\n\n"
+    prompt = prompt + "## Genera el código corregido:\n"
+    prompt = prompt + "Aplica SOLO las correcciones necesarias. No refactorices innecesariamente.\n"
+    retornar prompt
+
+// Las fases deterministas se importan de explorer_det/architect_det (Manual 6 §1.1).
+
+funcion cargar_grafo_proyecto() -> GrafoProyecto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_.metricas) > 0
+    let nodos = Lista<NodoGrafo>()
+    let aristas = Lista<AristaGrafo>()
+    let indice = Mapa<texto, entero>()
+    let metricas = Lista<MetricasGrafo>()
+    metricas.agregar(MetricasGrafo(0, 0, 0, 0.0, 0))
+    retornar GrafoProyecto("opensyn", "", 0, nodos, aristas, indice, metricas)
+
+// ============================================================
+// FUNCIONES AUXILIARES
+// ============================================================
+
+funcion tiene_criticas_relevantes(criticas: texto) -> booleano:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso
+    si longitud(criticas) == 0:
+        retornar falso
+    si contiene(criticas, "error") == 1:
+        retornar verdadero
+    si contiene(criticas, "problema") == 1:
+        retornar verdadero
+    si contiene(criticas, "fallo") == 1:
+        retornar verdadero
+    si contiene(criticas, "bug") == 1:
+        retornar verdadero
+    si contiene(criticas, "incorrecto") == 1:
+        retornar verdadero
+    si contiene(criticas, "falta") == 1:
+        retornar verdadero
+    retornar falso
+
+funcion extraer_codigo(respuesta: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    let pos = indice_de(respuesta, "```synapse")
+    si pos == -1:
+        pos = indice_de(respuesta, "```syquex")
+    si pos == -1:
+        retornar respuesta
+
+    let largo = longitud(respuesta)
+    let i = pos + 3
+    mientras i < largo:
+        si subcadena(respuesta, i, 1) == "\n":
+            romper
+        i = i + 1
+    si i < largo:
+        i = i + 1
+
+    let resto = subcadena(respuesta, i, largo - i)
+    let fin_rel = indice_de(resto, "```")
+    si fin_rel == -1:
+        retornar resto
+    retornar subcadena(resto, 0, fin_rel)
+
+funcion validar_codigo(codigo: texto) -> booleano:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso
+    si longitud(codigo) == 0:
+        retornar falso
+    let validacion = validar_con_check(_syn_strcpy(codigo), "syn")
+    retornar validacion.es_valido
+
+funcion reglas_sintaxis_estaticas() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) > 0
+    let reglas = "- Funciones: `funcion nombre(parametros) -> tipo:`\n"
+    reglas = concat(reglas, "- Variables: `let nombre = valor`\n")
+    reglas = concat(reglas, "- Condicional: `si condicion:`\n")
+    reglas = concat(reglas, "- Bucle: `mientras condicion:`\n")
+    reglas = concat(reglas, "- Retorno: `retornar valor`\n")
+    reglas = concat(reglas, "- Estructuras: `estructura Nombre: campo: tipo`\n")
+    reglas = concat(reglas, "- Contratos: `requiere:` y `garantiza:`\n")
+    retornar reglas
+
+funcion llama_client_completar(prompt: texto, max_tokens: entero, temperature: decimal) -> texto:
+    requiere:
+        longitud(prompt) > 0 y max_tokens > 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    let modelo = "qwen2.5-coder:1.5b"
+    let host = "127.0.0.1"
+    let puerto = 8088
+
+    let modelo_env = _syn_obtener_env("OPENSYN_OLLAMA_MODEL")
+    si longitud(modelo_env) > 0:
+        modelo = modelo_env
+    let host_env = _syn_obtener_env("OPENSYN_OLLAMA_HOST")
+    si longitud(host_env) > 0:
+        host = host_env
+    let puerto_env = _syn_obtener_env("OPENSYN_OLLAMA_PORT")
+    si longitud(puerto_env) > 0:
+        puerto = _syn_atoi(puerto_env)
+
+    retornar _syn_ollama_consultar(modelo, prompt, host, puerto, max_tokens)
+
+funcion validation_loop_corregir(codigo: texto, archivo: texto) -> ResultadoCorreccion:
+    requiere:
+        verdadero // acepta la respuesta vacia del LLM para rechazarla sin abortar
+    garantiza:
+        _resultado_.intentos >= 0 y _resultado_.intentos <= 1
+    // cumple Manual 6 §1.1: el pipeline no invoca al compilador con respuesta vacia
+    si es_codigo_vacio(_syn_strcpy(codigo)):
+        retornar ResultadoCorreccion(falso, "", ERR_RESPUESTA_VACIA, 0)
+    let validacion = validar_con_check(_syn_strcpy(codigo), "syn")
+    si validacion.es_valido:
+        retornar ResultadoCorreccion(verdadero, codigo, "", 0)
+
+    let errores = _syn_strcpy(validacion.errores)
+    let prompt = "# CORRECCIÓN DE CÓDIGO\n\n## Archivo: " + archivo + "\n\n## Código actual:\n```\n" + _syn_strcpy(codigo) + "\n```\n\n## Errores del compilador:\n" + _syn_strcpy(errores) + "\n\nGenera SOLO el código corregido.\n"
+    let respuesta = llama_client_completar(prompt, 2048, 0.3)
+    let corregido = extraer_codigo(respuesta)
+    // cumple Manual 7 §6.3: una respuesta vacia del LLM tambien se rechaza aqui
+    si es_codigo_vacio(_syn_strcpy(corregido)):
+        retornar ResultadoCorreccion(falso, "", ERR_RESPUESTA_VACIA, 1)
+    si validar_codigo(_syn_strcpy(corregido)):
+        retornar ResultadoCorreccion(verdadero, corregido, "", 1)
+    retornar ResultadoCorreccion(falso, corregido, _syn_strcpy(errores), 1)

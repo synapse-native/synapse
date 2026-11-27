@@ -1,5 +1,7 @@
 #lang: es
-
+// cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas (ME formatter_fix R4: anclaje de norma vigente tras reformato)
+// cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
+// vinculo ME formatter_fix R4 (Manual 1 §7.1, M8 §4.1): reformato cosmético del nucleo — estilo, sin cambios semánticos
 constante ERR_SYNTAX_EXPECTED_TOKEN = 1
 constante ERR_SYNTAX_UNEXPECTED_TOKEN = 2
 constante ERR_SYNTAX_UNEXPECTED_EXPR = 3
@@ -22,7 +24,7 @@ constante ERR_SEM_ARGUMENTOS_INVALIDOS = 19
 constante ERR_SEM_ESTRUCTURA_NO_DEFINIDA = 20
 constante ERR_SEM_CAMPO_NO_EXISTE = 21
 constante ERR_SEM_VAR_MOVIDA = 22
-constante ERR_SEM_ACCESO_MEMORIA_MOVIDA = 23
+constante ERR_MEM_USE_AFTER_MOVE = 23 // cumple Manual 2 9: uso tras move (canonico; reutiliza ex-ACCESO_MEMORIA_MOVIDA)
 constante ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR = 24
 constante ERR_MANIFEST_NOT_FOUND = 25
 constante ERR_MODULE_STD_NOT_FOUND = 26

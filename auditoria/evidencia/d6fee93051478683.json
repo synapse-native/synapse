@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "d6fee93051478683",
+ "expediente": "docs/alineacion/f32_5_verificacion_aot.md",
+ "fecha": "2026-09-17",
+ "archivos": [
+  "opensyn/verificacion_aot.syn"
+ ],
+ "oraculos": {
+  "tests/opensyn/test_verificacion_aot.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

@@ -1,3 +1,5 @@
+// cumple Manual 1 5: cuantizacion de modelos
+// cumple Manual 8 4: toolchain
 // quantization.c — Cuantización de modelos GGUF (FP32/FP16 → INT8/INT4)
 // =========================================================================
 // Implementa la transformación de pesos de alta precisión a formatos
@@ -44,8 +46,24 @@ static uint16_t fp32_a_fp16(float v) {
 // Decode FP16 a FP32
 static float fp16_a_fp32(uint16_t h) {
     uint32_t sign = ((uint32_t)h & 0x8000) << 16;
-    int32_t exp = ((h >> 10) & 0x1F) - 15 + 127;
-    uint32_t mant = (uint32_t)(h & 0x03FF) << 13;
+    uint32_t e = (h >> 10) & 0x1F;
+    uint32_t m = (uint32_t)(h & 0x03FF);
+
+    if (e == 0) {
+        if (m == 0) {
+            // Cero con signo (fix R79: 0x0000 decodificaba como 2^-15)
+            uint32_t r = sign;
+            float out;
+            memcpy(&out, &r, sizeof(out));
+            return out;
+        }
+        // Subnormal FP16: valor = m * 2^-24 (con signo)
+        float val = ((float)m) * 5.9604644775390625e-08f;
+        return (h & 0x8000) ? -val : val;
+    }
+
+    int32_t exp = (int32_t)e - 15 + 127;
+    uint32_t mant = m << 13;
 
     if (exp <= 0) {
         if (exp < -10) {

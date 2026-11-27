@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "fe5ae9a7aa1147d7",
+ "expediente": "docs/alineacion/barrido_citas_v820.md",
+ "fecha": "2026-10-01",
+ "archivos": [
+  "nucleo/ai_orchestrator.h",
+  "opensyn/chat.syn"
+ ],
+ "oraculos": {
+  "tests/integration/test_opensyn_integration.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

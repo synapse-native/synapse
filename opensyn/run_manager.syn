@@ -1,0 +1,464 @@
+#lang: es
+// opensyn/run_manager.syn — Runs reanudables + checkpoints (M7 §4.3)
+// cumple Manual 7 §4.3: "Si el servidor no responde en 30 segundos, el LSP devuelve un error"
+// cumple Manual 7 §4.3: "Si el código es inválido y se agotan los intentos, ofrece regenerar"
+
+importar std.io
+importar std.texto
+importar std.sistema
+
+// ============================================================
+// Constantes de estado
+// ============================================================
+
+constante RUN_PENDIENTE = 0
+constante RUN_EN_PROGRESO = 1
+constante RUN_COMPLETADO = 2
+constante RUN_FALLIDO = 3
+
+constante SUBTAREA_PENDIENTE = 0
+constante SUBTAREA_EN_PROGRESO = 1
+constante SUBTAREA_COMPLETADA = 2
+constante SUBTAREA_FALLIDA = 3
+
+constante MAX_SUBTAREAS = 20
+constante MAX_INTENTOS_SUBTAREA = 3
+constante TIMEOUT_RUN_ABSOLUTO_MS = 300000
+
+// ============================================================
+// Estructuras (datos planos para evitar [Struct] issues)
+// ============================================================
+
+estructura RunEstado:
+    run_id: texto
+    tarea: texto
+    cantidad_subtareas: entero
+    subtarea_actual: entero
+    estado: entero
+    checkpoint_path: texto
+    timestamp_inicio: entero
+
+// ============================================================
+// R8: Crear run (M7 §4.3)
+// ============================================================
+
+// Crea un nuevo run con cantidad de subtareas definida.
+// cumple Manual 7 §4.3: "runs largos con reanudación"
+funcion crear_run(tarea: texto, num_subtareas: entero) -> RunEstado:
+    requiere:
+        longitud(tarea) > 0
+        num_subtareas > 0
+        num_subtareas <= MAX_SUBTAREAS
+    garantiza:
+        _resultado_.estado == RUN_PENDIENTE // cumple Manual 2 §5.1
+        _resultado_.cantidad_subtareas == num_subtareas
+    run = RunEstado()
+    run.run_id = generar_run_id()
+    run.tarea = tarea
+    run.cantidad_subtareas = num_subtareas
+    run.subtarea_actual = 0
+    run.estado = RUN_PENDIENTE
+    run.timestamp_inicio = ahora_ms()
+    run.checkpoint_path = construir_ruta_checkpoint(_syn_strcpy(run.run_id))
+    retornar run
+
+// ============================================================
+// R8: Guardar checkpoint (M7 §4.3)
+// ============================================================
+
+// Persiste el estado del run a disco para reanudación.
+// cumple Manual 7 §4.3: "reanudación desde la última subtarea OK"
+funcion guardar_checkpoint(run: RunEstado) -> entero:
+    requiere:
+        longitud(run.run_id) > 0
+        run.cantidad_subtareas > 0
+    garantiza:
+        _resultado_ == 0 o _resultado_ == -1 // cumple Manual 2 §5.1
+    contenido = serializar_run(run)
+    exito = escribir_checkpoint_local(_syn_strcpy(run.checkpoint_path), _syn_strcpy(contenido))
+    si exito == 0:
+        retornar 0
+    retornar -1
+
+// ============================================================
+// R8: Cargar checkpoint (M7 §4.3)
+// ============================================================
+
+// Carga el estado de un run desde disco.
+// cumple Manual 7 §4.3: "reanudación desde la última subtarea OK"
+funcion cargar_checkpoint(run_id: texto) -> RunEstado:
+    requiere:
+        longitud(run_id) > 0
+    garantiza:
+        _resultado_.estado >= RUN_PENDIENTE y _resultado_.estado <= RUN_FALLIDO // cumple Manual 2 §5.1
+    run = RunEstado()
+    run.run_id = _syn_strcpy(run_id)
+    run.estado = RUN_PENDIENTE
+    run.subtarea_actual = 0
+    run.cantidad_subtareas = 0
+    ruta = construir_ruta_checkpoint(_syn_strcpy(run_id))
+    contenido = leer_checkpoint_local(_syn_strcpy(ruta))
+    // Si hay contenido, parsear; si no, retornar estado vacío
+    si longitud(contenido) > 0:
+        run = deserializar_run(contenido)
+    retornar run
+
+// ============================================================
+// R8: Marcar subtarea completada (M7 §4.3)
+// ============================================================
+
+// Marca la subtarea actual como completada y avanza.
+// cumple Manual 7 §4.3: "reanudación desde la última subtarea OK"
+funcion marcar_subtarea_completada(run: RunEstado, resultado_texto: texto) -> entero:
+    requiere:
+        run.subtarea_actual < run.cantidad_subtareas
+        longitud(resultado_texto) > 0
+    garantiza:
+        _resultado_ == 0 o _resultado_ == -1 // cumple Manual 2 §5.1
+    run.subtarea_actual = run.subtarea_actual + 1
+    si run.subtarea_actual >= run.cantidad_subtareas:
+        run.estado = RUN_COMPLETADO
+    let rc = guardar_checkpoint(run)
+    si rc != 0:
+        retornar -1
+    retornar 0
+
+// ============================================================
+// R8: Marcar subtarea fallida (M7 §4.3)
+// ============================================================
+
+// Registra fallo en la subtarea actual.
+// cumple Manual 7 §4.3: "Si el código es inválido y se agotan los intentos"
+funcion marcar_subtarea_fallida(run: RunEstado, error: texto, intentos: entero) -> entero:
+    requiere:
+        run.subtarea_actual < run.cantidad_subtareas
+    garantiza:
+        _resultado_ == 0 o _resultado_ == -1 // cumple Manual 2 §5.1
+    si intentos >= MAX_INTENTOS_SUBTAREA:
+        run.estado = RUN_FALLIDO
+    let rc = guardar_checkpoint(run)
+    si rc != 0:
+        retornar -1
+    retornar 0
+
+// ============================================================
+// R8: Verificar run terminado (M7 §4.3)
+// ============================================================
+
+// Verifica si el run ha terminado (completado o fallido).
+// cumple Manual 7 §4.3: "reanudación" — saber cuándo parar
+funcion run_terminado(run: RunEstado) -> booleano:
+    requiere:
+        run.cantidad_subtareas > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso // cumple Manual 2 §5.1
+    si run.estado == RUN_COMPLETADO:
+        retornar verdadero
+    si run.estado == RUN_FALLIDO:
+        retornar verdadero
+    retornar falso
+
+// ============================================================
+// R8: Resumir run (M7 §4.3)
+// ============================================================
+
+// Retoma un run desde el último checkpoint guardado.
+// cumple Manual 7 §4.3: "reanudación desde la última subtarea OK"
+funcion resumir_run(run_id: texto) -> RunEstado:
+    requiere:
+        longitud(run_id) > 0
+    garantiza:
+        _resultado_.estado >= RUN_PENDIENTE // cumple Manual 2 §5.1
+    run = cargar_checkpoint(_syn_strcpy(run_id))
+    si run.estado == RUN_EN_PROGRESO:
+        run.estado = RUN_PENDIENTE
+    // Resetear timestamp al momento de reanudar para que el timeout
+    // se mida desde la reanudación, no desde la creación original.
+    run.timestamp_inicio = ahora_ms()
+    retornar run
+
+// ============================================================
+// R8b: Deshacer el ultimo paso completado (sesion/undo, ME r254)
+// ============================================================
+// Revierte la marca de la ultima subtarea completada, reponiendo el
+// contador a subtarea_actual-1 (acotado a 0) y el estado a EN_PROGRESO,
+// persistiendo el checkpoint. Permite "revertir" un cambio de la sesion.
+// cumple Manual 7 §4.3: "memoria de sesion" — reanudar/undo
+funcion deshacer_ultimo_paso(run_id: texto) -> entero:
+    requiere:
+        longitud(run_id) > 0
+    garantiza:
+        _resultado_ == 0 o _resultado_ == -1 // cumple Manual 2 §5.1
+    run = cargar_checkpoint(_syn_strcpy(run_id))
+    si run.cantidad_subtareas <= 0:
+        retornar -1
+    si run.subtarea_actual <= 0:
+        retornar -1
+    run.subtarea_actual = run.subtarea_actual - 1
+    si run.subtarea_actual >= run.cantidad_subtareas:
+        run.estado = RUN_COMPLETADO
+    sino:
+        run.estado = RUN_EN_PROGRESO
+    run.timestamp_inicio = ahora_ms()
+    let rc = guardar_checkpoint(run)
+    si rc != 0:
+        retornar -1
+    retornar 0
+
+// ============================================================
+// R8: Tiempo transcurrido (M7 §4.3)
+// ============================================================
+
+// Retorna el tiempo transcurrido desde el inicio del run en ms.
+// cumple Manual 7 §4.3: "timeout de 30 segundos" — monitoreo de tiempo
+funcion tiempo_transcurrido(run: RunEstado) -> entero:
+    requiere:
+        run.timestamp_inicio > 0
+    garantiza:
+        _resultado_ >= 0 // cumple Manual 2 §5.1
+    ahora = ahora_ms()
+    retornar ahora - run.timestamp_inicio
+
+// ============================================================
+// R8: Verificar timeout (M7 §4.3)
+// ============================================================
+
+// Verifica si el run ha excedido el timeout absoluto (300s).
+// cumple Manual 7 §4.3: "Si el servidor no responde en 30 segundos, error"
+funcion run_timeout(run: RunEstado) -> booleano:
+    requiere:
+        run.timestamp_inicio > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso // cumple Manual 2 §5.1
+    transcurrido = tiempo_transcurrido(run)
+    si transcurrido > TIMEOUT_RUN_ABSOLUTO_MS:
+        retornar verdadero
+    retornar falso
+
+// ============================================================
+// Funciones auxiliares
+// ============================================================
+
+// Reemplaza todas las ocurrencias de un caracter por otro en una cadena.
+// cumple Manual 2 §12: toda función pública tiene contrato
+funcion reemplazar_basico(t: texto, buscar: texto, reemplazo: texto) -> texto:
+    requiere:
+        longitud(buscar) == 1
+        longitud(reemplazo) >= 1
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    resultado = ""
+    total = longitud(t)
+    i = 0
+    mientras i < total:
+        caracter = subcadena(t, i, 1)
+        si caracter == buscar:
+            resultado = concat(resultado, reemplazo)
+        sino:
+            resultado = concat(resultado, caracter)
+        i = i + 1
+    retornar resultado
+
+// Genera un ID único para el run basado en timestamp.
+// cumple Manual 2 §12: toda función pública tiene contrato
+// cumple Manual 7 §4.3 (ME r244): mismo defecto y misma correccion que en
+// opensyn/router.syn — el reloj del run debe compilar en Windows
+// (`GetTickCount64`) y en POSIX (`clock_gettime`).
+funcion ahora_ms() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0 // cumple Manual 2 §5.1
+    let _ms = 0
+    inseguro:
+        asm("#ifdef _WIN32")
+        asm("unsigned long long __stdcall GetTickCount64(void);")
+        asm("_ms = (int64_t)GetTickCount64();")
+        asm("#else")
+        asm("struct timespec _ts; clock_gettime(CLOCK_MONOTONIC, &_ts); _ms = (int64_t)_ts.tv_sec * 1000 + _ts.tv_nsec / 1000000;")
+        asm("#endif")
+    retornar _ms
+
+funcion entero_a_texto(n: entero) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    inseguro:
+        asm("char _etmp[32]; int _elen = snprintf(_etmp, 32, \"%lld\", (long long)n); char* _ebuf = (char*)pool_alloc((size_t)_elen + 1); memcpy(_ebuf, _etmp, (size_t)_elen + 1); return (CadenaSegura){.longitud = _elen, .datos = _ebuf};")
+    retornar ""
+
+funcion concatenar_texto(a: texto, b: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    inseguro:
+        asm("int _ca = a.longitud; int _cb = b.longitud; char* _cbuf = (char*)pool_alloc((size_t)(_ca + _cb + 1)); memcpy(_cbuf, a.datos, (size_t)_ca); memcpy(_cbuf + _ca, b.datos, (size_t)_cb); _cbuf[_ca + _cb] = 0; return (CadenaSegura){.longitud = _ca + _cb, .datos = _cbuf};")
+    retornar ""
+
+funcion siguiente_secuencia_run() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ > 0 // cumple Manual 2 §5.1
+    inseguro:
+        asm("static int64_t _rm_seq = 0; return ++_rm_seq;")
+    retornar 0
+
+funcion generar_run_id() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    ts = ahora_ms()
+    secuencia = siguiente_secuencia_run()
+    retornar concatenar_texto(concatenar_texto("run_", entero_a_texto(ts)), concatenar_texto("_", entero_a_texto(secuencia)))
+
+// Construye la ruta del archivo de checkpoint.
+// cumple Manual 2 §12: toda función pública tiene contrato
+funcion construir_ruta_checkpoint(run_id: texto) -> texto:
+    requiere:
+        longitud(run_id) > 0
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    override = obtener_env("OPENSYN_RUNS_DIR")
+    si longitud(override) > 0:
+        retornar concat(override, concat("\\", concat(run_id, ".jsonl")))
+    home = obtener_env("USERPROFILE")
+    si home == "":
+        home = _syn_obtener_cwd()
+    directorio = concat(home, "\\.opensyn\\runs\\")
+    retornar concat(directorio, concat(run_id, ".jsonl"))
+
+// Serializa el estado del run a texto JSON.
+// cumple Manual 2 §12: toda función pública tiene contrato
+funcion serializar_run(run: RunEstado) -> texto:
+    requiere:
+        longitud(run.run_id) > 0
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    tarea_limpia = reemplazar_basico(_syn_strcpy(run.tarea), "\\", "\\\\")
+    tarea_limpia = reemplazar_basico(_syn_strcpy(tarea_limpia), "\"", "\\\"")
+    json = "{"
+    json = concat(json, "\"run_id\": \"")
+    json = concat(json, run.run_id)
+    json = concat(json, "\", \"tarea\": \"")
+    json = concat(json, tarea_limpia)
+    json = concat(json, "\", \"estado\": ")
+    json = concat(json, entero_a_texto(run.estado))
+    json = concat(json, ", \"subtarea_actual\": ")
+    json = concat(json, entero_a_texto(run.subtarea_actual))
+    json = concat(json, ", \"cantidad_subtareas\": ")
+    json = concat(json, entero_a_texto(run.cantidad_subtareas))
+    json = concat(json, "}")
+    retornar json
+
+// Deserializa el estado del run desde texto JSON.
+// cumple Manual 2 §12: toda función pública tiene contrato
+funcion deserializar_run(json: texto) -> RunEstado:
+    requiere:
+        longitud(json) > 0
+    garantiza:
+        longitud(_resultado_.run_id) > 0 // cumple Manual 2 §5.1
+    run = RunEstado()
+    run.estado = RUN_PENDIENTE
+    run.subtarea_actual = 0
+    run.cantidad_subtareas = 0
+    // Parsing básico: extraer run_id entre comillas
+    run.run_id = extraer_campo_json(_syn_strcpy(json), "run_id")
+    run.tarea = extraer_campo_json(_syn_strcpy(json), "tarea")
+    run.estado = extraer_entero_json(_syn_strcpy(json), "estado")
+    run.subtarea_actual = extraer_entero_json(_syn_strcpy(json), "subtarea_actual")
+    run.cantidad_subtareas = extraer_entero_json(_syn_strcpy(json), "cantidad_subtareas")
+    run.checkpoint_path = construir_ruta_checkpoint(_syn_strcpy(run.run_id))
+    run.timestamp_inicio = ahora_ms()
+    retornar run
+
+// Extrae un campo de texto de un JSON simple.
+// cumple Manual 2 §12: toda función pública tiene contrato
+funcion extraer_campo_json(json: texto, campo: texto) -> texto:
+    requiere:
+        longitud(json) > 0
+        longitud(campo) > 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    // Buscar "campo": "valor"
+    prefijo = concat("\"", concat(campo, "\": \""))
+    longitud_prefijo = longitud(prefijo)
+    longitud_json = longitud(json)
+    i = 0
+    mientras i < longitud_json - longitud_prefijo:
+        coincide = verdadero
+        j = 0
+        mientras j < longitud_prefijo:
+            si json[i + j] != prefijo[j]:
+                coincide = falso
+                romper
+            j = j + 1
+        si coincide == verdadero:
+            inicio = i + longitud_prefijo
+            fin = inicio
+            mientras fin < longitud_json:
+                si subcadena(json, fin, 1) == "\"":
+                    romper
+                fin = fin + 1
+            retornar subcadena(json, inicio, fin - inicio)
+        i = i + 1
+    retornar ""
+
+// Extrae un campo entero de un JSON simple.
+// cumple Manual 2 §12: toda función pública tiene contrato
+funcion extraer_entero_json(json: texto, campo: texto) -> entero:
+    requiere:
+        longitud(json) > 0
+        longitud(campo) > 0
+    garantiza:
+        _resultado_ >= 0 // cumple Manual 2 §5.1
+    prefijo = concat("\"", concat(campo, "\": "))
+    longitud_prefijo = longitud(prefijo)
+    longitud_json = longitud(json)
+    i = 0
+    mientras i < longitud_json - longitud_prefijo:
+        coincide = verdadero
+        j = 0
+        mientras j < longitud_prefijo:
+            si json[i + j] != prefijo[j]:
+                coincide = falso
+                romper
+            j = j + 1
+        si coincide == verdadero:
+            inicio = i + longitud_prefijo
+            fin = inicio
+            mientras fin < longitud_json:
+                letra = subcadena(json, fin, 1)
+                si letra != "0" y letra != "1" y letra != "2" y letra != "3" y letra != "4" y letra != "5" y letra != "6" y letra != "7" y letra != "8" y letra != "9":
+                    romper
+                fin = fin + 1
+            si fin > inicio:
+                retornar texto_a_entero(subcadena(json, inicio, fin - inicio))
+            retornar 0
+        i = i + 1
+    retornar 0
+
+// ============================================================
+// Puentes al runtime
+// ============================================================
+
+funcion escribir_checkpoint_local(ruta: texto, contenido: texto) -> entero:
+    requiere: longitud(ruta) > 0 y longitud(contenido) > 0
+    garantiza: _resultado_ == 0 o _resultado_ == -1 // cumple Manual 2 §5.1
+    let escrito = 0
+    let resultado = -1
+    inseguro:
+        asm("CadenaSegura _ecr = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _ecc = {.datos = (char*)contenido.datos, .longitud = contenido.longitud}; escrito = _syn_escribir_archivo(_ecr, _ecc);")
+    si escrito == 0:
+        resultado = 0
+    retornar resultado
+
+funcion leer_checkpoint_local(ruta: texto) -> texto:
+    requiere: longitud(ruta) > 0
+    garantiza: longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    inseguro:
+        asm("CadenaSegura _lcr = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _lcres = _syn_leer_archivo(_lcr); return _lcres;")
+    retornar ""

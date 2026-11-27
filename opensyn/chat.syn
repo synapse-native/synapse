@@ -1,0 +1,241 @@
+#lang: es
+// cumple Manual 2 §1.2 (ME r243): fuente UTF-8 sin BOM — el BOM inicial impedia detectar #lang.
+// opensyn/chat.syn — Agente IA conversacional (Manual 7 §6)
+// cumple Manual 7 §6.2: seleccion de modelo desde ~/.opensyn/config.toml ([modelo])
+// cumple Manual 7 §8: validacion del codigo extraido con el compilador real
+// Funciona como agente local equivalente a OpenCode/Kilo.
+
+importar std.oraculo
+importar std.sistema
+importar std.io
+importar std.texto
+importar std.modelo
+
+externo funcion _syn_listar_directorio(ruta: texto) -> texto
+
+estructura MensajeChat:
+    rol: texto
+    contenido: texto
+
+// Retorna verdadero si el nombre de archivo tiene una extension de contexto.
+// cumple Manual 7 §6.2: el agente carga contexto del workspace del proyecto.
+funcion es_extension_contexto(nombre: texto) -> booleano:
+    requiere:
+        longitud(nombre) >= 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso
+    si termina_con(nombre, ".syn") == 1:
+        retornar verdadero
+    si termina_con(nombre, ".syq") == 1:
+        retornar verdadero
+    si termina_con(nombre, ".c") == 1:
+        retornar verdadero
+    si termina_con(nombre, ".py") == 1:
+        retornar verdadero
+    si termina_con(nombre, ".md") == 1:
+        retornar verdadero
+    retornar falso
+
+// Lee el contexto textual de los archivos del workspace (no recursivo).
+// cumple Manual 7 §6.2: el agente conversa con contexto del proyecto.
+funcion leer_contexto_workspace(ruta: texto) -> Lista<texto>:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    let archivos = Lista<texto>()
+    let listado = _syn_listar_directorio(ruta)
+    let largo = longitud(listado)
+    let i = 0
+    mientras i < largo:
+        let fin = i
+        mientras fin < largo:
+            si subcadena(listado, fin, 1) == "\n":
+                romper
+            fin = fin + 1
+        let entrada = subcadena(listado, i, fin - i)
+        si longitud(entrada) > 0:
+            si subcadena(entrada, longitud(entrada) - 1, 1) == "\r":
+                entrada = subcadena(entrada, 0, longitud(entrada) - 1)
+        si longitud(entrada) > 0:
+            let es_directorio = 0
+            si subcadena(entrada, longitud(entrada) - 1, 1) == "/":
+                es_directorio = 1
+            si es_directorio == 0 y es_extension_contexto(entrada):
+                let ruta_archivo = concat(concat(ruta, "/"), entrada)
+                let contenido = leer_archivo(ruta_archivo)
+                si longitud(contenido) > 0:
+                    let bloque = concat(concat(ruta_archivo, ":\n"), contenido)
+                    archivos.agregar(bloque)
+        i = fin + 1
+    retornar archivos
+
+// Extrae el bloque de codigo de una respuesta del modelo.
+// cumple Manual 7 §2.4: "Extrae el código de la respuesta del modelo
+// (usando expresiones regulares o parseo de bloques)".
+funcion extraer_codigo_chat(respuesta: texto) -> texto:
+    requiere:
+        longitud(respuesta) >= 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    let pos = indice_de(respuesta, "```synapse")
+    si pos == -1:
+        pos = indice_de(respuesta, "```syquex")
+    si pos == -1:
+        retornar respuesta
+    let largo = longitud(respuesta)
+    let i = pos + 3
+    mientras i < largo:
+        si subcadena(respuesta, i, 1) == "\n":
+            romper
+        i = i + 1
+    si i < largo:
+        i = i + 1
+    let resto = subcadena(respuesta, i, largo - i)
+    let fin_rel = indice_de(resto, "```")
+    si fin_rel == -1:
+        retornar resto
+    retornar subcadena(resto, 0, fin_rel)
+
+// Valida el bloque extraido con el compilador real (modo check).
+// cumple Manual 7 §8: "El LSP valida con synapse check --no-emit".
+funcion validar_codigo_extraido(codigo: texto) -> entero:
+    requiere:
+        longitud(codigo) >= 0
+    garantiza:
+        _resultado_ >= 0 // cumple Manual 2 §5.1
+    si longitud(codigo) == 0:
+        retornar 1
+    retornar compilar_codigo(codigo)
+
+// Construye el prompt de chat con el contexto del workspace.
+// cumple Manual 7 §6.2: el agente usa el contexto del proyecto.
+funcion construir_prompt_chat(prompt: texto, contexto: Lista<texto>) -> texto:
+    requiere:
+        longitud(prompt) > 0
+    garantiza:
+        longitud(_resultado_) >= longitud(prompt) // cumple Manual 2 §5.1
+    let construido = "Contexto del workspace:\n"
+    para archivo en contexto:
+        construido = concat(construido, archivo)
+        construido = concat(construido, "\n")
+    construido = concat(construido, "\nUsuario: ")
+    construido = concat(construido, prompt)
+    retornar construido
+
+// Lee la ruta del modelo desde ~/.opensyn/config.toml ([modelo] ruta).
+// cumple Manual 7 §6.2: config.toml es el hogar normativo de la seleccion.
+funcion leer_modelo_config() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    let home = obtener_env("USERPROFILE")
+    si longitud(home) == 0:
+        retornar ""
+    let ruta_config = concat(home, "\\.opensyn\\config.toml")
+    // La configuracion vive fuera del cwd; se lee con el externo directo.
+    let config = _syn_leer_archivo(ruta_config)
+    si longitud(config) == 0:
+        retornar ""
+    let pos_sec = indice_de(config, "[modelo]")
+    si pos_sec < 0:
+        retornar ""
+    let resto = subcadena(config, pos_sec, longitud(config) - pos_sec)
+    let pos_ruta = indice_de(resto, "ruta")
+    si pos_ruta < 0:
+        retornar ""
+    let desde_ruta = subcadena(resto, pos_ruta, longitud(resto) - pos_ruta)
+    let pos_igual = indice_de(desde_ruta, "=")
+    si pos_igual < 0:
+        retornar ""
+    let desde_valor = subcadena(desde_ruta, pos_igual + 1, longitud(desde_ruta) - pos_igual - 1)
+    let pos_q1 = indice_de(desde_valor, "\"")
+    si pos_q1 < 0:
+        retornar ""
+    let desde_q = subcadena(desde_valor, pos_q1 + 1, longitud(desde_valor) - pos_q1 - 1)
+    let pos_q2 = indice_de(desde_q, "\"")
+    si pos_q2 < 0:
+        retornar ""
+    retornar subcadena(desde_q, 0, pos_q2)
+
+// Selecciona el modelo: argumento CLI, config.toml [modelo], o default.
+// cumple Manual 7 §6.2: deteccion de modelo desde config.toml.
+funcion seleccionar_modelo(args: Lista<texto>) -> texto:
+    requiere:
+        longitud(args) >= 0
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    si longitud(args) > 0:
+        para modelo_arg en args:
+            retornar modelo_arg
+    let modelo_config = leer_modelo_config()
+    si longitud(modelo_config) > 0:
+        retornar modelo_config
+    retornar "llama-3.2-1b-instruct.Q4_K_M.gguf"
+
+// Bucle conversacional principal.
+// cumple Manual 7 §8: flujo completo de IA con validacion del codigo generado.
+funcion loop_chat(modelo: texto, args: Lista<texto>) -> entero:
+    requiere:
+        longitud(modelo) > 0
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
+    escribir_linea(concat(concat("=== OpenSyn Agent (modelo: ", modelo), ") ==="))
+    escribir_linea("Escribe 'salir' para terminar, 'archivos' para ver contexto")
+    escribir_linea("")
+
+    let contexto = leer_contexto_workspace(".")
+    let ctx_modelo = cargar_modelo(modelo)
+    si ctx_modelo == nulo:
+        escribir_linea("No se pudo cargar el modelo.")
+        retornar 1
+
+    mientras verdadero:
+        escribir("> ")
+        let prompt = leer_linea()
+
+        si prompt == "":
+            si stdin_eof() == 1:
+                romper
+            siguiente
+
+        si prompt == "salir":
+            escribir_linea("Hasta luego!")
+            romper
+
+        si prompt == "archivos":
+            para f en contexto:
+                escribir_linea(f)
+            siguiente
+
+        let prompt_completo = construir_prompt_chat(prompt, contexto)
+        let respuesta = generar_texto(ctx_modelo, prompt_completo, 256, 0.3, 40, 0.9)
+        let codigo = extraer_codigo_chat(respuesta)
+        si longitud(codigo) > 0:
+            let rc = validar_codigo_extraido(codigo)
+            si rc == 0:
+                escribir_linea("[Validacion] codigo extraido compila.")
+            sino:
+                escribir_linea("[Validacion] codigo extraido no compila.")
+            escribir_linea(codigo)
+        sino:
+            escribir_linea(respuesta)
+
+    cerrar_modelo(ctx_modelo)
+    retornar 0
+
+// cumple Manual 7 §6.2: punto de entrada con deteccion de modelo (config.toml [modelo])
+funcion main_chat(args: Lista<texto>) -> entero:
+    requiere:
+        longitud(args) >= 0
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
+    let modelo = seleccionar_modelo(args)
+
+    si no existe_archivo(modelo):
+        escribir_linea(concat("Modelo no encontrado: ", modelo))
+        escribir_linea("Use: opensyn download-model")
+        retornar 1
+
+    retornar loop_chat(modelo, args)

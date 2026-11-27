@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "8881708525cba028",
+ "expediente": "docs/alineacion/r198b2_ancla.md",
+ "fecha": "2026-10-28",
+ "archivos": [
+  "compilador/puente_canonico.py"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_paridad_nodos.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

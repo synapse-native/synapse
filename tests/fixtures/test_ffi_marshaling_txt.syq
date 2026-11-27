@@ -1,0 +1,17 @@
+#lang: es
+// ============================================================
+// test_ffi_marshaling_txt.syq — FASE 22 ME-3: FFI &texto → char*
+// (Manual 3 §9.1 declaración, §9.3 zero-copy marshaling)
+// Verifica que &texto produce char* via .datos (zero-copy) en
+// el codegen S1. strlen es un C builtin (string.h): declaramos
+// externo funcion para que el semántico lo resuelva, y el codegen
+// omite el extern (ya provisto por string.h) evitando conflicto
+// de tipos. Salida esperada: 10
+// ============================================================
+externo funcion strlen(s: &texto) -> entero
+
+funcion principal() -> entero:
+    let s = "Hola Mundo"
+    let n = strlen(&s)
+    escribir_linea(entero_a_texto(n))
+    retornar 0

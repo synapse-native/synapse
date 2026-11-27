@@ -1,3 +1,4 @@
+# cumple Manual 8 4
 """
 test_debug.py — Pruebas unitarias para std.debug (Time-Travel Debugging)
 Sección 18.2 del Manual de Ingeniería v5.0
@@ -7,10 +8,29 @@ import os
 import sys
 import tempfile
 import glob
+import shutil
+import pytest
+
+pytestmark = pytest.mark.unit
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from pipeline import ejecutar_compilador
+
+
+@pytest.fixture(autouse=True)
+def _limpiar_directorio_traces():
+    """ME-R2: aisla cada test limpiando ~/.synapse/traces antes de cada prueba.
+
+    El runtime persiste la traza en ~/.synapse/traces (directorio compartido por
+    todos los tests). El test de formato lee glob(trace_files)[-1] esperando SU
+    propia traza; sin aislamiento, recoge trazas acumuladas de otros tests
+    (p. ej. eventos=2 en vez de eventos=1) -> fallo no determinista.
+    """
+    trace_dir = os.path.expanduser("~/.synapse/traces")
+    if os.path.isdir(trace_dir):
+        shutil.rmtree(trace_dir, ignore_errors=True)
+    yield
 
 # Directorio del proyecto para archivos temporales
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -56,11 +76,11 @@ funcion principal() -> nulo:
     registrar_evento(evt)
     retornar"""
     temp_syn = _write_temp_syn(codigo)
-    
+
     try:
         resultado = ejecutar_compilador(temp_syn, mostrar_tokens=False)
         assert resultado == 0, "Compilación falló"
-        
+
         # Verificar que se generó el ejecutable
         temp_exe = temp_syn.replace('.syn', '.exe')
         if os.path.exists(temp_exe):
@@ -82,7 +102,7 @@ funcion principal() -> nulo:
     trace("x")
     retornar"""
     temp_syn = _write_temp_syn(codigo)
-    
+
     try:
         resultado = ejecutar_compilador(temp_syn, mostrar_tokens=False)
         assert resultado == 0, "Compilación falló"
@@ -110,17 +130,17 @@ funcion principal() -> nulo:
     escribir_linea(r.valor_str)
     retornar"""
     temp_syn = _write_temp_syn(codigo)
-    
+
     try:
         resultado = ejecutar_compilador(temp_syn, mostrar_tokens=False)
         assert resultado == 0, "Compilación falló"
-        
+
         import subprocess
         temp_exe = temp_syn.replace('.syn', '.exe')
         if os.path.exists(temp_exe):
             result = subprocess.run([temp_exe], capture_output=True, text=True, timeout=10)
             assert result.returncode == 0, f"Ejecución falló: {result.stderr}"
-            
+
             # Verificar que se imprimió el ID
             assert "trace_" in result.stdout or "trace_" in result.stderr
     finally:
@@ -144,11 +164,11 @@ funcion principal() -> nulo:
     finalizar_sesion()
     retornar"""
     temp_syn = _write_temp_syn(codigo)
-    
+
     try:
         resultado = ejecutar_compilador(temp_syn, mostrar_tokens=False)
         assert resultado == 0, "Compilación falló"
-        
+
         import subprocess
         temp_exe = temp_syn.replace('.syn', '.exe')
         if os.path.exists(temp_exe):
@@ -212,7 +232,7 @@ funcion principal() -> nulo:
     finalizar_sesion()
     retornar"""
     temp_syn = _write_temp_syn(codigo)
-    
+
     try:
         resultado = ejecutar_compilador(temp_syn, mostrar_tokens=False)
         assert resultado == 0, "Compilación falló"
@@ -234,21 +254,21 @@ funcion principal() -> nulo:
     finalizar_sesion()
     retornar"""
     temp_syn = _write_temp_syn(codigo)
-    
+
     try:
         resultado = ejecutar_compilador(temp_syn, mostrar_tokens=False)
         assert resultado == 0, "Compilación falló"
-        
+
         import subprocess
         temp_exe = temp_syn.replace('.syn', '.exe')
         if os.path.exists(temp_exe):
             result = subprocess.run([temp_exe], capture_output=True, text=True, timeout=10)
             assert result.returncode == 0, f"Ejecución falló: {result.stderr}"
-            
+
             # Verificar que se creó archivo .trace
             trace_files = glob.glob(os.path.expanduser("~/.synapse/traces/trace_*.trace"))
             assert len(trace_files) > 0, "No se generó archivo .trace"
-            
+
             # Verificar formato del trace
             with open(trace_files[-1], 'r') as tf:
                 content = tf.read()

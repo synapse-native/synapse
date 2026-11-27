@@ -1,0 +1,110 @@
+// syquex/ffi_marshaling.syq
+// FASE 24.B — Marshaling automático de tipos para FFI
+//
+// Manual 4 §7: FFI Marshaling y Zero-Copy
+//   §7.1: El desafío — Syquex texto (sin \0) vs C const char* (con \0)
+//   §7.2: Estrategia zero-copy — añadir byte \0 al final en la arena
+//   §7.3: Lifecycle management para callbacks de C (weak refs)
+//
+// Propósito: Generación automática de conversión de tipos Syquex → C
+//   - texto → const char* (zero-copy via texto_a_c_string)
+//   - entero → int64_t (directo)
+//   - decimal → double (directo)
+//   - booleano → int (0/1)
+//   - Lista<T> → ptr + len (slice)
+//   - Mapa<K,V> → hash table C
+//   - Estructuras → struct C con campos alineados
+
+// =====================================================================
+// §7.2.1: Conversión de texto a C string (zero-copy)
+// =====================================================================
+
+// Convierte un texto Syquex a const char* añadiendo \0 al final
+// en la arena actual (sin copiar el buffer entero).
+// Retorna NULL si texto o arena son nulos.
+externo funcion _texto_a_c_string(texto: &texto, arena: puntero) -> puntero
+
+// =====================================================================
+// §7.2.2: Conversión de tipos primitivos
+// =====================================================================
+
+// entero → int64_t (directo, sin copia)
+externo funcion _entero_a_i64(valor: entero) -> entero
+
+// decimal → double (directo, sin copia)
+externo funcion _decimal_a_f64(valor: decimal) -> decimal
+
+// booleano → int (0 = falso, 1 = verdadero)
+externo funcion _booleano_a_int(valor: booleano) -> entero
+
+// =====================================================================
+// §7.2.3: Conversión de colecciones
+// =====================================================================
+
+// Lista<T> → puntero a datos + longitud
+// Retorna el puntero interno de la lista (zero-copy) y la longitud.
+// El puntero es válido mientras la lista viva (arena o rc).
+externo funcion _lista_a_slice(ptr_lista: puntero, tipo_elem: entero) -> puntero
+externo funcion _lista_longitud(ptr_lista: puntero) -> entero
+
+// Mapa<K,V> → hash table C
+// Retorna un handle al mapa interno.
+externo funcion _mapa_aCHandle(ptr_mapa: puntero) -> puntero
+externo funcion _mapa_tamano(ptr_mapa: puntero) -> entero
+
+// =====================================================================
+// §7.2.4: Marshaling de estructuras
+// =====================================================================
+
+// Cada estructura Syquex genera un par de funciones:
+//   _estructura_a_c_<nombre>(ptr: &Estructura) -> *mut CStruct
+//   _estructura_desde_c_<nombre>(ptr: *const CStruct) -> Estructura
+//
+// El compilador genera automáticamente estas funciones
+// basándose en la definición de la estructura.
+
+// =====================================================================
+// §7.3: Lifecycle management para callbacks de C
+// =====================================================================
+
+// Registra un callback de C que captura un objeto Syquex.
+// El callback usa referencia débil (débil) para evitar ciclos.
+// Retorna un ID de callback para des-registro posterior.
+externo funcion _registrar_callback_c(
+    ptr_funcion: puntero,
+    ptr_dato: puntero,
+    es_debil: booleano
+) -> entero
+
+// Des-registra un callback de C previamente registrado.
+externo funcion _desregistrar_callback_c(id: entero) -> nulo
+
+// Invoca un callback de C de forma segura.
+// Si el objeto débil fue destruido, retorna sin ejecutar.
+externo funcion _invocar_callback_c(id: entero) -> nulo
+
+// =====================================================================
+// §7.2.5: Marshaling de tipos Resultado y Opcion
+// =====================================================================
+
+// Resultado<T,E> → struct C { tag: int, valor: union }
+// Opcion<T> → struct C { tag: int, valor: T }
+
+// =====================================================================
+// Funciones de alto nivel (wrapper Syquex)
+// =====================================================================
+
+funcion texto_a_c(texto: &texto, arena: puntero) -> Resultado<puntero, texto>:
+    let ptr = _texto_a_c_string(texto, arena)
+    si ptr == nulo:
+        retornar err("texto_a_c: texto o arena nulo")
+    retornar ok(ptr)
+
+funcion entero_a_c(valor: entero) -> entero:
+    retornar _entero_a_i64(valor)
+
+funcion decimal_a_c(valor: decimal) -> decimal:
+    retornar _decimal_a_f64(valor)
+
+funcion booleano_a_c(valor: booleano) -> entero:
+    retornar _booleano_a_int(valor)

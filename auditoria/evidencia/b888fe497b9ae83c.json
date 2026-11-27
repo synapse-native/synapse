@@ -1,0 +1,26 @@
+{
+ "cambio_hash": "b888fe497b9ae83c",
+ "expediente": "docs/alineacion/coverage_aristas.md",
+ "fecha": "2026-09-27",
+ "archivos": [
+  "cli.py",
+  "compilador/generator/context.py",
+  "compilador/generator/emit_control.py",
+  "compilador/generator/generator.py",
+  "nucleo/coverage.syn",
+  "nucleo/generador/nodos_flujo.syn",
+  "nucleo/generador/orquestador.syn",
+  "nucleo/generador/recorrido.syn",
+  "nucleo/generator.syn",
+  "nucleo/principal.syn",
+  "pipeline.py",
+  "runtime/core/coverage.c",
+  "runtime/core/coverage.h",
+  "synapse_rt_types.h"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_coverage.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

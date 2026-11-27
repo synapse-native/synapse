@@ -1,3 +1,4 @@
+# cumple Manual 1 §6: infraestructura Python del compilador Synapse (r153)
 """
 GeneratorContext — Estado centralizado del generador de código C.
 
@@ -11,21 +12,99 @@ from compilador.ast_nodes import (
     Programa, DefinicionFuncion, DefinicionEstructura, Nodo,
 )
 
+# cumple Manual 2 §5.1 (ME r184_r185_e2e, H-R181-4): símbolos de C stdlib con
+# los que una función usuario puede colisionar al emitirse con su nombre
+# Synapse (H-R181-4: `funcion abs(x: entero) -> entero` emitía
+# `int64_t abs(int64_t)` → "conflicting types" con la declaración de stdlib.h).
+# Definiciones/prototipos/llamadas a funciones USUARIO en colisión se emiten
+# como `_syn_usuario_<n>`. Debe mantenerse EN PARIDAD con la tabla estática de
+# `_es_palabra_reservada_c()` en nucleo/generador/orquestador.syn (oráculo
+# test_oraculos_r184_r185_e2e.py::r4_paridad).
+_COLISIONES_STDLIB = frozenset({
+    'abs', 'labs', 'llabs', 'exit', 'round', 'pow', 'div', 'rand', 'srand',
+    'atoi', 'atof', 'atol', 'strtol', 'printf', 'puts', 'putchar', 'getchar',
+    'scanf', 'malloc', 'calloc', 'realloc', 'free', 'memcpy', 'memmove',
+    'memset', 'memcmp', 'strcpy', 'strncpy', 'strcat', 'strncat', 'strcmp',
+    'strncmp', 'strlen', 'strchr', 'strrchr', 'strstr', 'strdup', 'sprintf',
+    'snprintf', 'sscanf', 'toupper', 'tolower', 'time', 'clock', 'getenv',
+    'system', 'qsort', 'bsearch', 'remove', 'rename',
+})
+
+
+def nombre_funcion_c(nombre: str) -> str:
+    """Nombre C de una DEFINICIÓN/PROTOTIPO de función usuario (Manual 2 §5.1).
+
+    H-R181-4: los nombres que colisionan con símbolos de stdlib.h se emiten
+    prefijados para evitar 'conflicting types'. Los demás se emiten intactos.
+    """
+    return f"_syn_usuario_{nombre}" if nombre in _COLISIONES_STDLIB else nombre
+
+
+# cumple Manual 6 §3.1 (ME r184_r185_e2e): FFI externa conserva su nombre C.
+def nombre_c_de_llamada(ctx, nombre: str) -> str:
+    """Nombre C en un SITIO DE LLAMADA (Manual 2 §5.1 + Manual 6 §3.1).
+
+    H-R181-4: igual que nombre_funcion_c(), pero SOLO si `nombre` es una
+    función DEFINIDA por el usuario (ctx._funciones_usuario); una externa
+    (DeclaracionExterna, M6 §3.1) conserva su nombre C original — es la ABI
+    FFI deliberada (`externo funcion abs(...)` debe llamar a la `abs` real).
+    """
+    if (nombre in _COLISIONES_STDLIB
+            and nombre in getattr(ctx, '_funciones_usuario', {})):
+        return f"_syn_usuario_{nombre}"
+    return nombre
+
+
+def _dividir_args_tipo(resto: str) -> List[str]:
+    """Divide los argumentos de una instanciación ADT respetando el anidamiento
+    (D-2): `Resultado<Resultado<entero,texto>,texto>` ->
+    ['Resultado<entero,texto>', 'texto']. El separador es la coma a nivel 0
+    (fuera de los `<...>` internos). Paridad con el scan nativo
+    (orquestador.syn _d2pend). Manual 2 §4.2 L279-280.
+    """
+    args: List[str] = []
+    actual: List[str] = []
+    prof = 0
+    for ch in resto:
+        if ch == '<':
+            prof += 1
+            actual.append(ch)
+        elif ch == '>':
+            prof -= 1
+            actual.append(ch)
+        elif ch == ',' and prof == 0:
+            args.append(''.join(actual).strip())
+            actual = []
+        else:
+            actual.append(ch)
+    if actual:
+        args.append(''.join(actual).strip())
+    return args
+
 
 # ================================================================
 # Module-level constants (backward-compatible with old generator.py)
 # ================================================================
 
 MAPA_TIPOS_C: Dict[str, str] = {
-    'entero': 'int', 'int': 'int', 'Entero': 'int',
+    # A5.2 (D-7): ABI Manual 2 §4.1 L267-268 — entero/int → int64_t (8 bytes)
+    'entero': 'int64_t', 'int': 'int64_t', 'Entero': 'int64_t',
     'vacio': 'void', 'nulo': 'void', 'Nulo': 'void',
-    'decimal': 'float', 'real': 'float', 'flotante': 'float', 'Flotante': 'float', 'Decimal': 'float',
+    # A5.2 (D-7): decimal/real/flotante/float → double (8 bytes)
+    'decimal': 'double', 'real': 'double', 'flotante': 'double', 'Flotante': 'double', 'Decimal': 'double',
+    'float': 'double',
     'Tensor': 'Tensor', 'tensor': 'Tensor',
     'Canal': 'Canal', 'canal': 'Canal',
     'texto': 'CadenaSegura', 'cadena': 'CadenaSegura', 'Texto': 'CadenaSegura',
     'booleano': 'int', 'logico': 'int', 'Booleano': 'int', 'Logico': 'int',
     'void': 'void', 'char': 'char',
     'double': 'double', 'puntero': 'void*', 'Puntero': 'void*', 'void*': 'void*',
+    # cumple Manual 1 3.1: mapeos reversos de tipos C — cuando tipo_de_expr
+    # (ExprAccesoCampo) retorna un tipo C ya traducido, traducir_tipo_c no debe
+    # caer al fallback 'struct {tipo}'. Los tipos C son idempotentes.
+    'int64_t': 'int64_t', 'int32_t': 'int32_t', 'uint8_t': 'uint8_t',
+    'size_t': 'size_t', 'uintptr_t': 'uintptr_t',
+    'CadenaSegura': 'CadenaSegura',
 }
 
 
@@ -45,13 +124,14 @@ class GeneratorContext:
             'producto_punto': 'tensor', 'abrir': 'Canal',
             'leer': 'texto', 'escribir': 'void',
             'escribir_linea': 'void', 'leer_linea': 'texto',
-            'cerrar': 'void', 'suma': 'tensor', 'producto': 'tensor',
-            'relu': 'tensor', 'tokenizar': 'int',
+            'cerrar_archivo': 'void', 'relu': 'tensor', 'tokenizar': 'int',
             'parsear': 'struct Programa', 'generar': 'int',
             'concat': 'texto', '_argc': 'int',
+            # cumple Manual 2 §4.3 (H-R153-2): leer_archivo delega en runtime.
+            'leer_archivo': 'texto',
             '_argv': 'texto', 'salir': 'void',
             'canal_crear': 'CanalConcurrencia*', 'canal_enviar': 'void',
-            'canal_recibir': 'puntero', 'cerrar_canal': 'void',
+            'canal_recibir': 'puntero', 'cerrar': 'void',
             'texto_a_entero': 'int', 'texto_a_decimal': 'float',
             'decimal_a_texto': 'texto', 'entero_a_texto': 'texto',
             'debug_registrar_evento': 'Resultado', 'debug_trace': 'Resultado',
@@ -65,7 +145,9 @@ class GeneratorContext:
             'cluster_generar_par_claves': 'texto', 'cluster_firmar_mensaje': 'texto',
             'cluster_verificar_firma': 'int', 'cluster_iniciar_nodo': 'int',
             'cluster_detener_nodo': 'int', 'cluster_enviar_hello': 'int',
+            'cluster_generar_nonce': 'texto', 'cluster_enviar_hello_firmado': 'int',
             'cluster_canal_remoto_enviar': 'int', 'cluster_recibir_paquete': 'texto',
+            'cluster_establecer_clave_sesion': 'nulo', 'cluster_limpiar_clave_sesion': 'nulo',
             'ws_inicializar': 'int', 'ws_encolar': 'int',
             'ws_desencolar': 'texto', 'ws_profundidad': 'int',
             'ws_carga_estimada': 'int', 'ws_enviar_solicitud_robo': 'int',
@@ -94,16 +176,46 @@ class GeneratorContext:
             'ms_diff_entre': 'texto', 'ms_snapshot_contar_vars': 'int',
             'ms_snapshot_tamano': 'int', 'ms_snapshot_contiene': 'texto',
             'len': 'int', 'subcadena': 'texto', 'empieza_con': 'int',
+        # H-R90-15: dividir builtin del std.err (std/err.syn §3).
+        # Manual 3 §7.1: Resultado<decimal, texto>. Resuelta como return type
+        # (no en _RUNTIME_BUILTINS: provee stub inline en el generator).
+        'dividir': 'Resultado<decimal, texto>',
+        # cumple Manual 2 §4.3 (H-R153-2): colecciones de la biblioteca
+        # estándar — runtime real en runtime/core/lista.c y mapa.c (slots
+        # int64, ME f325). El emisor de llamadas resuelve la instancia según
+        # el tipo del argumento (Lista<T> handle, texto → .longitud).
+        'longitud': 'int',
+        'lista_crear': 'Lista<puntero>',
+        'lista_agregar': 'nulo',
+        'lista_obtener': 'puntero',
+        'lista_establecer': 'nulo',
+        'lista_eliminar': 'nulo',
+        'lista_liberar': 'nulo',
+        'mapa_crear': 'Mapa<puntero>',
+        'mapa_poner': 'nulo',
+        'mapa_obtener': 'puntero',
+        'mapa_contiene': 'booleano',
+        'mapa_eliminar': 'nulo',
+        'mapa_liberar': 'nulo',
         }
+        # F1.2d/F1.4 (Manual 4 §3.2-3.3, §4.2, §4.3): rc/arc/débil constructores
+        # `rc(T)` → rc<T>, `débil(T)` → débil<T> / `débil(nulo)` → nil WeakRef
+        self._BUILTINS['rc'] = 'rc'
+        self._BUILTINS['arc'] = 'arc'
+        self._BUILTINS['débil'] = 'débil'
+        self._BUILTINS['weak'] = 'débil'
+        self._BUILTINS['faible'] = 'débil'
+        self._BUILTINS['fraco'] = 'débil'
 
         self._RUNTIME_BUILTINS: frozenset = frozenset({
-            'escribir', 'escribir_linea', 'leer_linea', 'str_eq', 'abrir', 'leer', 'cerrar',
+            'escribir', 'escribir_linea', 'leer_linea', 'str_eq', 'abrir', 'leer', 'cerrar_archivo',
             'math_crear_tensor', 'math_suma_tensor', 'math_producto_punto', 'math_relu',
             'mem_reserva', 'mem_libera', 'math_suma', 'math_producto',
             'crear_tensor', 'suma_tensor', 'producto_punto', 'relu',
-            'reserva', 'libera', 'suma', 'producto',
+            'reserva', 'libera',
+            'producto', 'math_suma_tensor', 'math_producto',
             'texto_a_entero', 'texto_a_decimal', 'decimal_a_texto',
-            'salir', 'canal_crear', 'canal_enviar', 'canal_recibir', 'cerrar_canal',
+            'salir', 'canal_crear', 'canal_enviar', 'canal_recibir', 'cerrar',
             'debug_registrar_evento', 'debug_trace', 'debug_iniciar_sesion', 'debug_finalizar_sesion',
             'tr_inicializar_recording', 'tr_grabar_bifurcacion',
             'tr_grabar_snapshot', 'tr_grabar_llamada', 'tr_grabar_retorno',
@@ -112,6 +224,7 @@ class GeneratorContext:
             'cluster_generar_par_claves', 'cluster_firmar_mensaje', 'cluster_verificar_firma',
             'cluster_iniciar_nodo', 'cluster_detener_nodo', 'cluster_enviar_hello',
             'cluster_canal_remoto_enviar', 'cluster_recibir_paquete',
+            'cluster_establecer_clave_sesion', 'cluster_limpiar_clave_sesion',
             'ws_inicializar', 'ws_encolar', 'ws_desencolar',
             'ws_profundidad', 'ws_carga_estimada', 'ws_enviar_solicitud_robo',
             'ws_procesar_mensaje', 'ws_ultima_robada', 'ws_reenviar_respuesta',
@@ -164,7 +277,40 @@ class GeneratorContext:
             'memcpy': ['void*', 'void*', 'size_t'],
             'memset': ['void*', 'int', 'size_t'],
             'memmove': ['void*', 'void*', 'size_t'],
+            # cumple Manual 6 §3.1: FFI con handle entero del lado Synapse ↔
+            # void*/const char* del lado C; UNA sola declaración canónica.
+            # cumple Manual 2 §4.1: entero es int64_t — casts explícitos en el C.
+            # H-CFG-5 (ME reparacion_imports_ffi): FFI de lista/mapa — ya están declarados
+            # canónicamente en el header compartido con las firmas de la
+            # implementación (void*/const char*, runtime/core/lista.c/mapa.c).
+            # Un `externo funcion _syn_lista_*` en .syn (handle entero)
+            # duplicaba la declaración con tipos incompatibles → conflicting
+            # types en _synapse_shared.h (test_puente_ffi_lista_mapa, fallo
+            # preexistente verificado con baseline git stash).
+            '_syn_lista_crear': [], '_syn_lista_longitud': ['void*'],
+            '_syn_lista_agregar': ['void*', 'int64_t'],
+            '_syn_lista_obtener': ['void*', 'int'],
+            '_syn_lista_establecer': ['void*', 'int', 'int64_t'],
+            '_syn_lista_eliminar': ['void*', 'int'],
+            '_syn_lista_limpiar': ['void*'], '_syn_lista_liberar': ['void*'],
+            '_syn_mapa_crear': [], '_syn_mapa_longitud': ['void*'],
+            '_syn_mapa_poner': ['void*', 'const char*', 'int64_t'],
+            '_syn_mapa_obtener': ['void*', 'const char*'],
+            '_syn_mapa_contiene': ['void*', 'const char*'],
+            '_syn_mapa_eliminar': ['void*', 'const char*'],
+            '_syn_mapa_limpiar': ['void*'], '_syn_mapa_liberar': ['void*'],
+            # cumple Manual 2 §4.3 (33.4b): claves()/valores() de Mapa (M3 §5.2
+            # "keys()/values()") → listas del runtime con claves reales (char*)
+            # y valores (int64). El extern del header va en generator.py.
+            '_syn_mapa_claves': ['void*'], '_syn_mapa_valores': ['void*'],
         }
+        # cumple Manual 2 §2/§8.2 (33.4b): estructuras genericas de usuario
+        # (`estructura Caja(T):`). Plantillas por nombre: {param, campos};
+        # instancias monomorfizadas `Nombre_T`: {campos tipados, param}; el
+        # typedef C se emite perezosamente (orden alfabético, M1 §7.1).
+        self._genericas = {}
+        self._instancias_genericas = {}
+        self._typedefs_genericos_emitidos = set()
 
         # OO types that have FULL typedef definitions in the header
         # (these must be skipped by visitar_estructura to avoid redefinition)
@@ -194,25 +340,66 @@ class GeneratorContext:
         self._variables: Dict[str, str] = {}
         self._const_types: Dict[str, str] = {}
         self._funciones_emitidas: set = set()
+        self._funciones_usuario: Dict[str, 'DefinicionFuncion'] = {}  # nombre -> DefinicionFuncion (H-R90-13: params con defaults)
         self._tensor_vars: set = set()
         self._tensor_vars_transferidas: set = set()
         self._canal_vars: set = set()
         self._canal_vars_cerradas: set = set()
         self._canal_vars_concurrencia: set = set()
+        # Canales con lifetime cedido a una fibra/listener — cumple Manual 5 §2.6 (y
+        # cumple Manual 2 §4.1: el canal es un handle int64; la destrucción prematura
+        # era uso-tu-libre). la fibra es la dueña del ciclo de vida; el scope contenedor
+        # NO debe destruir el canal al salir. R182c: sin este conjunto el cleanup final emitia
+        # canal_destruir sobre un canal con fibra viva → use-after-free.
+        # cumple Manual 6 §3.1: el handle del canal viaja a la fibra (externo muestra ABI).
+        self._canal_vars_cedidas: set = set()
         self._listener_funciones: List[str] = []
         self._deferred_wrappers: List[str] = []
         self._deferred_typedefs: List[str] = []
         self._deferred_wrap_decls: List[str] = []
         self._emitted_typedefs: set = set()  # rastreo estricto contra duplicacion estatica
         self._emitted_wrap_decls: set = set()  # idem para forward declarations
+        # F1.2: alias de tipos declarados con `tipo X = <tipo>` (Manual 2 §2
+        # declaracion_tipo). traducir_tipo_c resuelve el alias antes del fallback.
+        self._tipo_aliases: Dict[str, str] = {}
+        # D-6: constructores ADT (ok/err/algun/ninguno) -> (ADT, tag, tipo_campo)
+        self._constructores_adt: Dict[str, tuple] = {}
+        # D-2: instanciaciones de ADT genéricos (monomorfización, Opción A).
+        # Clave: (base, tuple(args)) -> {'nombre_c': str, 'campos': [(ctor, tipo_syn), ...]}
+        # p.ej. ('Resultado', ('entero','texto')) -> 'Resultado_entero_texto' con
+        # campos [('ok','entero'), ('err','texto')] — tipos SUSTITUIDOS (Manual 2 §4.2).
+        self._instancias_adt: Dict[tuple, dict] = {}
+        # D-2: parámetros de tipo declarados por ADT (base -> [T, E]) y sus
+        # constructores originales (base -> [(ctor, tipo_syn), ...]).
+        self._adt_parametros: Dict[str, list] = {}
+        self._adt_constructores: Dict[str, list] = {}
+        # R24 (hallazgo R22): los ADT genéricos BUILTIN Resultado<T,E>/Opcion<T>
+        # se usan en firmas SIN declaración (`funcion f(r: Resultado<entero,
+        # texto>)`) — el checker ya los conoce (semantic_scope.py L101-102,
+        # paridad de aridad/exhaustividad), así que el generador debe conocerlos
+        # también para materializar la instancia monomorfizada
+        # (Resultado_entero_texto) en vez del placeholder Resultado_T (C inválido:
+        # 'Resultado_T' has no member named 'tag'). Una DeclaracionTipo del
+        # usuario sobreescribe estos valores (declaración gana).
+        # NOTA (code-reviewer R24): fuente hermana duplicada con semantic_scope.py
+        # L101-102 — si se añade un tercer ADT builtin, actualizar AMBOS lados.
+        self._adt_parametros['Resultado'] = ['T', 'E']
+        self._adt_parametros['Opcion'] = ['T']
+        self._adt_constructores['Resultado'] = [('ok', 'T'), ('err', 'E')]
+        self._modo: str = 'completo'  # H-R90-8b: track header/body/completo
+        self._usa_dividir: bool = False  # H-R90-15: flag para stub dividir
+        self._adt_constructores['Opcion'] = [('algun', 'T'), ('ninguno', 'entero')]
         self._consumed_vars: set = set()  # vars already explicitly destroyed (move semantics)
         self._scope_stack: List[Dict[str, str]] = []
         self._strings_heap: set = set()
         self._contador_thread = 0
         self._contador_listener = 0
+        self._contador_tmp = 0  # R144c: unique temp vars for RAII fix
 
         # Struct + function tracking
         self._estructuras: Dict[str, dict] = {}
+
+        self._metodos_self: set = set()  # funciones metodo con self ptr (F4: Manual 3 §6.1)
         self._func_return_types: Dict[str, str] = {}
         self._func_param_types: Dict[str, List[str]] = {}
         self._in_function_scope = False
@@ -222,6 +409,22 @@ class GeneratorContext:
         # Scope depth tracking for lifetime boundary markers (M22.1)
         self._scope_depth = 0
         self._safe_mode = False  # --safe flag for borrow checking
+
+        # cumple Manual 8 §4.2 (ME coverage_aristas, H-R152-1): instrumentación
+        # de aristas — OFF por defecto; con --coverage el emisor inserta una
+        # sonda _syn_cov(clave, padre) en cada salto de control (si/sino,
+        # mientras, para, para-en, coincidir) y emite en main() el catálogo
+        # estático de ramas; el runtime runtime/core/coverage.c registra y
+        # vuelca el JSON que consume nucleo/coverage.syn (informe HTML).
+        # cumple Manual 1 §6 (regla de hierro del bootstrap): sin la bandera el
+        # C emitido es byte-idéntico al previo (diff binario 0).
+        self._coverage_on = False
+        self._coverage_fuente = ''       # nombre del fuente .syn (informe)
+        self._coverage_ruta_base = ''    # ruta de salida sin extensión
+        self._coverage_ramas = []        # [(clave, padre)] en orden de emisión
+        self._coverage_padre = {}        # clave -> padre (lookup de sondas)
+        self._coverage_stack = []        # pila de anidación léxica de ramas
+        self._coverage_ordinal = {}      # linea -> ordinales asignados
 
         # Emit flags
         self._gen_tok_emitido = False
@@ -244,9 +447,27 @@ class GeneratorContext:
         # M21.4: RegionGraph y UnionFind (lifetimes.syn) se pasan por puntero
         # para que region_agregar_restriccion/uf_union muten el grafo real
         # (por valor, g.total_constraints++ se perdería en la copia).
+        # FASE A (A2.3): ParserEst (parser.syn) — mismo defecto por valor:
+        # est.posicion/total_nodos/hay_error se perdían en cada llamada helper
+        # (BUG 4 de la auditoría A2.3: el parser nativo era código muerto).
+        # El call-site añade & automáticamente (emit_expressions.py); el acceso
+        # de campo emite -> (precedente AnalizadorSemanticoEst).
         self._POINTER_TYPES: frozenset = frozenset({
-            'AnalizadorSemanticoEst', 'RegionGraph', 'UnionFind',
+            'AnalizadorSemanticoEst', 'RegionGraph', 'UnionFind', 'ParserEst',
         })
+        # H-R90-13: valores por defecto para params de builtins omitidos (Manual 3 §3)
+        # abrir(ruta, modo="r") — cuando se llama con 1 arg, añade "r"
+        self._builtin_defaults: Dict[str, List[str]] = {
+            'abrir': ['(CadenaSegura){ .longitud = (int)strlen("r"), .datos = "r" }'],
+        }
+        # H-R90-15: métodos builtin para tipos Lista y otros (Manual 3 §5.4)
+        # obj.metodo() → funcion_builtin(obj)
+        self._builtin_metodos: Dict[str, Dict[str, str]] = {
+            'Canal': {'leer': 'leer'},
+            'entero': {'texto': 'entero_a_texto'},
+            'decimal': {'texto': 'decimal_a_texto'},
+            'Lista': {'len': 'len'},
+        }
 
         # Destructor map for RAII types
         # NOTE: Use Synapse type names (texto not CadenaSegura) for consistency
@@ -300,9 +521,12 @@ class GeneratorContext:
             if var_name in self._consumed_vars:
                 self._consumed_vars.discard(var_name)
                 continue
-            dtor = self._destructor_map.get(scope[var_name])
+            dtor, arg, guard = self._destructor_para_tipo(scope[var_name], var_name)
             if dtor:
-                self.write_line(f"{dtor}({var_name});")
+                if guard:
+                    self.write_line(f"if ({guard}) {dtor}({arg});")
+                else:
+                    self.write_line(f"{dtor}({arg});")
 
     def enable_safe_mode(self):
         """M22.1: Activa modo --safe, que emite /* BORROW_CHECK */ en &T y *ptr."""
@@ -310,22 +534,133 @@ class GeneratorContext:
 
     def emit_all_destructors(self, exclude_var: str = ''):
         for scope in reversed(self._scope_stack):
-            # Manual 3 §3.3: iteración lexicográfica sobre claves de diccionarios
             for var_name in reversed(sorted(scope.keys())):
                 if var_name == exclude_var:
                     continue
-                # Move semantics: skip vars already explicitly consumed/destroyed
                 if var_name in self._consumed_vars:
                     self._consumed_vars.discard(var_name)
                     continue
-                dtor = self._destructor_map.get(scope[var_name])
+                dtor, arg, guard = self._destructor_para_tipo(scope[var_name], var_name)
                 if dtor:
-                    self.write_line(f"{dtor}({var_name});")
+                    if guard:
+                        self.write_line(f"if ({guard}) {dtor}({arg});")
+                    else:
+                        self.write_line(f"{dtor}({arg});")
         for scope in self._scope_stack:
             scope.clear()
 
+    def _es_tipo_rc(self, tipo_synapse: str) -> bool:
+        """True si tipo_synapse es rc<T> o `rc T` (Manual 4 §3.2, Manual 3 §3)."""
+        return tipo_synapse == 'rc' or (
+            tipo_synapse.startswith('rc<') and tipo_synapse.endswith('>')
+            or tipo_synapse.startswith('rc ')
+        )
+
+    def _es_tipo_arc(self, tipo_synapse: str) -> bool:
+        """True si tipo_synapse es arc<T> o `arc T` (Manual 4 §3.3)."""
+        return tipo_synapse == 'arc' or (
+            tipo_synapse.startswith('arc<') and tipo_synapse.endswith('>')
+            or tipo_synapse.startswith('arc ')
+        )
+
+    def _es_tipo_debil(self, tipo_synapse: str) -> bool:
+        """True si tipo_synapse es débil<T>/débil<T>/weak<T>/weak (Manual 4 §4.2)."""
+        debil_prefixes = ('débil<', 'weak<', 'faible<', 'fraco<')
+        debil_exact = ('débil', 'weak', 'faible', 'fraco')
+        return (tipo_synapse.startswith(debil_prefixes)
+                or tipo_synapse in debil_exact
+                or any(tipo_synapse.startswith(p + ' ') for p in debil_exact))
+
+    def _tipo_tiene_destructor(self, tipo_synapse: str) -> bool:
+        """True si el tipo requiere cleanup en scope exit (Manual 4 §5.2)."""
+        return (self._destructor_map.get(tipo_synapse) is not None
+                or self._es_tipo_rc(tipo_synapse)
+                or self._es_tipo_arc(tipo_synapse)
+                or self._es_tipo_debil(tipo_synapse))
+
+    def _es_destructor_ownership(self, tipo_synapse: str) -> bool:
+        # cumple Manual 4 §3.3 (ME r184_r185_e2e, H-R188-1): True si el
+        # destructor del tipo libera ESTRUCTURA/ARBOL propio (NodoToml/
+        # NodoJson), no un refcount ni un buffer de pool. Con paso por valor
+        # (copia superficial) liberar en el callee cuelga el objeto del
+        # llamador: la propiedad solo se transfiere con move explicito (§3.3);
+        # el default es prestamo (borrow).
+        dtor = self._destructor_map.get(tipo_synapse)
+        return dtor is not None and dtor != '_syn_texto_liberar'
+
+    def _destructor_para_tipo(self, tipo_synapse: str,
+                               var_name: str = '') -> tuple:
+        """Devuelve (fn, arg_expr, guard) para el destructor de un tipo,
+        o ('', '', ''). Manual 4 §3.2 (rc), §3.3 (arc), §4.2 (débiles),
+        §5.2 (cleanup). El 3er elemento es la condición C que guarda against
+        nil (Manual 4 §4.1: nulo valor valido; rc_flag bitmask §5.4)."""
+        dtor = self._destructor_map.get(tipo_synapse)
+        if dtor:
+            return (dtor, var_name, '')
+        if self._es_tipo_rc(tipo_synapse):
+            return ('rc_decrementar', var_name, f'{var_name}')
+        if self._es_tipo_arc(tipo_synapse):
+            return ('arc_decrementar', var_name, f'{var_name}')
+        if self._es_tipo_debil(tipo_synapse):
+            # WeakRef: rc_weak_release checks !w->header internally (§4.2)
+            return ('rc_weak_release', f'&{var_name}', '')
+        return ('', '', '')
+
+    # ---- ME coverage_aristas (Manual 8 §4.2): registro de ramas y sondas ----
+    def enable_coverage_mode(self, ruta_fuente: str, ruta_base: str = ''):
+        """Activa la instrumentación de aristas para ESTA compilación.
+        ruta_fuente: nombre del .syn (aparece en el informe); ruta_base:
+        prefijo de salida del JSON (por defecto el fuente sin extensión)."""
+        self._coverage_on = True
+        self._coverage_fuente = ruta_fuente
+        self._coverage_ruta_base = ruta_base or ruta_fuente.rsplit('.', 1)[0]
+
+    def _cov_registrar_rama(self, linea: int) -> int:
+        """Registra una rama en la línea `linea` y retorna su CLAVE estable
+        (linea<<8 | ordinal). El padre es la rama léxica contenedora (pila)."""
+        ord_ = self._coverage_ordinal.get(linea, 0)
+        self._coverage_ordinal[linea] = ord_ + 1
+        clave = (linea << 8) | (ord_ & 0xFF)
+        padre = self._coverage_stack[-1] if self._coverage_stack else 0
+        self._coverage_ramas.append((clave, padre))
+        self._coverage_padre[clave] = padre
+        return clave
+
+    def cov_sonda(self, linea: int) -> str:
+        """C de la sonda de la rama que ABRIMOS en esta línea (push)."""
+        clave = self._cov_registrar_rama(linea)
+        self._coverage_stack.append(clave)
+        return f"_syn_cov({clave}LL, 0LL);"
+
+    def cov_sonda_hija(self, linea: int) -> str:
+        """C de la sonda de una rama HERMANA/subordinada en esta línea (sin
+        push: la ejecución de la rama implica la del padre, la pila sigue)."""
+        clave = self._cov_registrar_rama(linea)
+        return f"_syn_cov({clave}LL, 0LL);"
+
+    def cov_pop(self):
+        """Cierra la rama léxica actual (fin del bloque contenedor)."""
+        if self._coverage_stack:
+            self._coverage_stack.pop()
+
+    def cov_config_macro(self) -> str:
+        """Línea de configuración del runtime insertada al inicio de main().
+        Escapa backslashes de la ruta Windows (un '\\t' crudo en el literal C
+        corrompía la ruta de salida y el JSON no se volcaba)."""
+        fuente = self._coverage_fuente.replace('\\', '/').split('/')[-1].replace('"', '')
+        base = self._coverage_ruta_base.replace('\\', '\\\\').replace('"', '')
+        return (f'_syn_cov_configurar("{fuente}", "{base}");')
+
+    def cov_ramas_estaticas_c(self) -> str:
+        """Literal C del catálogo estático "l:d,l:d,..." (ramas en orden)."""
+        pares = ','.join(f"{l}:{d}" for l, d in self._coverage_ramas)
+        return pares.replace('"', '')
+
+    def cov_total_ramas(self) -> int:
+        return len(self._coverage_ramas)
+
     def register_var(self, nombre: str, tipo: str, desde_llamada: bool):
-        if self._scope_stack and desde_llamada and tipo in self._destructor_map:
+        if self._scope_stack and desde_llamada and self._tipo_tiene_destructor(tipo):
             self._scope_stack[-1][nombre] = tipo
 
     def unregister_var(self, nombre: str):
@@ -368,6 +703,44 @@ class GeneratorContext:
     # Helpers
     # ================================================================
 
+    # cumple Manual 2 §4.2 (D-2, ME r188): registro central de una
+    # instanciación ADT `Base<A,B>` a partir de una cadena de tipo (paridad
+    # con el escaneo del AST de _recolectar_instancias_adt en generator.py).
+    # Cumple Manual 5 §3.6 (H-R184-1, ME r188_deuda_cero_1): el emisor de la
+    # nueva sintaxis emitida sin declaración en el fuente
+    # (M5 §3.6 match-sobre-receive `coincidir <canal> ->` usado en
+    # Resultado<T,texto>) la registra antes de traducir/emeter el struct C.
+    # el emisor de la nueva sintaxis emitida sin declaración en el fuente
+    # (M5 §3.6 match-sobre-receive `coincidir <canal> ->` usado en
+    # Resultado<T,texto>) la registra antes de traducir/emeter el struct C.
+    def registrar_instancia_adt(self, tipo_synapse: str) -> None:
+        if not tipo_synapse or '<' not in tipo_synapse or not tipo_synapse.endswith('>'):
+            return
+        base, _, resto = tipo_synapse.partition('<')
+        if base not in self._adt_parametros:
+            return
+        params = self._adt_parametros[base]
+        args = tuple(_dividir_args_tipo(resto[:-1]))
+        if len(args) != len(params):
+            return
+        # instancia anidada de los argumentos FIRST (post-orden, D-2)
+        for a in args:
+            self.registrar_instancia_adt(a)
+        if (base, args) in self._instancias_adt:
+            return
+
+        def _mangle_arg(a: str) -> str:
+            # D-2: arg anidado termina en '>' -> _sane deja doble guion bajo.
+            limpio = a[:-1] if a.endswith('>') else a
+            return ''.join(ch if ch.isalnum() or ch == '_' else '_' for ch in limpio)
+
+        nombre_c = base + '_' + '_'.join(_mangle_arg(a) for a in args)
+        campos = []
+        for ctor, t_syn in self._adt_constructores.get(base, []):
+            t_conc = args[params.index(t_syn)] if t_syn in params else t_syn
+            campos.append((ctor, t_conc))
+        self._instancias_adt[(base, args)] = {'nombre_c': nombre_c, 'campos': campos}
+
     def encontrar_principal(self) -> Optional[str]:
         for s in self.programa.sentencias:
             if isinstance(s, DefinicionFuncion) and s.nombre == 'principal':
@@ -377,11 +750,47 @@ class GeneratorContext:
     def traducir_tipo_c(self, tipo_synapse: str) -> str:
         # Manual 4 §4.2: &T y &mut T son punteros en C
         if tipo_synapse.startswith('&mut '):
-            return self.traducir_tipo_c(tipo_synapse[5:]) + '*'
+            inner = tipo_synapse[5:].lstrip()
+            # FFI: &texto/&cadena -> char* (Manual 3 §9.3 zero-copy .datos)
+            if inner in ('texto', 'cadena', 'CadenaSegura', 'Texto'):
+                return 'char*'
+            return self.traducir_tipo_c(inner) + '*'
         if tipo_synapse.startswith('&'):
-            return self.traducir_tipo_c(tipo_synapse[1:]) + '*'
+            inner = tipo_synapse[1:].lstrip()
+            # FFI: &texto/&cadena -> char* (Manual 3 §9.3 zero-copy .datos)
+            if inner in ('texto', 'cadena', 'CadenaSegura', 'Texto'):
+                return 'char*'
+            return self.traducir_tipo_c(inner) + '*'
+        # F1.2d/F1.4: rc/arc/débil/arena (Manual 4 §3.2-3.3, §4.2-4.4).
+        # Sintaxis SyQuex: `rc entero` (espacio, Manual 3 §3 L155-169) — pero
+        # también soporta `rc<entero>` (ángulos). ABI: void* en C.
+        if self._es_tipo_rc(tipo_synapse) or self._es_tipo_arc(tipo_synapse):
+            return 'void*'
+        if self._es_tipo_debil(tipo_synapse):
+            return 'WeakRef'
         if tipo_synapse.startswith('Canal<') and tipo_synapse.endswith('>'):
             return 'CanalConcurrencia*'
+        # D-2: instanciación de ADT genérico registrada (monomorfización).
+        # `Resultado<entero,texto>` -> struct especializado `Resultado_entero_texto`
+        # (Manual 2 §4.2 L279-280; Manual 3 §5.4). Solo si el pre-pass la registró;
+        # si no (ADT sin instanciar), cae al fallback histórico (Resultado_T / void*).
+        if '<' in tipo_synapse and tipo_synapse.endswith('>'):
+            base, _, resto = tipo_synapse.partition('<')
+            args = tuple(_dividir_args_tipo(resto[:-1]))
+            if (base, args) in self._instancias_adt:
+                return self._instancias_adt[(base, args)]['nombre_c']
+            # H-R90-15 + cumple Manual 2 §4.3 (H-R153-2): Lista<T>/Mapa<K,V>
+            # son handles del runtime de colecciones (runtime/core/
+            # lista.c/mapa.c, slots int64). El emisor de llamadas
+            # y de for-en usa los builtins _syn_lista_*/_syn_mapa_*.
+            # cumple Manual 6 §3.1 + Manual 2 §4.1 (H-CFG-5): el handle es
+            # `entero` (int64_t) del lado Synapse — en C se declara intptr_t
+            # (mismo ancho que void* en x86-64) para que `let l = lista_crear()`
+            # y las asignaciones/parámetros de handle compilen SIN casts
+            # int↔puntero implícitos; los bordes FFI castea el emisor de
+            # llamadas ((void*)(intptr_t)(h) / (intptr_t)_syn_lista_crear()).
+            if base in ('Lista', 'Mapa'):
+                return 'intptr_t'
         if tipo_synapse.startswith('Resultado<'):
             return 'Resultado_T'
         # M22.6: Handle pointer types (e.g. int* -> int*, not struct int*)
@@ -392,6 +801,9 @@ class GeneratorContext:
         tipo_c = MAPA_TIPOS_C.get(tipo_synapse)
         if tipo_c is not None:
             return tipo_c
+        # F1.2: resolver alias de tipo declarados (`tipo X = Y`)
+        if tipo_synapse in self._tipo_aliases:
+            return self.traducir_tipo_c(self._tipo_aliases[tipo_synapse])
         return f"struct {tipo_synapse}"
 
     def aplicar_coercion(self, expr_c: str, tipo_origen: str,

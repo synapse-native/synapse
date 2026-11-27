@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "34acda07a2556d43",
+ "expediente": "docs/alineacion/r273_installer_modelo_grande.md",
+ "fecha": "2026-11-22",
+ "archivos": [
+  "opensyn/installer.syn"
+ ],
+ "oraculos": {
+  "tests/integration/test_installer_modelo_grande.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

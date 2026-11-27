@@ -1,40 +1,44 @@
 {
-  "_tipo": "Programa",
-  "sentencias": [
+  "tipo": "Programa",
+  "declaraciones": [
     {
-      "_tipo": "DefinicionFuncion",
+      "tipo": "FuncionDef",
       "nombre": "suma",
       "parametros": [
         {
           "nombre": "a",
-          "tipo": "int"
+          "tipo": "int",
+          "es_transferencia": false
         },
         {
           "nombre": "b",
-          "tipo": "int"
+          "tipo": "int",
+          "es_transferencia": false
         }
       ],
       "tipo_retorno": "int",
-      "requiere": [],
-      "garantiza": [],
-      "cuerpo": [
-        {
-          "_tipo": "SentenciaRetornar",
-          "expr": {
-            "_tipo": "OpBinaria",
-            "izquierdo": {
-              "_tipo": "Identificador",
-              "nombre": "a"
+      "contratos": null,
+      "cuerpo": {
+        "tipo": "Bloque",
+        "sentencias": [
+          {
+            "tipo": "SentenciaRetornar",
+            "valor": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "a"
+              },
+              "operador": "+",
+              "derecha": {
+                "tipo": "Identificador",
+                "nombre": "b"
+              }
             },
-            "operador": "+",
-            "derecho": {
-              "_tipo": "Identificador",
-              "nombre": "b"
-            }
-          },
-          "es_transferencia": false
-        }
-      ]
+            "es_transferencia": false
+          }
+        ]
+      }
     }
   ],
   "is_no_std": false

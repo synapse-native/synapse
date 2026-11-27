@@ -1,0 +1,5 @@
+#lang: es
+importar std.io
+
+funcion principal() -> nulo:
+    escribir_linea("Auditoria superada con silicio puro.")

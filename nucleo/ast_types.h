@@ -1,3 +1,5 @@
+// cumple Manual 2 4: tipos AST
+// cumple Manual 8 4: toolchain
 // ast_types.h — Tipos de estructuras del AST orientado a objetos (Synapse)
 // Generado a partir de hola.c. NO modificar manualmente.
 #ifndef AST_TYPES_H
@@ -40,6 +42,9 @@ struct DeclaracionExterna;
 struct BloqueInseguro;
 struct ExprObtenerDireccion;
 struct ExprDereferencia;
+struct LiteralNulo;
+struct ConstructorTipo;
+struct DeclaracionTipo;
 
 // --- Struct definitions ---
 typedef struct Token {
@@ -244,5 +249,23 @@ typedef struct ExprDereferencia {
     CadenaSegura tipo;
     struct Nodo* expr;
 } ExprDereferencia;
+
+typedef struct LiteralNulo {
+    CadenaSegura tipo;
+} LiteralNulo;
+
+typedef struct ConstructorTipo {
+    CadenaSegura tipo;
+    CadenaSegura nombre;
+    struct ListaNodo* tipos;
+} ConstructorTipo;
+
+typedef struct DeclaracionTipo {
+    CadenaSegura tipo;
+    CadenaSegura nombre;
+    struct ListaNodo* parametros_tipo;
+    CadenaSegura tipo_base;
+    struct ListaNodo* constructores;
+} DeclaracionTipo;
 
 #endif // AST_TYPES_H

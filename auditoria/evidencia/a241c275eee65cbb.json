@@ -1,0 +1,15 @@
+{
+ "cambio_hash": "a241c275eee65cbb",
+ "expediente": "docs/alineacion/r182c.md",
+ "fecha": "2026-10-10",
+ "archivos": [
+  "compilador/generator/emit_declarations.py",
+  "compilador/generator/context.py"
+ ],
+ "oraculos": {
+  "auditoria/oraculos/oraculo_r182c.py": true,
+  "tests/syquex/test_concurrency.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

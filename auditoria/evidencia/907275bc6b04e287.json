@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "907275bc6b04e287",
+ "expediente": "docs/alineacion/paridad_principal_syq.md",
+ "fecha": "2026-10-01",
+ "archivos": [
+  "compilador/puente_canonico.py",
+  "pipeline.py"
+ ],
+ "oraculos": {
+  "tests/integration/test_paridad_syn_syq.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

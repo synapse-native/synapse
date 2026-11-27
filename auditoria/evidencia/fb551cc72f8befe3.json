@@ -1,0 +1,19 @@
+{
+ "cambio_hash": "fb551cc72f8befe3",
+ "expediente": "docs/alineacion/r299c_parser_contracts.md",
+ "fecha": "2026-11-24",
+ "archivos": [
+  "nucleo/parser.syn",
+  "nucleo/parser_base.syn",
+  "nucleo/parser_canales.syn",
+  "nucleo/parser_declaraciones.syn",
+  "nucleo/parser_expr.syn",
+  "nucleo/parser_sentencias.syn",
+  "nucleo/parser_stmt.syn"
+ ],
+ "oraculos": {
+  "auditoria/verificar_contratos.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

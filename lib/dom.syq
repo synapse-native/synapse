@@ -1,0 +1,181 @@
+// lib/dom.syq
+// FASE 25 — Manipulación del DOM para WASM con arenas de componente
+//
+// Manual 4 §6: Arenas de Componente (UI/DOM)
+//   §6.1: El problema de GUI y DOM (grafos cíclicos)
+//   §6.2: Arenas de componente (cada widget tiene su propia arena)
+//   §6.6: Arenas de componente para WASM
+//
+// Propósito: API de alto nivel para manipulación del DOM desde Syquex
+// compilado a WASM. Cada elemento DOM vive en la arena de componente
+// correspondiente, y su ciclo de vida está vinculado a la arena.
+
+// =====================================================================
+// §6.6: Elemento DOM
+// =====================================================================
+
+estructura Elemento:
+    ptr: puntero     // puntero al objeto JS en la memoria lineal (ID)
+    arena_id: entero // identificador de la arena de componente
+
+// =====================================================================
+// §6.6: Creación de elementos
+// =====================================================================
+
+// Crear un elemento DOM con la etiqueta especificada.
+// Asigna el elemento en la arena de componente actual.
+externo funcion _js_crear_elemento(tag: puntero) -> puntero
+
+funcion crear_elemento(tag: texto) -> Resultado<Elemento, texto>:
+    let arena = _arena_componente_actual()
+    si arena == nulo:
+        retornar err("No hay arena de componente activa")
+    let id = _js_crear_elemento(&tag)
+    si id == nulo:
+        retornar err("Error al crear elemento: " + tag)
+    _arena_componente_registrar(arena, id)
+    retornar ok(Elemento(id, arena))
+
+// =====================================================================
+// §6.6: Manipulación de elementos
+// =====================================================================
+
+// Establecer el texto de un elemento.
+externo funcion _js_set_texto(ptr_elem: puntero, ptr_texto: puntero) -> nulo
+
+// Establecer un atributo de un elemento.
+externo funcion _js_set_atributo(ptr_elem: puntero, ptr_nombre: puntero, ptr_valor: puntero) -> nulo
+
+// Agregar un hijo a un elemento.
+externo funcion _js_agregar_hijo(ptr_padre: puntero, ptr_hijo: puntero) -> nulo
+
+// Remover un hijo de un elemento.
+externo funcion _js_remover_hijo(ptr_padre: puntero, ptr_hijo: puntero) -> nulo
+
+// Obtener el texto de un elemento.
+externo funcion _js_get_texto(ptr_elem: puntero) -> puntero
+
+// Obtener el valor de un atributo.
+externo funcion _js_get_atributo(ptr_elem: puntero, ptr_nombre: puntero) -> puntero
+
+// =====================================================================
+// §6.6: Eventos
+// =====================================================================
+
+// Registrar un callback de clic en un elemento.
+// El callback se almacena en un mapa global (JS) y se asocia al elemento.
+externo funcion _js_onclick(ptr_elem: puntero, id_callback: entero) -> nulo
+
+// Registrar un callback de cambio en un elemento.
+externo funcion _js_onchange(ptr_elem: puntero, id_callback: entero) -> nulo
+
+// Registrar un callback de submit en un formulario.
+externo funcion _js_onsubmit(ptr_elem: puntero, id_callback: entero) -> nulo
+
+// =====================================================================
+// §6.6: Consulta de elementos
+// =====================================================================
+
+// Obtener un elemento por su ID.
+externo funcion _js_get_element_by_id(ptr_id: puntero) -> puntero
+
+// Obtener elementos por clase CSS.
+externo funcion _js_get_elements_by_class(ptr_clase: puntero) -> puntero
+
+// Obtener elementos por selector CSS.
+externo funcion _js_query_selector(ptr_selector: puntero) -> puntero
+
+// Obtener todos los elementos que coinciden con el selector.
+externo funcion _js_query_selector_all(ptr_selector: puntero) -> puntero
+
+// =====================================================================
+// §6.6: Estilos
+// =====================================================================
+
+// Establecer un estilo CSS inline.
+externo funcion _js_set_style(ptr_elem: puntero, ptr_propiedad: puntero, ptr_valor: puntero) -> nulo
+
+// Agregar una clase CSS.
+externo funcion _js_add_class(ptr_elem: puntero, ptr_clase: puntero) -> nulo
+
+// Remover una clase CSS.
+externo funcion _js_remove_class(ptr_elem: puntero, ptr_clase: puntero) -> nulo
+
+// Verificar si tiene una clase CSS.
+externo funcion _js_has_class(ptr_elem: puntero, ptr_clase: puntero) -> entero
+
+// =====================================================================
+// §6.6: Arenas de componente
+// =====================================================================
+
+// Obtener la arena de componente actual.
+externo funcion _arena_componente_actual() -> entero
+
+// Registrar un elemento en la arena de componente.
+externo funcion _arena_componente_registrar(arena_id: entero, ptr_elem: puntero) -> nulo
+
+// Destruir la arena de componente (libera todos los elementos DOM).
+externo funcion _arena_componente_destruir(arena_id: entero) -> nulo
+
+// =====================================================================
+// Funciones de alto nivel (wrapper Syquex)
+// =====================================================================
+
+funcion elem_texto(elem: Elemento, texto: texto) -> nulo:
+    _js_set_texto(elem.ptr, &texto)
+    retornar nulo
+
+funcion elem_atributo(elem: Elemento, nombre: texto, valor: texto) -> nulo:
+    _js_set_atributo(elem.ptr, &nombre, &valor)
+    retornar nulo
+
+funcion elem_hijo(padre: Elemento, hijo: Elemento) -> nulo:
+    _js_agregar_hijo(padre.ptr, hijo.ptr)
+    retornar nulo
+
+funcion elem_remover(padre: Elemento, hijo: Elemento) -> nulo:
+    _js_remover_hijo(padre.ptr, hijo.ptr)
+    retornar nulo
+
+funcion elem_por_id(id: texto) -> Resultado<Elemento, texto>:
+    let ptr = _js_get_element_by_id(&id)
+    si ptr == nulo:
+        retornar err("Elemento no encontrado: " + id)
+    retornar ok(Elemento(ptr, 0))
+
+funcion elem_por_selector(selector: texto) -> Resultado<Elemento, texto>:
+    let ptr = _js_query_selector(&selector)
+    si ptr == nulo:
+        retornar err("Elemento no encontrado: " + selector)
+    retornar ok(Elemento(ptr, 0))
+
+funcion elem_estilo(elem: Elemento, propiedad: texto, valor: texto) -> nulo:
+    _js_set_style(elem.ptr, &propiedad, &valor)
+    retornar nulo
+
+funcion elem_clase(elem: Elemento, clase: texto) -> nulo:
+    _js_add_class(elem.ptr, &clase)
+    retornar nulo
+
+funcion elem_quitar_clase(elem: Elemento, clase: texto) -> nulo:
+    _js_remove_class(elem.ptr, &clase)
+    retornar nulo
+
+funcion elem_clic(elem: Elemento, callback: funcion() -> nulo) -> nulo:
+    let id_cb = _registrar_callback_c(&callback, nulo, falso)
+    _js_onclick(elem.ptr, id_cb)
+    retornar nulo
+
+funcion elem_cambiar(elem: Elemento, callback: funcion() -> nulo) -> nulo:
+    let id_cb = _registrar_callback_c(&callback, nulo, falso)
+    _js_onchange(elem.ptr, id_cb)
+    retornar nulo
+
+funcion elem_enviar(elem: Elemento, callback: funcion() -> nulo) -> nulo:
+    let id_cb = _registrar_callback_c(&callback, nulo, falso)
+    _js_onsubmit(elem.ptr, id_cb)
+    retornar nulo
+
+funcion destruir_componente(arena_id: entero) -> nulo:
+    _arena_componente_destruir(arena_id)
+    retornar nulo

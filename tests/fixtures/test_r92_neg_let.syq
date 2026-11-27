@@ -1,0 +1,5 @@
+#lang: es
+let global_malo = 5
+
+funcion principal() -> entero:
+    retornar 0

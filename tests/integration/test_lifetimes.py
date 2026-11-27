@@ -1,5 +1,7 @@
 """M21.5: Pruebas unitarias del sistema de lifetimes (Manual 4.3)."""
 import pytest
+
+pytestmark = pytest.mark.integration
 from compilador.semantic_checker import (
     RegionGraph, UnionFind, Lifetime,
     LT_ESTATICO, LT_LOCAL, LT_PARAMETRICO,

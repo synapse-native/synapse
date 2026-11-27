@@ -1,0 +1,366 @@
+#lang: es
+// cumple Manual 9 §3.1: comando `synapse update` sin argumentos, --version y --check
+// cumple Manual 9 §3.2: consulta de release, firma Ed25519, backup e instalación
+// cumple Manual 2 §5.1: contratos requiere/garantiza en funciones públicas
+// ME r203_update_nativo: transporte TLS por curl del sistema (precedente M9 §5.3).
+importar std.json
+importar std.texto
+
+estructura ActInfoRelease:
+    ok: entero
+    version: texto
+    nombre_asset: texto
+    url_asset: texto
+    url_sha: texto
+    url_sig: texto
+
+externo funcion _syn_actualizador_asset() -> texto
+externo funcion _syn_actualizador_pubkey() -> texto
+externo funcion _syn_actualizador_exe() -> texto
+externo funcion _syn_actualizador_verificar_firma(artefacto: texto, firma_hex: texto, clave_hex: texto) -> entero
+externo funcion _syn_actualizador_backup(destino_dir: texto) -> texto
+externo funcion _syn_actualizador_instalar(nuevo: texto, destino: texto) -> entero
+externo funcion _syn_actualizador_comparar_versiones(a: texto, b: texto) -> entero
+externo funcion _syn_actualizador_version_mayor(v: texto) -> entero
+
+externo funcion _syn_actualizador_ejecutar(cmd: texto) -> entero
+externo funcion _syn_leer_archivo(ruta: texto) -> texto
+externo funcion _syn_existe_archivo(ruta: texto) -> entero
+externo funcion _syn_eliminar_archivo(ruta: texto) -> entero
+externo funcion _syn_hash_archivo(ruta: texto) -> texto
+externo funcion _syn_home() -> texto
+externo funcion _syn_obtener_env(nombre: texto) -> texto
+externo funcion _syn_texto_indice_de(texto: texto, subcadena: texto) -> entero
+externo funcion _syn_texto_minusculas(texto: texto) -> texto
+externo funcion _syn_texto_recortar(texto: texto) -> texto
+externo funcion _json_parse(entrada: texto) -> NodoJson
+externo funcion _json_object_get(nodo: NodoJson, clave: texto) -> NodoJson
+externo funcion _json_array_get(nodo: NodoJson, indice: entero) -> NodoJson
+externo funcion _json_nodo_liberar(n: NodoJson) -> nulo
+
+constante ACT_API = "https://api.github.com/repos/synapse-native/synapse/releases/"
+
+funcion _act_sep() -> texto:
+    garantiza:
+        _resultado_ == "/" o _resultado_ == "\\"
+    si _syn_texto_indice_de(_syn_texto_minusculas(_syn_actualizador_asset()), "win") >= 0:
+        retornar "\\"
+    retornar "/"
+
+funcion _act_unir(dir: texto, nombre: texto) -> texto:
+    requiere:
+        longitud(nombre) > 0
+    si longitud(dir) == 0:
+        retornar nombre
+    si termina_con(dir, "/") == 1 o termina_con(dir, "\\") == 1:
+        retornar dir + nombre
+    retornar dir + _act_sep() + nombre
+
+funcion _act_dirname(ruta: texto) -> texto:
+    requiere:
+        longitud(ruta) > 0
+    i = longitud(ruta) - 1
+    mientras i >= 0:
+        c = subcadena(ruta, i, 1)
+        si c == "/" o c == "\\":
+            retornar subcadena(ruta, 0, i)
+        i = i - 1
+    retornar "."
+
+funcion _act_leer_texto(ruta: texto) -> texto:
+    si _syn_existe_archivo(ruta) != 1:
+        retornar ""
+    retornar _syn_leer_archivo(ruta)
+
+funcion _act_normalizar_version(v: texto) -> texto:
+    garantiza:
+        longitud(_resultado_) >= 0
+    t = _syn_texto_recortar(v)
+    si longitud(t) > 0 y (subcadena(t, 0, 1) == "v" o subcadena(t, 0, 1) == "V"):
+        t = subcadena(t, 1, longitud(t) - 1)
+    i = 0
+    mientras i < longitud(t):
+        c = subcadena(t, i, 1)
+        si no (_syn_texto_indice_de("0123456789", c) >= 0) y c != ".":
+            retornar subcadena(t, 0, i)
+        i = i + 1
+    retornar t
+
+funcion _act_version_valida(v: texto) -> booleano:
+    t = _act_normalizar_version(v)
+    si longitud(t) == 0:
+        retornar falso
+    si subcadena(t, 0, 1) == "." o subcadena(t, longitud(t) - 1, 1) == ".":
+        retornar falso
+    si _syn_texto_indice_de(t, "..") >= 0:
+        retornar falso
+    i = 0
+    digitos = 0
+    mientras i < longitud(t):
+        c = subcadena(t, i, 1)
+        si c == ".":
+            i = i + 1
+        sino:
+            si _syn_texto_indice_de("0123456789", c) >= 0:
+                digitos = digitos + 1
+                i = i + 1
+            sino:
+                retornar falso
+    retornar digitos > 0
+
+funcion _act_version_actual() -> texto:
+    garantiza:
+        longitud(_resultado_) > 0
+    exe = _syn_actualizador_exe()
+    candidatas = exe
+    si longitud(exe) > 0:
+        dir = _act_dirname(exe)
+        candidatas = _act_unir(_act_unir(dir, ".."), "VERSION")
+        v = _act_normalizar_version(_act_leer_texto(_act_unir(dir, "VERSION")))
+        si longitud(v) > 0:
+            retornar v
+        v = _act_normalizar_version(_act_leer_texto(candidatas))
+        si longitud(v) > 0:
+            retornar v
+    v = _act_normalizar_version(_act_leer_texto("VERSION"))
+    si longitud(v) > 0:
+        retornar v
+    v = _act_normalizar_version(_syn_obtener_env("SYNAPSE_VERSION"))
+    si longitud(v) > 0:
+        retornar v
+    retornar "0.0.0"
+
+funcion _act_asset_seguro(nombre: texto) -> booleano:
+    // cumple Manual 2 §5.1: nombre de asset sin separadores ni '..'
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    si longitud(nombre) == 0:
+        retornar falso
+    si _syn_texto_indice_de(nombre, "/") >= 0 o _syn_texto_indice_de(nombre, "\\") >= 0:
+        retornar falso
+    si nombre == "..":
+        retornar falso
+    retornar verdadero
+
+funcion _act_elegir_asset(assets: NodoJson) -> texto:
+    // cumple Manual 2 §5.1: elige un asset seguro para la plataforma
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    plataforma = _syn_actualizador_asset()
+    token = "win"
+    lp = _syn_texto_minusculas(plataforma)
+    si _syn_texto_indice_de(lp, "linux") >= 0:
+        token = "linux"
+    si _syn_texto_indice_de(lp, "darwin") >= 0:
+        token = "darwin"
+    i = 0
+    mientras i < assets.longitud:
+        nodo = _json_array_get(assets, i)
+        nombre = _json_object_get(nodo, "name").valor_str
+        ln = _syn_texto_minusculas(nombre)
+        es_instalador = _syn_texto_indice_de(ln, "setup") >= 0 o _syn_texto_indice_de(ln, "installer") >= 0
+        si es_instalador y _syn_texto_indice_de(ln, token) >= 0 y _act_asset_seguro(nombre):
+            retornar concat("", nombre)
+        i = i + 1
+    i = 0
+    mientras i < assets.longitud:
+        nodo = _json_array_get(assets, i)
+        nombre = _json_object_get(nodo, "name").valor_str
+        si nombre == plataforma y _act_asset_seguro(nombre):
+            retornar concat("", nombre)
+        i = i + 1
+    retornar ""
+
+funcion _act_url_de_asset(assets: NodoJson, nombre: texto) -> texto:
+    requiere:
+        longitud(nombre) > 0
+    i = 0
+    mientras i < assets.longitud:
+        nodo = _json_array_get(assets, i)
+        n = _json_object_get(nodo, "name").valor_str
+        si n == nombre:
+            retornar concat("", _json_object_get(nodo, "browser_download_url").valor_str)
+        i = i + 1
+    retornar ""
+
+funcion _act_info(nodo: NodoJson) -> ActInfoRelease:
+    // cumple Manual 2 §5.1: extrae versión/asset/URLs verificables del release
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    let info: ActInfoRelease
+    info.ok = 0
+    info.version = ""
+    info.nombre_asset = ""
+    info.url_asset = ""
+    info.url_sha = ""
+    info.url_sig = ""
+    tag = _json_object_get(nodo, "tag_name").valor_str
+    si longitud(tag) == 0:
+        retornar info
+    assets = _json_object_get(nodo, "assets")
+    nombre = _act_elegir_asset(assets)
+    si longitud(nombre) == 0:
+        retornar info
+    nombre_sha = nombre + ".sha256"
+    nombre_sig = nombre + ".sig"
+    url = _act_url_de_asset(assets, concat("", nombre))
+    url_sha = _act_url_de_asset(assets, concat("", nombre_sha))
+    url_sig = _act_url_de_asset(assets, concat("", nombre_sig))
+    si longitud(url) == 0 o longitud(url_sha) == 0 o longitud(url_sig) == 0:
+        retornar info
+    info.ok = 1
+    info.version = _act_normalizar_version(tag)
+    info.nombre_asset = nombre
+    info.url_asset = url
+    info.url_sha = url_sha
+    info.url_sig = url_sig
+    retornar info
+
+funcion _act_url_release(objetivo: texto) -> texto:
+    si longitud(objetivo) == 0:
+        retornar ACT_API + "latest"
+    retornar ACT_API + "tags/v" + objetivo
+
+funcion _act_ruta_temp(nombre: texto) -> texto:
+    requiere:
+        longitud(nombre) > 0
+    t = _syn_obtener_env("TEMP")
+    si longitud(t) == 0:
+        t = _syn_obtener_env("TMP")
+    si longitud(t) == 0:
+        t = _syn_obtener_env("TMPDIR")
+    si longitud(t) == 0:
+        t = "/tmp"
+    retornar _act_unir(_act_unir(t, "synapse_update"), nombre)
+
+funcion _act_descargar(url: texto, destino: texto) -> entero:
+    requiere:
+        longitud(url) > 0
+        longitud(destino) > 0
+    garantiza:
+        verdadero
+    curl = _syn_obtener_env("SYNAPSE_UPDATE_CURL")
+    si longitud(curl) == 0:
+        curl = "curl"
+    cmd = curl + " -L -fsS --retry 2 --connect-timeout 15 --max-time 300 --create-dirs -A \"synapse-update\" -o \"" + destino + "\" \"" + url + "\""
+    retornar _syn_actualizador_ejecutar(cmd)
+
+funcion _act_limpiar(nombre_asset: texto) -> nulo:
+    si longitud(nombre_asset) > 0:
+        _syn_eliminar_archivo(_act_ruta_temp(concat("", nombre_asset)))
+        _syn_eliminar_archivo(_act_ruta_temp(concat(concat("", nombre_asset), ".sha256")))
+        _syn_eliminar_archivo(_act_ruta_temp(concat(concat("", nombre_asset), ".sig")))
+    _syn_eliminar_archivo(_act_ruta_temp("release.json"))
+    retornar
+
+funcion _act_instalar(info: ActInfoRelease) -> entero:
+    requiere:
+        info.ok == 1
+        longitud(info.nombre_asset) > 0
+    garantiza:
+        verdadero
+    ruta_asset = _act_ruta_temp(concat("", info.nombre_asset))
+    ruta_sha = _act_ruta_temp(concat(concat("", info.nombre_asset), ".sha256"))
+    ruta_sig = _act_ruta_temp(concat(concat("", info.nombre_asset), ".sig"))
+    _syn_eliminar_archivo(ruta_asset)
+    _syn_eliminar_archivo(ruta_sha)
+    _syn_eliminar_archivo(ruta_sig)
+    escribir_linea("[Update] Descargando " + info.nombre_asset + "...")
+    si _act_descargar(concat("", info.url_asset), concat("", ruta_asset)) != 0:
+        escribir_linea("[ERROR] No se pudo descargar el binario")
+        _act_limpiar(concat("", info.nombre_asset))
+        retornar 1
+    si _act_descargar(concat("", info.url_sha), concat("", ruta_sha)) != 0:
+        escribir_linea("[ERROR] No se pudo descargar el checksum")
+        _act_limpiar(concat("", info.nombre_asset))
+        retornar 1
+    si _act_descargar(concat("", info.url_sig), concat("", ruta_sig)) != 0:
+        escribir_linea("[ERROR] No se pudo descargar la firma")
+        _act_limpiar(concat("", info.nombre_asset))
+        retornar 1
+    esperado = _syn_texto_recortar(_act_leer_texto(ruta_sha))
+    real = _syn_hash_archivo(ruta_asset)
+    si longitud(esperado) == 0 o real != esperado:
+        escribir_linea("[ERROR] Checksum SHA-256 no coincide")
+        _act_limpiar(concat("", info.nombre_asset))
+        retornar 1
+    escribir_linea("[OK] Checksum SHA-256 verificado")
+    firma = _syn_actualizador_verificar_firma(ruta_asset, "", _syn_actualizador_pubkey())
+    si firma != 0:
+        escribir_linea("[ERROR] Firma Ed25519 inválida")
+        _act_limpiar(concat("", info.nombre_asset))
+        retornar 1
+    escribir_linea("[OK] Firma Ed25519 verificada")
+    backup_dir = _syn_home() + "/.synapse/backup"
+    backup = _syn_actualizador_backup(backup_dir)
+    si longitud(backup) == 0:
+        escribir_linea("[ERROR] No se pudo crear el backup en " + backup_dir)
+        _act_limpiar(concat("", info.nombre_asset))
+        retornar 1
+    escribir_linea("[OK] Backup: " + backup)
+    si _syn_actualizador_instalar(ruta_asset, "") != 0:
+        escribir_linea("[ERROR] No se pudo lanzar la instalación")
+        escribir_linea("[INFO] Backup disponible en " + backup)
+        _act_limpiar(concat("", info.nombre_asset))
+        retornar 1
+    escribir_linea("[OK] Actualización instalada. La nueva versión se iniciará al cerrar este proceso.")
+    retornar 0
+
+funcion cli_update(objetivo: texto, solo_check: booleano) -> entero:
+    // cumple Manual 9 §3.1: `--version` específico y `--check` sin instalar.
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    actual = _act_version_actual()
+    escribir_linea("[Update] Versión actual: " + actual)
+    si longitud(objetivo) > 0 y no _act_version_valida(concat("", objetivo)):
+        escribir_linea("[ERROR] Versión inválida: " + objetivo)
+        retornar 2
+    objetivo_norm = _act_normalizar_version(objetivo)
+    ruta_json = _act_ruta_temp("release.json")
+    _syn_eliminar_archivo(ruta_json)
+    url = _act_url_release(objetivo_norm)
+    si _act_descargar(concat("", url), concat("", ruta_json)) != 0:
+        escribir_linea("[ERROR] No se pudo consultar GitHub Releases")
+        _act_limpiar("")
+        retornar 1
+    texto_json = _act_leer_texto(concat("", ruta_json))
+    si longitud(texto_json) == 0:
+        escribir_linea("[ERROR] Respuesta de release vacía")
+        _act_limpiar("")
+        retornar 1
+    nodo = _json_parse(texto_json)
+    info = _act_info(nodo)
+    _json_nodo_liberar(nodo)
+    _syn_eliminar_archivo(ruta_json)
+    si info.ok == 0:
+        escribir_linea("[ERROR] El release no publica binario, .sha256 y .sig para esta plataforma")
+        retornar 1
+    si longitud(objetivo_norm) > 0 y _syn_actualizador_comparar_versiones(info.version, objetivo_norm) != 0:
+        escribir_linea("[ERROR] El release consultado no coincide con " + objetivo_norm)
+        retornar 1
+    escribir_linea("[Update] Versión remota: " + info.version)
+    escribir_linea("[Update] Asset: " + info.nombre_asset)
+    si longitud(objetivo_norm) == 0:
+        si _syn_actualizador_comparar_versiones(info.version, actual) <= 0:
+            escribir_linea("[OK] No hay actualizaciones disponibles")
+            retornar 0
+    sino:
+        si _syn_actualizador_comparar_versiones(info.version, actual) == 0:
+            escribir_linea("[OK] La versión solicitada ya está instalada")
+            retornar 0
+        si _syn_actualizador_comparar_versiones(info.version, actual) < 0:
+            escribir_linea("[WARN] La versión solicitada es anterior a la actual")
+    si _syn_actualizador_version_mayor(info.version) != _syn_actualizador_version_mayor(actual):
+        escribir_linea("[WARN] Cambio de versión mayor: revisa la compatibilidad de tu código")
+    si solo_check:
+        escribir_linea("[OK] Actualización disponible; no se instaló (--check)")
+        retornar 0
+    retornar _act_instalar(info)

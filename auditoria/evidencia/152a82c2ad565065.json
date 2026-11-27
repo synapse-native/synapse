@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "152a82c2ad565065",
+ "expediente": "docs/alineacion/transpiler_elif.md",
+ "fecha": "2026-09-30",
+ "archivos": [
+  "opensyn/transpiler.py"
+ ],
+ "oraculos": {
+  "tests/test_full_pipeline.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

@@ -1,0 +1,173 @@
+#lang: es
+// opensyn/explorer_det.syn - Explorer determinista: BFS sobre el grafo
+// Referencia funcional Manual FASE 32 §4.3: BFS sobre el grafo para encontrar archivos relevantes, sin LLM
+// Referencia funcional Manual FASE 32 §4.6: criterios de aceptacion del analisis determinista
+// cumple Manual 6 §1.1: grafo construido desde el AST canonico SemNodo[]
+// cumple Manual 2 §5.1: contratos requiere/garantiza en funciones publicas
+
+importar nucleo.grafo_conocimiento
+
+// ============================================================
+// ESTRUCTURAS
+// ============================================================
+
+estructura ArchivoRelevante:
+    archivo: texto
+    razon: texto
+    distancia: entero
+    tipo_relacion: texto
+
+// ============================================================
+// EXPLORER - BFS sobre el grafo
+// ============================================================
+
+// Referencia funcional Manual FASE 32 §4.3: exploracion determinista de archivos relevantes
+funcion explorar_contexto(archivo_objetivo: texto, grafo: GrafoProyecto, radio: entero) -> Lista<ArchivoRelevante>:
+    requiere:
+        longitud(archivo_objetivo) > 0 y radio >= 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    let resultados = Lista<ArchivoRelevante>()
+    si radio == 0:
+        retornar resultados
+
+    let visitados_archivos = Mapa<texto, booleano>()
+    let distancias = Mapa<texto, entero>()
+    visitados_archivos.poner(archivo_objetivo, verdadero)
+    distancias.poner(archivo_objetivo, 0)
+    let cola_archivos = Lista<texto>()
+    cola_archivos.agregar(archivo_objetivo)
+
+    let cabeza = 0
+    mientras cabeza < longitud(cola_archivos):
+        let actual = elemento_texto(cola_archivos, cabeza)
+        let dist_actual = distancias[actual]
+        cabeza = cabeza + 1
+
+        // Un archivo puede tener varios nodos (funciones/estructuras).
+        para nodo en grafo.nodos:
+            si nodo.archivo == actual:
+                // Dependencias: aristas que salen de este nodo.
+                para arista en grafo.aristas:
+                    si arista.origen_id == nodo.id:
+                        let destino_archivo = archivo_de_nodo(grafo, arista.destino_id)
+                        si longitud(destino_archivo) > 0:
+                            si destino_archivo != actual:
+                                si visitados_archivos.contiene(destino_archivo) == falso:
+                                    visitados_archivos.poner(destino_archivo, verdadero)
+                                    distancias.poner(destino_archivo, dist_actual + 1)
+                                    resultados.agregar(ArchivoRelevante(
+                                        destino_archivo,
+                                        "dependencia directa de " + actual,
+                                        dist_actual + 1,
+                                        "dependencia"
+                                    ))
+                                    si dist_actual + 1 < radio:
+                                        cola_archivos.agregar(destino_archivo)
+
+                // Dependientes: aristas que entran a este nodo.
+                para arista en grafo.aristas:
+                    si arista.destino_id == nodo.id:
+                        let origen_archivo = archivo_de_nodo(grafo, arista.origen_id)
+                        si longitud(origen_archivo) > 0:
+                            si origen_archivo != actual:
+                                si visitados_archivos.contiene(origen_archivo) == falso:
+                                    visitados_archivos.poner(origen_archivo, verdadero)
+                                    distancias.poner(origen_archivo, dist_actual + 1)
+                                    resultados.agregar(ArchivoRelevante(
+                                        origen_archivo,
+                                        "usa " + actual,
+                                        dist_actual + 1,
+                                        "dependiente"
+                                    ))
+                                    si dist_actual + 1 < radio:
+                                        cola_archivos.agregar(origen_archivo)
+
+    // El BFS agrega en orden no decreciente de distancia.
+    retornar resultados
+
+// ============================================================
+// CALCULO DE DISTANCIA - BFS shortest path
+// ============================================================
+
+// Referencia funcional Manual FASE 32 §4.6: distancia determinista sobre el grafo
+funcion calcular_distancia(grafo: GrafoProyecto, origen: texto, destino: texto) -> entero:
+    requiere:
+        longitud(origen) > 0 y longitud(destino) > 0
+    garantiza:
+        _resultado_ >= -1
+    si origen == destino:
+        retornar 0
+
+    let visitados = Mapa<texto, booleano>()
+    let distancias = Mapa<texto, entero>()
+    visitados.poner(origen, verdadero)
+    distancias.poner(origen, 0)
+    let cola_nodos = Lista<texto>()
+    cola_nodos.agregar(origen)
+
+    let cabeza = 0
+    mientras cabeza < longitud(cola_nodos):
+        let actual = elemento_texto(cola_nodos, cabeza)
+        let dist = distancias[actual]
+        cabeza = cabeza + 1
+
+        para arista en grafo.aristas:
+            let vecino = ""
+            si arista.origen_id == actual:
+                vecino = arista.destino_id
+            si arista.destino_id == actual:
+                vecino = arista.origen_id
+            si longitud(vecino) > 0:
+                si vecino == destino:
+                    retornar dist + 1
+                si visitados.contiene(vecino) == falso:
+                    visitados.poner(vecino, verdadero)
+                    distancias.poner(vecino, dist + 1)
+                    cola_nodos.agregar(vecino)
+
+    retornar -1
+
+// ============================================================
+// AUXILIARES
+// ============================================================
+
+// cumple Manual 6 §1.1: el archivo se obtiene del nodo canonico del grafo
+funcion archivo_de_nodo(grafo: GrafoProyecto, id_nodo: texto) -> texto:
+    requiere:
+        longitud(id_nodo) > 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    para nodo en grafo.nodos:
+        si nodo.id == id_nodo:
+            retornar nodo.archivo
+    retornar extraer_archivo_de_id(id_nodo)
+
+// cumple Manual 6 §1.1: fallback determinista para IDs "archivo.funcion"
+funcion extraer_archivo_de_id(id_nodo: texto) -> texto:
+    requiere:
+        longitud(id_nodo) > 0
+    garantiza:
+        longitud(_resultado_) > 0
+    let ultimo_punto = -1
+    let i = 0
+    mientras i < longitud(id_nodo):
+        si subcadena(id_nodo, i, 1) == ".":
+            ultimo_punto = i
+        i = i + 1
+    si ultimo_punto > 0:
+        retornar subcadena(id_nodo, 0, ultimo_punto)
+    retornar id_nodo
+
+// cumple Manual 2 §5.1: lectura de cola sin exponer el indice al analizador
+funcion elemento_texto(lista: Lista<texto>, indice: entero) -> texto:
+    requiere:
+        indice >= 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    let i = 0
+    para valor en lista:
+        si i == indice:
+            retornar valor
+        i = i + 1
+    retornar ""

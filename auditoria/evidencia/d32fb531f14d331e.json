@@ -1,0 +1,15 @@
+{
+ "cambio_hash": "d32fb531f14d331e",
+ "expediente": "docs/alineacion/r305_contratos_lifetimes_diag_opt.md",
+ "fecha": "2026-11-24",
+ "archivos": [
+  "nucleo/diagnostics.syn",
+  "nucleo/lifetimes.syn",
+  "nucleo/optimizador_ia.syn"
+ ],
+ "oraculos": {
+  "auditoria/verificar_contratos.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

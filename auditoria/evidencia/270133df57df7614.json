@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "270133df57df7614",
+ "expediente": "docs/alineacion/r193_fixtures_infra.md",
+ "fecha": "2026-10-21",
+ "archivos": [
+  "pipeline.py"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r193_fixtures_infra.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

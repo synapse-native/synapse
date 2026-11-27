@@ -1,0 +1,28 @@
+{
+ "cambio_hash": "cadad4c1f803af4c",
+ "expediente": "docs/alineacion/r184_r185_e2e.md",
+ "fecha": "2026-10-07",
+ "archivos": [
+  "compilador/generator/context.py",
+  "compilador/generator/emit_declarations.py",
+  "compilador/generator/emit_expressions.py",
+  "compilador/generator/generator.py",
+  "compilador/lexer.py",
+  "compilador/parser_expressions.py",
+  "nucleo/generador/escaneo.syn",
+  "nucleo/generador/expr_eval.syn",
+  "nucleo/generador/funciones.syn",
+  "nucleo/generador/orquestador.syn",
+  "nucleo/generador/recorrido.syn",
+  "nucleo/generator.syn",
+  "nucleo/lexer.syn",
+  "nucleo/parser_expr.syn",
+  "runtime/core/memory.c",
+  "synapse_rt_types.h"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r184_r185_e2e.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

@@ -1,0 +1,9 @@
+#lang: es
+funcion vuelo(n: entero) -> entero:
+    total = 0
+    para i en 0..n:
+        total = total + i
+    retornar total
+
+funcion principal():
+    escribir_linea(entero_a_texto(vuelo(10)))

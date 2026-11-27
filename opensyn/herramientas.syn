@@ -1,0 +1,636 @@
+#lang: es
+// opensyn/herramientas.syn - Herramientas de escritura del agente OpenSyn.
+// cumple Manual 7 §1.1: OpenSyn es el asistente local equivalente a OpenCode/Copilot.
+// cumple Manual 7 §2.3: las herramientas se describen en el System Prompt (sin fine-tuning).
+// cumple Manual 7 §7.3: sandboxing — las escrituras quedan confinadas al workspace.
+// cumple Manual 2 §5.1: contratos requiere/garantiza booleanos en funciones publicas.
+//
+// R113: en Synapse todo parametro `texto` es CONSUMIDO por el callee (RAII del
+// parametro). El llamador que necesite conservar una cadena pasa `_syn_strcpy`.
+// Helpers de un solo retorno al final (depth 0) para que el RAII libere limpio.
+
+importar std.io
+importar std.texto
+importar std.sistema
+importar permisos
+
+// Timeout de 5 s (Manual FASE 32 §6.4, no indexado): runtime/core/proceso.c.
+externo funcion _syn_capturar_comando_timeout(cmd: texto, timeout_ms: entero) -> texto
+
+constante HERR_MAX_CONTENIDO = 262144
+// timeout de 5 s para detectar bucles infinitos (Manual FASE 32 §6.4).
+constante HERR_EJECUTAR_TIMEOUT_MS = 5000
+constante HERR_EJECUTAR_MAX_COMANDO = 2048
+// cumple Manual 7 §7.3: alfabeto minimo; cualquier metacaracter de shell queda fuera.
+constante HERR_EJECUTAR_ALFABETO = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 _-./\\=,+@"
+
+// Normaliza el cwd para comparar rutas con el mismo separador de plataforma.
+// Consume 'cwd': el llamador pasa una copia _syn_strcpy si la necesita despues.
+// cumple Manual 7 §7.3: una sola taxonomia de normalizacion para el sandbox.
+funcion herr_normalizar_cwd(cwd: texto) -> texto:
+    requiere:
+        longitud(cwd) > 0
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    retornar _syn_normalizar_ruta(cwd)
+
+// Verifica que la ruta relativa quede dentro del workspace.
+// Consume 'ruta' y 'cwd': el llamador pasa copias _syn_strcpy.
+// cumple Manual 7 §7.3: rechaza '..', unidades absolutas, '~' y escapes.
+funcion herr_ruta_permitida(ruta: texto, cwd: texto) -> booleano:
+    requiere:
+        longitud(cwd) > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso // cumple Manual 2 §5.1
+    permitida = verdadero
+    si ruta == "":
+        permitida = falso
+    sino:
+        si longitud(ruta) > 4096:
+            permitida = falso
+        sino:
+            si indice_de(ruta, "..") >= 0:
+                permitida = falso
+            sino:
+                si indice_de(ruta, ":") >= 0:
+                    permitida = falso
+                sino:
+                    si subcadena(ruta, 0, 1) == "~":
+                        permitida = falso
+                    sino:
+                        cwd_norm = herr_normalizar_cwd(_syn_strcpy(cwd))
+                        ruta_abs = _syn_normalizar_ruta(concat(concat(cwd_norm, "/"), ruta))
+                        si es_ruta_en_workspace(_syn_strcpy(ruta_abs), _syn_strcpy(cwd_norm)) == falso:
+                            permitida = falso
+    retornar permitida
+
+// Cuenta ocurrencias no solapadas de 'buscar' en 'texto'.
+// Consume 'texto' y 'buscar': el llamador pasa copias _syn_strcpy.
+// cumple Manual 7 §1.1: la edicion exige un fragmento unico y verificable.
+funcion herr_contar_ocurrencias(texto: texto, buscar: texto) -> entero:
+    requiere:
+        longitud(buscar) > 0
+    garantiza:
+        _resultado_ >= 0 // cumple Manual 2 §5.1
+    total = 0
+    i = 0
+    largo = longitud(texto)
+    mientras i < largo:
+        resto = subcadena(texto, i, largo - i)
+        pos = indice_de(resto, buscar)
+        si pos < 0:
+            romper
+        total = total + 1
+        i = i + pos + longitud(buscar)
+    retornar total
+
+// Convierte la secuencia literal '\n' en saltos de linea reales.
+// Consume 't': el llamador pasa una copia _syn_strcpy.
+// cumple Manual 7 §2.3: el contenido viaja en una linea del protocolo TOOL.
+funcion herr_desescapar_saltos(t: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    res = ""
+    i = 0
+    largo = longitud(t)
+    mientras i < largo:
+        c = subcadena(t, i, 1)
+        si c == "\\":
+            si i + 1 < largo:
+                sig = subcadena(t, i + 1, 1)
+                si sig == "n":
+                    res = concat(res, "\n")
+                    i = i + 2
+                sino:
+                    res = concat(res, c)
+                    i = i + 1
+            sino:
+                res = concat(res, c)
+                i = i + 1
+        sino:
+            res = concat(res, c)
+            i = i + 1
+    retornar res
+
+// Valida que un comando solo use caracteres seguros (sin metacaracteres de shell).
+// Consume 'comando': el llamador pasa una copia _syn_strcpy.
+// cumple Manual 7 §7.3: allowlist de ejecucion local sin inyeccion.
+funcion herr_comando_caracteres_seguros(comando: texto) -> booleano:
+    requiere:
+        longitud(comando) > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso // cumple Manual 2 §5.1
+    seguro = verdadero
+    i = 0
+    mientras i < longitud(comando):
+        c = subcadena(comando, i, 1)
+        si indice_de(HERR_EJECUTAR_ALFABETO, c) < 0:
+            seguro = falso
+            romper
+        i = i + 1
+    retornar seguro
+
+// Rechaza rutas absolutas dentro de los argumentos del comando.
+// Consume 'comando': el llamador pasa una copia _syn_strcpy.
+// cumple Manual 7 §7.3: el comando solo puede tocar rutas relativas del workspace.
+funcion herr_comando_sin_rutas_absolutas(comando: texto) -> booleano:
+    requiere:
+        longitud(comando) > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso // cumple Manual 2 §5.1
+    seguro = verdadero
+    i = 0
+    mientras i < longitud(comando):
+        c = subcadena(comando, i, 1)
+        si c == "/" o c == "\\":
+            si i == 0:
+                seguro = falso
+                romper
+            sino:
+                anterior = subcadena(comando, i - 1, 1)
+                si anterior == " ":
+                    seguro = falso
+                    romper
+                sino:
+                    si anterior == "=":
+                        seguro = falso
+                        romper
+        i = i + 1
+    retornar seguro
+
+// Compara el prefijo exigiendo separador o fin de comando.
+// Consume 'comando' y 'prefijo': el llamador pasa copias _syn_strcpy.
+// cumple Manual 7 §7.3: evita que "pytestfoo" pase como "pytest".
+funcion herr_comando_empieza(comando: texto, prefijo: texto) -> booleano:
+    requiere:
+        longitud(comando) > 0
+        longitud(prefijo) > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso // cumple Manual 2 §5.1
+    coincide = falso
+    lp = longitud(prefijo)
+    si longitud(comando) >= lp:
+        si subcadena(comando, 0, lp) == prefijo:
+            si longitud(comando) == lp:
+                coincide = verdadero
+            sino:
+                sig = subcadena(comando, lp, 1)
+                si sig == " ":
+                    coincide = verdadero
+    retornar coincide
+
+// Allowlist de comandos del agente (Manual 7 §7.3).
+// Consume 'comando': el llamador pasa una copia _syn_strcpy.
+funcion herr_comando_permitido(comando: texto) -> booleano:
+    requiere:
+        longitud(comando) > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso // cumple Manual 2 §5.1
+    permitido = falso
+    si longitud(comando) <= HERR_EJECUTAR_MAX_COMANDO:
+        si herr_comando_caracteres_seguros(_syn_strcpy(comando)) == verdadero:
+            si herr_comando_sin_rutas_absolutas(_syn_strcpy(comando)) == verdadero:
+                si indice_de(comando, "..") < 0:
+                    si herr_comando_empieza(_syn_strcpy(comando), "synapse check") == verdadero:
+                        permitido = verdadero
+                    sino:
+                        si herr_comando_empieza(_syn_strcpy(comando), "synapse build") == verdadero:
+                            permitido = verdadero
+                        sino:
+                            si herr_comando_empieza(_syn_strcpy(comando), "pytest") == verdadero:
+                                permitido = verdadero
+                            sino:
+                                si herr_comando_empieza(_syn_strcpy(comando), "git status") == verdadero:
+                                    permitido = verdadero
+                                sino:
+                                    si herr_comando_empieza(_syn_strcpy(comando), "git diff") == verdadero:
+                                        permitido = verdadero
+    si permitido == verdadero:
+        si indice_de(comando, "--ext-diff") >= 0:
+            permitido = falso
+        si indice_de(comando, "--textconv") >= 0:
+            permitido = falso
+        si indice_de(comando, "--output") >= 0:
+            permitido = falso
+    retornar permitido
+
+// Extrae el rc del formato "[RC]<codigo>\n<salida>".
+// Consume 'salida': el llamador pasa una copia _syn_strcpy.
+funcion herr_ejecutar_rc(salida: texto) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= -1 // cumple Manual 2 §5.1
+    rc = -1
+    nl = indice_de(salida, "\n")
+    si nl >= 4:
+        si subcadena(salida, 0, 4) == "[RC]":
+            rc = _syn_atoi(subcadena(salida, 4, nl - 4))
+    retornar rc
+
+// Quita la cabecera "[RC]...\n" y devuelve solo la salida.
+// Consume 'salida': el llamador pasa una copia _syn_strcpy.
+funcion herr_ejecutar_salida(salida: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    nl = indice_de(salida, "\n")
+    si nl < 0:
+        retornar ""
+    si nl + 1 >= longitud(salida):
+        retornar ""
+    retornar subcadena(salida, nl + 1, longitud(salida) - nl - 1)
+
+// Ejecuta un comando permitido con timeout y devuelve rc + salida.
+// Consume 'comando': el llamador pasa una copia _syn_strcpy.
+// timeout de 5 s y proceso terminado al excederlo (Manual FASE 32 §6.4).
+// cumple Manual 7 §7.3: allowlist previa; nunca se pasa a un shell.
+funcion herramienta_ejecutar(comando: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    cmd = recortar(comando)
+    si longitud(cmd) == 0:
+        retornar "[TOOL_ERROR] falta el comando: TOOL ejecutar <comando>"
+    si longitud(cmd) > HERR_EJECUTAR_MAX_COMANDO:
+        retornar "[TOOL_ERROR] comando demasiado largo"
+    si herr_comando_permitido(_syn_strcpy(cmd)) == falso:
+        retornar "[TOOL_ERROR] comando no permitido (usa: synapse check|synapse build|pytest|git status|git diff)"
+    bruto = _syn_capturar_comando_timeout(_syn_strcpy(cmd), HERR_EJECUTAR_TIMEOUT_MS)
+    rc = herr_ejecutar_rc(_syn_strcpy(bruto))
+    salida = herr_ejecutar_salida(_syn_strcpy(bruto))
+    si rc == -1 y longitud(salida) == 0:
+        retornar "[TOOL_ERROR] no se pudo lanzar el comando"
+    si rc == 124:
+        retornar concat("[TOOL_ERROR] timeout: comando terminado (124)\n", salida)
+    retornar concat(concat("[TOOL_RESULT] rc=", entero_a_texto(rc)), concat("\n", salida))
+
+// Divide un texto en lineas conservando el terminador de cada linea.
+// Consume 't': el llamador pasa una copia _syn_strcpy.
+// cumple Manual 7 §1.1: parser de diff del asistente local.
+funcion herr_dividir_lineas(t: texto) -> Lista<texto>:
+    requiere:
+        longitud(t) >= 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    let lineas = Lista<texto>()
+    largo = longitud(t)
+    inicio = 0
+    i = 0
+    mientras i < largo:
+        si subcadena(t, i, 1) == "\n":
+            lineas.agregar(subcadena(t, inicio, i - inicio + 1))
+            inicio = i + 1
+        i = i + 1
+    si inicio < largo:
+        lineas.agregar(subcadena(t, inicio, largo - inicio))
+    retornar lineas
+
+// Devuelve el contenido de una linea sin su terminador CR/LF.
+// Consume 'linea': el llamador pasa una copia _syn_strcpy.
+// cumple Manual 7 §1.1: comparacion de contexto del diff.
+funcion herr_contenido_linea(linea: texto) -> texto:
+    requiere:
+        longitud(linea) >= 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    res = _syn_strcpy(linea)
+    si termina_con(res, "\r\n") == 1:
+        res = subcadena(res, 0, longitud(res) - 2)
+    sino:
+        si termina_con(res, "\n") == 1:
+            res = subcadena(res, 0, longitud(res) - 1)
+    retornar res
+
+// Quita el terminador final de un texto si existe.
+// Consume 't': el llamador pasa una copia _syn_strcpy.
+// cumple Manual 7 §1.1: marcador "\ No newline at end of file" del diff.
+funcion herr_quitar_salto_final(t: texto) -> texto:
+    requiere:
+        longitud(t) >= 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    res = _syn_strcpy(t)
+    si termina_con(res, "\r\n") == 1:
+        res = subcadena(res, 0, longitud(res) - 2)
+    sino:
+        si termina_con(res, "\n") == 1:
+            res = subcadena(res, 0, longitud(res) - 1)
+    retornar res
+
+// Accede a una linea por indice sin indexar la Lista directamente.
+// cumple Manual 7 §1.1: helper de recorrido del diff.
+funcion herr_elemento_linea(lineas: Lista<texto>, indice: entero) -> texto:
+    requiere:
+        indice >= 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    contador = 0
+    para valor en lineas:
+        si contador == indice:
+            retornar valor
+        contador = contador + 1
+    retornar ""
+
+// Extrae la linea inicial (1-based) de una cabecera @@ -a,b +c,d @@.
+// Consume 'l': el llamador pasa una copia _syn_strcpy.
+// cumple Manual 7 §1.1: parser de hunks del diff unificado.
+funcion herr_hunk_inicio(l: texto) -> entero:
+    requiere:
+        longitud(l) >= 0
+    garantiza:
+        _resultado_ >= -1 // cumple Manual 2 §5.1
+    pos = indice_de(l, "-")
+    si pos < 0:
+        retornar -1
+    i = pos + 1
+    n = 0
+    mientras i < longitud(l):
+        c = subcadena(l, i, 1)
+        d = indice_de("0123456789", c)
+        si d < 0:
+            romper
+        n = n * 10 + d
+        i = i + 1
+    retornar n
+
+// Extrae la cantidad de lineas viejas de una cabecera @@ -a,b +c,d @@.
+// Consume 'l': el llamador pasa una copia _syn_strcpy.
+// cumple Manual 7 §1.1: parser de hunks del diff unificado.
+funcion herr_hunk_cantidad(l: texto) -> entero:
+    requiere:
+        longitud(l) >= 0
+    garantiza:
+        _resultado_ >= -1 // cumple Manual 2 §5.1
+    pos = indice_de(l, "-")
+    si pos < 0:
+        retornar -1
+    i = pos + 1
+    n = 0
+    mientras i < longitud(l):
+        c = subcadena(l, i, 1)
+        d = indice_de("0123456789", c)
+        si d < 0:
+            romper
+        n = n * 10 + d
+        i = i + 1
+    si i < longitud(l):
+        si subcadena(l, i, 1) == ",":
+            i = i + 1
+            n = 0
+            mientras i < longitud(l):
+                c = subcadena(l, i, 1)
+                d = indice_de("0123456789", c)
+                si d < 0:
+                    romper
+                n = n * 10 + d
+                i = i + 1
+    sino:
+        n = 1
+    retornar n
+
+// Aplica un diff unificado en memoria. Retorna "[PATCH_OK]<contenido>" o
+// "[PATCH_ERROR] <motivo>"; nunca escribe. La validacion de contexto/borrado
+// es estricta: si una linea no coincide, el parche se rechaza completo.
+// Consume 'original' y 'diff': el llamador pasa copias _syn_strcpy.
+// cumple Manual 7 §1.1: aplicacion determinista de parches del asistente local.
+// cumple Manual 7 §7.3: el parche se valida antes de tocar el disco.
+funcion herr_aplicar_diff(original: texto, diff: texto) -> texto:
+    requiere:
+        longitud(diff) > 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    originales = herr_dividir_lineas(_syn_strcpy(original))
+    diff_lineas = herr_dividir_lineas(_syn_strcpy(diff))
+    salto = "\n"
+    si indice_de(original, "\r\n") >= 0:
+        salto = "\r\n"
+    salida = ""
+    idx_orig = 0
+    total_orig = longitud(originales)
+    en_hunk = 0
+    hunk_inicio = 0
+    hunk_count = 0
+    aplicado = 0
+    error = ""
+    sin_salto_final = 0
+    siguiente_sin_salto = 0
+    ultimo_tipo = ""
+    para linea_diff en diff_lineas:
+        l = herr_contenido_linea(_syn_strcpy(linea_diff))
+        si en_hunk == 1:
+            si error == "" y siguiente_sin_salto == 1:
+                si longitud(l) > 0:
+                    si subcadena(l, 0, 1) != "+":
+                        error = "marcador no newline seguido de linea no-adicion"
+            si error == "" y sin_salto_final == 1:
+                si longitud(l) > 0:
+                    error = "marcador no newline seguido de contenido"
+            si error != "":
+                romper
+            si longitud(l) >= 2 y subcadena(l, 0, 2) == "@@":
+                si idx_orig - hunk_inicio != hunk_count:
+                    error = "hunk no consume las lineas declaradas"
+                    romper
+                inicio_h = herr_hunk_inicio(_syn_strcpy(l))
+                cant_h = herr_hunk_cantidad(_syn_strcpy(l))
+                si inicio_h < 0 o cant_h < 0:
+                    error = "cabecera de hunk invalida"
+                    romper
+                destino = inicio_h - 1
+                si inicio_h == 0 y cant_h == 0:
+                    destino = 0
+                si destino < idx_orig o destino > total_orig:
+                    error = "hunk fuera de rango"
+                    romper
+                mientras idx_orig < destino:
+                    salida = concat(salida, herr_elemento_linea(originales, idx_orig))
+                    idx_orig = idx_orig + 1
+                hunk_inicio = idx_orig
+                hunk_count = cant_h
+                aplicado = 1
+                ultimo_tipo = ""
+            sino:
+                si longitud(l) > 0 y subcadena(l, 0, 1) == "\\":
+                    si ultimo_tipo == "menos":
+                        siguiente_sin_salto = 1
+                    sino:
+                        salida = herr_quitar_salto_final(_syn_strcpy(salida))
+                        sin_salto_final = 1
+                    ultimo_tipo = ""
+                sino:
+                    si longitud(l) > 0 y subcadena(l, 0, 1) == " ":
+                        si idx_orig >= total_orig:
+                            error = "contexto fuera del archivo"
+                            romper
+                        linea_orig = herr_elemento_linea(originales, idx_orig)
+                        si herr_contenido_linea(_syn_strcpy(linea_orig)) != subcadena(l, 1, longitud(l) - 1):
+                            error = "contexto no aplicable"
+                            romper
+                        salida = concat(salida, linea_orig)
+                        idx_orig = idx_orig + 1
+                        ultimo_tipo = "contexto"
+                    sino:
+                        si longitud(l) > 0 y subcadena(l, 0, 1) == "-":
+                            si idx_orig >= total_orig:
+                                error = "borrado fuera del archivo"
+                                romper
+                            linea_orig = herr_elemento_linea(originales, idx_orig)
+                            si herr_contenido_linea(_syn_strcpy(linea_orig)) != subcadena(l, 1, longitud(l) - 1):
+                                error = "borrado no aplicable"
+                                romper
+                            idx_orig = idx_orig + 1
+                            ultimo_tipo = "menos"
+                        sino:
+                            si longitud(l) > 0 y subcadena(l, 0, 1) == "+":
+                                contenido = subcadena(l, 1, longitud(l) - 1)
+                                si siguiente_sin_salto == 1:
+                                    salida = concat(salida, contenido)
+                                    siguiente_sin_salto = 0
+                                sino:
+                                    si longitud(salida) > 0 y termina_con(salida, "\n") == 0:
+                                        salida = concat(salida, salto)
+                                    salida = concat(salida, contenido)
+                                    salida = concat(salida, salto)
+                                ultimo_tipo = "mas"
+                            sino:
+                                si longitud(l) > 0:
+                                    error = "linea de diff invalida"
+                                    romper
+        sino:
+            si longitud(l) >= 2 y subcadena(l, 0, 2) == "@@":
+                inicio_h = herr_hunk_inicio(_syn_strcpy(l))
+                cant_h = herr_hunk_cantidad(_syn_strcpy(l))
+                si inicio_h < 0 o cant_h < 0:
+                    error = "cabecera de hunk invalida"
+                    romper
+                destino = inicio_h - 1
+                si inicio_h == 0 y cant_h == 0:
+                    destino = 0
+                si destino < idx_orig o destino > total_orig:
+                    error = "hunk fuera de rango"
+                    romper
+                mientras idx_orig < destino:
+                    salida = concat(salida, herr_elemento_linea(originales, idx_orig))
+                    idx_orig = idx_orig + 1
+                hunk_inicio = idx_orig
+                hunk_count = cant_h
+                en_hunk = 1
+                aplicado = 1
+                ultimo_tipo = ""
+    si error == "" y en_hunk == 1:
+        si idx_orig - hunk_inicio != hunk_count:
+            error = "hunk no consume las lineas declaradas"
+    si error == "" y aplicado == 0:
+        error = "diff sin hunks"
+    si error == "":
+        si sin_salto_final == 1:
+            si idx_orig < total_orig:
+                error = "marcador no newline con lineas restantes"
+        sino:
+            mientras idx_orig < total_orig:
+                salida = concat(salida, herr_elemento_linea(originales, idx_orig))
+                idx_orig = idx_orig + 1
+    si error != "":
+        retornar concat("[PATCH_ERROR] ", error)
+    retornar concat("[PATCH_OK]", salida)
+
+// Aplica un diff unificado a un archivo del workspace.
+// Consume 'ruta', 'diff' y 'cwd': el llamador pasa copias _syn_strcpy.
+// cumple Manual 7 §1.1: tool aplicar_patch del asistente local.
+// cumple Manual 7 §7.3: ruta confinada al workspace y escritura atomica.
+funcion herramienta_aplicar_patch(ruta: texto, diff: texto, cwd: texto) -> texto:
+    requiere:
+        longitud(cwd) > 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    msg = ""
+    si herr_ruta_permitida(_syn_strcpy(ruta), _syn_strcpy(cwd)) == falso:
+        msg = "[TOOL_ERROR] ruta no permitida (usa rutas relativas dentro del repo)"
+    sino:
+        si longitud(diff) == 0:
+            msg = "[TOOL_ERROR] diff vacio"
+        sino:
+            si longitud(diff) > HERR_MAX_CONTENIDO:
+                msg = "[TOOL_ERROR] diff demasiado grande"
+            sino:
+                original = ""
+                si existe_archivo(_syn_strcpy(ruta)) == verdadero:
+                    original = leer_archivo(_syn_strcpy(ruta))
+                aplicado = herr_aplicar_diff(_syn_strcpy(original), _syn_strcpy(diff))
+                si indice_de(aplicado, "[PATCH_OK]") == 0:
+                    nuevo = subcadena(aplicado, 10, longitud(aplicado) - 10)
+                    res = escribir_archivo(_syn_strcpy(ruta), _syn_strcpy(nuevo))
+                    si res != 0:
+                        msg = concat("[TOOL_ERROR] no se pudo escribir ", ruta)
+                    sino:
+                        msg = concat("[TOOL_RESULT] parche aplicado ", ruta)
+                sino:
+                    msg = concat("[TOOL_ERROR] parche no aplicable: ", aplicado)
+    retornar msg
+
+// Escribe un archivo relativo al workspace.
+// Consume 'ruta', 'contenido' y 'cwd': el llamador pasa copias _syn_strcpy.
+// cumple Manual 7 §1.1: escritura asistida equivalente a OpenCode/Copilot.
+// cumple Manual 7 §7.3: la ruta se valida antes de tocar el disco.
+funcion herramienta_escribir(ruta: texto, contenido: texto, cwd: texto) -> texto:
+    requiere:
+        longitud(cwd) > 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    msg = ""
+    si herr_ruta_permitida(_syn_strcpy(ruta), _syn_strcpy(cwd)) == falso:
+        msg = "[TOOL_ERROR] ruta no permitida (usa rutas relativas dentro del repo)"
+    sino:
+        si longitud(contenido) > HERR_MAX_CONTENIDO:
+            msg = "[TOOL_ERROR] contenido demasiado grande"
+        sino:
+            res = escribir_archivo(_syn_strcpy(ruta), _syn_strcpy(contenido))
+            si res != 0:
+                msg = concat("[TOOL_ERROR] no se pudo escribir ", ruta)
+            sino:
+                msg = concat("[TOOL_RESULT] escrito ", ruta)
+    retornar msg
+
+// Reemplaza un fragmento unico de un archivo del workspace.
+// Consume 'ruta', 'buscar', 'reemplazo' y 'cwd': el llamador pasa copias _syn_strcpy.
+// cumple Manual 7 §1.1: edicion asistida equivalente a OpenCode/Copilot.
+// cumple Manual 7 §7.3: misma validacion de ruta que la escritura.
+funcion herramienta_editar(ruta: texto, buscar: texto, reemplazo: texto, cwd: texto) -> texto:
+    requiere:
+        longitud(cwd) > 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    msg = ""
+    si herr_ruta_permitida(_syn_strcpy(ruta), _syn_strcpy(cwd)) == falso:
+        msg = "[TOOL_ERROR] ruta no permitida (usa rutas relativas dentro del repo)"
+    sino:
+        si buscar == "":
+            msg = "[TOOL_ERROR] el fragmento a buscar no puede ser vacio"
+        sino:
+            contenido = leer_archivo(_syn_strcpy(ruta))
+            si contenido == "":
+                msg = concat("[TOOL_ERROR] archivo vacio o no legible: ", ruta)
+            sino:
+                ocurrencias = herr_contar_ocurrencias(_syn_strcpy(contenido), _syn_strcpy(buscar))
+                si ocurrencias == 0:
+                    msg = concat("[TOOL_ERROR] fragmento no encontrado en ", ruta)
+                sino:
+                    si ocurrencias > 1:
+                        msg = concat("[TOOL_ERROR] fragmento ambiguo (", entero_a_texto(ocurrencias))
+                        msg = concat(msg, " ocurrencias); usa un fragmento unico en ")
+                        msg = concat(msg, ruta)
+                    sino:
+                        nuevo = reemplazar(_syn_strcpy(contenido), _syn_strcpy(buscar), _syn_strcpy(reemplazo))
+                        res = escribir_archivo(_syn_strcpy(ruta), _syn_strcpy(nuevo))
+                        si res != 0:
+                            msg = concat("[TOOL_ERROR] no se pudo editar ", ruta)
+                        sino:
+                            msg = concat("[TOOL_RESULT] editado ", ruta)
+    retornar msg
+
+// cumple Manual 7 §7.3: la ejecucion POSIX usa execvp sin shell (runtime/core/proceso.c).

@@ -1,4 +1,4 @@
-# Tests Omitidos — Synapse v5.0
+# Tests Omitidos — Synapse v8.1.0-industrial
 
 ## Justificación Técnica
 

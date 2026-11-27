@@ -1,0 +1,15 @@
+{
+ "cambio_hash": "5d6724dfb03b5f9d",
+ "expediente": "docs/alineacion/config_ruta_absoluta.md",
+ "fecha": "2026-09-26",
+ "archivos": [
+  "runtime/core/sistema.c",
+  "std/sistema.syn",
+  "opensyn/principal.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_config_ruta.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

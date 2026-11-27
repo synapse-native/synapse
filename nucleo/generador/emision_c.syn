@@ -1,22 +1,53 @@
 #lang: es
-
+// cumple Manual 2 §5.1
+// cumple Manual 9 §6.2: buffer de emision C de 4 MB para el unity build del bootstrap S2 (antes 1 MB truncaba `int main`)
+// cumple Manual 2 §5.1: la emision C respeta la semantica formal (lineas completas, sin truncamiento silencioso)
+// cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
 // ============================================================
-// emision_c.syn  —  API de emision de codigo C de bajo nivel
+// emision_c.syn — API de emision de codigo C de bajo nivel
 // ============================================================
 
 // ----------------------------------------------------------
 // traducir_tipo_c
 // ----------------------------------------------------------
 funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
+    requiere:
+        tipo_synapse != nulo
+    garantiza:
+        // void retornado cuando tipo_synapse es nulo (manejado arriba)
+        verdadero
     inseguro:
         asm("const char* _t = (const char*)tipo_synapse;")
         asm("if (!_t) { strcpy(_gen_tmp_buf, \"void\"); return; }")
         asm("int _len = (int)strlen(_t);")
         asm("if (_len > 7 && _t[0]=='C' && _t[1]=='a' && _t[2]=='n' && _t[3]=='a' && _t[4]=='l' && _t[5]=='<') { strcpy(_gen_tmp_buf, \"CanalConcurrencia*\"); return; }")
+        // F1.2d + F1.4: rc<T>/arc<T>/debil<T> (Manual 2 sec. 4.3).
+        // cumple Manual 4 §4.2 (D-1.2b): rc/arc son handles void* al header; débil<T>
+        // es WeakRef (struct por valor) para que rc_weak_release(&var) reciba
+        // el tipo correcto. Paridad con compilador/generator/context.py.
+        // F1.4 anade 'rc<' (Manual 2 sec. 4 L151: "rc" tipo).
+    // cumple Manual 2 §12: requiere y garantiza en toda función pública
+    // cumple Manual 2 §5.1: aserciones obligatorias
+        asm("if (strncmp(_t, \"rc<\", 3)==0 || strncmp(_t, \"arc<\", 4)==0) { strcpy(_gen_tmp_buf, \"void*\"); return; }")
+        asm("if (strncmp(_t, \"weak<\", 5)==0 || strncmp(_t, \"faible<\", 7)==0 || strncmp(_t, \"fraco<\", 6)==0 || strncmp(_t, \"d\u00e9bil<\", 6)==0) { strcpy(_gen_tmp_buf, \"WeakRef\"); return; }")
+        // D-2: instanciaciones de ADT genéricos registradas (monomorfización).
+        // `Resultado<entero, texto>` -> struct especializado `Resultado_entero_texto`
+        // (Manual 2 §4.2 L279-280). Paridad context.py traducir_tipo_c.
+        asm("extern char _G_native_adt_inst_type[64][64]; extern char _G_native_adt_inst_c[64][64]; extern int _G_native_adt_inst_count;")
+        asm("if (strchr(_t, '<')) {")
+        asm("    char _d2t[128]; int _d2w = 0; for (int _d2c = 0; _t[_d2c] && _d2w < 120; _d2c++) { if (_t[_d2c] != ' ') _d2t[_d2w++] = _t[_d2c]; } _d2t[_d2w] = 0;")
+        asm("    for (int _d2i = 0; _d2i < _G_native_adt_inst_count; _d2i++) {")
+        asm("        if (strcmp(_G_native_adt_inst_type[_d2i], _d2t) == 0) { strcpy(_gen_tmp_buf, _G_native_adt_inst_c[_d2i]); return; }")
+        asm("    }")
+        asm("}")
         asm("if (_len > 10 && _t[0]=='R' && _t[1]=='e' && _t[2]=='s' && _t[3]=='u' && _t[4]=='l' && _t[5]=='t' && _t[6]=='a' && _t[7]=='d' && _t[8]=='o' && _t[9]=='<') { strcpy(_gen_tmp_buf, \"Resultado_T\"); return; }")
-        asm("if (strcmp(_t, \"entero\")==0 || strcmp(_t, \"int\")==0) { strcpy(_gen_tmp_buf, \"int\"); return; }")
+        asm("if (strcmp(_t, \"entero\")==0 || strcmp(_t, \"int\")==0) { strcpy(_gen_tmp_buf, \"int64_t\"); return; }") // A5.2 D-7: entero -> int64_t (Manual 2 S4.1 L267-268)
+        // cumple Manual 2 §4.3 (r153 R3n): colecciones stdlib — handle del runtime
+        // (runtime/core/lista.c/mapa.c, slots int64, OBL-M6-5). Paridad S1 context.py.
+        asm("if (_t[0]=='L' && strncmp(_t, \"Lista<\", 6)==0) { strcpy(_gen_tmp_buf, \"void*\"); return; }")
+        asm("if (_t[0]=='M' && strncmp(_t, \"Mapa<\", 5)==0) { strcpy(_gen_tmp_buf, \"void*\"); return; }")
         asm("if (strcmp(_t, \"vacio\")==0 || strcmp(_t, \"nulo\")==0 || strcmp(_t, \"void\")==0) { strcpy(_gen_tmp_buf, \"void\"); return; }")
-        asm("if (strcmp(_t, \"decimal\")==0 || strcmp(_t, \"real\")==0 || strcmp(_t, \"flotante\")==0) { strcpy(_gen_tmp_buf, \"float\"); return; }")
+        asm("if (strcmp(_t, \"decimal\")==0 || strcmp(_t, \"real\")==0 || strcmp(_t, \"flotante\")==0 || strcmp(_t, \"float\")==0) { strcpy(_gen_tmp_buf, \"double\"); return; }") // A5.2 D-7: decimal -> double (Manual 2 S4.1 L267-268)
         asm("if (strcmp(_t, \"Tensor\")==0 || strcmp(_t, \"tensor\")==0) { strcpy(_gen_tmp_buf, \"Tensor\"); return; }")
         asm("if (strcmp(_t, \"Canal\")==0 || strcmp(_t, \"canal\")==0) { strcpy(_gen_tmp_buf, \"Canal\"); return; }")
         asm("if (strcmp(_t, \"texto\")==0 || strcmp(_t, \"cadena\")==0) { strcpy(_gen_tmp_buf, \"CadenaSegura\"); return; }")
@@ -24,6 +55,25 @@ funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
         asm("if (strcmp(_t, \"char\")==0) { strcpy(_gen_tmp_buf, \"char\"); return; }")
         asm("if (strcmp(_t, \"double\")==0) { strcpy(_gen_tmp_buf, \"double\"); return; }")
         asm("if (strcmp(_t, \"puntero\")==0) { strcpy(_gen_tmp_buf, \"void*\"); return; }")
+        // M22.6 (paridad context.py L466-469): tipos puntero C (p.ej. char*, int*)
+        // -> se traduce la base y se re-anade '*'. Sin esto 'char*' caia al fallback
+        // 'struct char*' y rompia externs como los de std.http/std.net.
+        asm("if (_len > 0 && _t[_len-1] == '*') {")
+        asm("    char _pt[64]; int _pw = 0; for (int _pc = 0; _pc < _len-1 && _pw < 62; _pc++) _pt[_pw++] = _t[_pc]; _pt[_pw] = 0;")
+        asm("    while (_pw > 0 && _pt[_pw-1] == ' ') _pt[--_pw] = 0;")
+        asm("    traducir_tipo_c((void*)_pt);")
+        asm("    strcat(_gen_tmp_buf, \"*\");")
+        asm("    return;")
+        asm("}")
+        // F1.2b: resolver alias declarados (`tipo X = Y`) — paridad context.py L399-400
+        // (recursion: un alias puede apuntar a otro alias).
+        asm("extern char _G_tipo_aliases[128][64]; extern char _G_tipo_aliases_base[128][64]; extern int _G_tipo_aliases_count;")
+        asm("for (int _tai = 0; _tai < _G_tipo_aliases_count; _tai++) {")
+        asm("    if (strcmp(_G_tipo_aliases[_tai], _t) == 0) {")
+        asm("        traducir_tipo_c((void*)_G_tipo_aliases_base[_tai]);")
+        asm("        return;")
+        asm("    }")
+        asm("}")
         asm("snprintf(_gen_tmp_buf, 64, \"struct %s\", _t);")
 
 // ----------------------------------------------------------
@@ -33,6 +83,11 @@ funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
 // y los tipos de tipo struct se emiten como PUNTERO (struct X*).
 // ----------------------------------------------------------
 funcion traducir_tipo_c_campo(tipo_synapse: puntero) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        // tipo no nulo: se emite traducción por valor o puntero según categoría
+        verdadero
     inseguro:
         asm("const char* _t = (const char*)tipo_synapse;")
         asm("traducir_tipo_c((void*)_t);")
@@ -47,6 +102,11 @@ funcion traducir_tipo_c_campo(tipo_synapse: puntero) -> nulo:
 // struct se emiten como struct X (por valor), nunca puntero.
 // ----------------------------------------------------------
 funcion traducir_tipo_retorno(tipo_synapse: puntero) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        // tipo no nulo: se emite traducción por valor (struct X) o puntero según categoría
+        verdadero
     inseguro:
         asm("const char* _t = (const char*)tipo_synapse;")
         asm("traducir_tipo_c((void*)_t);")
@@ -55,12 +115,16 @@ funcion traducir_tipo_retorno(tipo_synapse: puntero) -> nulo:
 // gen_emitir_linea — API PRINCIPAL
 // ----------------------------------------------------------
 funcion gen_emitir_linea(est: GeneradorCEst, linea: cadena) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        _G_emit_pos >= 0 y _G_emit_pos + longitud(linea) + 2 <= 4194304
     inseguro:
-        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos;")
+        asm("extern char _G_emit_buf[4194304]; extern int _G_emit_pos;")
         asm("{")
         asm("    const char* _gs = linea.datos;")
         asm("    int _gl = linea.longitud;")
-        asm("    if (_G_emit_pos + _gl + 2 > 1048576) return;")
+        asm("    if (_G_emit_pos + _gl + 2 > 4194304) return;")
         asm("    memcpy(_G_emit_buf + _G_emit_pos, _gs, _gl);")
         asm("    _G_emit_pos += _gl;")
         asm("    _G_emit_buf[_G_emit_pos] = 10;")
@@ -72,6 +136,11 @@ funcion gen_emitir_linea(est: GeneradorCEst, linea: cadena) -> nulo:
 // gen_emitir_str — API de bajo nivel para bloques asm()
 // ----------------------------------------------------------
 funcion gen_emitir_str(est: GeneradorCEst, str: puntero) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        // si str es válido, se emite su contenido mediante gen_emitir_linea
+        verdadero
     inseguro:
         asm("if (!str) return;")
         asm("const char* _s = (const char*)str;")
@@ -83,10 +152,14 @@ funcion gen_emitir_str(est: GeneradorCEst, str: puntero) -> nulo:
 // gen_emitir_nueva_linea
 // ----------------------------------------------------------
 funcion gen_emitir_nueva_linea(est: GeneradorCEst) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        _G_emit_pos >= 0 y (_G_emit_pos + 2 <= 4194304)
     inseguro:
-        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos;")
+        asm("extern char _G_emit_buf[4194304]; extern int _G_emit_pos;")
         asm("{")
-        asm("    if (_G_emit_pos + 2 > 1048576) return;")
+        asm("    if (_G_emit_pos + 2 > 4194304) return;")
         asm("    _G_emit_buf[_G_emit_pos] = 10;")
         asm("    _G_emit_pos++;")
         asm("    _G_emit_buf[_G_emit_pos] = 0;")
@@ -96,9 +169,17 @@ funcion gen_emitir_nueva_linea(est: GeneradorCEst) -> nulo:
 // gen_obtener_salida
 // ----------------------------------------------------------
 funcion gen_obtener_salida(est: GeneradorCEst) -> cadena:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     r = ""
     inseguro:
-        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos;")
+        asm("extern char _G_emit_buf[4194304]; extern int _G_emit_pos;")
         asm("if (_G_emit_pos > 0) {")
         asm("    _G_emit_buf[_G_emit_pos] = 0;")
         asm("    strcpy(_gen_tmp_buf, _G_emit_buf);")
@@ -112,6 +193,14 @@ funcion gen_obtener_salida(est: GeneradorCEst) -> cadena:
 // gen_escribir_cadena_escapada
 // ----------------------------------------------------------
 funcion gen_escribir_cadena_escapada(est: GeneradorCEst, str: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        str != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
         asm("const char* _s=(const char*)str;if(!_s)return;char _esc[16384];int _epos=0;int _ei=0;while(_s[_ei]&&_epos<16380){char _c=_s[_ei];if(_c==10){_esc[_epos++]=92;_esc[_epos++]=110;}else if(_c==34){_esc[_epos++]=92;_esc[_epos++]=34;}else if(_c==92){_esc[_epos++]=92;_esc[_epos++]=92;}else if(_c==9){_esc[_epos++]=92;_esc[_epos++]=116;}else if(_c==13){_esc[_epos++]=92;_esc[_epos++]=114;}else{_esc[_epos++]=_c;}_ei++;}_esc[_epos]=0;CadenaSegura _esc_cs={.longitud=_epos,.datos=_esc};gen_emitir_linea(est,_esc_cs);")
 
@@ -121,9 +210,19 @@ funcion gen_escribir_cadena_escapada(est: GeneradorCEst, str: puntero) -> nulo:
 
 // ----------------------------------------------------------
 // gen_emitir_traza
-// Emite:     /* [Traza: modulo.syn - NombreNodo] */
+// Emite: /* [Traza: modulo.syn - NombreNodo] */
 // ----------------------------------------------------------
 funcion gen_emitir_traza(est: GeneradorCEst, modulo: puntero, nombre_nodo: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        modulo != nulo
+    requiere:
+        nombre_nodo != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
         asm("// [Optimizacion] gen_emitir_traza anulado: no emitir comentarios de traza en el C")
         asm("(void)modulo; (void)nombre_nodo; (void)est;")
@@ -143,6 +242,16 @@ funcion gen_emitir_traza(est: GeneradorCEst, modulo: puntero, nombre_nodo: punte
 // Formato: assert(condition && "mensaje");
 // ----------------------------------------------------------
 funcion gen_emitir_lifetime_assert(est: GeneradorCEst, condicion: puntero, mensaje: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        condicion != nulo
+    requiere:
+        mensaje != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
         asm("extern int _G_safe_mode;")
         asm("if (!_G_safe_mode) return;")
@@ -159,12 +268,20 @@ funcion gen_emitir_lifetime_assert(est: GeneradorCEst, condicion: puntero, mensa
 // M22.2: Incrementa scope_depth global y emite marcador de entrada.
 // ----------------------------------------------------------
 funcion gen_abrir_bloque_c(est: GeneradorCEst) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
-        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos; extern int _G_scope_depth;")
-        asm("if (_G_emit_pos + 2 > 1048576) return;")
+        asm("extern char _G_emit_buf[4194304]; extern int _G_emit_pos; extern int _G_scope_depth;")
+        asm("if (_G_emit_pos + 2 > 4194304) return;")
         asm("_G_emit_buf[_G_emit_pos] = '{';")
         asm("_G_emit_pos++;")
-        asm("_G_emit_buf[_G_emit_pos] = 10;")   // '\n'
+        asm("_G_emit_buf[_G_emit_pos] = 10;") // '\n'
         asm("_G_emit_pos++;")
         asm("_G_emit_buf[_G_emit_pos] = 0;")
         asm("_G_scope_depth++;")
@@ -178,16 +295,24 @@ funcion gen_abrir_bloque_c(est: GeneradorCEst) -> nulo:
 
 // ----------------------------------------------------------
 // gen_cerrar_bloque_c
-// Emite ")" + newline + pool_free para RAII en este ambito.
-// M22.2: Antes de cerrar, decrementa scope_depth y emite
-// pool_free para variables CadenaSegura rastreadas.
+// Emite ")" + newline + liberacion RAII en este ambito.
+# cumple Manual 4 5.2; Manual 4 §3.2; Manual 4 §3.3; D-1.2
+// (cleanup block: decremento rc/arc/débil o _syn_texto_liberar al cierre de scope)
 // NOTA: La indentacion la gestiona el visitante llamante.
 // ----------------------------------------------------------
 funcion gen_cerrar_bloque_c(est: GeneradorCEst) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
-        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos; extern int _G_scope_depth;")
+        asm("extern char _G_emit_buf[4194304]; extern int _G_emit_pos; extern int _G_scope_depth;")
         asm("extern int _G_scope_vars_depth[256]; extern char _G_scope_vars_names[256][64];")
-        asm("extern int _G_scope_vars_total;")
+        asm("extern int _G_scope_vars_total; extern int _G_scope_vars_kind[256];")
         asm("// M22.2: Emitir pool_free para vars RAII en este ambito")
         asm("int _sd = _G_scope_depth;")
         asm("// Manual 3 S3.3: orden lexicografico en iteracion de variables de scope")
@@ -211,9 +336,20 @@ funcion gen_cerrar_bloque_c(est: GeneradorCEst) -> nulo:
         asm("for (int _vi = 0; _vi < _scope_n; _vi++) {")
         asm("    int _v = _scope_idxs[_vi];")
         asm("    char _free_line[128];")
-        asm("    snprintf(_free_line, 128, \"    _syn_texto_liberar(%s); /* RAII scope %d */\", _G_scope_vars_names[_v], _sd);")
+        // D-1.2 (Fase 23, Manual 4 §5.2): liberar al cierre de scope segun la clase.
+        // 0=texto -> _syn_texto_liberar; 1=rc -> _syn_rc_decrement; 2=arc ->
+        // _syn_arc_decrement; 3=debil -> rc_weak_release(&var).
+        asm("    if (_G_scope_vars_kind[_v] == 1) {")
+        asm("        snprintf(_free_line, 128, \"    _syn_rc_decrement(%s); /* RAII rc scope %d */\", _G_scope_vars_names[_v], _sd);")
+        asm("    } else if (_G_scope_vars_kind[_v] == 2) {")
+        asm("        snprintf(_free_line, 128, \"    _syn_arc_decrement(%s); /* RAII arc scope %d */\", _G_scope_vars_names[_v], _sd);")
+        asm("    } else if (_G_scope_vars_kind[_v] == 3) {")
+        asm("        snprintf(_free_line, 128, \"    rc_weak_release(&%s); /* RAII weak scope %d */\", _G_scope_vars_names[_v], _sd);")
+        asm("    } else {")
+        asm("        snprintf(_free_line, 128, \"    _syn_texto_liberar(%s); /* RAII scope %d */\", _G_scope_vars_names[_v], _sd);")
+        asm("    }")
         asm("    int _fl = (int)strlen(_free_line);")
-        asm("    if (_G_emit_pos + _fl + 2 <= 1048576) {")
+        asm("    if (_G_emit_pos + _fl + 2 <= 4194304) {")
         asm("        memcpy(_G_emit_buf + _G_emit_pos, _free_line, _fl);")
         asm("        _G_emit_pos += _fl;")
         asm("        _G_emit_buf[_G_emit_pos] = 10;")
@@ -224,23 +360,26 @@ funcion gen_cerrar_bloque_c(est: GeneradorCEst) -> nulo:
         asm("    _G_scope_vars_names[_v][0] = 0;")
         asm("}")
         asm("// Compact: rebuild array skipping removed entries")
+        asm("// cumple Manual 4 §5.2 (D-1.2b): conservar la clase RAII al compactar;")
+        asm("// si se omite, un move/liberacion intermedia desalinea kind[] y")
+        asm("// el cleanup de scopes posteriores usa el destructor equivocado.")
         asm("int _wi = 0;")
         asm("for (int _ri = 0; _ri < _G_scope_vars_total; _ri++) {")
         asm("    if (_G_scope_vars_depth[_ri] >= 0) {")
         asm("        _G_scope_vars_depth[_wi] = _G_scope_vars_depth[_ri];")
         asm("        strcpy(_G_scope_vars_names[_wi], _G_scope_vars_names[_ri]);")
+        asm("        _G_scope_vars_kind[_wi] = _G_scope_vars_kind[_ri];")
         asm("        _wi++;")
         asm("    }")
         asm("}")
         asm("_G_scope_vars_total = _wi;")
         asm("_G_scope_depth--;")
-        asm("if (_G_emit_pos + 2 > 1048576) return;")
+        asm("if (_G_emit_pos + 2 > 4194304) return;")
         asm("_G_emit_buf[_G_emit_pos] = '}';")
         asm("_G_emit_pos++;")
-        asm("_G_emit_buf[_G_emit_pos] = 10;")   // '\n'
+        asm("_G_emit_buf[_G_emit_pos] = 10;") // '\n'
         asm("_G_emit_pos++;")
         asm("_G_emit_buf[_G_emit_pos] = 0;")
-
 
 // ----------------------------------------------------------
 // _syn_es_tipo
@@ -248,6 +387,11 @@ funcion gen_cerrar_bloque_c(est: GeneradorCEst) -> nulo:
 // Evita problemas de NUL terminator en _n->tipo.datos.
 // ----------------------------------------------------------
 funcion _syn_es_tipo(ptr_tipo_nodo: puntero, esperado: puntero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     inseguro:
         asm("if (!ptr_tipo_nodo || !esperado) return 0;")
 

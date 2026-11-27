@@ -1,0 +1,32 @@
+#lang: es
+importar std.toml
+
+funcion principal() -> nulo:
+    doc = desde_texto("[proyecto]")
+    si doc.tipo == 1:
+        log("tabla OK")
+    sino:
+        log("FALLO tabla")
+
+    doc = desde_texto("clave = \"valor\"")
+    campo = obtener_campo(doc, "clave")
+    si campo.tipo == 2:
+        log("cadena OK")
+    sino:
+        log("FALLO cadena")
+
+    doc = desde_texto("[proyecto]\nnombre = \"synapse\"")
+    campo = obtener_campo(doc, "proyecto")
+    si campo.tipo == 1:
+        log("seccion OK")
+    sino:
+        log("FALLO seccion")
+
+    doc = desde_texto("x = { anidada = \"v\" }")
+    campo = obtener_campo(doc, "x")
+    si campo.tipo == 3:
+        log("tabla en linea OK")
+    sino:
+        log("FALLO tabla en linea")
+
+    log("FIN")

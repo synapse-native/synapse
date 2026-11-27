@@ -1,101 +1,19 @@
-# =============================================================================
-# GitHub Linguist Configuration for Synapse
-# =============================================================================
-# This file configures how GitHub Linguist classifies and displays language
-# statistics for the Synapse repository.
-#
-# Goals:
-# 1. Exclude C backend files from language statistics (they are generated/compiled artifacts)
-# 2. Recognize .syn.json as JSON
-# 3. Ensure Synapse (.syn) is the primary language displayed
-# =============================================================================
+# Enforce LF line endings for all text files
+* text=auto eol=lf
 
-# =============================================================================
-# EXCLUDE BACKEND C CODE FROM LANGUAGE STATISTICS
-# =============================================================================
-# These are implementation details / generated artifacts, not the primary
-# source language of the project. Mark as linguist-generated to exclude
-# from language statistics bar.
-nucleo/*.c linguist-generated=true
-nucleo/*.h linguist-generated=true
-
-# Generated C output from the compiler
-salida.c linguist-generated=true
-
-# Synapse LSP native server (C implementation)
-synapse_lsp/*.c linguist-generated=true
-synapse_lsp/*.h linguist-generated=true
-
-# Runtime and supporting C libraries
-synapse_rt.c linguist-generated=true
-synapse_rt.h linguist-generated=true
-axon_rt.c linguist-generated=true
-axon_rt.h linguist-generated=true
-tweetnacl.c linguist-generated=true
-tweetnacl.h linguist-generated=true
-
-# Embedded libraries
-librerias/embedded_libs.h linguist-generated=true
-librerias/embedded_libs.c linguist-generated=true
-
-# =============================================================================
-# RECOGNIZE CANONICAL FORMATS
-# =============================================================================
-# AST JSON representation (.syn.json) should be counted as JSON
-*.syn.json linguist-language=JSON
-
-# =============================================================================
-# PRIMARY LANGUAGE: SYNAPSE (.syn)
-# =============================================================================
-# Ensure .syn files are recognized as Synapse language
-*.syn linguist-language=Synapse
-
-# =============================================================================
-# EXCLUDE BUILD ARTIFACTS AND GENERATED FILES
-# =============================================================================
-# Build outputs and generated files
-*.exe.c linguist-generated=true
-*.exe linguist-vendored=true
-*.o linguist-vendored=true
-*.obj linguist-vendored=true
-
-# Unity build artifacts
-synapse_unity*.c linguist-generated=true
-
-# Test artifacts
-test_*.c linguist-generated=true
-test_*.exe linguist-vendored=true
-
-# Python bytecode and caches
-*.pyc linguist-generated=true
-__pycache__/ linguist-generated=true
-
-# Virtual environments
-.venv/ linguist-vendored=true
-venv/ linguist-vendored=true
-
-# Node modules
-node_modules/ linguist-vendored=true
-
-# IDE and OS artifacts
-.vscode/ linguist-vendored=true
-.idea/ linguist-vendored=true
-.DS_Store linguist-vendored=true
-
-# =============================================================================
-# DOCUMENTATION
-# =============================================================================
-# Markdown documentation should be counted
-*.md linguist-documentation=true
-
-# =============================================================================
-# TEST FILES
-# =============================================================================
-# Test files should not skew statistics
-tests/**/*.c linguist-generated=true
-tests/**/*.syn linguist-generated=true
-tests/**/*.py linguist-generated=true
-
-# =============================================================================
-# END OF CONFIGURATION
-# =============================================================================
+# Explicitly mark binary files
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.o binary
+*.obj binary
+*.wasm binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary

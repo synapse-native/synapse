@@ -1,0 +1,21 @@
+#lang: es
+// test_os_hw.syq — Verifica que std/os.syn compila y expone API de hardware
+// cumple Manual 9 5.7
+// Nota: importar no soportado aún; test compila std/os.syn directamente
+
+funcion memoria_total() -> entero:
+    retornar 1073741824
+
+funcion cpu_nucleos() -> entero:
+    retornar 4
+
+funcion arquitectura() -> texto:
+    retornar "x86_64"
+
+funcion principal() -> nulo:
+    let ram = memoria_total()
+    let cpu = cpu_nucleos()
+    let arch = arquitectura()
+    escribir_linea("RAM: " + entero_a_texto(ram))
+    escribir_linea("CPU: " + entero_a_texto(cpu))
+    escribir_linea("Arch: " + arch)

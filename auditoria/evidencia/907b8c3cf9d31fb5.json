@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "907b8c3cf9d31fb5",
+ "expediente": "docs/alineacion/r270b_guard_frescura_contenido.md",
+ "fecha": "2026-11-19",
+ "archivos": [
+  "build.py"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_r270b_frescura_contenido.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

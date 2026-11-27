@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "5b48fd67e6688259",
+ "expediente": "docs/alineacion/r270_bootstrap_emision_paridad.md",
+ "fecha": "2026-11-19",
+ "archivos": [
+  "nucleo/principal.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_r270_bootstrap_paridad.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

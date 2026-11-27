@@ -113,6 +113,15 @@ class SymbolTable:
         sim.propiedad = Propiedad.MOVIDO
         return True
 
+    def desmarcar_movido(self, nombre: str) -> bool:
+        """Desmarca una variable como movida (reassessment resetea ownership)."""
+        sim = self.buscar(nombre)
+        if sim is None:
+            return False
+        if sim.propiedad == Propiedad.MOVIDO:
+            sim.propiedad = Propiedad.VIVO
+        return True
+
     def esta_movido(self, nombre: str) -> bool:
         sim = self.buscar(nombre)
         if sim is None:

@@ -1,0 +1,29 @@
+# axon/axon.toml — Esquema de manifiesto Axon
+# Manual 8 §4.3 (Estructura de un Proyecto); Manual 9 §4.2 (Axon Hub/IPFS).
+# Validado por _syn_axon_validar_manifiesto() en axon/axon_rt.c.
+#
+# Campos obligatorios en [paquete]:
+#   nombre          — identificador del paquete (string)
+#   version         — SemVer (MAJOR.MINOR.PATCH, ej. "1.0.0")
+#   autor           — nombre del autor o entidad (string)
+#   tipo            — "libreria" | "aplicacion" | "modelo"
+#   punto_entrada   — archivo principal (ej. "src/main.syn")
+#
+# Secciones opcionales:
+#   [dependencias]  — lista de paquetes dependientes con SemVer constraint
+#   [parametros]    — configuración del paquete (arbitrary TOML)
+
+ [paquete]
+nombre = "mi_paquete"
+version = "0.1.0"
+autor = "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
+tipo = "libreria"
+punto_entrada = "src/main.syn"
+
+[dependencias]
+# Formato: nombre = constraint SemVer (^, ~, o versión exacta)
+# ejemplo = "^1.0.0"
+# otra = "~2.3.4"
+
+[parametros]
+# Parámetros arbitrarios del paquete

@@ -1,0 +1,12 @@
+#lang: es
+// test_estructuras.syn — Prueba de struct nativo
+
+estructura Nodo:
+    valor: entero
+    sig: entero
+
+funcion principal() -> nulo:
+    n = Nodo()
+    n.valor = 5
+    n.sig = 10
+    log(n.valor)

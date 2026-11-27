@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "f2e821fa9002a898",
+ "expediente": "docs/alineacion/r152_bootstrap_link.md",
+ "fecha": "2026-09-20",
+ "archivos": [
+  "compilador/generator/generator.py",
+  "nucleo/principal.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r152.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

@@ -69,8 +69,11 @@ def _resolver_toolchain_gcc() -> str:
         if os.path.isfile(ruta):
             return ruta
 
-    # Prioridad 3: compilador del sistema (Linux: gcc, macOS: clang, default: cc)
-    for cmd in ('clang', 'gcc', 'cc'):
+    # Prioridad 3: compilador del sistema.
+    # ME-R2 (Causa C): gcc ANTES que clang — el C generado usa extensiones GCC
+    # (nested functions) que clang rechaza (Manual 8 §8.1). En macOS el branch
+    # darwin de ejecutar_compilador selecciona gcc-N de Homebrew explícitamente.
+    for cmd in ('gcc', 'cc', 'clang'):
         path_found = shutil.which(cmd)
         if path_found:
             return path_found
@@ -83,6 +86,261 @@ def _resolver_toolchain_gcc() -> str:
     )
 
 
+def _resolver_gcc_darwin(env=None, which=None, run=None, glob_mod=None):
+    """
+    cumple Manual 9 §6.2: el C emitido usa dialecto GNU (nested functions,
+    declaraciones implícitas) y el clang de macOS lo rechaza; el bootstrap de
+    cada target exige un GCC real.
+
+    requiere: nada del entorno salvo los inyectables opcionales.
+    garantiza: devuelve la ruta del primer compilador C cuyo `--version` NO
+    mencione `clang`, o None si no hay ninguno. Prioridad: SYNAPSE_GCC_PATH,
+    `gcc-*` de Homebrew (versión descendente) y `gcc`/`cc` del PATH.
+    """
+    import glob as _glob
+    import re as _re
+
+    env = os.environ if env is None else env
+    which = shutil.which if which is None else which
+    glob_mod = _glob if glob_mod is None else glob_mod
+
+    def _valido(ruta):
+        if not ruta:
+            return False
+        p = which(ruta)
+        if not p:
+            if os.path.isabs(ruta) and os.path.isfile(ruta):
+                p = ruta
+            else:
+                return False
+        try:
+            if run is None:
+                salida = subprocess.run([p, '--version'], capture_output=True,
+                                        text=True, timeout=10).stdout
+            else:
+                salida = run(p) or ''
+        except Exception:
+            return False
+        return 'clang' not in salida.lower()
+
+    env_path = (env.get('SYNAPSE_GCC_PATH') or '').strip()
+    if env_path and _valido(env_path):
+        return which(env_path) or env_path
+
+    versionados = []
+    for dir_brew in ('/opt/homebrew/bin', '/usr/local/bin'):
+        versionados.extend(glob_mod.glob(os.path.join(dir_brew, 'gcc-*')))
+    versionados.sort(
+        key=lambda r: [int(n) for n in _re.findall(r'\d+', os.path.basename(r))] or [0],
+        reverse=True)
+
+    for ruta in versionados:
+        if _valido(ruta):
+            return ruta
+
+    for cmd in [f'gcc-{n}' for n in range(20, 10, -1)] + ['gcc', 'cc']:
+        if _valido(cmd):
+            return which(cmd) or cmd
+
+    return None
+
+
+def _soporta_sanitizers(compiler: str) -> bool:
+    """Detecta si el toolchain puede LINKEAR -fsanitize (Manual 9 §6.1).
+
+    R183d: en MinGW-w64 (GCC 16.1) el driver acepta -fsanitize=address,undefined
+    pero el linker no encuentra -lasan/-lubsan (no se distribuyen con el
+    toolchain). Solo compilar el fragmento miente; el probe incluye el enlace
+    para que la detección refleje la capacidad real del toolchain.
+    Garantiza: no lanza; False ante cualquier excepción.
+    """
+    import subprocess as _sp
+    sufiltro = '/tmp/_probe_san.c'
+    try:
+        with open(sufiltro, 'w') as f:
+            f.write('int main(void){return 0;}\n')
+        r = _sp.run([compiler, '-fsanitize=address,undefined', sufiltro,
+                     '-o', sufiltro + '.exe'], capture_output=True, timeout=30)
+        return r.returncode == 0
+    except Exception:
+        return False
+
+
+# ============================================================
+# RUNTIME MODULAR — compilación desde fuente (Manual 3 §3.1)
+# ME-R2: elimina la dependencia de .o precompilados que no existen
+# en una instalación limpia (eran artefactos locales ignorados por git).
+# ============================================================
+# D-9(d) resuelta / regla 13: la lista de fuentes del runtime NO se hardcodea
+# (gobernanza: sin hardcoding). El monolito synapse_rt.c se dividio en modulos
+# cohesivos bajo runtime/core/ (cortes 1-6: io/tensor/modelo/cluster/debug/fuzz);
+# cualquier .c nuevo en runtime/core/ se enlaza automaticamente en el S1 y en el
+# comando gcc nativo (principal.syn escanea el directorio — paridad).
+import glob as _glob
+import os as _os
+
+_RT_CORE_FUENTES = tuple(sorted(
+    _glob.glob(_os.path.join(SYNAPSE_BIN, "runtime", "core", "*.c"))))
+_RT_FUENTES = (
+    "synapse_rt.c",
+    # M1/R149 (D-R150-1): backends LLVM IR/WAT de texto (sin libLLVM/emcc).
+    # std/llvm.syn y std/wasm.syn declaran estas externas: sin enlace, todo
+    # programa que los importe falla al link.
+    # cumple Manual 1 §3.1
+    "synapse_llvm.c",
+    "synapse_wasm.c",
+) + _RT_CORE_FUENTES + (
+    # D-R150-4: motores C del nucleo prescritos por Manual 1 §3
+    # (arbol del compilador: "verificador_formal.syn — Motor ATP y
+    # exportación a Coq/Lean"; proof_bridge.c listado como componente del
+    # runtime). std/atp_engine.syn, std/symbolic_exec.syn, std/proof_bridge.syn,
+    # std/quantum_err_corr.syn y std/dist_orchestrator.syn declaran sus
+    # _syn_*: sin enlace, todo importador falla al link.
+    # # cumple Manual 1 §3
+    "nucleo/atp_engine.c",
+    "nucleo/symbolic_exec.c",
+    "nucleo/proof_bridge.c",
+    "nucleo/quantum_err_corr.c",
+    "nucleo/dist_orchestrator.c",
+
+    "axon/tweetnacl.c",
+    "vendor/sqlite3/sqlite3.c",  # SQLite bundled (lib/db.syq)
+)
+_RT_QUANTUM_FUENTES = (
+    "nucleo/quantum_runtime.c",
+    "nucleo/quantum_err_corr.c",
+    "nucleo/quantum_memory.c",
+    "nucleo/surface_code.c",
+)
+
+# Módulos federated (Manual 5 §6.2): std.federated declara externs _syn_fed_*.
+# Sin enlazado, programas que usan importar std.federated fallan al link.
+_RT_FEDERATED_FUENTES = (
+    "nucleo/federated.c",
+)
+
+# ME-R8 (D5): modulos de IA nativa (M13.4/M13.5/M13.6) que std.modelo declara
+# como externs (_syn_ft_*, _syn_kd_*, _syn_qt_*). No se enlazaban -> programas
+# que importan std.modelo (v.g. opensyn/) fallaban al link. Opcionales.
+_RT_IA_FUENTES = (
+    "nucleo/fine_tuning.c",
+    "nucleo/distillation.c",
+    "nucleo/quantization.c",
+)
+
+
+def _compilar_objeto_cacheado(compiler: str, opt_flags: str, base_flags: str,
+                              src_rel: str, nombre: str,
+                              dir_obj: Optional[str] = None,
+                              extra_flags: str = "") -> Optional[str]:
+    """Compila un .o desde fuente SOLO si cambió su fuente o los flags.
+
+    # cumple Manual 9 §1: la única caché persistente es `~/.synapse/cache/`;
+    # si no es escribible se degrada a objetos efímeros en build/obj, nunca a
+    # una caché persistente en workspace/temp.
+    # cumple Manual 1 §3.1: el pipeline compartido conserva compilación y enlace
+    # aun cuando la caché persistente no esté disponible.
+    Manual 1 §6: el .o cacheado es idéntico al recién compilado porque la clave
+    incluye fuente+flags. ME-R2 evitó depender de .o precompilados inexistentes
+    en instalación limpia; este helper CACHEA los .o generados en
+    `~/.synapse/cache/runtime_obj/`. Si el home no es escribible, usa
+    `build/obj/runtime_ephemeral` (efímero) y un memo en proceso.
+    """
+    src = os.path.join(SYNAPSE_BIN, src_rel)
+    base_norm = ' '.join((base_flags or '').split())
+    key = f"{_cache_file_hash(src)}|{compiler}|{opt_flags}|{base_norm}|{extra_flags}"
+
+    if dir_obj is not None:
+        os.makedirs(dir_obj, exist_ok=True)
+        cache_ok = True
+    elif _cache_disponible():
+        dir_obj = os.path.join(_cache_dir(), "runtime_obj")
+        try:
+            os.makedirs(dir_obj, exist_ok=True)
+            cache_ok = True
+        except OSError:
+            _cache_desactivar(_cache_dir())
+            dir_obj = _cache_ephemeral_dir()
+            os.makedirs(dir_obj, exist_ok=True)
+            cache_ok = False
+    else:
+        dir_obj = _cache_ephemeral_dir()
+        os.makedirs(dir_obj, exist_ok=True)
+        cache_ok = False
+
+    if cache_ok:
+        ruta_obj = os.path.join(dir_obj, nombre + ".o")
+        sidecar = ruta_obj + ".sha"
+        # cumple Manual 1 §4 (ME r193_fixtures_infra, H-R193-2): la key normaliza
+        # espacios múltiplios de base_flags — los dos caminos del compilador
+        # conforman base_flags con vacíos intermedios distintos (el enlace normal
+        # intercala `no_std_flags`/`env_gcc_flags` vacíos y deja DOBLE espacio;
+        # _link_object deja UNO), y la comparación cruda del sidecar no matcheaba:
+        # los 46 .o del runtime se recompilaban en CADA pasada (~90 s) aunque el
+        # código de usuario diera [CACHE HIT]. Con la key canónizada, el HIT del
+        # runtime es real en la segunda compilación.
+        if os.path.exists(ruta_obj) and os.path.exists(sidecar):
+            try:
+                with open(sidecar, 'r') as f:
+                    if f.read() == key:
+                        return ruta_obj
+            except Exception:
+                pass
+    else:
+        ruta_obj = os.path.join(dir_obj, f"{nombre}_{key[:12]}.o")
+        previo = _CACHE_EPHEMERAL_MEMO.get(key)
+        if previo and os.path.exists(previo):
+            return previo
+
+    cmd = f'{compiler} {opt_flags} -c {base_flags} {extra_flags} "{src}" -o "{ruta_obj}"'
+    modo = "cache" if cache_ok else "efímero"
+    print(f"[RUNTIME] gcc -c ({modo}): {src_rel}")
+    rc = subprocess.run(cmd, shell=True).returncode
+    if rc != 0:
+        return None
+    if cache_ok:
+        try:
+            with open(sidecar, 'w') as f:
+                f.write(key)
+        except Exception:
+            pass
+    else:
+        _CACHE_EPHEMERAL_MEMO[key] = ruta_obj
+    return ruta_obj
+
+
+def _compilar_runtime_objetos(compiler: str, base_flags: str, opt_flags: str = "-O2") -> List[str]:
+    """Compila el runtime modular desde fuente a build/obj/ (Manual 3 §3.1).
+
+    Retorna la lista de objetos .o. Lanza RuntimeError si alguna compilación
+    falla (el runtime es obligatorio para programas no-no_std). Los .o se cachean
+    (ver _compilar_objeto_cacheado) y solo se recompilan si cambian fuente/flags.
+    """
+    objs: List[str] = []
+    for src_rel in _RT_FUENTES:
+        nombre = os.path.splitext(os.path.basename(src_rel))[0]
+        o = _compilar_objeto_cacheado(compiler, opt_flags, base_flags, src_rel, nombre)
+        if o is None:
+            raise RuntimeError(f"Fallo al compilar runtime desde fuente: {src_rel}")
+        objs.append(o)
+    return objs
+
+
+def _compilar_quantum_objetos(compiler: str, base_flags: str, opt_flags: str = "-O2") -> List[str]:
+    """Compila los módulos cuánticos (M16.1-M16.4) desde fuente si existen. Opcionales."""
+    objs: List[str] = []
+    for src_rel in _RT_QUANTUM_FUENTES:
+        if not os.path.exists(os.path.join(SYNAPSE_BIN, src_rel)):
+            continue
+        nombre = os.path.splitext(os.path.basename(src_rel))[0]
+        o = _compilar_objeto_cacheado(compiler, opt_flags, base_flags, src_rel, nombre)
+        if o is None:
+            print(f"[RUNTIME][!] Modulo cuantico {src_rel} no compilo; se omite", file=sys.stderr)
+            continue
+        objs.append(o)
+    return objs
+
+
 # ============================================================
 # CACHE SYSTEM — Compilación Incremental
 # ============================================================
@@ -92,11 +350,67 @@ def _cache_dir() -> str:
     home = os.environ.get('USERPROFILE') or os.environ.get('HOME') or '.'
     return os.path.normpath(os.path.join(home, '.synapse', 'cache'))
 
+
+_CACHE_ESTADO: Dict[str, bool] = {}
+_CACHE_ADVERTIDOS: Set[str] = set()
+_CACHE_EPHEMERAL_MEMO: Dict[str, str] = {}
+
+
+def _cache_advertir(base: str) -> None:
+    if base in _CACHE_ADVERTIDOS:
+        return
+    _CACHE_ADVERTIDOS.add(base)
+    print(
+        f"[CACHE][!] No se puede escribir en {base}; se compila con "
+        "artefactos efímeros y sin caché persistente (Manual 9 §1).",
+        file=sys.stderr,
+    )
+
+
+def _cache_desactivar(base: str) -> None:
+    _CACHE_ESTADO[base] = False
+    _cache_advertir(base)
+
+
+def _cache_escribible(base: str) -> bool:
+    """Prueba escritura real en `base`; nunca crea una caché fuera de home."""
+    if base in _CACHE_ESTADO:
+        return _CACHE_ESTADO[base]
+    try:
+        os.makedirs(base, exist_ok=True)
+        sonda = os.path.join(base, f".synapse_cache_probe_{os.getpid()}")
+        with open(sonda, 'w', encoding='utf-8') as f:
+            f.write('ok')
+        os.remove(sonda)
+    except OSError:
+        _cache_desactivar(base)
+        return False
+    _CACHE_ESTADO[base] = True
+    return True
+
+
+def _cache_disponible() -> bool:
+    return _cache_escribible(_cache_dir())
+
+
+def _cache_ephemeral_dir() -> str:
+    """Directorio efímero de build para cuando la caché de home no es usable."""
+    # cumple Manual 9 §1: build/ es efímero; no es una caché persistente.
+    ruta = os.path.join(SYNAPSE_BIN, 'build', 'obj', 'runtime_ephemeral')
+    os.makedirs(ruta, exist_ok=True)
+    return ruta
+
+
 def _cache_ensure_dirs() -> None:
-    """Crea los directorios de caché necesarios."""
+    """Crea los directorios de caché necesarios si la caché es escribible."""
+    if not _cache_disponible():
+        return
     base = _cache_dir()
-    os.makedirs(os.path.join(base, 'obj'), exist_ok=True)
-    os.makedirs(os.path.join(base, 'meta'), exist_ok=True)
+    try:
+        os.makedirs(os.path.join(base, 'obj'), exist_ok=True)
+        os.makedirs(os.path.join(base, 'meta'), exist_ok=True)
+    except OSError:
+        _cache_desactivar(base)
 
 def _cache_file_hash(ruta: str) -> str:
     """Calcula SHA-256 de un archivo."""
@@ -110,7 +424,7 @@ def _cache_file_hash(ruta: str) -> str:
 
 def _cache_key(archivo: str, deps_hash: str, flags: str) -> str:
     """Genera clave de caché combinando hash del archivo, deps, flags y versión."""
-    version = os.environ.get('SYNAPSE_VERSION', '5.1.1-industrial')
+    version = os.environ.get('SYNAPSE_VERSION', '8.1.0-industrial')
     contenido = _cache_file_hash(archivo)
     combinado = f"{contenido}:{deps_hash}:{flags}:{version}"
     return hashlib.sha256(combinado.encode()).hexdigest()
@@ -133,6 +447,8 @@ def _cache_index_path() -> str:
     return os.path.join(_cache_dir(), 'index.json')
 
 def _cache_load_stats() -> Dict[str, int]:
+    if not _cache_disponible():
+        return {'hits': 0, 'misses': 0, 'total_entries': 0, 'total_bytes': 0}
     path = _cache_index_path()
     if os.path.exists(path):
         try:
@@ -143,6 +459,8 @@ def _cache_load_stats() -> Dict[str, int]:
     return {'hits': 0, 'misses': 0, 'total_entries': 0, 'total_bytes': 0}
 
 def _cache_save_stats(stats: Dict[str, int]) -> None:
+    if not _cache_disponible():
+        return
     path = _cache_index_path()
     try:
         with open(path, 'w') as f:
@@ -152,6 +470,8 @@ def _cache_save_stats(stats: Dict[str, int]) -> None:
 
 def _cache_lookup(clave: str, archivo: str, flags: str) -> Optional[str]:
     """Busca en caché. Retorna ruta al .o si hit válido, None si miss/stale."""
+    if not _cache_disponible():
+        return None
     meta_path = _cache_meta_path(clave)
     if not os.path.exists(meta_path):
         return None
@@ -160,30 +480,33 @@ def _cache_lookup(clave: str, archivo: str, flags: str) -> Optional[str]:
             meta = json.load(f)
     except Exception:
         return None
-    
+
     # Validar: archivo fuente no cambió, flags iguales, versión igual
     if meta.get('archivo') != archivo:
         return None
     if meta.get('flags') != flags:
         return None
-    if meta.get('version') != os.environ.get('SYNAPSE_VERSION', '5.1.0-industrial'):
+    if meta.get('version') != os.environ.get('SYNAPSE_VERSION', '8.1.0-industrial'):
         return None
     if meta.get('hash_fuente') != _cache_file_hash(archivo):
         return None
-    
+
     obj_path = _cache_obj_path(clave)
     if not os.path.exists(obj_path):
         return None
-    
+
     return obj_path
 
 def _cache_store(clave: str, archivo: str, flags: str, obj_path: str) -> None:
     """Guarda entrada en caché."""
+    if not _cache_disponible():
+        return
+    _cache_ensure_dirs()
     meta = {
         'clave': clave,
         'archivo': archivo,
         'flags': flags,
-        'version': os.environ.get('SYNAPSE_VERSION', '5.1.0-industrial'),
+        'version': os.environ.get('SYNAPSE_VERSION', '8.1.0-industrial'),
         'hash_fuente': _cache_file_hash(archivo),
         'timestamp': int(time.time()),
         'tamano': os.path.getsize(obj_path) if os.path.exists(obj_path) else 0,
@@ -210,6 +533,8 @@ def _cache_clean() -> None:
 
 def _cache_stats() -> Dict[str, int]:
     stats = _cache_load_stats()
+    if not _cache_disponible():
+        return stats
     base = _cache_dir()
     if os.path.exists(base):
         obj_dir = os.path.join(base, 'obj')
@@ -232,33 +557,23 @@ def _resolver_ruta_sysroot(ruta_import: str) -> str:
     if sysroot_base:
         sysroot_base = os.path.abspath(sysroot_base)
     else:
+        # Fase 0 (auditoría): std lib en <raíz>/std (Manual 1 §4);
+        # el prefijo '..' cubre el layout instalado (bin/../std).
         sysroot_base = os.path.normpath(os.path.join(SYNAPSE_BIN, '..', 'std'))
 
     bases = [sysroot_base]
     if not os.environ.get('SYNAPSE_LIB_PATH'):
-        bases.append(os.path.join(SYNAPSE_BIN, 'librerias'))
+        bases.append(os.path.normpath(os.path.join(SYNAPSE_BIN, 'std')))
 
     for base in bases:
-        if base.endswith('librerias'):
-            ruta_archivo = os.path.normpath(
-                os.path.join(base, ruta_import.replace('.', '/') + '.syn')
-            )
-            if os.path.exists(ruta_archivo):
-                return ruta_archivo
-            ruta_directorio = os.path.normpath(
-                os.path.join(base, ruta_import.replace('.', '/'), 'principal.syn')
-            )
-            if os.path.exists(ruta_directorio):
-                return ruta_directorio
-        else:
-            ruta_archivo = os.path.normpath(os.path.join(base, sub_ruta_rel))
-            if os.path.exists(ruta_archivo):
-                return ruta_archivo
-            ruta_directorio = os.path.normpath(
-                os.path.join(base, sub_ruta, 'principal.syn')
-            )
-            if os.path.exists(ruta_directorio):
-                return ruta_directorio
+        ruta_archivo = os.path.normpath(os.path.join(base, sub_ruta_rel))
+        if os.path.exists(ruta_archivo):
+            return ruta_archivo
+        ruta_directorio = os.path.normpath(
+            os.path.join(base, sub_ruta, 'principal.syn')
+        )
+        if os.path.exists(ruta_directorio):
+            return ruta_directorio
 
     raise FileNotFoundError(
         f"Módulo estándar '{ruta_import}' no encontrado en sysroot"
@@ -325,6 +640,7 @@ def compilar_desde_texto(ruta_archivo: str, archivos_procesados: Set[str],
     _module_asts[ruta_abs] = copy.deepcopy(ast)
 
     nuevas_sentencias: List[Nodo] = []
+    _origenes: List[bool] = []  # R23: True = sentencia de un modulo importado
     for stmt in ast.sentencias:
         if isinstance(stmt, SentenciaImportar):
             _imports_usados.add(stmt.ruta)
@@ -360,21 +676,48 @@ def compilar_desde_texto(ruta_archivo: str, archivos_procesados: Set[str],
                 return Programa(), diag_local
             if mostrar_tokens:
                 print(f"\n[Importando: {stmt.ruta} -> {ruta_importada}]")
-            ast_importado, diag_import = compilar_desde_texto(ruta_importada, archivos_procesados, dir_base, mostrar_tokens, None, dependencias)
+            # H-CFG-4: los imports ENCADENADOS se resuelven contra el
+            # directorio del MODULO importado (resolución estándar), no contra
+            # el dir_base del fuente raíz — opensyn/principal.syn importa
+            # 'permisos' que vive en opensyn/, y el fuente raíz puede estar
+            # en cualquier parte (probe temporal, tests/).
+            dir_importado = os.path.dirname(os.path.abspath(ruta_importada))
+            ast_importado, diag_import = compilar_desde_texto(ruta_importada, archivos_procesados, dir_importado, mostrar_tokens, None, dependencias)
             if diag_import.hay_errores():
                 return ast, diag_import
             for s in ast_importado.sentencias:
                 nuevas_sentencias.append(s)
+                _origenes.append(True)   # R23: sentencia de un modulo importado
         else:
             nuevas_sentencias.append(stmt)
+            _origenes.append(False)      # R23: sentencia del propio archivo
 
+    # R23 (hallazgo R21): el dedup first-wins SOLO aplica a los simbolos de
+    # MODULOS importados (espejos de constantes/helpers entre modulos del
+    # compilador). Los duplicados del PROPIO archivo del usuario no se
+    # descartan: llegan al AnalizadorSemanticoChecker y ERR_SEM_REDEFINICION
+    # los reporta con linea/columna (paridad nativo principal.syn _seen_sym).
+    # H-CFG-4: EXCEPCION del first-wins para el PUNTO DE ENTRADA — si el
+    # archivo del usuario define `principal` y un modulo importado tambien
+    # lo trae (p.ej. opensyn/principal.syn), gana el del USUARIO: se descarta
+    # el principal IMPORTADO (el ejecutable es del usuario, no del paquete;
+    # Manual 1 §3.1: todo programa ejecutable requiere SU punto de entrada).
+    usuario_define_principal = any(
+        not de_importacion and isinstance(s, DefinicionFuncion)
+        and getattr(s, 'nombre', None) == 'principal'
+        for s, de_importacion in zip(nuevas_sentencias, _origenes))
     vistos = set()
     sentencias_dedup = []
-    for s in nuevas_sentencias:
+    for s, de_importacion in zip(nuevas_sentencias, _origenes):
         if isinstance(s, (DefinicionEstructura, DefinicionFuncion, DeclaracionExterna, StmtConstante)):
             nombre = getattr(s, 'nombre', None)
             if nombre:
-                if nombre in vistos:
+                if de_importacion and nombre in vistos:
+                    continue
+                # H-CFG-4: el principal del MODULO importado se descarta si
+                # el propio archivo define el suyo (precedencia del usuario)
+                if (de_importacion and nombre == 'principal'
+                        and usuario_define_principal):
                     continue
                 vistos.add(nombre)
         sentencias_dedup.append(s)
@@ -389,8 +732,82 @@ def compilar_desde_canonico(ruta_json: str) -> Programa:
 
 
 # ============================================================
+# R90 — Frontend Syquex: .syq -> SemNodo[] plano -> AST tipado
+# (Manual 1 §3.1: el traductor alimenta el backend compartido).
+# El ejecutable del frontend (scripts/build_syquex_frontend.py)
+# emite el JSON plano por stdout; el puente lo convierte a las
+# clases de compilador/ast_nodes que consume este pipeline.
+# ============================================================
+_FRONTEND_SYQ = os.path.join("build", "syq_frontend.exe")
+
+
+def _fuentes_frontend_syquex():
+    raiz = os.path.dirname(os.path.abspath(__file__))
+    nombres = [
+        os.path.join("nucleo", "parser_constantes.syn"),
+        os.path.join("nucleo", "parser_base.syn"),
+        os.path.join("nucleo", "lexer_keywords.syn"),
+        os.path.join("syquex", "lexer.syn"),
+        os.path.join("syquex", "expr.syn"),
+        os.path.join("syquex", "parser.syn"),
+        os.path.join("syquex", "traductor.syn"),
+        os.path.join("syquex", "syq_json.syn"),
+        os.path.join("syquex", "syq_main.syn"),
+    ]
+    return [os.path.join(raiz, n) for n in nombres]
+
+
+def _asegurar_frontend_syquex() -> str:
+    """Garantiza un exe del frontend NUEVO (regla anti-stale del repo)."""
+    raiz = os.path.dirname(os.path.abspath(__file__))
+    exe = os.path.join(raiz, _FRONTEND_SYQ)
+    fuentes = _fuentes_frontend_syquex()
+    if os.path.exists(exe) and all(
+            os.path.getmtime(exe) >= os.path.getmtime(f) - 1 for f in fuentes):
+        return exe
+    print("[SYQ] construyendo frontend Syquex (~40 s, una vez)...")
+    r = subprocess.run(
+        [sys.executable, os.path.join(raiz, "scripts",
+                                      "build_syquex_frontend.py")],
+        capture_output=True, text=True, timeout=900, cwd=raiz)
+    if r.returncode != 0 or not os.path.exists(exe):
+        raise RuntimeError(
+            f"build del frontend Syquex fallo rc={r.returncode}: "
+            f"{(r.stderr or r.stdout)[-800:]}")
+    return exe
+
+
+def compilar_desde_syq(ruta_syq: str) -> Programa:
+    """.syq -> SemNodo[] (exe frontend) -> AST tipado S1 (R90).
+
+    Lanza RuntimeError con el detalle si el frontend o el puente fallan;
+    el llamador lo reporta como diagnóstico canónico.
+    """
+    from compilador.puente_canonico import plano_a_programa
+    exe = _asegurar_frontend_syquex()
+    # H-R90-8b RETIRADO (ME paridad_principal_syq) — cumple Manual 1 §3.1:
+    # la inyección de un stub `funcion principal()` en el source contaminaba
+    # el AST canónico con una DefinicionFuncion que el .syn equivalente NO
+    # tiene → paridad estructural ROADMAP F22 imposible (mismo AST canónico
+    # para fuentes equivalentes). El frontend Syquex actual SÍ preserva las
+    # funciones locales sin principal (verificado por probe) y el generador
+    # emite un main de biblioteca cuando no hay entry point
+    # (H-R90-8/D-R150-4).
+    res = subprocess.run([exe, ruta_syq], capture_output=True, text=True,
+                         timeout=120, encoding="utf-8", errors="replace")
+    if res.returncode != 0:
+        raise RuntimeError(
+            f"frontend Syquex rc={res.returncode}: "
+            f"{(res.stdout or res.stderr)[-500:]}")
+    flat = json.loads(res.stdout)
+    prog = plano_a_programa(flat)
+    return prog
+
+
+# ============================================================
 # MAIN ENTRY POINT
 # ============================================================
+# cumple Manual 1 §3.1: pipeline compartido (.syn/.syq) con backend común
 def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                         output_lang: Optional[str] = None,
                         dump_ast: bool = False,
@@ -400,14 +817,37 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                         incremental: bool = False,
                         generar_sbom: bool = False,
                         firmar_binario: bool = False,
-                        clave_sbom: str = '') -> int:
+                        clave_sbom: str = '',
+                        target: str = 'native',
+                        modo_release: bool = False,
+                        modo_debug: bool = False,
+                        check_only: bool = False,
+                        modo_coverage: bool = False) -> int:
     _module_asts.clear()
     _imports_usados.clear()
     diag = DiagnosticManager()
 
-    # Flags de compilación para la clave de caché
-    flags_compilacion = os.environ.get('SYNAPSE_GCC_FLAGS', '') + " -O2 -Wl,--stack,8388608 -Wl,--gc-sections"
-    
+    # Flags de compilación para la clave de caché (Manual 1 §165:PGO+LTO, Manual 8 §4.2 --release/--debug)
+    if modo_debug:
+        # cumple Manual 9 §6.1 (r183d): --debug pide sanitizadores, pero la
+        # distribución MinGW-w64 del toolchain no trae libasan/libubsan.
+        # Degradación documentada a -O0 -g: la depurabilidad (objetivo real del
+        # flag) se conserva y el build no se bloquea.
+        _gcc_dbg = _resolver_toolchain_gcc()
+        if _soporta_sanitizers(_gcc_dbg):
+            gcc_opt = "-O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer"
+        else:
+            gcc_opt = "-O0 -g"
+            print("[--debug] Sanitizadores (-fsanitize) no disponibles en este "
+                  "toolchain; se usa -O0 -g", file=sys.stderr)
+    else:
+        gcc_opt = "-O3 -flto -DNDEBUG" if modo_release else "-O2"
+    # cumple Manual 9 §6.1 (r313): `--stack` y `--gc-sections` son de MinGW;
+    # en ELF, pasarlos por `-Wl` en una compilación `-c` es ruido y en el link
+    # ld.bfd los rechaza.
+    _flags_link = " -Wl,--stack,8388608 -Wl,--gc-sections" if sys.platform == "win32" else ""
+    flags_compilacion = os.environ.get('SYNAPSE_GCC_FLAGS', '') + f" {gcc_opt}" + _flags_link
+
     try:
         if ruta_archivo.endswith('.json'):
             try:
@@ -416,6 +856,16 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                 diag.reportar(ErrorCodes.ERR_CANONICAL_FORMAT,
                               Token(TokenID.EOF, 0, 0))
                 print(diag.resumen(), file=sys.stderr)
+                return diag.codigo_salida()
+        elif ruta_archivo.endswith('.syq'):
+            # R90 (Manual 1 §3.1): frontend Syquex -> SemNodo[] -> tipado
+            try:
+                ast = compilar_desde_syq(ruta_archivo)
+            except (RuntimeError, ValueError, KeyError,
+                    json.JSONDecodeError) as e:
+                print(f"[ERROR] Syquex: {e}", file=sys.stderr)
+                diag.reportar(ErrorCodes.ERR_CANONICAL_FORMAT,
+                              Token(TokenID.EOF, 0, 0))
                 return diag.codigo_salida()
         else:
             archivos_procesados: Set[str] = set()
@@ -456,22 +906,29 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             imprimir_ast(ast)
             return 0
 
+        # === CHECK MODE (--check / --no-emit) ===
+        # Manual 1 §1.1: modo de validación rápido sin generar código.
+        # Usado por el LSP y OpenSyn para validar código generado.
+        if check_only:
+            print(f"[CHECK] {ruta_archivo} — sintaxis OK, semántica OK")
+            return 0
+
         # === CACHE INCREMENTAL ===
         if incremental:
             _cache_ensure_dirs()
             deps_hash = _deps_hash(ruta_archivo, archivos_procesados)
             cache_key = _cache_key(ruta_archivo, deps_hash, flags_compilacion)
-            
+
             cached_obj = _cache_lookup(cache_key, ruta_archivo, flags_compilacion)
             if cached_obj:
                 print(f"[CACHE HIT] {ruta_archivo} -> usando objeto cacheado: {cached_obj}")
                 stats = _cache_load_stats()
                 stats['hits'] = stats.get('hits', 0) + 1
                 _cache_save_stats(stats)
-                
+
                 # Linkear directamente el objeto cacheado
                 return _link_object(cached_obj, output_path or (ruta_archivo.rsplit('.', 1)[0] + ".exe"))
-            
+
             print(f"[CACHE MISS] {ruta_archivo} -> compilando...")
 
         # === GENERACIÓN DE CÓDIGO C ===
@@ -479,6 +936,11 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         # M22.1: Activar borrow checker en modo --safe
         if modo_safe:
             generador.ctx.enable_safe_mode()
+        # cumple Manual 8 §4.2 (ME coverage_aristas, H-R152-1): --coverage
+        # activa la instrumentación de aristas en el emisor (OFF por defecto,
+        # bootstrap determinista; la bandera llega por entorno desde cli.py).
+        if modo_coverage:
+            generador.ctx.enable_coverage_mode(ruta_archivo, ruta_archivo.rsplit('.', 1)[0])
         codigo_c = generador.generar()  # modo='completo' por defecto
 
         ruta_base = ruta_archivo.rsplit('.', 1)[0]
@@ -496,68 +958,118 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             f.write(codigo_c)
         print(f"[OK] Codigo C generado: {ruta_c}")
 
-        linker_extra = generador.linker_flags
-        
-        # Modular runtime objects
-        def _resolve_rt_obj(name: str) -> str:
-            """Resuelve la ruta a un objeto del runtime, probando varias ubicaciones."""
-            candidates = [
-                os.path.join(SYNAPSE_BIN, f"{name}.o"),
-                os.path.join(SYNAPSE_BIN, "dist", "lib", f"{name}.o"),
-            ]
-            for c in candidates:
-                if os.path.exists(c):
-                    return c
-            return candidates[0]  # return first regardless (linker dará error si no existe)
-        
-        synapse_rt = _resolve_rt_obj("synapse_rt")
-        synapse_rt_memory = _resolve_rt_obj("synapse_rt_memory")
-        synapse_rt_concurrency = _resolve_rt_obj("synapse_rt_concurrency")
-        tweetnacl_obj = _resolve_rt_obj("tweetnacl")
-        if not os.path.exists(tweetnacl_obj):
-            tweetnacl_obj = ""
+        # === TARGET LLVM/WASM (Manual 1 §5: Generador → IR LLVM/WAT) ===
+        if target == 'llvm':
+            ir_path = ruta_base + ".ll"
+            from compilador.llvm_ir_generator import LLVMIRGenerator
+            llvm_gen = LLVMIRGenerator(ast, diag)
+            ir_code = llvm_gen.generar()
+            with open(ir_path, 'w', encoding='utf-8') as f:
+                f.write(ir_code)
+            print(f"[OK] LLVM IR generado: {ir_path}")
+            return 0
 
-        # Quantum runtime modules (M16.1-M16.4) in nucleo/ directory
-        quantum_objs = []
-        for qfile in ["quantum_runtime", "quantum_err_corr", "quantum_memory", "surface_code"]:
-            qo = os.path.join(SYNAPSE_BIN, "nucleo", f"{qfile}.o")
-            if not os.path.exists(qo):
-                qo = os.path.join(SYNAPSE_BIN, "dist", "lib", f"{qfile}.o")
-                if not os.path.exists(qo):
-                    qo = os.path.join(SYNAPSE_BIN, f"{qfile}.o")
-            if os.path.exists(qo):
-                quantum_objs.append(qo)
+        if target == 'wasm':
+            wat_path = ruta_base + ".wat"
+            wasm_path = ruta_base + ".wasm"
+            from compilador.wat_generator import WATGenerator
+            wat_gen = WATGenerator(ast, diag)
+            wat_code = wat_gen.generar()
+            with open(wat_path, 'w', encoding='utf-8') as f:
+                f.write(wat_code)
+            print(f"[OK] WAT generado: {wat_path}")
+
+            # FASE 25: .wat → .wasm via wat2wasm (Manual 8 §4.2: --target wasm)
+            # Buscar en PATH y en ubicaciones locales de emsdk (wabt).
+            # cumple Manual 8 §4.2: --target wasm resuelve el backend WASM
+            wat2wasm = shutil.which('wat2wasm') or shutil.which('wat2wasm.exe')
+            if not wat2wasm:
+                import glob as _glob
+                for patron in ('C:/emsdk/node/*/wat2wasm.CMD',
+                               'C:/emsdk/node/*/wat2wasm.cmd',
+                               'C:/emsdk/node/*/wat2wasm.exe'):
+                    hallados = sorted(_glob.glob(patron))
+                    if hallados:
+                        wat2wasm = hallados[0]
+                        break
+            if wat2wasm:
+                r = subprocess.run([wat2wasm, wat_path, '-o', wasm_path],
+                                   capture_output=True, text=True, timeout=30)
+                if r.returncode == 0:
+                    size = os.path.getsize(wasm_path)
+                    print(f"[OK] WASM generado: {wasm_path} ({size} bytes)")
+                else:
+                    print(f"[WARN] wat2wasm falló: {r.stderr[:200]}")
+            else:
+                print(f"[INFO] wat2wasm no encontrado — solo WAT generado")
+
+            return 0
+
+        linker_extra = generador.linker_flags
+
 
         if sys.platform == "darwin":
-            compiler = "clang"
+            # cumple Manual 9 §6.2 (r322): el C generado usa extensiones GCC que
+            # clang rechaza; se resuelve cualquier GCC real (r321 dejó el enlace
+            # limpio, pero el runner sin Homebrew caía a clang y fallaba aquí).
+            compiler = _resolver_gcc_darwin() or "clang"
+            if compiler == "clang":
+                print("[WARN] macOS sin GCC real: se usa clang; el C emitido usa "
+                      "extensiones GNU (nested functions) que clang rechaza")
             platform_flags = "-Wl,-dead_strip"
             thread_flag = "-lpthread"
         else:
             compiler = _resolver_toolchain_gcc()
             platform_flags = "-fno-ident -Wl,--gc-sections"
             thread_flag = "-lpthread"
+            # cumple Manual 9 §6.1 (r313): `--stack` es una opcion de ld de
+            # MinGW; en ELF (Linux/ARM) ld.bfd la rechaza y el link del
+            # bootstrap fallaba con `unrecognized option '--stack'`.
             if sys.platform == "win32":
                 platform_flags += " -static -Wl,--no-insert-timestamp -Wl,--stack,8388608"
-            else:
-                platform_flags += " -Wl,--stack,8388608"
 
-        linker_net = "-lws2_32" if sys.platform == "win32" else ""
+        # cumple Manual 9 5.7: detect_hardware.c usa DXGI/COM para VRAM real (A2)
+        linker_net = "-lws2_32 -lole32 -ldxgi -luuid" if sys.platform == "win32" else ""
         env_gcc_flags = os.environ.get('SYNAPSE_GCC_FLAGS', '')
         no_std_flags = "-ffreestanding -fno-builtin" if ast.is_no_std else ""
-        if ast.is_no_std:
-            rt_objs = ""
-        else:
-            rt_objs = f'"{synapse_rt}"'
-            if os.path.exists(synapse_rt_memory):
-                rt_objs += f' "{synapse_rt_memory}"'
-            if os.path.exists(synapse_rt_concurrency):
-                rt_objs += f' "{synapse_rt_concurrency}"'
-            if tweetnacl_obj:
-                rt_objs += f' "{tweetnacl_obj}"'
-            for qo in quantum_objs:
+        base_flags = f'{platform_flags} {no_std_flags} {env_gcc_flags} -I"{SYNAPSE_BIN}"'.strip()
+        # ME-R2: compilar el runtime modular desde fuente (Manual 3 §3.1).
+        # Elimina la dependencia de .o precompilados inexistentes en instalación limpia.
+        rt_objs = ""
+        if not ast.is_no_std:
+            try:
+                rt_objs = ' '.join(f'"{o}"' for o in _compilar_runtime_objetos(compiler, base_flags, gcc_opt))
+            except RuntimeError as e:
+                print(f"[ME-R2][ERROR] {e}", file=sys.stderr)
+                return 1
+            for qo in _compilar_quantum_objetos(compiler, base_flags, gcc_opt):
                 rt_objs += f' "{qo}"'
-        base_flags = f'{platform_flags} {no_std_flags} {env_gcc_flags} -I.'.strip()
-        link_flags = f'{thread_flag} -lm {linker_net} {linker_extra}'.strip()
+            # cumple Manual 5 6.2: módulo federated para std.federated
+            for fed_src in _RT_FEDERATED_FUENTES:
+                fed_nombre = os.path.splitext(os.path.basename(fed_src))[0]
+                o = _compilar_objeto_cacheado(compiler, gcc_opt, base_flags, fed_src, fed_nombre)
+                if o is None:
+                    print(f"[ME-R8][!] Modulo federated {fed_src} no compilo; se omite", file=sys.stderr)
+                    continue
+                rt_objs += f' "{o}"'
+            # ME-R8 (D5): modulos de IA nativa (fine_tuning/distillation/quantization)
+            for ia_src in _RT_IA_FUENTES:
+                ia_nombre = os.path.splitext(os.path.basename(ia_src))[0]
+                o = _compilar_objeto_cacheado(compiler, gcc_opt, base_flags, ia_src, ia_nombre)
+                if o is None:
+                    print(f"[ME-R8][!] Modulo IA {ia_src} no compilo; se omite", file=sys.stderr)
+                    continue
+                rt_objs += f' "{o}"'
+        # ME-R2: --allow-multiple-definition resuelve el conflicto tr_* entre
+        # el C generado (traductor.syn usa parser_nodos()) y runtime/core/memory.c
+        # (g_ast_base). El frontend usa parser_nodos() y el runtime usa g_ast_base;
+        # ambos coexistes sin colisión en runtime.
+        # cumple Manual 9 §6.2 (r320): el ld64 de macOS rechaza
+        # `--allow-multiple-definition` (ld: unknown options). En darwin se
+        # enlaza en modo unity: los helpers por módulo se definen una sola vez
+        # y no hace falta tolerar definiciones duplicadas.
+        _ld_dup_flag = "" if sys.platform == "darwin" else " -Wl,--allow-multiple-definition"
+        link_flags = f'{thread_flag} -lm {linker_net} {linker_extra}{_ld_dup_flag}'.strip()
 
         # === COMPILACIÓN MODULAR (FASE A): .c por módulo → compilar .c→.o → link ===
         # Paso 1: Generar header compartido (tipos + prototipos + runtime externs)
@@ -572,6 +1084,11 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         # Se usa el AST aplanado (con todos los tipos) para cada módulo,
         # filtrando por scope_names para emitir solo las funciones del módulo.
         modulos_c = []
+        # cumple Manual 9 §6.2 (r320): sin el flag GNU, la compilación modular
+        # duplica helpers (`desde_texto`, `contiene`) entre módulos y ld64 falla;
+        # en macOS se va directo al unity fallback.
+        if sys.platform == "darwin":
+            _module_asts.clear()
         for ruta_mod_abs, ast_modulo in _module_asts.items():
             nombre_mod = os.path.splitext(os.path.basename(ruta_mod_abs))[0]
             ruta_mod_c = os.path.join(dir_base, f"_{nombre_mod}.c")
@@ -584,6 +1101,13 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             if not mod_func_names:
                 continue
             gen_mod = GeneradorC(copy.deepcopy(ast))  # AST aplanado para info de tipos
+            # cumple Manual 1 §3.1 (pipeline compartido, backend común): los
+            # módulos _*.c también llevan las sondas; cumple Manual 8 §4.2
+            # (ME coverage_aristas): el módulo con 'principal' emite además la
+            # config + catálogo en su main (el exe enlaza la ruta modular).
+            if modo_coverage:
+                gen_mod.ctx.enable_coverage_mode(
+                    ruta_mod_abs, ruta_mod_abs.rsplit('.', 1)[0])
             codigo_mod = gen_mod.generar(modo='modulo', include_header='_synapse_shared.h',
                                          scope_names=mod_func_names)
             with open(ruta_mod_c, 'w', encoding='utf-8') as f:
@@ -591,11 +1115,28 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             print(f"[MODULAR] Módulo C: {ruta_mod_c}")
             modulos_c.append(ruta_mod_c)
 
+        # Paso 2b: fix_borrowing — elimina _syn_texto_liberar de funciones de solo lectura
+        # Manual 2 §11: borrowing — funciones de solo lectura no destruyen sus argumentos.
+        # R105/R113: el fix debe aplicarse a los modulos generados AQUI (dir_base), no solo
+        # a nucleo/_texto.c. Si no, los binarios opensyn/syquex (que generan sus modulos en
+        # el dir_base, no en nucleo/) usan wrappers strlen_s/strstr_f/strchr_f que LIBERAN sus
+        # argumentos y corrompen cadenas vivas del llamador (use-after-free silencioso).
+        try:
+            from compilador.fix_borrowing import fix_file
+            fixed = 0
+            for ruta_mod_c in modulos_c:
+                if fix_file(ruta_mod_c):
+                    fixed += 1
+            if fixed > 0:
+                print(f"[MODULAR] fix_borrowing: {fixed} archivos corregidos")
+        except Exception as e:
+            print(f"[MODULAR] fix_borrowing: skip ({e})", file=sys.stderr)
+
         # Paso 3: Compilar cada .c → .o con gcc -c -O2 (paralelo si hay múltiples)
         objs_existentes = []
         for ruta_mod_c in modulos_c:
             ruta_obj = ruta_mod_c + ".o"
-            gcc_cmd = f'{compiler} -O2 -c {base_flags} "{ruta_mod_c}" -o "{ruta_obj}"'
+            gcc_cmd = f'{compiler} {gcc_opt} -c {base_flags} "{ruta_mod_c}" -o "{ruta_obj}"'
             print(f"[MODULAR] gcc -c: {ruta_mod_c}")
             rc = subprocess.run(gcc_cmd, shell=True).returncode
             if rc == 0:
@@ -608,17 +1149,18 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             objs_str = ' '.join(f'"{o}"' for o in objs_existentes)
             if rt_objs:
                 objs_str += f' {rt_objs}'
-            gcc_link_cmd = f'{compiler} -O2 {base_flags} {objs_str} -o "{ruta_exe}" {link_flags}'.strip()
+            gcc_link_cmd = f'{compiler} {gcc_opt} {base_flags} {objs_str} -o "{ruta_exe}" {link_flags}'.strip()
             print(f"[MODULAR] Link: {gcc_link_cmd}")
             link_rc = subprocess.run(gcc_link_cmd, shell=True).returncode
             if link_rc == 0:
                 print(f"[OK] Ejecutable modular generado: {ruta_exe}")
             else:
-                print(f"[!] Link modular fallo (rc={link_rc})", file=sys.stderr)
-        else:
+                print(f"[!] Link modular fallo (rc={link_rc}) — intentando unity fallback", file=sys.stderr)
+                objs_existentes = []
+        if not objs_existentes:
             print("[!] No se generaron objetos modulares — usando unity fallback", file=sys.stderr)
             # Fallback: compilar unity file a objeto y linkear
-            gcc_obj_cmd = f'{compiler} -O2 -c {base_flags} "{ruta_c}" -o "{ruta_c}.o"'
+            gcc_obj_cmd = f'{compiler} {gcc_opt} -c {base_flags} "{ruta_c}" -o "{ruta_c}.o"'
             print(f"[FALLBACK] {gcc_obj_cmd}")
             try:
                 obj_rc = subprocess.run(gcc_obj_cmd, shell=True).returncode
@@ -628,15 +1170,31 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                 objs_fb = f'"{ruta_c}.o"'
                 if rt_objs:
                     objs_fb += f' {rt_objs}'
-                gcc_link_cmd = f'{compiler} -O2 {base_flags} {objs_fb} -o "{ruta_exe}" {link_flags}'.strip()
+                gcc_link_cmd = f'{compiler} {gcc_opt} {base_flags} {objs_fb} -o "{ruta_exe}" {link_flags}'.strip()
                 print(f"[FALLBACK] Link: {gcc_link_cmd}")
-                subprocess.run(gcc_link_cmd, shell=True)
+                link_rc = subprocess.run(gcc_link_cmd, shell=True).returncode
+                if link_rc != 0:
+                    print(f"[!] Link fallback fallo (rc={link_rc})", file=sys.stderr)
+
+        # ME-R2: propagar errores de compilación/link (antes se tragaban y retornaban 0).
+        if not os.path.exists(ruta_exe):
+            msg = f"[ME-R2][ERROR] No se genero el ejecutable: {ruta_exe}"
+            # Hint post-revision: si el C generado carece de main, el programa no
+            # define 'funcion principal' (sin punto de entrada no se puede enlazar).
+            try:
+                with open(ruta_c, 'r', encoding='utf-8', errors='ignore') as f_c:
+                    if "int main(" not in f_c.read():
+                        msg += " — el programa no define 'funcion principal' (sin punto de entrada)"
+            except OSError:
+                pass
+            print(msg, file=sys.stderr)
+            return 1
 
         # === ALMACENAR EN CACHE ===
         if incremental:
             # Generar .o por separado para cache
             obj_path = ruta_base + ".o"
-            gcc_obj_cmd = f'{compiler} -c {platform_flags} {env_gcc_flags} -I. "{ruta_c}" -o "{obj_path}"'
+            gcc_obj_cmd = f'{compiler} -c {platform_flags} {env_gcc_flags} -I"{SYNAPSE_BIN}" "{ruta_c}" -o "{obj_path}"'
             print(f"[CACHE] Generando objeto: {gcc_obj_cmd}")
             obj_rc = subprocess.run(gcc_obj_cmd, shell=True).returncode
             if obj_rc == 0 and os.path.exists(obj_path):
@@ -719,7 +1277,7 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                         "buildType": "synapse-build",
                         "recipe": {
                             "type": "synapse-compiler",
-                            "version": os.environ.get('SYNAPSE_VERSION', '5.1.0-industrial'),
+                            "version": os.environ.get('SYNAPSE_VERSION', '8.1.0-industrial'),
                         },
                         "metadata": {
                             "completeness": {
@@ -753,42 +1311,65 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
     return 0
 
 
-def _link_object(obj_path: str, output_exe: str) -> int:
+def _link_object(obj_path: str, output_exe: str, opt_flags: str = "-O2") -> int:
     """Linkea un archivo objeto (.o) directamente al ejecutable final."""
     compiler = _resolver_toolchain_gcc()
     platform_flags = "-fno-ident -Wl,--gc-sections"
     thread_flag = "-lpthread"
+    # cumple Manual 9 §6.1 (r313): `--stack` solo existe en el ld de MinGW.
     if sys.platform == "win32":
-        platform_flags += " -Wl,--no-insert-timestamp -Wl,--stack,8388608"
-    else:
-        platform_flags += " -Wl,--stack,8388608"
+        platform_flags += " -static -Wl,--no-insert-timestamp -Wl,--stack,8388608"
     linker_net = "-lws2_32" if sys.platform == "win32" else ""
-    
-    def _resolve_rt_obj(name: str) -> str:
-        candidates = [
-            os.path.join(SYNAPSE_BIN, f"{name}.o"),
-            os.path.join(SYNAPSE_BIN, "dist", "lib", f"{name}.o"),
-        ]
-        for c in candidates:
-            if os.path.exists(c):
-                return c
-        return candidates[0]
+    # cumple Manual 1 §4 (ME r193_fixtures_infra): base_flags de PARIDAD con el
+    # camino normal (incluye `-static` win32 y SYNAPSE_GCC_FLAGS; el no_std no
+    # pasa por este camino: el HIT cacheado solo aplica a programas que enlazan
+    # el runtime). Sin `-static`/env, la key de caché de los .o del runtime
+    # difiería entre pasadas y el HIT idiota recompilaba 46 .o (~90 s).
+    env_gcc_flags = os.environ.get('SYNAPSE_GCC_FLAGS', '')
+    base_flags = f'{platform_flags} {env_gcc_flags} -I"{SYNAPSE_BIN}"'.strip()
 
-    synapse_rt = _resolve_rt_obj("synapse_rt")
-    synapse_rt_memory = _resolve_rt_obj("synapse_rt_memory")
-    synapse_rt_concurrency = _resolve_rt_obj("synapse_rt_concurrency")
-    tweetnacl_obj = _resolve_rt_obj("tweetnacl")
-    if not os.path.exists(tweetnacl_obj):
-        tweetnacl_obj = ""
-    
-    rt_objs = f'"{synapse_rt}"'
-    if os.path.exists(synapse_rt_memory):
-        rt_objs += f' "{synapse_rt_memory}"'
-    if os.path.exists(synapse_rt_concurrency):
-        rt_objs += f' "{synapse_rt_concurrency}"'
-    if tweetnacl_obj:
-        rt_objs += f' "{tweetnacl_obj}"'
-    
-    gcc_cmd = f'{compiler} {platform_flags} -I. "{obj_path}" {rt_objs} -o "{output_exe}" {thread_flag} -lm {linker_net}'.strip()
+    # ME-R2: runtime modular compilado desde fuente (Manual 3 §3.1)
+    try:
+        rt_objs = ' '.join(f'"{o}"' for o in _compilar_runtime_objetos(compiler, base_flags, opt_flags))
+    except RuntimeError as e:
+        print(f"[ME-R2][ERROR] {e}", file=sys.stderr)
+        return 1
+    # cumple Manual 1 §4 (ME r193_fixtures_infra: paridad del enlace cacheado
+    # con el enlace no cacheado — la lista de objetos debe incluir los mismos
+    # módulos opcionales en ambos caminos; en el enlace normal de línea ~892 se
+    # añaden quantum/federated/IA y aquí se omitían, de modo que el HIT del
+    # enlace incremental fallaba con `undefined reference to qc_aplicar_pauli_z`
+    # (quantum_err_corr.o usa símbolos de quantum_runtime.o) en programas que
+    # arrastran esos módulos vía std).
+    # cumple Manual 1 §7.2 (ME r193_fixtures_infra): el cambio debe superar
+    # la suite completa de pruebas — el oráculo r193 ejecuta el grupo A del
+    # barrido (test_cache_audit T1/T2 verifican el HIT real de esta ruta).
+    for qo in _compilar_quantum_objetos(compiler, base_flags, opt_flags):
+        rt_objs += f' "{qo}"'
+    # cumple Manual 5 6.2: módulo federated para std.federated
+    for fed_src in _RT_FEDERATED_FUENTES:
+        fed_nombre = os.path.splitext(os.path.basename(fed_src))[0]
+        o = _compilar_objeto_cacheado(compiler, opt_flags, base_flags, fed_src, fed_nombre)
+        if o is None:
+            print(f"[ME-R8][!] Modulo federated {fed_src} no compilo; se omite", file=sys.stderr)
+            continue
+        rt_objs += f' "{o}"'
+    # ME-R8 (D5): modulos de IA nativa (fine_tuning/distillation/quantization)
+    for ia_src in _RT_IA_FUENTES:
+        ia_nombre = os.path.splitext(os.path.basename(ia_src))[0]
+        o = _compilar_objeto_cacheado(compiler, opt_flags, base_flags, ia_src, ia_nombre)
+        if o is None:
+            print(f"[ME-R8][!] Modulo IA {ia_src} no compilo; se omite", file=sys.stderr)
+            continue
+        rt_objs += f' "{o}"'
+
+    # cumple Manual 1 §4 (ME r193_fixtures_infra): PARIDAD COMPLETA con el
+    # enlace normal — el camino normal pasa `-Wl,--allow-multiple-definition`
+    # (conflicto tr_* documentado ME-R2) y por tanto tolera que quantum_err_corr.o
+    # figure dos veces (_RT_FUENTES + _RT_QUANTUM_FUENTES); sin el flag, el
+    # [CACHE LINK] moria con `multiple definition of _syn_qec_verificar_estado_logico`.
+    # cumple Manual 9 §6.2 (r320): ld64 no conoce el flag GNU.
+    link_align = "" if sys.platform == "darwin" else "-Wl,--allow-multiple-definition"
+    gcc_cmd = f'{compiler} {base_flags} "{obj_path}" {rt_objs} -o "{output_exe}" {thread_flag} -lm {linker_net} {link_align}'.strip()
     print(f"[CACHE LINK] {gcc_cmd}")
     return subprocess.run(gcc_cmd, shell=True).returncode

@@ -1,0 +1,76 @@
+#lang: es
+// test_core_math.syn — Test nativo de operaciones aritméticas y lógica
+//
+// Compilar:  python main.py tests/synapse/test_core_math.syn
+// Ejecutar:  tests/synapse/test_core_math.exe
+// Retorna:   0 si todos pasan, >0 si hay fallos
+
+importar std.testing
+importar std.io
+
+funcion principal() -> entero:
+    fallos = 0
+
+    escribir_linea("[TEST] test_core_math — Pruebas aritméticas básicas")
+    escribir_linea("")
+
+    // --- Aritmética básica ---
+    fallos = fallos + assert_igual(1 + 1, 2, "1 + 1 == 2")
+    fallos = fallos + assert_igual(5 - 3, 2, "5 - 3 == 2")
+    fallos = fallos + assert_igual(4 * 3, 12, "4 * 3 == 12")
+    fallos = fallos + assert_igual(10 / 2, 5, "10 / 2 == 5")
+    fallos = fallos + assert_igual((1 + 2) * 3, 9, "(1 + 2) * 3 == 9")
+
+    // --- Negativos ---
+    fallos = fallos + assert_igual(-5 + 3, -2, "-5 + 3 == -2")
+    fallos = fallos + assert_igual(-5 * -2, 10, "-5 * -2 == 10")
+    fallos = fallos + assert_igual(5 - 10, -5, "5 - 10 == -5")
+
+    // --- Cero ---
+    fallos = fallos + assert_igual(0 + 0, 0, "0 + 0 == 0")
+    fallos = fallos + assert_igual(5 * 0, 0, "5 * 0 == 0")
+    fallos = fallos + assert_igual(0 / 1, 0, "0 / 1 == 0")
+
+    // --- Comparaciones ---
+    fallos = fallos + assert_verdadero(3 > 2, "3 > 2")
+    fallos = fallos + assert_verdadero(2 < 3, "2 < 3")
+    fallos = fallos + assert_verdadero(3 >= 3, "3 >= 3")
+    fallos = fallos + assert_verdadero(4 <= 5, "4 <= 5")
+    fallos = fallos + assert_falso(3 > 5, "3 > 5 es falso")
+    fallos = fallos + assert_falso(2 == 3, "2 == 3 es falso")
+    fallos = fallos + assert_diferente(2, 3, "2 != 3")
+
+    // --- Lógica booleana ---
+    fallos = fallos + assert_verdadero(verdadero, "verdadero es verdadero")
+    fallos = fallos + assert_falso(falso, "falso es falso")
+    fallos = fallos + assert_verdadero(no falso, "no falso es verdadero")
+    fallos = fallos + assert_falso(no verdadero, "no verdadero es falso")
+
+    // --- Estructuras de control ---
+    contador = 0
+    mientras contador < 3:
+        contador = contador + 1
+    fallos = fallos + assert_igual(contador, 3, "mientras: contador llega a 3")
+
+    resultado = 0
+    si 10 > 5:
+        resultado = 1
+    sino:
+        resultado = 2
+    fallos = fallos + assert_igual(resultado, 1, "si: rama correcta (10 > 5)")
+
+    resultado2 = 0
+    si 3 > 10:
+        resultado2 = 1
+    sino:
+        resultado2 = 2
+    fallos = fallos + assert_igual(resultado2, 2, "si: rama sino correcta (3 > 10)")
+
+    // --- Resumen ---
+    escribir_linea("")
+    si fallos == 0:
+        escribir_linea("  [OK] Todos los tests pasaron.")
+    sino:
+        escribir_linea(concat("  [FAIL] ", entero_a_texto(fallos)))
+    escribir_linea("")
+    retornar fallos

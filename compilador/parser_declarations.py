@@ -1,5 +1,6 @@
 from typing import List, Optional
 
+from compilador.diagnostics import ErrorCodes
 from compilador.ast_nodes import (
     TokenID, Nodo, Parametro,
     DefinicionFuncion, DefinicionEstructura,
@@ -7,12 +8,15 @@ from compilador.ast_nodes import (
     ImportarC, DeclaracionExterna,
     StmtConstante,
 )
-from compilador.parser_base import ParserBase, _SYNC_TOP, _SYNC_STMT, _SYNC_BLOCK
+from compilador.parser_base import (
+    ParserBase, _SYNC_TOP, _SYNC_STMT, _SYNC_BLOCK,
+    es_token_identificador, nombre_de_token,
+)
 
 
 class ParserDeclarationsMixin(ParserBase):
     def _parsear_def_funcion(self) -> Optional[DefinicionFuncion]:
-        if self._esperar(TokenID.FUNCTION) is None:
+        if self._esperar(TokenID.FUNCION) is None:
             self._sincronizar(_SYNC_TOP)
             return None
         tok_nombre = self._esperar(TokenID.IDENTIFIER)
@@ -25,32 +29,81 @@ class ParserDeclarationsMixin(ParserBase):
         params: List[Parametro] = []
         if self._mirar().tipo != TokenID.RPAREN:
             es_trans = self._posible(TokenID.ARROW) is not None
-            tok_nombre_param = self._esperar(TokenID.IDENTIFIER)
+            tok_nombre_param = self._esperar_identificador()
             if tok_nombre_param is None:
                 self._sincronizar(_SYNC_STMT)
                 return None
             self._esperar(TokenID.COLON)
             tipo = self._parsear_tipo_parametro()
-            params.append(Parametro(nombre=tok_nombre_param.valor, tipo=tipo, es_transferencia=es_trans))
+            params.append(Parametro(nombre=nombre_de_token(tok_nombre_param), tipo=tipo, es_transferencia=es_trans))
             while self._mirar().tipo == TokenID.COMMA:
                 self._avanzar()
                 es_trans = self._posible(TokenID.ARROW) is not None
-                tok_nombre_param = self._esperar(TokenID.IDENTIFIER)
+                tok_nombre_param = self._esperar_identificador()
                 if tok_nombre_param is None:
                     break
                 self._esperar(TokenID.COLON)
                 tipo = self._parsear_tipo_parametro()
-                params.append(Parametro(nombre=tok_nombre_param.valor, tipo=tipo, es_transferencia=es_trans))
+                params.append(Parametro(nombre=nombre_de_token(tok_nombre_param), tipo=tipo, es_transferencia=es_trans))
         if self._esperar(TokenID.RPAREN) is None:
             self._sincronizar(_SYNC_STMT)
             return None
-        if self._esperar(TokenID.ARROW) is None:
-            self._sincronizar(_SYNC_STMT)
-            return None
-        tok_retorno = self._esperar(TokenID.IDENTIFIER)
-        if tok_retorno is None:
-            self._sincronizar(_SYNC_STMT)
-            return None
+        # Manual 2 §2 L56: declaracion_funcion ::= "funcion" IDENTIFICADOR "("
+        # [ parametros ] ")" [ "->" tipo ] [ contratos ] ":" ... — el tipo de
+        # retorno es OPCIONAL (funciones nulas: `funcion f(x: entero):`).
+        # Ausente -> 'nulo' (paridad con puente_canonico.py:343).
+        # # cumple Manual 2 §2
+        tipo_retorno = 'nulo'
+        prefijo_retorno = ''
+        if self._mirar().tipo == TokenID.ARROW:
+            self._avanzar()
+            # Manual 6 §3.1: &tipo for pointer return types (FFI compatibility)
+            if self._mirar().tipo == TokenID.AMPERSAND:
+                self._avanzar()
+                if (es_token_identificador(self._mirar())
+                        and (self._mirar().valor or '') == 'mut'):
+                    self._avanzar()
+                    prefijo_retorno = '&mut '
+                else:
+                    prefijo_retorno = '&'
+            tok_retorno = self._esperar_identificador()
+            if tok_retorno is None:
+                self._sincronizar(_SYNC_STMT)
+                return None
+            tipo_retorno = prefijo_retorno + nombre_de_token(tok_retorno)
+            # F1.2d: tipos genéricos en el retorno (-> arc<NodoLista> / -> debil<T>,
+            # Manual 2 §2 L151-153). Paridad con _parsear_tipo_parametro: se consumen
+            # los tokens hasta '>' (identificadores con valor; '<' inicial literal).
+            if self._mirar().tipo == TokenID.LESS:
+                self._avanzar()
+                partes = [tipo_retorno, '<']
+                profundidad = 0
+                while True:
+                    t_actual = self._mirar()
+                    if t_actual.tipo in (TokenID.EOF, TokenID.NEWLINE, TokenID.RPAREN):
+                        break
+                    if t_actual.tipo == TokenID.GREATER and profundidad == 0:
+                        break
+                    t = self._avanzar()
+                    # R13: tipos ADT anidados (`Resultado<Resultado<entero,texto>,texto>`,
+                    # Manual 2 §8.2): consumir '<'/'<' con profundidad y solo cerrar
+                    # en el '>' de nivel 0.
+                    if t.tipo == TokenID.LESS:
+                        profundidad += 1
+                        partes.append('<')
+                    elif t.tipo == TokenID.GREATER:
+                        profundidad -= 1
+                        partes.append('>')
+                    elif t.tipo == TokenID.COMMA:
+                        # D-2: el token COMMA no lleva valor -> conservar la coma para
+                        # `Resultado<entero,texto>` (paridad con el span nativo S2/S3).
+                        partes.append(',')
+                    else:
+                        partes.append(t.valor or '')
+                if self._mirar().tipo == TokenID.GREATER:
+                    self._avanzar()
+                partes.append('>')
+                tipo_retorno = ''.join(partes)
         if self._esperar(TokenID.COLON) is None:
             self._sincronizar(_SYNC_STMT)
             return None
@@ -103,12 +156,26 @@ class ParserDeclarationsMixin(ParserBase):
             if self._mirar().tipo == TokenID.DEDENT:
                 self._avanzar()
         else:
-            cuerpo = []
+            # cumple Manual 1 §3.1 (H-F1.4-1, ME f14_mto_ci): pipeline
+            # compartido — la existencia de cuerpo tras 'funcion:' es
+            # verificación del PARSER (fase de AST), no del lexer.
+            # cumple Manual 2 §2 L56: declaracion_funcion ::= ... ":"
+            # NEWLINE INDENT bloque DEDENT (sin alternativa vacía). La
+            # validación emigró del lexer (fase de tokens) al PARSER (fase de
+            # gramática), conservando la cobertura original
+            # (TestParserFunciones / RecuperacionErrores) y el mensaje exacto.
+            t_falta = self._mirar()
+            # ERR_LEX es el portador genérico ({mensaje}) con texto exacto del
+            # check original del lexer (fase movida, misma cobertura).
+            self.diag.reportar(ErrorCodes.ERR_LEX, t_falta,
+                               mensaje="Error de sintaxis: 'funcion' sin cuerpo (falta bloque indentado)")
+            self._sincronizar(_SYNC_TOP)
+            return None
 
         return DefinicionFuncion(
             nombre=tok_nombre.valor,
             parametros=params,
-            tipo_retorno=tok_retorno.valor,
+            tipo_retorno=tipo_retorno,
             requiere=requiere,
             garantiza=garantiza,
             cuerpo=cuerpo,
@@ -117,13 +184,23 @@ class ParserDeclarationsMixin(ParserBase):
         )
 
     def _parsear_def_estructura(self) -> Optional[DefinicionEstructura]:
-        if self._esperar(TokenID.STRUCT) is None:
+        if self._esperar(TokenID.ESTRUCTURA) is None:
             self._sincronizar(_SYNC_TOP)
             return None
         tok_nombre = self._esperar(TokenID.IDENTIFIER)
         if tok_nombre is None:
             self._sincronizar(_SYNC_TOP)
             return None
+        # cumple Manual 2 §2 (33.4b): parametro de tipo de la estructura
+        # generica entre PARENTESIS (M2 §2: [ "(" IDENTIFICADOR ")" ]?) —
+        # la ley NO define `Caja<T>` con corchetes angulares.
+        param_generico = ''
+        if self._mirar().tipo == TokenID.LPAREN:
+            self._avanzar()
+            tok_par = self._esperar(TokenID.IDENTIFIER)
+            if tok_par is not None:
+                param_generico = tok_par.valor
+                self._esperar(TokenID.RPAREN)
         if self._esperar(TokenID.COLON) is None:
             self._sincronizar(_SYNC_STMT)
             return None
@@ -155,10 +232,13 @@ class ParserDeclarationsMixin(ParserBase):
             if tok_tipo.tipo in (TokenID.DEDENT, TokenID.EOF, TokenID.NEWLINE):
                 self._sincronizar(_SYNC_BLOCK)
                 break
-            self._avanzar()
-            tipo_valor = tok_tipo.valor
-            if not tipo_valor and tok_tipo.tipo is not None:
-                tipo_valor = tok_tipo.tipo.name.lower()
+            # F1.2: el tipo puede ser un keyword contextual (tensor/nulo/tipo con
+            # lexema) u otro token (canal -> nombre en minúsculas, como antes).
+            if es_token_identificador(tok_tipo):
+                tipo_valor = self._parsear_tipo_parametro()
+            else:
+                self._avanzar()
+                tipo_valor = tok_tipo.valor or tok_tipo.tipo.name.lower()
             if not tipo_valor:
                 tipo_valor = 'int'
             campos.append(Parametro(nombre=campo_nombre, tipo=tipo_valor))
@@ -171,6 +251,7 @@ class ParserDeclarationsMixin(ParserBase):
             campos=campos,
             linea=tok_nombre.linea,
             columna=tok_nombre.columna,
+            param_generico=param_generico,
         )
 
     def _parsear_importar_c(self) -> Optional[ImportarC]:
@@ -187,20 +268,20 @@ class ParserDeclarationsMixin(ParserBase):
         return ImportarC(ruta=ruta, es_sistema=es_sistema)
 
     def _parsear_importar(self) -> Optional[SentenciaImportar]:
-        tok_import = self._esperar(TokenID.IMPORT)
+        tok_import = self._esperar(TokenID.IMPORTAR)
         if tok_import is None:
             return None
-        primera_parte = self._esperar(TokenID.IDENTIFIER)
+        primera_parte = self._esperar_identificador()
         if primera_parte is None:
             self._sincronizar(_SYNC_STMT)
             return None
-        ruta = primera_parte.valor
+        ruta = nombre_de_token(primera_parte)
         while self._mirar().tipo == TokenID.DOT:
             self._avanzar()
-            parte = self._esperar(TokenID.IDENTIFIER)
+            parte = self._esperar_identificador()
             if parte is None:
                 break
-            ruta += '.' + parte.valor
+            ruta += '.' + nombre_de_token(parte)
         return SentenciaImportar(
             ruta=ruta,
             linea=tok_import.linea,
@@ -210,9 +291,20 @@ class ParserDeclarationsMixin(ParserBase):
     def _parsear_declaracion_externa(self) -> Optional[DeclaracionExterna]:
         if self._esperar(TokenID.EXTERNO) is None:
             return None
-        if self._esperar(TokenID.FUNCTION) is None:
+        tok_kw = self._posible(TokenID.FUNCION, TokenID.ESTRUCTURA, TokenID.CONSTANTE)
+        if tok_kw is None:
             self._sincronizar(_SYNC_TOP)
             return None
+        if tok_kw.tipo == TokenID.FUNCION:
+            return self._parsear_externo_funcion(tok_kw)
+        if tok_kw.tipo == TokenID.ESTRUCTURA:
+            return self._parsear_externo_estructura(tok_kw)
+        if tok_kw.tipo == TokenID.CONSTANTE:
+            return self._parsear_externo_constante(tok_kw)
+        self._sincronizar(_SYNC_TOP)
+        return None
+
+    def _parsear_externo_funcion(self, tok_kw) -> Optional[DeclaracionExterna]:
         tok_nombre = self._esperar(TokenID.IDENTIFIER)
         if tok_nombre is None:
             self._sincronizar(_SYNC_TOP)
@@ -223,44 +315,86 @@ class ParserDeclarationsMixin(ParserBase):
         params: List[Parametro] = []
         if self._mirar().tipo != TokenID.RPAREN:
             es_trans = self._posible(TokenID.ARROW) is not None
-            tok_nombre_param = self._esperar(TokenID.IDENTIFIER)
+            tok_nombre_param = self._esperar_identificador()
             if tok_nombre_param is None:
                 self._sincronizar(_SYNC_STMT)
                 return None
             self._esperar(TokenID.COLON)
-            tok_tipo = self._esperar(TokenID.IDENTIFIER)
-            tipo = tok_tipo.valor if tok_tipo else 'int'
-            if self._mirar().tipo == TokenID.STAR:
-                self._avanzar()
-                tipo += '*'
-            params.append(Parametro(nombre=tok_nombre_param.valor, tipo=tipo, es_transferencia=es_trans))
+            tipo = self._parsear_tipo_parametro()
+            params.append(Parametro(nombre=nombre_de_token(tok_nombre_param), tipo=tipo, es_transferencia=es_trans))
             while self._mirar().tipo == TokenID.COMMA:
                 self._avanzar()
                 es_trans = self._posible(TokenID.ARROW) is not None
-                tok_nombre_param = self._esperar(TokenID.IDENTIFIER)
+                tok_nombre_param = self._esperar_identificador()
                 if tok_nombre_param is None:
                     break
                 self._esperar(TokenID.COLON)
-                tok_tipo = self._esperar(TokenID.IDENTIFIER)
-                tipo = tok_tipo.valor if tok_tipo else 'int'
-                if self._mirar().tipo == TokenID.STAR:
-                    self._avanzar()
-                    tipo += '*'
-                params.append(Parametro(nombre=tok_nombre_param.valor, tipo=tipo, es_transferencia=es_trans))
+                tipo = self._parsear_tipo_parametro()
+                params.append(Parametro(nombre=nombre_de_token(tok_nombre_param), tipo=tipo, es_transferencia=es_trans))
         if self._esperar(TokenID.RPAREN) is None:
             self._sincronizar(_SYNC_STMT)
             return None
-        if self._esperar(TokenID.ARROW) is None:
+        # Manual 2 §2 L56: el tipo de retorno es OPCIONAL también en la
+        # declaración externa (Manual 6 §3.1 muestra la forma con retorno;
+        # `externo funcion f(x: entero)` es válida y es nula). Ausente -> 'nulo'.
+        # # cumple Manual 2 §2
+        tipo_retorno = 'nulo'
+        prefijo_retorno = ''
+        if self._mirar().tipo == TokenID.ARROW:
+            self._avanzar()
+            # Manual 6 §3.1: &tipo for pointer return types (FFI compatibility)
+            if self._mirar().tipo == TokenID.AMPERSAND:
+                self._avanzar()
+                if (es_token_identificador(self._mirar())
+                        and (self._mirar().valor or '') == 'mut'):
+                    self._avanzar()
+                    prefijo_retorno = '&mut '
+                else:
+                    prefijo_retorno = '&'
+            tok_retorno = self._esperar_identificador()
+            if tok_retorno is None:
+                self._sincronizar(_SYNC_STMT)
+                return None
+            tipo_retorno = prefijo_retorno + nombre_de_token(tok_retorno)
+        return DeclaracionExterna(
+            nombre=tok_nombre.valor,
+            parametros=params,
+            tipo_retorno=tipo_retorno,
+            kind='funcion',
+            linea=tok_nombre.linea,
+            columna=tok_nombre.columna,
+        )
+
+    def _parsear_externo_estructura(self, tok_kw) -> Optional[DeclaracionExterna]:
+        # Manual 3 §3 L99: "externo" estructura IDENTIFICADOR
+        tok_nombre = self._esperar_identificador()
+        if tok_nombre is None:
+            self._sincronizar(_SYNC_TOP)
+            return None
+        return DeclaracionExterna(
+            nombre=nombre_de_token(tok_nombre),
+            kind='estructura',
+            linea=tok_kw.linea,
+            columna=tok_kw.columna,
+        )
+
+    def _parsear_externo_constante(self, tok_kw) -> Optional[DeclaracionExterna]:
+        # Manual 3 §3 L99: "externo" "constante" IDENTIFICADOR "=" STRING
+        tok_nombre = self._esperar(TokenID.IDENTIFIER)
+        if tok_nombre is None:
+            self._sincronizar(_SYNC_TOP)
+            return None
+        if self._esperar(TokenID.ASSIGN) is None:
             self._sincronizar(_SYNC_STMT)
             return None
-        tok_retorno = self._esperar(TokenID.IDENTIFIER)
-        if tok_retorno is None:
+        tok_valor = self._esperar(TokenID.STRING)
+        if tok_valor is None:
             self._sincronizar(_SYNC_STMT)
             return None
         return DeclaracionExterna(
             nombre=tok_nombre.valor,
-            parametros=params,
-            tipo_retorno=tok_retorno.valor,
+            kind='constante',
+            valor=tok_valor.valor,
             linea=tok_nombre.linea,
             columna=tok_nombre.columna,
         )
@@ -274,8 +408,8 @@ class ParserDeclarationsMixin(ParserBase):
             return None
         tipo: str = ''
         if self._posible(TokenID.COLON) is not None:
-            tok_tipo = self._esperar(TokenID.IDENTIFIER)
-            tipo = tok_tipo.valor if tok_tipo else ''
+            tok_tipo = self._esperar_identificador()
+            tipo = nombre_de_token(tok_tipo) if tok_tipo else ''
         if self._esperar(TokenID.ASSIGN) is None:
             self._sincronizar(_SYNC_STMT)
             return None

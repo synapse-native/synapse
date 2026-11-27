@@ -1,0 +1,25 @@
+{
+ "cambio_hash": "ebf8a0b2fbd8f95b",
+ "expediente": "docs/alineacion/r150_funcional.md",
+ "fecha": "2026-09-19",
+ "archivos": [
+  "cli.py",
+  "compilador/generator/emit_tensors.py",
+  "compilador/generator/generator.py",
+  "compilador/parser_declarations.py",
+  "pipeline.py",
+  "runtime/core/cluster.c",
+  "runtime/core/cluster.h",
+  "std/agent_skills.syn",
+  "std/atp_engine.syn",
+  "std/quantum_err_corr.syn",
+  "std/symbolic_exec.syn",
+  "std/testing.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_matriz_compilacion.py": true,
+  "tests/auditoria/test_oraculos_r150.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

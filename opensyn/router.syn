@@ -1,4 +1,6 @@
 #lang: es
+// cumple Manual 1 §1: infraestructura del compilador Synapse
+// cumple Manual 8 §4: toolchain de construcción
 // opensyn/router.syn — Enrutador determinista basado en AST para el pipeline RAG quirúrgico
 // ================================================================================
 // Propósito: Conectar el análisis semántico del AST con el motor de inferencia
@@ -16,7 +18,13 @@
 // ================================================================================
 
 importar std.modelo
-importar std.conv
+importar std.texto
+
+// ============================================================
+// Helpers de texto
+// ============================================================
+// cumple Manual 7 §2.4: el router usa comparacion y busqueda de texto
+// deterministas mediante los envoltorios publicos de std.texto.
 
 // ============================================================
 // Constantes de enrutamiento
@@ -34,11 +42,223 @@ constante TEMPERATURA_REFACTOR = 0.5
 constante TEMPERATURA_GENERACION = 0.7
 
 // ============================================================
-// Tipos de datos para el enrutador
+// File-finder + Catálogo APIs locales (ME-2, R2, Manual 7 §2.3)
+// ============================================================
+// El file-finder localiza archivos relevantes ANTES de generar código.
+// El catálogo lista las APIs reales de std/*.syn para que el modelo
+// no invente funciones que no existen (anti-alucinación).
+// Origen: freebuff (file-picker) + Kilo (Context7 docs).
+
+// Catálogo COMPLETO de APIs públicas de std/*.syn (35 módulos, generado del repo).
+// cumple Manual 7 §2.3: catálogo de APIs impide alucinaciones de funciones.
+// NO inventar funciones que no estén en esta lista.
+funcion obtener_catalogo_api() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    catalogo = "APIs std/ (usar SOLO estas funciones): "
+    // --- I/O y archivos ---
+    catalogo = catalogo + "std.io: abrir, leer, cerrar_archivo, escribir, escribir_linea, leer_linea, leer_bytes; "
+    // --- Texto y strings ---
+    catalogo = catalogo + "std.texto: contiene, indice_de, reemplazar, termina_con, recortar, mayusculas, minusculas, escapar_json, a_texto, a_texto_decimal, cmp_texto, longitud, strstr_f, strchr_f, atoi_f, strcpy_f, strncpy_f; "
+    // --- Sistema operativo ---
+    catalogo = catalogo + "std.sistema: ejecutar_comando, escribir_archivo, leer_archivo, obtener_env, existe_archivo, eliminar_archivo; "
+    // --- JSON ---
+    catalogo = catalogo + "std.json: desde_texto, liberar_nodo, obtener_elemento, obtener_campo, a_texto; "
+    // --- Hardware / OS ---
+    catalogo = catalogo + "std.os: memoria_total, memoria_libre, vram_total, cpu_nucleos, arquitectura; "
+    // --- Red / sockets ---
+    catalogo = catalogo + "std.net: iniciar_red, cerrar_red, crear_socket, conectar, enviar_datos, recibir_datos, cerrar_socket, liberar_texto; "
+    // --- HTTP ---
+    catalogo = catalogo + "std.http: iniciar_servidor, aceptar, leer_peticion, responder, cerrar_cliente, cerrar_servidor; "
+    // --- Modelo LLM / GGUF ---
+    catalogo = catalogo + "std.modelo: cargar_modelo, cerrar_modelo, evaluar, generar_token, n_past, reiniciar, obtener_n_ctx, establecer_n_ctx, decodificar_token, vocab_tamano, codificar_contar, codificar_obtener, generar_texto, obtener_metadato, obtener_arquitectura, obtener_n_layers, obtener_n_embd, obtener_n_heads, argmax, muestra_logits, generar_texto_simple; "
+    // --- Matemáticas / tensores básicos ---
+    catalogo = catalogo + "std.math: crear_tensor, suma_tensor, producto_punto, relu; "
+    // --- Criptografía ---
+    catalogo = catalogo + "std.cripto: sha256_texto, ed25519_verificar; "
+    // --- Tiempo ---
+    catalogo = catalogo + "std.tiempo: ahora_ms, dormir_ms; "
+    // --- Testing / assertions ---
+    catalogo = catalogo + "std.testing: assert_verdadero, assert_falso, assert_igual, assert_diferente; "
+    // --- Debug / recording / replay / snapshots ---
+    catalogo = catalogo + "std.debug: registrar_evento, trace, iniciar_sesion, finalizar_sesion, tr_inicializar_recording, tr_grabar_bifurcacion, tr_grabar_snapshot, tr_grabar_llamada, tr_grabar_retorno, tr_grabar_error, tr_buscar_evento, tr_obtener_evento, tr_reproducir_hasta, tr_indice_ultimo_error, tr_total_eventos, rp_inicializar, rp_establecer_breakpoint, rp_eliminar_breakpoint, rp_limpiar_breakpoints, rp_buscar_breakpoint, rp_retroceder, rp_posicion_actual, rp_ir_a_pre_error, rp_inspeccionar_variable, rp_pila_llamadas, rp_buscar_cambio_variable, ms_tomar_en, ms_diferenciar, ms_diff_entre, ms_snapshot_contar_vars, ms_snapshot_tamano, ms_snapshot_contiene; "
+    // --- Tensores avanzados ---
+    catalogo = catalogo + "std.tensor: llenar_tensor_constante, multiplicar_matrices, extraer_fila, rmsnorm, silu, rope, softmax_escalado, multiplicar_matrices_transpuesta_b, fijar_elemento; "
+    // --- Sincronización ---
+    catalogo = catalogo + "std.sync: mutex_crear, mutex_bloquear, mutex_desbloquear, mutex_destruir, semaforo_crear, semaforo_esperar, semaforo_senalar, semaforo_destruir, barrera_crear, barrera_esperar, barrera_destruir; "
+    // --- Memoria ---
+    catalogo = catalogo + "std.mem: reserva, libera; "
+    // --- TOML ---
+    catalogo = catalogo + "std.toml: desde_texto, obtener_campo; "
+    // --- Oráculo / codegen ---
+    catalogo = catalogo + "std.oraculo: compilar_codigo, obtener_codigo_generado, obtener_error_compilacion, obtener_linea_error, extraer_bloque_codigo, generar_codigo; "
+    // --- AI (bajo nivel GGUF) ---
+    catalogo = catalogo + "std.ai: cargar_gguf, cerrar_gguf, obtener_tensor, obtener_metadato, obtener_arquitectura, argmax, vocab_tamano, decodificar_token; "
+    // --- Agent skills ---
+    catalogo = catalogo + "std.agent_skills: generar_tests_tdd, revisar_codigo, planificacion_incremental, empaquetar_contexto, duda_driven_generar; "
+    // --- LLVM IR backend ---
+    catalogo = catalogo + "std.llvm: LLVMContextCreate, LLVMContextDispose, LLVMModuleCreateWithName, LLVMModuleDispose, LLVMModuleGetIR, LLVMBuilderCreate, LLVMBuilderDispose, LLVMBuilderBeginFunction, LLVMBuilderEndFunction, BuildMinimalProgram; "
+    // --- WebAssembly WAT backend ---
+    catalogo = catalogo + "std.wasm: WasmModuleCreate, WasmModuleDispose, WasmModuleGetWAT, WasmBuilderCreate, WasmBuilderDispose, WasmBuilderBeginFunction, WasmBuilderEndFunction, WasmBuildMinimalProgram; "
+    // --- Symbolic execution ---
+    catalogo = catalogo + "std.symbolic_exec: se_iniciar, se_cerrar, se_crear_variable, se_crear_entero, se_agregar_restriccion, se_bifurcar, se_es_alcanzable, se_hay_div_por_cero, se_hay_desbordamiento, se_hay_fuera_limites, se_explorar, se_es_seguro; "
+    // --- Quantum computing ---
+    catalogo = catalogo + "std.quantum: crear_sistema, liberar_sistema, inicializar_estado_cero, aplicar_hadamard, aplicar_pauli_x, aplicar_cnot, medir, probabilidad_cero, verificar_conservacion, crear_estado_bell; "
+    // --- Quantum error correction ---
+    catalogo = catalogo + "std.quantum_err_corr: inicializar_estado_logico, inyectar_bit_flip, inyectar_phase_flip, corregir_errores, verificar_estado_logico, proteger_y_verificar; "
+    // --- Quantum memory ---
+    catalogo = catalogo + "std.quantum_memory: aplicar_t1, aplicar_t2, simular_con_qec; "
+    // --- Surface code ---
+    catalogo = catalogo + "std.surface_code: crear_rejilla, liberar_rejilla, inicializar_estado_cero, inyectar_error, medir_estabilizadores, corregir_errores, verificar_correccion; "
+    // --- SIMD ---
+    catalogo = catalogo + "std.simd: simd_disponible, simd_tipo, simd_multiplicar_matrices, simd_rmsnorm, simd_silu, simd_softmax_escalado, simd_llenar_tensor_constante, simd_multiplicar_matrices_transpuesta_b; "
+    // --- Formal verification bridge ---
+    catalogo = catalogo + "std.proof_bridge: pb_iniciar, pb_cerrar, pb_agregar_funcion, pb_agregar_contrato, pb_traducir_a_coq, pb_traducir_a_lean, pb_generar_coq, pb_generar_lean, pb_exportar, pb_generar_certificado; "
+    // --- Automated theorem prover ---
+    catalogo = catalogo + "std.atp_engine: atp_iniciar, atp_cerrar, atp_agregar_pre, atp_agregar_post, atp_agregar_inv, atp_establecer_func, atp_es_tautologia, atp_hay_contradiccion, atp_propagar, atp_demostrar, atp_verificar_contrato, atp_limpiar, atp_guardar, atp_cargar; "
+    // --- Cluster distribuido ---
+    catalogo = catalogo + "std.cluster: cluster_iniciar_nodo, cluster_detener_nodo, cluster_enviar_hello, cluster_enviar_hello_firmado, cluster_canal_remoto_enviar, cluster_recibir_paquete, cluster_establecer_clave_sesion, ws_inicializar, ws_encolar, ws_desencolar, raft_inicializar, raft_iniciar, raft_tick, raft_estado, worker_ejecutar, worker_robar, cm_inicializar, cm_serializar_checkpoint, cm_restaurar_checkpoint, cluster_descubrimiento_inicializar, cluster_registrar_nodo, cluster_nodos_activos, cluster_multicast_iniciar, cluster_multicast_detener; "
+    // --- Federated learning ---
+    catalogo = catalogo + "std.federated: fed_iniciar, fed_cerrar, fed_registrar_worker, fed_eliminar_worker, fed_ronda_fedavg, fed_entrenar, fed_guardar, fed_cargar, fed_verificar_firma; "
+    // --- Distributed orchestrator ---
+    catalogo = catalogo + "std.dist_orchestrator: orch_iniciar, orch_cerrar, orch_crear_particiones, orch_asignar_workers, orch_ejecutar_epoch, orch_entrenar, orch_manejar_fallo, orch_redistribuir, orch_guardar, orch_cargar; "
+    retornar catalogo
+
+// ============================================================
+// File-finder: localiza archivos relevantes ANTES de generar código
+// ============================================================
+// cumple Manual 7 §2.3: fase 0 OBLIGATORIA de localización.
+// Recibe la consulta del usuario y retorna una lista de archivos candidatos
+// separados por comas, ordenados por relevancia.
+
+// Palabras clave del dominio → archivos asociados (tabla estática).
+// Formato: keyword:archivo por línea, separadas por punto y coma.
+funcion obtener_mapa_keywords() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    mapa = "io:std/io.syn;escribir:std/io.syn;leer:std/io.syn;archivo:std/io.syn;"
+    mapa = mapa + "texto:std/texto.syn;cadena:std/texto.syn;reemplazar:std/texto.syn;"
+    mapa = mapa + "sistema:std/sistema.syn;comando:std/sistema.syn;ejecutar:std/sistema.syn;"
+    mapa = mapa + "json:std/json.syn;parse:std/json.syn;"
+    mapa = mapa + "os:std/os.syn;ram:std/os.syn;vram:std/os.syn;cpu:std/os.syn;"
+    mapa = mapa + "red:std/net.syn;socket:std/net.syn;conexion:std/net.syn;"
+    mapa = mapa + "http:std/http.syn;servidor:std/http.syn;puerto:std/http.syn;"
+    mapa = mapa + "modelo:std/modelo.syn;gguf:std/modelo.syn;inferencia:std/modelo.syn;"
+    mapa = mapa + "tensor:std/math.syn;matriz:std/math.syn;"
+    mapa = mapa + "cripto:std/cripto.syn;sha256:std/cripto.syn;ed25519:std/cripto.syn;"
+    mapa = mapa + "tiempo:std/tiempo.syn;reloj:std/tiempo.syn;dormir:std/tiempo.syn;"
+    mapa = mapa + "debug:std/debug.syn;traza:std/debug.syn;trace:std/debug.syn;"
+    mapa = mapa + "test:std/testing.syn;assert:std/testing.syn;"
+    mapa = mapa + "router:opensyn/router.syn;rag:opensyn/router.syn;"
+    mapa = mapa + "principal:opensyn/principal.syn;agente:opensyn/principal.syn;modo:opensyn/principal.syn;"
+    mapa = mapa + "ollama:runtime/core/ollama.c;llama:runtime/core/ollama.c;"
+    mapa = mapa + "tui:runtime/core/tui.c;terminal:runtime/core/tui.c"
+    retornar mapa
+
+// Busca archivos relevantes en el repo basándose en palabras clave de la consulta.
+// cumple Manual 7 §2.3: file-finder localiza archivos ANTES de generar código.
+// M15: Enhance con búsqueda AST-aware (funciones, tipos, variables)
+funcion file_finder(consulta: texto) -> texto:
+    requiere:
+        longitud(consulta) > 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    encontrados = ""
+    // Búsqueda 1: keywords del catálogo (original)
+    mapa = obtener_mapa_keywords()
+    largo_mapa = longitud(mapa)
+    largo_consulta = longitud(consulta)
+    k = 0
+    mientras k < largo_mapa:
+        fin_entry = k
+        mientras fin_entry < largo_mapa:
+            si subcadena(mapa, fin_entry, 1) == ";":
+                romper
+            fin_entry = fin_entry + 1
+        entry = subcadena(mapa, k, fin_entry - k)
+        let pos_dp = strstr_f(entry, ":")
+        si pos_dp >= 0:
+            kw = subcadena(entry, 0, pos_dp)
+            archivo = subcadena(entry, pos_dp + 1, longitud(entry) - pos_dp - 1)
+            largo_kw = longitud(kw)
+            si largo_kw >= 3:
+                idx = 0
+                encontrado = 0
+                mientras idx < largo_consulta y encontrado == 0:
+                    mientras idx < largo_consulta:
+                        si subcadena(consulta, idx, 1) != " ":
+                            romper
+                        idx = idx + 1
+                    inicio = idx
+                    mientras idx < largo_consulta:
+                        si subcadena(consulta, idx, 1) == " ":
+                            romper
+                        idx = idx + 1
+                    len_palabra = idx - inicio
+                    si len_palabra >= 3 y len_palabra == largo_kw:
+                        palabra = subcadena(consulta, inicio, len_palabra)
+                        si cmp_texto(palabra, kw) == 0:
+                            encontrado = 1
+                si encontrado == 1:
+                    si strstr_f(encontrados, archivo) < 0:
+                        si encontrados != "":
+                            encontrados = concat(encontrados, ", ")
+                        encontrados = concat(encontrados, archivo)
+        k = fin_entry + 1
+    // Búsqueda 2: AST-aware — buscar identificadores en constructos .syn
+    // Extrae palabras de la consulta y busca "funcion X(", "estructura X",
+    // "let X:", "importar X" en archivos del proyecto
+    idx2 = 0
+    mientras idx2 < largo_consulta:
+        mientras idx2 < largo_consulta:
+            si subcadena(consulta, idx2, 1) != " ":
+                romper
+            idx2 = idx2 + 1
+        inicio2 = idx2
+        mientras idx2 < largo_consulta:
+            si subcadena(consulta, idx2, 1) == " ":
+                romper
+            idx2 = idx2 + 1
+        len_pal = idx2 - inicio2
+        si len_pal >= 4:
+            ident = subcadena(consulta, inicio2, len_pal)
+            // Buscar patrón "funcion ident(" en archivos .syn del cwd
+            patron_func = concat("funcion ", ident)
+            patron_est = concat("estructura ", ident)
+            patron_var = concat("let ", ident)
+            // Buscar en archivos comunes del proyecto
+            archivos_buscar = "opensyn/principal.syn,opensyn/router.syn,opensyn/validation_loop.syn,syquex/parser.syn,syquex/expr.syn,syquex/lexer.syn,syquex/traductor.syn"
+            pos_a = 0
+            largo_a = longitud(archivos_buscar)
+            mientras pos_a < largo_a:
+                fin_a = pos_a
+                mientras fin_a < largo_a:
+                    si subcadena(archivos_buscar, fin_a, 1) == ",":
+                        romper
+                    fin_a = fin_a + 1
+                arch = subcadena(archivos_buscar, pos_a, fin_a - pos_a)
+                // Leer primeras líneas del archivo y buscar patrones
+                contenido = ""
+                inseguro:
+                    asm("{ CadenaSegura _af = {.datos=(char*)arch.datos,.longitud=arch.longitud}; CadenaSegura _ac = _syn_leer_archivo(_af); if(_ac.longitud>0) contenido=_ac; }")
+                si longitud(contenido) > 0:
+                    // Buscar "funcion X(" o "estructura X" o "let X:"
+                    si strstr_f(contenido, patron_func) >= 0 o strstr_f(contenido, patron_est) >= 0 o strstr_f(contenido, patron_var) >= 0:
+                        si strstr_f(encontrados, arch) < 0:
+                            si encontrados != "":
+                                encontrados = concat(encontrados, ", ")
+                            encontrados = concat(encontrados, arch)
+                pos_a = fin_a + 1
+    retornar encontrados
+
+// ============================================================
+// Tipos de consulta (constantes; el lenguaje no define alias de tipo)
 // ============================================================
 
-tipo TipoRuta = entero
-tipo TipoConsulta = entero
 constante CONSULTA_EXPLICAR = 0
 constante CONSULTA_DIAGNOSTICO = 1
 constante CONSULTA_REFACTOR = 2
@@ -46,7 +266,7 @@ constante CONSULTA_OPTIMIZAR = 3
 constante CONSULTA_GENERAR = 4
 
 estructura ConsultaRAG:
-    tipo: TipoConsulta
+    tipo: entero
     texto_consulta: texto
     linea: entero
     columna: entero
@@ -54,7 +274,7 @@ estructura ConsultaRAG:
 
 estructura RespuestaRAG:
     texto_respuesta: texto
-    ruta_usada: TipoRuta
+    ruta_usada: entero
     tokens_inyectados: entero
     tokens_generados: entero
     confianza: decimal  // 0.0 a 1.0 según nivel de contexto disponible
@@ -71,8 +291,14 @@ estructura ConfiguracionRuta:
 // Configuración de rutas
 // ============================================================
 
-funcion obtener_configuracion_ruta(ruta: TipoRuta) -> ConfiguracionRuta:
-    cfg: ConfiguracionRuta
+// Retorna configuración de contexto según el nivel de ruta.
+// cumple Manual 2 §12: toda función pública tiene contrato
+funcion obtener_configuracion_ruta(ruta: entero) -> ConfiguracionRuta:
+    requiere:
+        ruta >= RUTA_MICRO y ruta <= RUTA_PROYECTO
+    garantiza:
+        _resultado_.max_tokens > 0 // cumple Manual 2 §5.1
+    cfg = ConfiguracionRuta()
     cfg.contexto_lineas_antes = 2
     cfg.contexto_lineas_despues = 2
     cfg.incluir_ast = 1
@@ -88,29 +314,32 @@ funcion obtener_configuracion_ruta(ruta: TipoRuta) -> ConfiguracionRuta:
         cfg.max_tokens = 128
         cfg.temperatura = TEMPERATURA_EXPLICACION
 
-    sino si ruta == RUTA_LOCAL:
-        cfg.contexto_lineas_antes = 5
-        cfg.contexto_lineas_despues = 5
-        cfg.incluir_ast = 1
-        cfg.incluir_diags = 1
-        cfg.max_tokens = 256
-        cfg.temperatura = TEMPERATURA_EXPLICACION
+    sino:
+        si ruta == RUTA_LOCAL:
+            cfg.contexto_lineas_antes = 5
+            cfg.contexto_lineas_despues = 5
+            cfg.incluir_ast = 1
+            cfg.incluir_diags = 1
+            cfg.max_tokens = 256
+            cfg.temperatura = TEMPERATURA_EXPLICACION
 
-    sino si ruta == RUTA_ARCHIVO:
-        cfg.contexto_lineas_antes = 20
-        cfg.contexto_lineas_despues = 10
-        cfg.incluir_ast = 1
-        cfg.incluir_diags = 1
-        cfg.max_tokens = 512
-        cfg.temperatura = TEMPERATURA_REFACTOR
+        sino:
+            si ruta == RUTA_ARCHIVO:
+                cfg.contexto_lineas_antes = 20
+                cfg.contexto_lineas_despues = 10
+                cfg.incluir_ast = 1
+                cfg.incluir_diags = 1
+                cfg.max_tokens = 512
+                cfg.temperatura = TEMPERATURA_REFACTOR
 
-    sino si ruta == RUTA_PROYECTO:
-        cfg.contexto_lineas_antes = 50
-        cfg.contexto_lineas_despues = 20
-        cfg.incluir_ast = 1
-        cfg.incluir_diags = 0
-        cfg.max_tokens = 1024
-        cfg.temperatura = TEMPERATURA_GENERACION
+            sino:
+                si ruta == RUTA_PROYECTO:
+                    cfg.contexto_lineas_antes = 50
+                    cfg.contexto_lineas_despues = 20
+                    cfg.incluir_ast = 1
+                    cfg.incluir_diags = 0
+                    cfg.max_tokens = 1024
+                    cfg.temperatura = TEMPERATURA_GENERACION
 
     retornar cfg
 
@@ -118,8 +347,14 @@ funcion obtener_configuracion_ruta(ruta: TipoRuta) -> ConfiguracionRuta:
 // Determinación de ruta basada en tipo de nodo AST
 // ============================================================
 
-// Analiza el tipo de nodo AST y determina el nivel de contexto necesario
-funcion determinar_ruta(tipo_nodo: texto, tipo_consulta: TipoConsulta) -> TipoRuta:
+// Analiza el tipo de nodo AST y determina el nivel de contexto necesario.
+// cumple Manual 2 §12: toda función pública tiene contrato
+funcion determinar_ruta(tipo_nodo: texto, tipo_consulta: entero) -> entero:
+    requiere:
+        longitud(tipo_nodo) > 0
+        tipo_consulta >= 0 y tipo_consulta <= 4
+    garantiza:
+        _resultado_ >= RUTA_MICRO y _resultado_ <= RUTA_PROYECTO // cumple Manual 2 §5.1
     // Consultas de diagnóstico siempre usan contexto local o micro
     si tipo_consulta == CONSULTA_DIAGNOSTICO:
         retornar RUTA_MICRO
@@ -150,14 +385,32 @@ funcion determinar_ruta(tipo_nodo: texto, tipo_consulta: TipoConsulta) -> TipoRu
 // Construcción de prompt estructurado
 // ============================================================
 
-// Construye el prompt con el nivel de contexto apropiado
-funcion construir_prompt(consulta: ConsultaRAG, ruta: TipoRuta,
-    contexto_texto: texto, tipo_nodo: texto, diagnosticos: texto) -> texto:
+// Construye el prompt con el nivel de contexto apropiado.
+// cumple Manual 7 §2.3: file-finder + catálogo APIs anti-alucinación.
+// Ensambla prompt estructurado con catálogo + file-finder + contexto.
+// cumple Manual 2 §12: toda función pública tiene contrato
+// cumple Manual 7 §2.3: "El pipeline RAG construye un prompt eficiente"
+funcion construir_prompt(consulta: ConsultaRAG, ruta: entero, contexto_texto: texto, tipo_nodo: texto, diagnosticos: texto) -> texto:
+    requiere:
+        longitud(consulta.texto_consulta) > 0
+        ruta >= RUTA_MICRO y ruta <= RUTA_PROYECTO
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
     cfg = obtener_configuracion_ruta(ruta)
 
     prompt = ""
     prompt = prompt + "Eres un asistente experto en el lenguaje Synapse.\n"
     prompt = prompt + "Responde en espanol de forma concisa y tecnica.\n\n"
+
+    // ME-2 (R2): inyectar catálogo de APIs std para impedir alucinaciones
+    prompt = prompt + obtener_catalogo_api()
+    prompt = prompt + "\n"
+
+    // ME-2 (R2): file-finder — localizar archivos relevantes ANTES de generar
+    archivos_relevantes = file_finder(consulta.texto_consulta)
+    si archivos_relevantes != "":
+        prompt = prompt + "[ARCHIVOS RELEVANTES]: " + archivos_relevantes + "\n"
+        prompt = prompt + "Lee estos archivos con TOOL leer antes de generar codigo.\n\n"
 
     // Incluir contexto del archivo
     si contexto_texto != "":
@@ -180,20 +433,24 @@ funcion construir_prompt(consulta: ConsultaRAG, ruta: TipoRuta,
     si consulta.tipo == CONSULTA_EXPLICAR:
         prompt = prompt + "Explica que hace este codigo Synapse.\n"
 
-    sino si consulta.tipo == CONSULTA_DIAGNOSTICO:
-        prompt = prompt + "Diagnostica el error en este codigo Synapse.\n"
-        prompt = prompt + "Sugiere la correccion especifica.\n"
+    sino:
+        si consulta.tipo == CONSULTA_DIAGNOSTICO:
+            prompt = prompt + "Diagnostica el error en este codigo Synapse.\n"
+            prompt = prompt + "Sugiere la correccion especifica.\n"
 
-    sino si consulta.tipo == CONSULTA_REFACTOR:
-        prompt = prompt + "Sugiere mejoras de refactorizacion.\n"
-        prompt = prompt + "Explica cada cambio propuesto.\n"
+        sino:
+            si consulta.tipo == CONSULTA_REFACTOR:
+                prompt = prompt + "Sugiere mejoras de refactorizacion.\n"
+                prompt = prompt + "Explica cada cambio propuesto.\n"
 
-    sino si consulta.tipo == CONSULTA_OPTIMIZAR:
-        prompt = prompt + "Analiza el rendimiento y sugiere optimizaciones.\n"
+            sino:
+                si consulta.tipo == CONSULTA_OPTIMIZAR:
+                    prompt = prompt + "Analiza el rendimiento y sugiere optimizaciones.\n"
 
-    sino si consulta.tipo == CONSULTA_GENERAR:
-        prompt = prompt + "Genera codigo Synapse para la siguiente especificacion:\n"
-        prompt = prompt + consulta.texto_consulta
+                sino:
+                    si consulta.tipo == CONSULTA_GENERAR:
+                        prompt = prompt + "Genera codigo Synapse para la siguiente especificacion:\n"
+                        prompt = prompt + consulta.texto_consulta
 
     prompt = prompt + "\n\nMaximo " + entero_a_texto(cfg.max_tokens) + " tokens."
 
@@ -203,15 +460,47 @@ funcion construir_prompt(consulta: ConsultaRAG, ruta: TipoRuta,
 // Función principal de enrutamiento
 // ============================================================
 
+// Extrae el bloque de codigo de una respuesta del modelo.
+// cumple Manual 7 §2.4: "Extrae el código de la respuesta del modelo
+// (usando expresiones regulares o parseo de bloques)".
+funcion extraer_codigo_router(respuesta: texto) -> texto:
+    requiere:
+        longitud(respuesta) >= 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    let pos = indice_de(respuesta, "```synapse")
+    si pos == -1:
+        pos = indice_de(respuesta, "```syquex")
+    si pos == -1:
+        retornar respuesta
+    let largo = longitud(respuesta)
+    let i = pos + 3
+    mientras i < largo:
+        si subcadena(respuesta, i, 1) == "\n":
+            romper
+        i = i + 1
+    si i < largo:
+        i = i + 1
+    let resto = subcadena(respuesta, i, largo - i)
+    let fin_rel = indice_de(resto, "```")
+    si fin_rel == -1:
+        retornar resto
+    retornar subcadena(resto, 0, fin_rel)
+
 // Procesa una consulta RAG a través del pipeline completo:
 // 1. Determina ruta según tipo de nodo AST y consulta
 // 2. Construye prompt con contexto apropiado
 // 3. Envía al modelo local
 // 4. Retorna respuesta con metadatos de enrutamiento
-funcion procesar_consulta(ctx: puntero, consulta: ConsultaRAG,
-    contexto_texto: texto, tipo_nodo: texto,
-    diagnosticos: texto) -> RespuestaRAG:
-    respuesta: RespuestaRAG
+// Pipeline RAG completo: ruta → config → prompt → inferencia → respuesta.
+// cumple Manual 2 §12: toda función pública tiene contrato
+// cumple Manual 7 §2.4: "El router decide cómo procesar la respuesta"
+funcion procesar_consulta(ctx: puntero, consulta: ConsultaRAG, contexto_texto: texto, tipo_nodo: texto, diagnosticos: texto) -> RespuestaRAG:
+    requiere:
+        longitud(consulta.texto_consulta) > 0
+    garantiza:
+        longitud(_resultado_.texto_respuesta) >= 0 // cumple Manual 2 §5.1
+    respuesta = RespuestaRAG()
     respuesta.texto_respuesta = ""
     respuesta.confianza = 0.0
 
@@ -226,34 +515,35 @@ funcion procesar_consulta(ctx: puntero, consulta: ConsultaRAG,
     // 2. Obtener configuración
     cfg = obtener_configuracion_ruta(ruta)
 
-    // 3. Construir prompt con contexto
-    prompt = construir_prompt(consulta, ruta, contexto_texto, tipo_nodo, diagnosticos)
+    // 3. Construir prompt con contexto (preservar contexto/tipo para la confianza)
+    prompt = construir_prompt(consulta, ruta, _syn_strcpy(contexto_texto), _syn_strcpy(tipo_nodo), diagnosticos)
 
-    // 4. Estimar tokens de contexto (~4 chars/token)
+    // 4. Estimar tokens de contexto (~4 chars/token) y truncar de forma segura.
+    let max_chars = cfg.max_tokens * 4
+    si longitud(prompt) > max_chars:
+        prompt = subcadena(prompt, 0, max_chars)
     inseguro:
         asm("respuesta.tokens_inyectados = prompt.longitud / 4;")
-        asm("if (respuesta.tokens_inyectados > cfg.max_tokens) {")
-        asm("    if (cfg.max_tokens * 4 < prompt.longitud) {")
-        asm("        prompt.datos[cfg.max_tokens * 4] = '\\0';")
-        asm("        prompt.longitud = cfg.max_tokens * 4;")
-        asm("    }")
-        asm("}")
 
     // 5. Generar respuesta con el modelo local (via wrapper público)
-    texto_generado = generar_texto(ctx, prompt,
-        cfg.max_tokens, cfg.temperatura, 40, 0.9)
+    texto_generado = generar_texto(ctx, prompt, cfg.max_tokens, cfg.temperatura, 40, 0.9)
 
-    respuesta.texto_respuesta = texto_generado
     inseguro:
         asm("respuesta.tokens_generados = texto_generado.longitud / 4;")
+    // cumple Manual 7 §2.4: formateo de respuesta con extraccion de bloque.
+    si consulta.tipo == CONSULTA_GENERAR:
+        respuesta.texto_respuesta = extraer_codigo_router(texto_generado)
+    sino:
+        respuesta.texto_respuesta = texto_generado
 
     // 6. Calcular confianza basada en nivel de contexto disponible
     si contexto_texto != "" y tipo_nodo != "":
         respuesta.confianza = 0.85
-    sino si contexto_texto != "":
-        respuesta.confianza = 0.70
     sino:
-        respuesta.confianza = 0.50
+        si contexto_texto != "":
+            respuesta.confianza = 0.70
+        sino:
+            respuesta.confianza = 0.50
 
     retornar respuesta
 
@@ -261,10 +551,14 @@ funcion procesar_consulta(ctx: puntero, consulta: ConsultaRAG,
 // Función simplificada para integración rápida
 // ============================================================
 
-// Versión simplificada: infiere automáticamente la ruta desde el tipo de nodo
-funcion consultar(ctx: puntero, pregunta: texto, contexto: texto,
-    tipo_nodo: texto) -> texto:
-    consulta: ConsultaRAG
+// Versión simplificada: infiere automáticamente la ruta desde el tipo de nodo.
+// cumple Manual 2 §12: toda función pública tiene contrato
+funcion consultar(ctx: puntero, pregunta: texto, contexto: texto, tipo_nodo: texto) -> texto:
+    requiere:
+        longitud(pregunta) > 0
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    consulta = ConsultaRAG()
     consulta.texto_consulta = pregunta
     consulta.tipo = CONSULTA_EXPLICAR
     consulta.linea = 0
@@ -273,3 +567,322 @@ funcion consultar(ctx: puntero, pregunta: texto, contexto: texto,
 
     respuesta = procesar_consulta(ctx, consulta, contexto, tipo_nodo, "")
     retornar respuesta.texto_respuesta
+
+// ============================================================
+// ME-3 (R3): Router-orquestador que delega + 3 siguientes pasos
+// ============================================================
+// cumple Manual 7 §2.4: "El router está escrito en Synapse y actúa como
+// el cerebro de alto nivel de OpenSyn. Decide qué modelo usar y cómo
+// procesar la respuesta."
+// Origen: Kilo Orchestrator (descompone y delega) + freebuff (3 next steps).
+
+// Tipos de tarea que el orquestador puede clasificar.
+constante TAREA_EXPLICAR = 0
+constante TAREA_DIAGNOSTICAR = 1
+constante TAREA_REFACTORIZAR = 2
+constante TAREA_GENERAR = 3
+constante TAREA_REVISAR = 4
+
+// Clasifica una tarea en texto libre a un tipo constante.
+// cumple Manual 7 §2.4: el router clasifica antes de delegar.
+funcion clasificar_tarea(tarea: texto) -> entero:
+    requiere:
+        longitud(tarea) > 0
+    garantiza:
+        _resultado_ >= 0 y _resultado_ <= 4 // cumple Manual 2 §5.1
+    tarea_lower = minusculas(tarea)
+    // Diagnóstico: buscar keywords de error/fallo/bug
+    si contiene(tarea_lower, "error") == 1 o contiene(tarea_lower, "bug") == 1:
+        retornar TAREA_DIAGNOSTICAR
+    si contiene(tarea_lower, "fallo") == 1 o contiene(tarea_lower, "diagnostica") == 1:
+        retornar TAREA_DIAGNOSTICAR
+    // Refactorización: buscar keywords de refactor/mejorar/optimizar
+    si contiene(tarea_lower, "refactor") == 1 o contiene(tarea_lower, "mejora") == 1:
+        retornar TAREA_REFACTORIZAR
+    si contiene(tarea_lower, "optimiza") == 1 o contiene(tarea_lower, "limpia") == 1:
+        retornar TAREA_REFACTORIZAR
+    // Revisión: buscar keywords de revisar/verificar/analizar
+    si contiene(tarea_lower, "revisa") == 1 o contiene(tarea_lower, "verifica") == 1:
+        retornar TAREA_REVISAR
+    si contiene(tarea_lower, "analiza") == 1 o contiene(tarea_lower, "comenta") == 1:
+        retornar TAREA_REVISAR
+    // Generación: buscar keywords de genera/crea/escribe/implementa
+    si contiene(tarea_lower, "genera") == 1 o contiene(tarea_lower, "crea") == 1:
+        retornar TAREA_GENERAR
+    si contiene(tarea_lower, "escribe") == 1 o contiene(tarea_lower, "implementa") == 1:
+        retornar TAREA_GENERAR
+    // Default: explicación
+    retornar TAREA_EXPLICAR
+
+// Retorna el modo (MODO_*) asociado a un tipo de tarea.
+// cumple Manual 7 §1.1: orchestrator asigna cada subtarea a un modo de R1.
+funcion modo_para_tarea(tipo_tarea: entero) -> entero:
+    requiere:
+        tipo_tarea >= 0 y tipo_tarea <= 4
+    garantiza:
+        _resultado_ >= 0 y _resultado_ <= 4 // cumple Manual 2 §5.1
+    si tipo_tarea == TAREA_EXPLICAR:
+        retornar 0  // MODO_ASK
+    si tipo_tarea == TAREA_DIAGNOSTICAR:
+        retornar 3  // MODO_DEBUG
+    si tipo_tarea == TAREA_REFACTORIZAR:
+        retornar 2  // MODO_CODE
+    si tipo_tarea == TAREA_GENERAR:
+        retornar 2  // MODO_CODE
+    si tipo_tarea == TAREA_REVISAR:
+        retornar 0  // MODO_ASK (solo lectura)
+    retornar 0  // MODO_ASK
+
+// Nombre legible de un tipo de tarea.
+// cumple Manual 2 §12: toda función pública tiene contrato.
+funcion nombre_tarea(tipo: entero) -> texto:
+    requiere:
+        tipo >= 0 y tipo <= 4
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    si tipo == TAREA_EXPLICAR:
+        retornar "explicar"
+    si tipo == TAREA_DIAGNOSTICAR:
+        retornar "diagnosticar"
+    si tipo == TAREA_REFACTORIZAR:
+        retornar "refactorizar"
+    si tipo == TAREA_GENERAR:
+        retornar "generar"
+    si tipo == TAREA_REVISAR:
+        retornar "revisar"
+    retornar "desconocido"
+
+// Orquesta una tarea: clasifica y retorna el modo asignado.
+// cumple Manual 7 §2.4: "El router decide cómo procesar la respuesta."
+// Origen: Kilo Orchestrator (descompone y delega).
+funcion orquestar(tarea: texto) -> texto:
+    requiere:
+        longitud(tarea) > 0
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    tipo = clasificar_tarea(tarea)
+    modo = modo_para_tarea(tipo)
+    resultado = entero_a_texto(modo)
+    retornar resultado
+
+// Genera 3 siguientes pasos sugeridos dado el tipo de tarea.
+// cumple R3: "tras cada respuesta, línea siguientes: 1) ... 2) ... 3) ..."
+// Origen: freebuff (proponer 3 siguientes pasos clicables).
+funcion siguientes_pasos(tipo_tarea: entero) -> texto:
+    requiere:
+        tipo_tarea >= 0 y tipo_tarea <= 4
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    pasos = ""
+    si tipo_tarea == TAREA_EXPLICAR:
+        pasos = "1) Diagnostica posibles problemas 2) Refactoriza el codigo explicado 3) Genera tests para el codigo"
+    sino:
+        si tipo_tarea == TAREA_DIAGNOSTICAR:
+            pasos = "1) Implementa la correccion sugerida 2) Revisa la solucion propuesta 3) Genera tests que validen la correccion"
+        sino:
+            si tipo_tarea == TAREA_REFACTORIZAR:
+                pasos = "1) Revisa los cambios propuestos 2) Ejecuta los tests para verificar 3) Genera documentacion del refactor"
+            sino:
+                si tipo_tarea == TAREA_GENERAR:
+                    pasos = "1) Revisa el codigo generado 2) Ejecuta los tests 3) Diagnostica posibles errores"
+                sino:
+                    si tipo_tarea == TAREA_REVISAR:
+                        pasos = "1) Implementa las correcciones sugeridas 2) Ejecuta los tests 3) Refactoriza el codigo revisado"
+                    sino:
+                        pasos = "1) Explica el resultado 2) Diagnostica problemas 3) Genera tests"
+    retornar pasos
+
+// ============================================================
+// ME-6 (R9): Planificar antes de actuar (M7 §7.2)
+// ============================================================
+// cumple Manual 7 §7.2: "Latencia de inferencia: < 1s para prompts cortos"
+// Origen: Claude Code (5.5x token-eficiente: planifica multi-paso antes de ejecutar).
+// Regla de oro: 1 llamada de PLAN decide archivos+pasos; solo luego N llamadas
+// de ejecución con contexto acotado del file-finder R2.
+
+// Genera un plan antes de ejecutar para ahorrar tokens.
+// cumple Manual 7 §7.2: "planifica multi-paso antes de ejecutar"
+funcion planificar_antes_de_actuar(tarea: texto, contexto: texto) -> texto:
+    requiere:
+        longitud(tarea) > 0
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    pasos = "1) Analizar contexto y localizar archivos 2) Generar código 3) Validar con synapse check 4) Ejecutar tests"
+    resumen = "Plan: "
+    resumen = concat(resumen, tarea)
+    let complejidad = evaluar_complejidad_local(tarea)
+    resumen = concat(resumen, " (")
+    resumen = concat(resumen, nombre_complejidad_local(complejidad))
+    resumen = concat(resumen, ") — ")
+    resumen = concat(resumen, pasos)
+    retornar resumen
+
+// Evalúa complejidad de tarea (local, sin dependencia externa).
+// cumple Manual 7 §7.2: "menos contexto = menos alucinación"
+funcion evaluar_complejidad_local(tarea: texto) -> entero:
+    requiere:
+        longitud(tarea) > 0
+    garantiza:
+        _resultado_ >= 0 y _resultado_ <= 2 // cumple Manual 2 §5.1
+    longitud_tarea = longitud(tarea)
+    si longitud_tarea < 50:
+        retornar 0
+    si longitud_tarea < 200:
+        retornar 1
+    retornar 2
+
+// Retorna nombre legible de complejidad.
+// cumple Manual 7 §7.2: "menos contexto = menos alucinación"
+funcion nombre_complejidad_local(complejidad: entero) -> texto:
+    requiere:
+        complejidad >= 0 y complejidad <= 2
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    si complejidad == 0:
+        retornar "baja"
+    si complejidad == 1:
+        retornar "media"
+    retornar "alta"
+
+// ============================================================
+// M11: Integración con synapse lint (Manual 7 §6.4)
+// ============================================================
+// cumple Manual 7 §6.4: "El LSP puede invocar synapse lint --check --fix"
+// synapse lint es una herramienta Fase 31; se integra vía ejecutar_comando.
+
+funcion ejecutar_lint(archivo: texto) -> entero:
+    requiere:
+        longitud(archivo) > 0
+    garantiza:
+        _resultado_ >= -1 // cumple Manual 2 §5.1
+    comando = concat("synapse lint --check ", archivo)
+    resultado = ejecutar_comando(comando)
+    retornar resultado
+
+// ============================================================
+// M12: Integración con synapse fmt (Manual 8 §4.1)
+// ============================================================
+// cumple Manual 8 §4.1: "synapse fmt formatea código según reglas de estilo"
+// synapse fmt es una herramienta Fase 31; se integra vía ejecutar_comando.
+
+funcion ejecutar_fmt(archivo: texto) -> entero:
+    requiere:
+        longitud(archivo) > 0
+    garantiza:
+        _resultado_ >= -1 // cumple Manual 2 §5.1
+    comando = concat("synapse fmt --check ", archivo)
+    resultado = ejecutar_comando(comando)
+    retornar resultado
+
+// ============================================================
+// M14: Orchestrator lifecycle (Manual 7 §2.1)
+// ============================================================
+// cumple Manual 7 §2.1: "gestión del ciclo de vida del servidor de inferencia"
+// Lifecycle: iniciar → verificar → detener
+
+funcion orchestrator_verificar_estado() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
+    // Stub determinista: la implementacion C del orquestador aun no existe
+    // en el repo (opensyn/orchestrator.h solo declara la API).
+    retornar 0
+
+funcion orchestrator_iniciar_lifecycle() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
+    // Verificar si ya está corriendo
+    let estado = orchestrator_verificar_estado()
+    si estado == 1:
+        retornar 1
+    // Stub determinista: no hay binario/simbolo C de orquestador enlazable.
+    retornar 0
+
+funcion orchestrator_detener_lifecycle() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
+    // Stub determinista: no hay binario/simbolo C de orquestador enlazable.
+    retornar 0
+// cumple Manual 7 §4.3: "Si el servidor no responde en 30 segundos, error"
+
+constante TIMEOUT_INFERENCIA = 30000
+
+// Verifica si una consulta excede el timeout de inferencia.
+// cumple Manual 7 §4.3: "Si el servidor no responde en 30 segundos, el LSP devuelve un error"
+funcion verificar_timeout(timestamp_inicio: entero) -> booleano:
+    requiere:
+        timestamp_inicio > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso // cumple Manual 2 §5.1
+    ahora = ahora_ms_router()
+    transcurrido = ahora - timestamp_inicio
+    si transcurrido > TIMEOUT_INFERENCIA:
+        retornar verdadero
+    retornar falso
+
+// Stub de timestamp actual.
+// cumple Manual 2 §12: toda función pública tiene contrato
+// cumple Manual 7 §4.3 (ME r244): el reloj que mide el timeout de la inferencia
+// tiene que existir en el target Windows. Antes de r244 el bloque emitia C
+// solo-POSIX (`clock_gettime(CLOCK_MONOTONIC)`) sin guarda: `synapse check`
+// pasaba (no emite C) pero cualquier programa que importara este modulo fallaba
+// al compilar en Windows (`'CLOCK_MONOTONIC' undeclared`).
+funcion ahora_ms_router() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0 // cumple Manual 2 §5.1
+    let _ms = 0
+    inseguro:
+        asm("#ifdef _WIN32")
+        asm("unsigned long long __stdcall GetTickCount64(void);")
+        asm("_ms = (int64_t)GetTickCount64();")
+        asm("#else")
+        asm("struct timespec _ts; clock_gettime(CLOCK_MONOTONIC, &_ts); _ms = (int64_t)_ts.tv_sec * 1000 + _ts.tv_nsec / 1000000;")
+        asm("#endif")
+    retornar _ms
+
+// ============================================================
+// R5: Revisión inline con archivo+línea+diff (M7 §4.2)
+// ============================================================
+// cumple Manual 7 §4.2: "la respuesta del LSP incluye archivo+linea+diff
+// para que la revision cite codigo exacto"
+// Origen: Kilo inline code review (comentar por linea, devolver diff).
+
+estructura RevisionResultado:
+    archivo: texto
+    linea: entero
+    columna: entero
+    mensaje_error: texto
+    sugerencia: texto
+
+// Analiza un error de compilación y retorna la ubicación exacta + sugerencia.
+// cumple Manual 7 §4.2: "El LSP es el responsable de orquestar el bucle de validación"
+funcion revisar_codigo_inline(codigo: texto, salida_error: texto) -> RevisionResultado:
+    requiere:
+        longitud(codigo) > 0
+    garantiza:
+        longitud(_resultado_.mensaje_error) >= 0 // cumple Manual 2 §5.1
+    rev = RevisionResultado()
+    rev.archivo = "generado.syn"
+    rev.linea = 0
+    rev.columna = 0
+    rev.mensaje_error = salida_error
+    rev.sugerencia = "Revisa el código generado y corrige el error."
+    // Parsear línea del error si viene en formato "linea:columna:mensaje"
+    let pos_dp1 = strstr_f(salida_error, ":")
+    si pos_dp1 > 0:
+        let pos_dp2 = strstr_f(subcadena(salida_error, pos_dp1 + 1, longitud(salida_error) - pos_dp1 - 1), ":")
+        si pos_dp2 > 0:
+            num_linea = subcadena(salida_error, 0, pos_dp1)
+            rev.linea = atoi_f(num_linea)
+            rev.sugerencia = "Corrige el error en línea "
+            rev.sugerencia = concat(rev.sugerencia, num_linea)
+            rev.sugerencia = concat(rev.sugerencia, ": ")
+            rev.sugerencia = concat(rev.sugerencia, subcadena(salida_error, pos_dp1 + pos_dp2 + 2, longitud(salida_error) - pos_dp1 - pos_dp2 - 2))
+    retornar rev

@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "d74d14020e758c25",
+ "expediente": "docs/alineacion/f32_3_memoria_cifrada.md",
+ "fecha": "2026-09-16",
+ "archivos": [
+  "opensyn/memoria_persistente_cifrada.syn"
+ ],
+ "oraculos": {
+  "tests/opensyn/test_memoria_cifrada.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

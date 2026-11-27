@@ -1,0 +1,19 @@
+{
+ "cambio_hash": "20a8383912710944",
+ "expediente": "docs/alineacion/f31_deficiencias.md",
+ "fecha": "2026-09-14",
+ "archivos": [
+  "axon/axon_rt.c",
+  "axon/axon_rt.h",
+  "nucleo/principal.syn",
+  "runtime/core/axon.c",
+  "runtime/core/sistema.c"
+ ],
+ "oraculos": {
+  "auditoria/verificar_alineacion.py": true,
+  "tests/axon/test_workspace.py": true,
+  "tests/integration/test_reports.py": true
+ },
+ "citas_muertas_repo": 70,
+ "modo": "block"
+}

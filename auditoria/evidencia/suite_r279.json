@@ -1,0 +1,39 @@
+{
+  "recogidos": {
+    "unit": 517,
+    "integration": 1669,
+    "auditoria": 314,
+    "opensyn": 138,
+    "syquex": 282,
+    "e2e": 8,
+    "security": 59,
+    "fuzz": 60,
+    "stress": 1,
+    "nucleo": 30
+  },
+  "skips_declarados": {
+    "unit": 7,
+    "integration": 199,
+    "auditoria": 19,
+    "opensyn": 1,
+    "syquex": 11,
+    "e2e": 1,
+    "security": 0,
+    "fuzz": 5,
+    "stress": 0,
+    "nucleo": 0
+  },
+  "medido": {
+    "e2e": {
+      "passed": 8,
+      "skipped": 0,
+      "failed": 0,
+      "errors": 0,
+      "duracion_s": 271.98,
+      "rc": 0,
+      "resumen": "8 passed in 270.75s (0:04:30)"
+    }
+  },
+  "brechas": [],
+  "resultado": "PASS"
+}

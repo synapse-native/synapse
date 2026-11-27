@@ -1,26 +1,36 @@
 #lang: es
-
+// cumple Manual 2 §5.1
+// cumple Manual 9 §6.2: buffer de emision C de 4 MB para el unity build del bootstrap S2 (antes 1 MB truncaba `int main`)
 // ============================================================
-// nodos_flujo.syn  —  Visitantes de control de flujo (OO style)
+// nodos_flujo.syn - Visitantes de control de flujo (OO style)
+// cumple Manual 2 §1.3: documentación de los visitantes en comentarios de línea // (paridad S1 emit_control.py)
 // ============================================================
 // Visitantes para nodos del AST usando formato OO (struct Nodo*).
 //
 // DISENO:
-//   - Cada visitante emite gen_emitir_traza() antes de emitir
-//     codigo, para trazabilidad en el archivo C generado.
-//   - Los bloques ( ) se emiten exclusivamente mediante
-//     gen_abrir_bloque_c() y gen_cerrar_bloque_c() de emision_c.
-//     Prohibida la emision manual de llaves con strings crudos.
-//   - El dispatcher (gen_visitar_stmt_generico) tiene una rama
-//     de fail-fast para tipos de nodo no reconocidos.
+// - Cada visitante emite gen_emitir_traza() antes de emitir
+// codigo, para trazabilidad en el archivo C generado.
+// - Los bloques ( ) se emiten exclusivamente mediante
+// gen_abrir_bloque_c() y gen_cerrar_bloque_c() de emision_c.
+// Prohibida la emision manual de llaves con strings crudos.
+// - El dispatcher (gen_visitar_stmt_generico) tiene una rama
+// de fail-fast para tipos de nodo no reconocidos.
 // ============================================================
 
 // NOTA: _oo_expr_a_c se encuentra en expr_eval.syn (submodulo separado)
 
 // ----------------------------------------------------------
-// gen_visitar_si  (INSTRUMENTADO con PGO via asm())
+// gen_visitar_si (INSTRUMENTADO con PGO via asm())
 // ----------------------------------------------------------
 funcion gen_visitar_si(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct SentenciaSi* _s = (struct SentenciaSi*)stmt;")
         asm("if (!_s) return;")
@@ -35,6 +45,9 @@ funcion gen_visitar_si(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("strcat(_buf, \")\");")
         asm("gen_emitir_str(est, _buf);")
         asm("gen_abrir_bloque_c(est);")
+        // F17: PGO — incremento de contador en frontera if-true
+        pgo_emitir_incremento_bb(est)
+        cov_emitir_sonda(est) // cumple Manual 8 §4.2 (ME coverage_aristas): sonda paridad S1; OFF no emite (cumple Manual 1 §6)
         asm("// Visit if-body via dispatcher")
         asm("{")
         asm("    struct ListaNodo* _ic = _s->cuerpo;")
@@ -48,6 +61,9 @@ funcion gen_visitar_si(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("if (_s->cuerpo_sino) {")
         asm("    gen_emitir_str(est, \"    else\");")
         asm("    gen_abrir_bloque_c(est);")
+        // F17: PGO — incremento de contador en frontera if-else
+        pgo_emitir_incremento_bb(est)
+        cov_emitir_sonda(est) // cumple Manual 8 §4.2 (ME coverage_aristas): sonda paridad S1; OFF no emite (cumple Manual 1 §6)
         asm("    struct ListaNodo* _ec = _s->cuerpo_sino;")
         asm("    while (_ec) {")
         asm("        struct Nodo* _es = _ec->cabeza;")
@@ -58,9 +74,17 @@ funcion gen_visitar_si(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("}")
 
 // ----------------------------------------------------------
-// gen_visitar_mientras  (INSTRUMENTADO con PGO via asm())
+// gen_visitar_mientras (INSTRUMENTADO con PGO via asm())
 // ----------------------------------------------------------
 funcion gen_visitar_mientras(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct SentenciaMientras* _w = (struct SentenciaMientras*)stmt;")
         asm("if (!_w) return;")
@@ -75,6 +99,9 @@ funcion gen_visitar_mientras(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("strcat(_buf, \")\");")
         asm("gen_emitir_str(est, _buf);")
         asm("gen_abrir_bloque_c(est);")
+        // F17: PGO — incremento de contador en frontera while-body
+        pgo_emitir_incremento_bb(est)
+        cov_emitir_sonda(est) // cumple Manual 8 §4.2 (ME coverage_aristas): sonda paridad S1; OFF no emite (cumple Manual 1 §6)
         asm("// While-body via dispatcher")
         asm("{")
         asm("    struct ListaNodo* _wc = _w->cuerpo;")
@@ -87,27 +114,251 @@ funcion gen_visitar_mientras(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("gen_cerrar_bloque_c(est);")
 
 // ----------------------------------------------------------
-// gen_visitar_para  (INSTRUMENTADO con PGO via asm())
+// gen_visitar_para (INSTRUMENTADO con PGO via asm())
 // ----------------------------------------------------------
 funcion gen_visitar_para(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct SentenciaPara* _p = (struct SentenciaPara*)stmt;")
         asm("if (!_p) return;")
         asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"SentenciaPara\");")
-        asm("char _buf[4096], _init[512], _cond[512], _step[512];")
-        asm("_init[0] = _cond[0] = _step[0] = 0;")
+        asm("char _buf[4096], _init[512], _cond[512], _step[512], _vtb[128];")
+        asm("_init[0] = _cond[0] = _step[0] = 0; _vtb[0] = 0;")
+        // cumple Manual 3 §3 (r153 R2n): bucle_para_rango — `para x en expr:`
+        // (puente: SentenciaPara con inicializacion=0, iterable en condicion,
+        // variable en nombre). Emisión paritaria con emit_control.py
+        // _emitir_para_en: índice + _syn_lista_obtener + desencajonado del slot.
+        asm("if (!_p->inicializacion && _p->condicion) {")
+        asm("    extern int64_t _syn_nativo_expr_tipo_c(void* n, void* out);")
+        asm("    extern int64_t _syn_tipo_escalar(void* t);")
+        asm("    char _fe_tipo[128]; _fe_tipo[0] = 0;")
+        asm("    // 33.4b: limpieza diferida del para-en Mapa (RAII al CERRAR el bloque, M2 §9.1)")
+        asm("    char _fe_defer[4][64]; int _fe_ndefer = 0;")
+        asm("    _syn_nativo_expr_tipo_c((void*)_p->condicion, (void*)_fe_tipo);")
+        asm("    const char* _fevar = (_p->nombre.datos && _p->nombre.datos[0]) ? _p->nombre.datos : \"_fe_v\";")
+        asm("    char _feiter[512]; _feiter[0] = 0;")
+        asm("    _oo_expr_a_c(est, _p->condicion, _feiter, 512);")
+        asm("    // r153 (H-R153-6): si el inferidor no resolvio el tipo C de la")
+        asm("    // expresion iterable y es una llamada `Lista<T>()`/`Mapa<K,V>()`,")
+        asm("    // usar el nombre Synapse del nodo (el span 'Lista<T>') para la")
+        asm("    // deteccion de la coleccion — paridad emit_control.py tipo_de_expr.")
+        asm("    // (NOTA: condicion->tipo.datos es el tipo de NODO del puente, ej")
+        asm("    //  'LlamadaFuncion'/'Identificador', NO el tipo Synapse.)")
+        asm("    if (!_fe_tipo[0] && _p->condicion->tipo.datos && strcmp(_p->condicion->tipo.datos, \"LlamadaFuncion\") == 0 && ((struct LlamadaFuncion*)_p->condicion)->nombre.datos) { strncpy(_fe_tipo, ((struct LlamadaFuncion*)_p->condicion)->nombre.datos, 127); _fe_tipo[127] = 0; }")
+        asm("    // r153 (H-R153-16): iterable que llega como handle void* — una llamada a")
+        asm("    // funcion importada con retorno Lista<T> (ej. lint_archivo) NO se")
+        asm("    // distingue de una cadena si el inferidor no ve el tipo Synapse de la")
+        asm("    // firma; con _fe_tipo 'void*' o vacio caia en la rama texto (.datos).")
+        asm("    // La variable de bucle declarada con coleccion explicita en la misma")
+        asm("    // funcion (ej. `let suites = Lista<...>()`) ya registro el span")
+        asm("    // 'Lista<...>' en _G_fn_var_tipos; una llamada/identificador resoluble a")
+        asm("    // void* de coleccion se despacha aqui por el nombre registrado.")
+        asm("    if ((_fe_tipo[0] == 0 || strcmp(_fe_tipo, \"void*\") == 0)) {")
+        asm("        extern char _G_fn_vars[2048][64]; extern char _G_fn_var_tipos[2048][64]; extern int _G_fn_vars_count;")
+        asm("        const char* _fevname = 0;")
+        asm("        if (_p->condicion->tipo.datos && strcmp(_p->condicion->tipo.datos, \"Identificador\") == 0) {")
+        asm("            struct Identificador* _feid = (struct Identificador*)_p->condicion;")
+        asm("            if (_feid->nombre.datos) _fevname = _feid->nombre.datos;")
+        asm("        }")
+        asm("        if (_fevname) {")
+        asm("            for (int _fev = 0; _fev < _G_fn_vars_count; _fev++) {")
+        asm("                if (strcmp(_G_fn_vars[_fev], _fevname) == 0 && (strncmp(_G_fn_var_tipos[_fev], \"Lista<\", 6) == 0 || strncmp(_G_fn_var_tipos[_fev], \"Mapa<\", 5) == 0)) { strncpy(_fe_tipo, _G_fn_var_tipos[_fev], 127); _fe_tipo[127] = 0; break; }")
+        asm("            }")
+        asm("        }")
+        asm("        // r153 (H-R153-24): paridad S1 — el iterable puede llegar envuelto")
+        asm("        // (ruta unity: la llamada/cadena postfija se mapea a un nodo compuesto)")
+        asm("        const char* _fevname2 = 0;")
+        asm("        if (!_fevname && _p->condicion->tipo.datos && strcmp(_p->condicion->tipo.datos, \"ExprAccesoCampo\") == 0) {")
+        asm("            struct ExprAccesoCampo* _few = (struct ExprAccesoCampo*)_p->condicion;")
+        asm("            if (_few->objeto && _few->objeto->tipo.datos && strcmp(_few->objeto->tipo.datos, \"Identificador\") == 0) {")
+        asm("                struct Identificador* _fewi = (struct Identificador*)_few->objeto;")
+        asm("                if (_fewi->nombre.datos) _fevname2 = _fewi->nombre.datos;")
+        asm("            }")
+        asm("        }")
+        asm("        if (_fevname2) {")
+        asm("            for (int _fev3 = 0; _fev3 < _G_fn_vars_count; _fev3++) {")
+        asm("                if (strcmp(_G_fn_vars[_fev3], _fevname2) == 0 && (strncmp(_G_fn_var_tipos[_fev3], \"Lista<\", 6) == 0 || strncmp(_G_fn_var_tipos[_fev3], \"Mapa<\", 5) == 0)) { strncpy(_fe_tipo, _G_fn_var_tipos[_fev3], 127); _fe_tipo[127] = 0; break; }")
+        asm("            }")
+        asm("        }")
+        asm("        // r153 (H-R153-22): llamada a funcion importada con retorno colección")
+        asm("        // (agrupar_por_suite) — el span crudo `Lista<T>` vive en el registro")
+        asm("        // de retornos (_G_native_func_returns, offsets +1024); con él el for-en")
+        asm("        // despacha la caminata del runtime y el elemento toma su tipo real.")
+        asm("        if ((_fe_tipo[0] == 0 || strcmp(_fe_tipo, \"void*\") == 0) && _p->condicion->tipo.datos && strcmp(_p->condicion->tipo.datos, \"LlamadaFuncion\") == 0) {")
+        asm("            struct LlamadaFuncion* _felf = (struct LlamadaFuncion*)_p->condicion;")
+        asm("            if (_felf->nombre.datos) {")
+        asm("                extern char _G_native_func_returns[2048][64]; extern int _G_native_func_returns_count;")
+        asm("                char _fesp[64]; _fesp[0] = 0;")
+        asm("                for (int _fes = 0; _fes < _G_native_func_returns_count; _fes++) {")
+        asm("                    if (strcmp(_G_native_func_returns[_fes], _felf->nombre.datos) == 0) { strncpy(_fesp, _G_native_func_returns[_fes + 1024], 63); _fesp[63] = 0; break; }")
+        asm("                }")
+        asm("                if (_fesp[0] && (strncmp(_fesp, \"Lista<\", 6) == 0 || strncmp(_fesp, \"Mapa<\", 5) == 0)) { strncpy(_fe_tipo, _fesp, 127); _fe_tipo[127] = 0; }")
+        asm("            }")
+        asm("        }")
+        asm("        // r153 (H-R153-23): for-en anidado sobre CAMPO de coleccion")
+        asm("        // (`para test en suite.tests`) — cumple Manual 3 §3: el iterable es")
+        asm("        // cualquier expresion que produce lista (M3 §3 L133). Base")
+        asm("        // Identificador con tipo registrado -> _G_native_campo_tipo -> span")
+        asm("        // crudo Lista<T>/Mapa<K,V>.")
+        asm("        if ((_fe_tipo[0] == 0 || strcmp(_fe_tipo, \"void*\") == 0) && _p->condicion->tipo.datos && strcmp(_p->condicion->tipo.datos, \"ExprAccesoCampo\") == 0) {")
+        asm("            struct ExprAccesoCampo* _feeac = (struct ExprAccesoCampo*)_p->condicion;")
+        asm("            if (_feeac->objeto && _feeac->objeto->tipo.datos && strcmp(_feeac->objeto->tipo.datos, \"Identificador\") == 0) {")
+        asm("                struct Identificador* _febid = (struct Identificador*)_feeac->objeto;")
+        asm("                if (_febid->nombre.datos && _feeac->nombre_campo.datos) {")
+        asm("                    char _febt[64]; _febt[0] = 0;")
+        asm("                    for (int _fev2 = 0; _fev2 < _G_fn_vars_count; _fev2++) {")
+        asm("                        if (strcmp(_G_fn_vars[_fev2], _febid->nombre.datos) == 0) { strncpy(_febt, _G_fn_var_tipos[_fev2], 63); _febt[63] = 0; break; }")
+        asm("                    }")
+        asm("                    if (strncmp(_febt, \"struct \", 7) == 0) { memmove(_febt, _febt + 7, strlen(_febt + 7) + 1); }")
+        asm("                    for (int _fecut = 0; _fecut < 64 && _febt[_fecut]; _fecut++) { if (_febt[_fecut] == '<') { _febt[_fecut] = 0; break; } }")
+        asm("                    if (_febt[0]) {")
+        asm("                        extern int _G_native_campo_tipo(const char*, const char*, char*);")
+        asm("                        char _fefld[64]; _fefld[0] = 0;")
+        asm("                        if (_G_native_campo_tipo(_febt, _feeac->nombre_campo.datos, _fefld) && (strncmp(_fefld, \"Lista<\", 6) == 0 || strncmp(_fefld, \"Mapa<\", 5) == 0)) {")
+        asm("                            strncpy(_fe_tipo, _fefld, 127); _fe_tipo[127] = 0;")
+        asm("                        }")
+        asm("                    }")
+        asm("                }")
+        asm("            }")
+        asm("        }")
+        asm("    }")
+        asm("    char _feelemn[120]; _feelemn[0] = 0;  // r153 (H-R153-19): visible para el registro de la var del bucle")
+        asm("    if (_fe_tipo[0] == 'L' && strncmp(_fe_tipo, \"Lista<\", 6) == 0) {")
+        asm("        // Lista<T>: caminata del runtime de colecciones (H-R153-2)")
+        asm("        char _fel[64]; snprintf(_fel, 64, \"_fe_l_%p\", (void*)_p);")
+        asm("        char _fei[64]; snprintf(_fei, 64, \"_fe_i_%p\", (void*)_p);")
+        asm("        char _feh0[640]; snprintf(_feh0, 640, \"    void* %s = (void*)(%s);\", _fel, _feiter); gen_emitir_str(est, _feh0);")
+        asm("        // r153 (H-R153-7): el header SIN llave — gen_abrir_bloque_c ya la")
+        asm("        // emite (antes: '{{' en el C y desbalance al cerrar con un solo '}'")
+        asm("        char _feh1[640]; snprintf(_feh1, 640, \"    for (int64_t %s = 0; %s < _syn_lista_longitud(%s); %s++)\", _fei, _fei, _fel, _fei); gen_emitir_str(est, _feh1);")
+        asm("        gen_abrir_bloque_c(est);")
+        asm("        char _fecom[128]; snprintf(_fecom, 128, \"_fe_c_%p\", (void*)_p);")
+        asm("        char _fecom2[160]; snprintf(_fecom2, 160, \"    int64_t %s = _syn_lista_obtener(%s, (int)%s);\", _fecom, _fel, _fei); gen_emitir_str(est, _fecom2);")
+        asm("        // elemento: escalar por valor; struct/texto por dirección (slots int64)")
+        asm("        const char* _feelem = _fe_tipo + 6;")
+        asm("        size_t _feel = strlen(_feelem);")
+        asm("        if (_feel > 0 && _feelem[_feel-1] == '>') _feel--;")
+        asm("        memcpy(_feelemn, _feelem, _feel < 119 ? _feel : 119); _feelemn[_feel < 119 ? _feel : 119] = 0;")
+        asm("        // r153 (H-R153-8): elemento Synapse -> C (paridad traducir_tipo_c).")
+        asm("        // La condicion de escalar se calcula ANTES del mapeo (_syn_tipo_")
+        asm("        // escalar no reconoce los nombres C int64_t/double).")
+        asm("        int _feesc = _syn_tipo_escalar((void*)_feelemn);")
+        asm("        if (strcmp(_feelemn, \"texto\") == 0 || strcmp(_feelemn, \"cadena\") == 0) strcpy(_feelemn, \"CadenaSegura\");")
+        asm("        else if (strcmp(_feelemn, \"entero\") == 0) strcpy(_feelemn, \"int64_t\");")
+        asm("        else if (strcmp(_feelemn, \"decimal\") == 0) strcpy(_feelemn, \"double\");")
+        asm("        else if (strcmp(_feelemn, \"booleano\") == 0) strcpy(_feelemn, \"int\");")
+        asm("        else if (strcmp(_feelemn, \"puntero\") == 0) strcpy(_feelemn, \"void*\");")
+        // r153 (H-R153-18): snprintf con origen==destino solapados es UB (puede
+        // producir "struct struct", observado en synapse_unity.c:351). memmove
+        // solapado seguro: "struct " + elemento en _feelemn[120] (7+112+1 <= 120).
+        asm("        else if (!_feesc) { memmove(_feelemn + 7, _feelemn, (_feel < 112) ? _feel : 112); memcpy(_feelemn, \"struct \", 7); _feelemn[7 + ((_feel < 112) ? _feel : 112)] = 0; }")
+        asm("        if (_feesc) {")
+        asm("            char _feh2[320]; snprintf(_feh2, 320, \"    %s %s = (%s)%s;\", _feelemn, _fevar, _feelemn, _fecom); gen_emitir_str(est, _feh2);")
+        asm("        } else {")
+        asm("            char _feh3[320]; snprintf(_feh3, 320, \"    %s %s = *(%s*)(intptr_t)%s;\", _feelemn, _fevar, _feelemn, _fecom); gen_emitir_str(est, _feh3);")
+        asm("        }")
+        asm("    } else if (_fe_tipo[0] == 'M' && strncmp(_fe_tipo, \"Mapa<\", 5) == 0) {")
+        asm("        // cumple Manual 2 §4.3 (33.4b): `para k en mapa` — k itera las")
+        asm("        // CLAVES (M3 §5.2 keys()/iter(); D-33.4b-1: valor via m[k], 33.4a).")
+        asm("        // _syn_mapa_claves retorna una lista con claves ENCAJONADAS como")
+        asm("        // CadenaSegura* (runtime/core/mapa.c 33.4b) — el desencajonado es")
+        asm("        // el deref estándar de Lista<texto>. Paridad emit_control.py.")
+        asm("        char _fem[64]; snprintf(_fem, 64, \"_fe_m_%p\", (void*)_p);")
+        asm("        char _femi[64]; snprintf(_femi, 64, \"_fe_i_%p\", (void*)_p);")
+        asm("        char _femh0[640]; snprintf(_femh0, 640, \"    void* %s = _syn_mapa_claves((void*)(%s));\", _fem, _feiter); gen_emitir_str(est, _femh0);")
+        asm("        char _femh1[640]; snprintf(_femh1, 640, \"    for (int64_t %s = 0; %s < _syn_lista_longitud(%s); %s++)\", _femi, _femi, _fem, _femi); gen_emitir_str(est, _femh1);")
+        asm("        gen_abrir_bloque_c(est);")
+        asm("        char _femcom[128]; snprintf(_femcom, 128, \"_fe_mc_%p\", (void*)_p);")
+        asm("        char _femcom2[160]; snprintf(_femcom2, 160, \"    int64_t %s = _syn_lista_obtener(%s, (int)%s);\", _femcom, _fem, _femi); gen_emitir_str(est, _femcom2);")
+        asm("        char _femh2[320]; snprintf(_femh2, 320, \"    CadenaSegura %s = *(CadenaSegura*)(intptr_t)%s;\", _fevar, _femcom); gen_emitir_str(est, _femh2);")
+        asm("        // 33.4b: liberar la lista de claves al CERRAR el bloque (fuera del bucle)")
+        asm("        if (_fe_ndefer < 4) { strncpy(_fe_defer[_fe_ndefer], _fem, 63); _fe_defer[_fe_ndefer][63] = 0; _fe_ndefer++; }")
+        asm("        // registrar la var del bucle con tipo texto (paridad rama Lista)")
+        asm("        strcpy(_feelemn, \"CadenaSegura\");")
+        asm("    } else {")
+        asm("        // texto: iterar bytes (paridad emit_control.py)")
+        asm("        char _fes[64]; snprintf(_fes, 64, \"_fe_s_%p\", (void*)_p);")
+        asm("        char _fei2[64]; snprintf(_fei2, 64, \"_fe_i_%p\", (void*)_p);")
+        asm("        char _feh4[640]; snprintf(_feh4, 640, \"    CadenaSegura %s = %s;\", _fes, _feiter); gen_emitir_str(est, _feh4);")
+        asm("        // r153 (H-R153-7): idem rama Lista — header SIN llave")
+        asm("        char _feh5[640]; snprintf(_feh5, 640, \"    for (int64_t %s = 0; %s < %s.longitud; %s++)\", _fei2, _fei2, _fes, _fei2); gen_emitir_str(est, _feh5);")
+        asm("        gen_abrir_bloque_c(est);")
+        asm("        char _feh6[320]; snprintf(_feh6, 320, \"    int64_t %s = (int64_t)(unsigned char)%s.datos[%s];\", _fevar, _fes, _fei2); gen_emitir_str(est, _feh6);")
+        asm("    }")
+        asm("    // registrar la variable de bucle (patron R28/R30)")
+        asm("    extern char _G_fn_vars[2048][64]; extern char _G_fn_var_tipos[2048][64]; extern int _G_fn_vars_count;")
+        asm("    int _pvi2 = -1;")
+        asm("    for (int _v2 = 0; _v2 < _G_fn_vars_count; _v2++) { if (strcmp(_G_fn_vars[_v2], _fevar) == 0) { _pvi2 = _v2; break; } }")
+        asm("    if (_pvi2 < 0 && _G_fn_vars_count < 2048) { strncpy(_G_fn_vars[_G_fn_vars_count], _fevar, 63); _G_fn_vars[_G_fn_vars_count][63] = 0; _pvi2 = _G_fn_vars_count++; }")
+        asm("    // r153 (H-R153-19): la var del bucle registra el tipo C REAL del")
+        asm("    // elemento (struct ResultadoTest para Lista<ResultadoTest>) — antes")
+        asm("    // 'puntero' generico, y test.campo no resolvia el tipo del campo")
+        asm("    // (texto) -> entero_a_texto(campo)/== sin str_eq -> gcc rc=1.")
+        asm("    // 33.4b: Mapa también registra el tipo real del elemento (claves = CadenaSegura)")
+        asm("    const char* _fetv = ((_fe_tipo[0] == 'L' || _fe_tipo[0] == 'M') && _feelemn[0]) ? _feelemn : \"entero\";")
+        asm("    if (_pvi2 >= 0) { int _fvl = (int)strlen(_fetv); int _fvm = (_fvl < 63) ? _fvl : 63; memcpy(_G_fn_var_tipos[_pvi2], _fetv, _fvm); _G_fn_var_tipos[_pvi2][_fvm] = 0; }")
+        asm("    // cuerpo via dispatcher + cierre")
+        asm("    {")
+        asm("        struct ListaNodo* _fec = (struct ListaNodo*)_p->cuerpo;")
+        asm("        while (_fec) {")
+        asm("            struct Nodo* _fes2 = _fec->cabeza;")
+        asm("            if (_fes2) { gen_visitar_stmt_generico(est, _fes2); }")
+        asm("            _fec = _fec->cola;")
+        asm("        }")
+        asm("    }")
+        asm("    // 33.4b: limpieza RAII diferida (se emite DESPUES del cierre del for)")
+        asm("    gen_cerrar_bloque_c(est);")
+        asm("    for (int _fdl = 0; _fdl < _fe_ndefer; _fdl++) {")
+        asm("        char _fdlib[128]; snprintf(_fdlib, 128, \"    _syn_lista_liberar(%s);\", _fe_defer[_fdl]); gen_emitir_str(est, _fdlib);")
+        asm("    }")
+        asm("    return;")
+        asm("}")
+        asm("// R30 (Manual 2 §2.2 L108): `para i = 0 mientras i < 3:` declara la")
+        asm("// variable de bucle en el C (`for (int64_t i = 0; ...)`) — antes se")
+        asm("// emitia `for (0LL; ...)` y gcc fallaba con 'i undeclared' (H-R29-2).")
+        asm("const char* _pvar = (_p->nombre.datos && _p->nombre.datos[0]) ? _p->nombre.datos : 0;")
         asm("// Evaluate init, cond, step expressions")
         asm("if (_p->inicializacion) { _oo_expr_a_c(est, _p->inicializacion, _init, 512); }")
         asm("if (_p->condicion) { _oo_expr_a_c(est, _p->condicion, _cond, 512); }")
         asm("if (_p->incremento) { _oo_expr_a_c(est, _p->incremento, _step, 512); }")
-        asm("// Emit: for (init; cond; step) {")
-        asm("snprintf(_buf, 4096, \"    for (%s; %s; %s)\", _init, _cond, _step);")
+        asm("// Tipo C de la variable: inferido de la expresion de inicializacion")
+        asm("// (paridad _syn_nativo_expr_tipo_c generator.syn L3436 / R20-R25-R27).")
+        asm("extern int64_t _syn_nativo_expr_tipo_c(void* n, void* out);")
+        asm("if (_pvar && _p->inicializacion) { _syn_nativo_expr_tipo_c((void*)_p->inicializacion, (void*)_vtb); }")
+        asm("if (!_vtb[0]) strcpy(_vtb, \"int64_t\");")
+        asm("// R30: registrar la variable de bucle en _G_fn_vars/_G_fn_var_tipos")
+        asm("// (patron R28 del let) para el binding del coincidir y el hoisting.")
+        asm("extern char _G_fn_vars[2048][64]; extern char _G_fn_var_tipos[2048][64]; extern int _G_fn_vars_count;")
+        asm("if (_pvar) {")
+        asm("    int _pvi = -1;")
+        asm("    for (int _v = 0; _v < _G_fn_vars_count; _v++) { if (strcmp(_G_fn_vars[_v], _pvar) == 0) { _pvi = _v; break; } }")
+        asm("    if (_pvi < 0 && _G_fn_vars_count < 2048) { strncpy(_G_fn_vars[_G_fn_vars_count], _pvar, 63); _G_fn_vars[_G_fn_vars_count][63] = 0; _pvi = _G_fn_vars_count++; }")
+        asm("    if (_pvi >= 0) { int _pvlen = (int)strlen(_vtb); int _pvmax = (_pvlen < 63) ? _pvlen : 63; memcpy(_G_fn_var_tipos[_pvi], _vtb, _pvmax); _G_fn_var_tipos[_pvi][_pvmax] = 0; }")
+        asm("}")
+        asm("// Emit: for (tipo var = init; cond; step) {")
+        asm("if (_pvar) { snprintf(_buf, 4096, \"    for (%s %s = %s; %s; %s)\", _vtb, _pvar, _init, _cond, _step); }")
+        asm("else { snprintf(_buf, 4096, \"    for (%s; %s; %s)\", _init, _cond, _step); }")
         asm("gen_emitir_str(est, _buf);")
         asm("gen_abrir_bloque_c(est);")
-        asm("// For-body via dispatcher")
+        // F17: PGO — incremento de contador en frontera for-body
+        pgo_emitir_incremento_bb(est)
+        cov_emitir_sonda(est) // cumple Manual 8 §4.2 (ME coverage_aristas): sonda paridad S1; OFF no emite (cumple Manual 1 §6)
+        asm("// For-body via dispatcher (R30: ListaNodo, paridad si/mientras — antes")
+        asm("// solo se visitaba la PRIMERA sentencia del cuerpo).")
         asm("{")
-        asm("    struct Nodo* _fc = _p->cuerpo;")
-        asm("    if (_fc) { gen_visitar_stmt_generico(est, _fc); }")
+        asm("    struct ListaNodo* _fc = (struct ListaNodo*)_p->cuerpo;")
+        asm("    while (_fc) {")
+        asm("        struct Nodo* _fs = _fc->cabeza;")
+        asm("        if (_fs) { gen_visitar_stmt_generico(est, _fs); }")
+        asm("        _fc = _fc->cola;")
+        asm("    }")
         asm("}")
         asm("gen_cerrar_bloque_c(est);")
 
@@ -115,23 +366,74 @@ funcion gen_visitar_para(est: GeneradorCEst, stmt: puntero) -> nulo:
 // gen_visitar_retornar
 // ----------------------------------------------------------
 funcion gen_visitar_retornar(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct SentenciaRetornar* _rt = (struct SentenciaRetornar*)stmt;")
         asm("if (!_rt) return;")
         asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"SentenciaRetornar\");")
         asm("char _buf[4096], _buf2[4096];")
         asm("_buf[0] = 0;")
-        asm("strcat(_buf, \"    return \");")
         asm("_buf2[0] = 0;")
         asm("if (_rt->expr) { _oo_expr_a_c(est, _rt->expr, _buf2, 4096); }")
+        // F5-1 (Manual 2 §5.1): garantiza se evalua inmediatamente antes de cada
+        // `retornar`, con _resultado_ conteniendo el valor a retornar (paridad
+        // emit_declarations.py visitar_retornar L563-603). FIX: parser.syn ahora
+        // resetea contr_primera_garantiza entre funciones, eliminando el AST leak.
+        asm("extern void* _G_fn_garantizas_actuales; extern char _G_fn_ret_tipo_c[64];")
+        asm("struct ListaNodo* _gz = (struct ListaNodo*)_G_fn_garantizas_actuales;")
+        asm("if (_gz) {")
+        asm("    if (_rt->expr) {")
+        asm("        char _rct[64]; strncpy(_rct, _G_fn_ret_tipo_c, 63); _rct[63] = 0;")
+        asm("        snprintf(_buf, 4096, \"    %s _resultado_ = %s;\", _rct, _buf2);")
+        asm("        gen_emitir_str(est, _buf);")
+        asm("    }")
+        asm("    { struct ListaNodo* _gi = _gz;")
+        asm("      while (_gi) {")
+        asm("        struct Nodo* _gin = (struct Nodo*)_gi->cabeza;")
+        asm("        if (_gin) {")
+        asm("            char _gib[4096]; _gib[0] = 0;")
+        asm("            _oo_expr_a_c(est, _gin, _gib, 4096);")
+        // cumple Manual 2 §5.1 (ME r192_deuda_barrido): garantiza se evalua en
+        // cada retornar, con _resultado_ ya asignado (texto M2 §5.1/§5.2; la
+        // deshabilitación ME-27_T3 no fue ratificada D-* — brecha corregida).
+        asm("            if (_gib[0]) {")
+        asm("                char _gil[4200];")
+        asm("                snprintf(_gil, 4200, \"    assert_contrato((%s), \\\"Fallo en contrato: garantiza\\\");\", _gib); gen_emitir_str(est, _gil);")
+        asm("            }")
+        asm("        }")
+        asm("        _gi = _gi->cola;")
+        asm("      }")
+        asm("    }")
+        asm("    if (_rt->expr) { gen_emitir_str(est, \"    return _resultado_;\"); }")
+        asm("    else { gen_emitir_str(est, \"    return;\"); }")
+        asm("    return;")
+        asm("}")
+        asm("strcat(_buf, \"    return \");")
         asm("strcat(_buf, _buf2);")
         asm("strcat(_buf, \";\");")
         asm("gen_emitir_str(est, _buf);")
 
 // ----------------------------------------------------------
 // gen_visitar_declaracion
+# cumple Manual 4 5.2; Manual 4 §3.2; Manual 4 §3.3; Manual 2 §4.3; D-1.2
+// (rastrea rc/arc/débil/ texto para emitir decremento al cierre de scope)
 // ----------------------------------------------------------
 funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct DeclaracionVariable* _dv = (struct DeclaracionVariable*)stmt;")
         asm("if (!_dv) return;")
@@ -143,31 +445,221 @@ funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("char _buf[4096], _buf2[4096];")
         asm("_buf[0] = 0;")
         asm("// Manual 8 S8.2 / paridad: literal string -> CadenaSegura (no const char*)")
-        asm("const char* _var_type = \"int \";")
-        asm("if (_dv->expresion && _dv->expresion->tipo.datos && strcmp(_dv->expresion->tipo.datos, \"LiteralCadena\") == 0) {")
+        asm("// F1.2c: `let x: tipo = ...` usa la anotacion explicita (paridad visitar_declaracion);")
+        asm("// si no hay anotacion se infiere: LiteralCadena -> CadenaSegura, LiteralDecimal -> float, resto int.")
+        asm("extern char _gen_tmp_buf[4096];")
+        asm("char _var_type_buf[128]; _var_type_buf[0] = 0;")
+        asm("const char* _var_type = \"int64_t \";")
+        asm("if (_dv->tipo_param.datos && _dv->tipo_param.datos[0] != 0) {")
+        asm("    traducir_tipo_c((void*)_dv->tipo_param.datos);")
+        asm("    strncpy(_var_type_buf, _gen_tmp_buf, 127); _var_type_buf[127] = 0;")
+        asm("    strcat(_var_type_buf, \" \");")
+        asm("    _var_type = _var_type_buf;")
+        asm("} else if (_dv->expresion && _dv->expresion->tipo.datos && strcmp(_dv->expresion->tipo.datos, \"LiteralCadena\") == 0) {")
         asm("    _var_type = \"CadenaSegura \";")
+        asm("} else if (_dv->expresion && _dv->expresion->tipo.datos && strcmp(_dv->expresion->tipo.datos, \"LiteralDecimal\") == 0) {")
+        asm("    _var_type = \"double \";")
+        asm("} else if (_dv->expresion && _dv->expresion->tipo.datos && strcmp(_dv->expresion->tipo.datos, \"ExprTensor\") == 0) {")
+        asm("    // A2.3 paridad tipo_de_expr emit_expressions.py L53-54 (ExprTensor -> Tensor)")
+        asm("    _var_type = \"Tensor \";")
+        asm("} else if (_dv->expresion && _dv->expresion->tipo.datos && strcmp(_dv->expresion->tipo.datos, \"LiteralNulo\") == 0) {")
+        asm("    // A2.3 paridad tipo_de_expr emit_expressions.py L36-38 (LiteralNulo -> void*)")
+        asm("    _var_type = \"void* \";")
+        asm("} else if (_dv->expresion && _dv->expresion->tipo.datos && strcmp(_dv->expresion->tipo.datos, \"ExprIndice\") == 0) {")
+        asm("    // H-R275-1 (cumple Manual 2 §4.1): `let c = texto[i]` declara CadenaSegura")
+        asm("    // (paridad S1 tipo_de_expr); antes caia al default int64_t y el valor")
+        asm("    // texto de un caracter no cabia en el C generado.")
+        asm("    char _dit[64]; _dit[0] = 0;")
+        asm("    extern int64_t _syn_nativo_expr_tipo_c(void* n, void* out);")
+        asm("    _syn_nativo_expr_tipo_c((void*)_dv->expresion, (void*)_dit);")
+        asm("    if (_dit[0]) { snprintf(_var_type_buf, 127, \"%s \", _dit); _var_type = _var_type_buf; }")
+        asm("} else if (_dv->expresion && _dv->expresion->tipo.datos && strcmp(_dv->expresion->tipo.datos, \"ExprCrearCanal\") == 0) {")
+        asm("    // F3-6: paridad tipo_de_expr emit_expressions.py L55 (ExprCrearCanal -> CanalConcurrencia*).")
+        asm("    // Antes: default int64_t -> `int64_t ch = canal_crear(...)` (gcc incompatible types).")
+        asm("    // F3-10: registrar el elemento (Canal<T>, Manual 2 L144) para el receive `ch ->`.")
+        asm("    _var_type = \"CanalConcurrencia* \";")
+        asm("    struct ExprCrearCanal* _dcc = (struct ExprCrearCanal*)_dv->expresion;")
+        asm("    if (_dcc && _dcc->tipo_contenido.datos && _dcc->tipo_contenido.datos[0]) {")
+        asm("        traducir_tipo_c((void*)_dcc->tipo_contenido.datos);")
+        asm("        extern char _gen_tmp_buf[4096];")
+        asm("        extern void _G_native_canal_elem_set(const char*, const char*);")
+        asm("        _G_native_canal_elem_set(_dv->nombre.datos, _gen_tmp_buf);")
+        asm("    }")
+        asm("} else if (_dv->expresion && _dv->expresion->tipo.datos && strcmp(_dv->expresion->tipo.datos, \"ExprRecibirCanal\") == 0) {")
+        asm("    // F3-10: el receive hereda el tipo del elemento del canal (Manual 5 §4.2) -")
+        asm("    // paridad S1 _elemento_canal. Fallback void* (F3-6).")
+        asm("    struct ExprRecibirCanal* _drc = (struct ExprRecibirCanal*)_dv->expresion;")
+        asm("    char _drt[64]; _drt[0] = 0;")
+        asm("    if (_drc->canal && _drc->canal->tipo.datos && strcmp(_drc->canal->tipo.datos, \"Identificador\") == 0) {")
+        asm("        struct Identificador* _drid = (struct Identificador*)_drc->canal;")
+        asm("        if (_drid->nombre.datos) { extern int _G_native_canal_elem_tipo(const char*, char*); _G_native_canal_elem_tipo(_drid->nombre.datos, _drt); }")
+        asm("    }")
+        asm("    if (_drt[0]) { snprintf(_var_type_buf, 127, \"%s \", _drt); _var_type = _var_type_buf; } else { _var_type = \"void* \"; }")
+        asm("} else if (_dv->expresion && _dv->expresion->tipo.datos && strcmp(_dv->expresion->tipo.datos, \"LlamadaFuncion\") == 0) {")
+        asm("    // R25 (hallazgo R24): `let r = ok(7)` sin anotacion -> el tipo de la")
+        asm("    // variable es la INSTANCIA monomorfizada del ctor ADT (paridad S1")
+        asm("    // tipo_de_expr rama R20). Antes caia al default int64_t y el C")
+        asm("    // quedaba `int64_t r = (Resultado_entero_texto){...}` (incompatible).")
+        asm("    struct LlamadaFuncion* _lf = (struct LlamadaFuncion*)_dv->expresion;")
+        asm("    if (_lf->nombre.datos && _G_native_es_adt_ctr(_lf->nombre.datos)) {")
+        asm("        char _cad_adt[64]; _cad_adt[0] = 0; int _ctag = 0; char _cft[64]; _cft[0] = 0;")
+        asm("        _G_native_adt_ctr_info(_lf->nombre.datos, _cad_adt, &_ctag, _cft);")
+        asm("        // tipo C del primer argumento (recursivo para ctors anidados, paridad R20)")
+        asm("        char _carg_t[64]; _carg_t[0] = 0;")
+        asm("        struct ListaNodo* _carg_cur = _lf->argumentos;")
+        asm("        struct Nodo* _cargn = (_carg_cur && _carg_cur->cabeza) ? (struct Nodo*)_carg_cur->cabeza : 0;")
+        asm("        extern int64_t _syn_nativo_expr_tipo_c(void* n, void* out);")
+        asm("        if (_cargn) { _syn_nativo_expr_tipo_c((void*)_cargn, (void*)_carg_t); }")
+        asm("        extern int _G_native_adt_inst_ctr(const char* base, int tag, const char* tipo_c, char* out);")
+        asm("        extern int _G_native_adt_gen_es(const char* n);")
+        asm("        char _d2out[64]; _d2out[0] = 0;")
+        asm("        if (_G_native_adt_gen_es(_cad_adt) && _G_native_adt_inst_ctr(_cad_adt, _ctag, _carg_t, _d2out)) {")
+        asm("            strcpy(_var_type_buf, _d2out);")
+        asm("        } else {")
+        asm("            // ADT simple: el tipo C es el nombre del ADT (typedef struct X {...} X)")
+        asm("            strcpy(_var_type_buf, _cad_adt);")
+        asm("        }")
+        asm("        strcat(_var_type_buf, \" \");")
+        asm("        _var_type = _var_type_buf;")
+        asm("    } else if (_lf->nombre.datos && (strncmp(_lf->nombre.datos, \"Lista<\", 6) == 0 || strncmp(_lf->nombre.datos, \"Mapa<\", 5) == 0)) {")
+        asm("        // r153 (H-R153-9, cumple Manual 2 §4.3): `let xs = Lista<T>()` sin anotacion -> declarar")
+        asm("        // void* (paridad emision_c.syn traducir_tipo_c) pero REGISTRAR el")
+        asm("        // span Synapse ('Lista<T>') en _G_fn_var_tipos para que el for-en")
+        asm("        // y los metodos resuelvan la coleccion (H-R153-6).")
+        asm("        extern char _G_fn_vars[2048][64]; extern char _G_fn_var_tipos[2048][64]; extern int _G_fn_vars_count;")
+        asm("        int _pvl9 = -1;")
+        asm("        for (int _lv9 = 0; _lv9 < _G_fn_vars_count; _lv9++) { if (strcmp(_G_fn_vars[_lv9], _dv->nombre.datos) == 0) { _pvl9 = _lv9; break; } }")
+        asm("        if (_pvl9 < 0 && _G_fn_vars_count < 2048) { strncpy(_G_fn_vars[_G_fn_vars_count], _dv->nombre.datos, 63); _G_fn_vars[_G_fn_vars_count][63] = 0; _pvl9 = _G_fn_vars_count++; }")
+        asm("        if (_pvl9 >= 0) { int _svl9 = (int)strlen(_lf->nombre.datos); int _mv9 = (_svl9 < 63) ? _svl9 : 63; memcpy(_G_fn_var_tipos[_pvl9], _lf->nombre.datos, _mv9); _G_fn_var_tipos[_pvl9][_mv9] = 0; }")
+        asm("        _var_type = \"void* \";")
+        asm("    } else if (_lf->nombre.datos && _G_native_gen_es(_lf->nombre.datos)) {")
+        asm("        // cumple Manual 2 §2/§8.2 (33.4b): `let c = Caja(expr)` -> la")
+        asm("        // variable es la instancia monomorfizada struct Base_T (T = tipo")
+        asm("        // C del argumento, inferencia HM; paridad S1 tipo_de_expr).")
+        asm("        struct Nodo* _dgarg = (_lf->argumentos && _lf->argumentos->cabeza) ? (struct Nodo*)_lf->argumentos->cabeza : 0;")
+        asm("        char _dgt[64]; _dgt[0] = 0;")
+        asm("        extern int64_t _syn_nativo_expr_tipo_c(void* n, void* out);")
+        asm("        if (_dgarg) { _syn_nativo_expr_tipo_c((void*)_dgarg, (void*)_dgt); }")
+        asm("        const char* _dgtt = _dgt[0] ? _dgt : \"entero\";")
+        asm("        if (strncmp(_dgtt, \"struct \", 7) == 0) { _dgtt += 7; }")
+        asm("        char _dgtb[64]; _dgtb[0] = 0;")
+        asm("        int _dgtn = 0; for (const char* _dgq = _dgtt; *_dgq && _dgtn < 62; _dgq++) { if (*_dgq != ' ') _dgtb[_dgtn++] = *_dgq; }")
+        asm("        _dgtb[_dgtn] = 0;")
+        asm("        if (strcmp(_dgtb, \"int64_t\") == 0) strcpy(_dgtb, \"entero\"); else if (strcmp(_dgtb, \"double\") == 0) strcpy(_dgtb, \"decimal\"); else if (strcmp(_dgtb, \"int\") == 0) strcpy(_dgtb, \"booleano\"); else if (strcmp(_dgtb, \"char*\") == 0) strcpy(_dgtb, \"texto\"); else if (strcmp(_dgtb, \"char\") == 0) strcpy(_dgtb, \"caracter\");")
+        asm("        snprintf(_var_type_buf, 127, \"struct %s_%s \", _lf->nombre.datos, _dgtb);")
+        asm("        _var_type = _var_type_buf;")
+        asm("    } else if (_lf->nombre.datos && strncmp(_lf->nombre.datos, \"metodo:\", 7) == 0 && (strcmp(_lf->nombre.datos+7, \"claves\") == 0 || strcmp(_lf->nombre.datos+7, \"keys\") == 0 || strcmp(_lf->nombre.datos+7, \"valores\") == 0 || strcmp(_lf->nombre.datos+7, \"values\") == 0)) {")
+        asm("        // cumple Manual 3 §5.2 (33.4b): `let ks = m.claves()` -> handle de")
+        asm("        // lista (void*); paridad S1 _metodo_a_c.")
+        asm("        _var_type = \"void* \";")
+        asm("    } else if (_lf->nombre.datos && _G_native_es_estructura(_lf->nombre.datos)) {")
+        asm("        // R27: `let p = Punto()` sin anotacion -> el tipo de la variable")
+        asm("        // es `struct Punto` (paridad _syn_nativo_expr_tipo_c generator.syn")
+        asm("        // L3239 y S1 tipo_de_expr rama struct). Antes caia al default")
+        asm("        // int64_t y el C quedaba `int64_t p = (struct Punto){0}` (invalido).")
+        asm("        snprintf(_var_type_buf, 127, \"struct %s \", _lf->nombre.datos);")
+        asm("        _var_type = _var_type_buf;")
+        asm("    } else if (_lf->nombre.datos) {")
+        asm("        // F3-4 (hallazgo F3-4): `let x = abrir(...)` sin anotacion -> el tipo\n")
+        asm("        // de la variable es el retorno del builtin/funcion (paridad context.py\n")
+        asm("        // _BUILTINS L72-118 y hoisting ME-B6 L219-230). Antes caia al default\n")
+        asm("        // int64_t y el C quedaba `int64_t archivo = abrir(...)` (C invalido).\n")
+        asm("        char _rtb[64]; _rtb[0] = 0;")
+        asm("        // r153 (fix H-R153-22b, H-R153-26): usar el SPAN CRUDO (sin el mapeo")
+        asm("        // void* de H-R153-17c) — el chequeo Lista</Mapa< de abajo jamas activa")
+        asm("        // sobre un _rtb ya mapeado a 'void*'.")
+        asm("        if (_G_native_tipo_retorno_span(_lf->nombre.datos, _rtb)) {")
+        asm("            if (strcmp(_rtb, \"vacio\") != 0 && strcmp(_rtb, \"nulo\") != 0 && strcmp(_rtb, \"entero\") != 0) {")
+        asm("                // r153 (H-R153-22b): `let suites = agrupar_por_suite(...)` con")
+        asm("                // retorno Lista<T> — declarar void* (handle) pero REGISTRAR el")
+        asm("                // span `Lista<T>` en _G_fn_var_tipos (patron H-R153-9) para que")
+        asm("                // el for-en resuelva el elemento.")
+        asm("                if (strncmp(_rtb, \"Lista<\", 6) == 0 || strncmp(_rtb, \"Mapa<\", 5) == 0) {")
+        asm("                    extern char _G_fn_vars[2048][64]; extern char _G_fn_var_tipos[2048][64]; extern int _G_fn_vars_count;")
+        asm("                    int _pvlR = -1;")
+        asm("                    for (int _lvR = 0; _lvR < _G_fn_vars_count; _lvR++) { if (strcmp(_G_fn_vars[_lvR], _dv->nombre.datos) == 0) { _pvlR = _lvR; break; } }")
+        asm("                    if (_pvlR < 0 && _G_fn_vars_count < 2048) { strncpy(_G_fn_vars[_G_fn_vars_count], _dv->nombre.datos, 63); _G_fn_vars[_G_fn_vars_count][63] = 0; _pvlR = _G_fn_vars_count++; }")
+        asm("                    if (_pvlR >= 0) { int _svlR = (int)strlen(_rtb); int _mvR = (_svlR < 63) ? _svlR : 63; memcpy(_G_fn_var_tipos[_pvlR], _rtb, _mvR); _G_fn_var_tipos[_pvlR][_mvR] = 0; }")
+        asm("                }")
+        asm("                traducir_tipo_c((void*)_rtb);")
+        asm("                strncpy(_var_type_buf, _gen_tmp_buf, 127); _var_type_buf[127] = 0;")
+        asm("                strcat(_var_type_buf, \" \");")
+        asm("                _var_type = _var_type_buf;")
+        asm("            }")
+        asm("        }")
+        asm("    }")
+        asm("}")
+        // ME-CONCAT: OpBinaria con + que produce texto -> CadenaSegura (paridad S1 tipo_de_expr)
+        asm("if (_dv->expresion && _dv->expresion->tipo.datos && strcmp(_dv->expresion->tipo.datos, \"OpBinaria\") == 0) {")
+        asm("    struct OpBinaria* _ovb = (struct OpBinaria*)_dv->expresion;")
+        asm("    if (_ovb->operador && _ovb->operador->tipo == 30) {")
+        asm("        struct Nodo* _oizq = (struct Nodo*)_ovb->izquierdo;")
+        asm("        struct Nodo* _oder = (struct Nodo*)_ovb->derecho;")
+        asm("        int _vb_is_text = 0;")
+        asm("        if (_oizq && _oizq->tipo.datos && strcmp(_oizq->tipo.datos, \"LiteralCadena\") == 0) _vb_is_text = 1;")
+        asm("        if (_oder && _oder->tipo.datos && strcmp(_oder->tipo.datos, \"LiteralCadena\") == 0) _vb_is_text = 1;")
+        asm("        if (_oizq && _oizq->tipo.datos && strcmp(_oizq->tipo.datos, \"LlamadaFuncion\") == 0) {")
+        asm("            struct LlamadaFuncion* _vbfi = (struct LlamadaFuncion*)_oizq;")
+        asm("            if (_vbfi->nombre.datos && (strcmp(_vbfi->nombre.datos, \"concat\") == 0 || strcmp(_vbfi->nombre.datos, \"entero_a_texto\") == 0 || strcmp(_vbfi->nombre.datos, \"decimal_a_texto\") == 0 || strcmp(_vbfi->nombre.datos, \"leer_linea\") == 0 || strcmp(_vbfi->nombre.datos, \"subcadena\") == 0)) _vb_is_text = 1;")
+        asm("            if (!_vb_is_text) { char _vb_rt[64]; _vb_rt[0] = 0; if (_G_native_tipo_retorno(_vbfi->nombre.datos, _vb_rt) && (strcmp(_vb_rt, \"cadena\") == 0 || strcmp(_vb_rt, \"texto\") == 0 || strcmp(_vb_rt, \"CadenaSegura\") == 0)) _vb_is_text = 1; }")
+        asm("        }")
+        asm("        if (_oder && _oder->tipo.datos && strcmp(_oder->tipo.datos, \"LlamadaFuncion\") == 0) {")
+        asm("            struct LlamadaFuncion* _vbfd = (struct LlamadaFuncion*)_oder;")
+        asm("            if (_vbfd->nombre.datos && (strcmp(_vbfd->nombre.datos, \"concat\") == 0 || strcmp(_vbfd->nombre.datos, \"entero_a_texto\") == 0 || strcmp(_vbfd->nombre.datos, \"decimal_a_texto\") == 0 || strcmp(_vbfd->nombre.datos, \"leer_linea\") == 0 || strcmp(_vbfd->nombre.datos, \"subcadena\") == 0)) _vb_is_text = 1;")
+        asm("            if (!_vb_is_text) { char _vb_rt2[64]; _vb_rt2[0] = 0; if (_G_native_tipo_retorno(_vbfd->nombre.datos, _vb_rt2) && (strcmp(_vb_rt2, \"cadena\") == 0 || strcmp(_vb_rt2, \"texto\") == 0 || strcmp(_vb_rt2, \"CadenaSegura\") == 0)) _vb_is_text = 1; }")
+        asm("        }")
+        asm("        if (!_vb_is_text && _oizq && _oizq->tipo.datos && strcmp(_oizq->tipo.datos, \"OpBinaria\") == 0) {")
+        asm("            struct OpBinaria* _vbo = (struct OpBinaria*)_oizq;")
+        asm("            if (_vbo->operador && _vbo->operador->tipo == 30) {")
+        asm("                struct Nodo* _vbi = (struct Nodo*)_vbo->izquierdo;")
+        asm("                struct Nodo* _vbd = (struct Nodo*)_vbo->derecho;")
+        asm("                if (_vbi && _vbi->tipo.datos && strcmp(_vbi->tipo.datos, \"LiteralCadena\") == 0) _vb_is_text = 1;")
+        asm("                if (_vbd && _vbd->tipo.datos && strcmp(_vbd->tipo.datos, \"LiteralCadena\") == 0) _vb_is_text = 1;")
+        asm("            }")
+        asm("        }")
+        asm("        if (_vb_is_text) { _var_type = \"CadenaSegura \"; }")
+        asm("    }")
+        asm("}")
+        asm("// R18: registrar el tipo C de la variable local - paridad S1")
+        asm("// visitar_declaracion L127 _variables; necesario para el binding del")
+        asm("// coincidir con multi-instancia del mismo base R18.")
+        asm("extern char _G_fn_vars[2048][64]; extern char _G_fn_var_tipos[2048][64]; extern int _G_fn_vars_count;")
+        asm("for (int _dvi = 0; _dvi < _G_fn_vars_count; _dvi++) {")
+        asm("    if (strcmp(_G_fn_vars[_dvi], _dv->nombre.datos) == 0) {")
+        asm("        // r153 (H-R153-9b): NO sobrescribir el registro de colecciones")
+        asm("        // (H-R153-9): si _G_fn_var_tipos ya tiene 'Lista<...>'/'Mapa<...>'")
+        asm("        // (span Synapse), conservarlo — sobrescribir con _var_type (void*)")
+        asm("        // rompia la deteccion de la coleccion en for-en y metodos.")
+        asm("        if (strncmp(_G_fn_var_tipos[_dvi], \"Lista<\", 6) != 0 && strncmp(_G_fn_var_tipos[_dvi], \"Mapa<\", 5) != 0) {")
+        asm("        int _dvlen = (int)strlen(_var_type);")
+        asm("        if (_dvlen > 0 && _var_type[_dvlen-1] == ' ') _dvlen--;")
+        asm("        int _dvmax = (_dvlen < 63) ? _dvlen : 63;")
+        asm("        memcpy(_G_fn_var_tipos[_dvi], _var_type, _dvmax); _G_fn_var_tipos[_dvi][_dvmax] = 0;")
+        asm("        }")
+        asm("        break;")
+        asm("    }")
         asm("}")
         asm("strcat(_buf, \"    \");")
         asm("strcat(_buf, _var_type);")
         asm("strcat(_buf, _dv->nombre.datos);")
         asm("strcat(_buf, \" = \");")
         asm("_buf2[0] = 0;")
-        asm("if (_dv->expresion) { _oo_expr_a_c(est, _dv->expresion, _buf2, 4096); }")
+        asm("// D-3: sin expresion -> `= {0};` (paridad visitar_declaracion S1: `{tipo} {nombre} = {0};`)")
+        asm("if (_dv->expresion) { _oo_expr_a_c(est, _dv->expresion, _buf2, 4096); } else { strcpy(_buf2, \"{0}\"); }")
+        asm("// cumple Manual 4 §4.2 (D-1.2b): WeakRef es struct por valor; nulo debe ser ((WeakRef){0}).")
+        asm("if (strncmp(_var_type, \"WeakRef\", 7) == 0 && (strcmp(_buf2, \"nulo\") == 0 || strcmp(_buf2, \"((void*)0)\") == 0)) { strcpy(_buf2, \"((WeakRef){0})\"); }")
         asm("strcat(_buf, _buf2);")
         asm("strcat(_buf, \";\");")
         asm("gen_emitir_str(est, _buf);")
-        // M22.2: Track string vars for RAII pool_free at scope exit
+        // M22.2 / D-1.2: Track vars para RAII (texto y rc/arc/débil) al cierre de scope
         asm("extern int _G_scope_depth;")
         asm("extern int _G_scope_vars_depth[256]; extern char _G_scope_vars_names[256][64];")
-        asm("extern int _G_scope_vars_total;")
-        // M22.3: RAII tracking — solo para expresiones GARANTIZADAS de retornar texto al heap
-        asm("extern int _G_scope_depth;")
-        asm("extern int _G_scope_vars_depth[256]; extern char _G_scope_vars_names[256][64];")
-        asm("extern int _G_scope_vars_total;")
+        asm("extern int _G_scope_vars_total; extern int _G_scope_vars_kind[256];")
+        // M22.3: RAII tracking - texto: expresiones garantizadas de retornar texto al heap
         asm("int _es_texto = 0;")
         asm("if (_dv->expresion && _dv->expresion->tipo.datos) {")
         asm("    const char* _et = _dv->expresion->tipo.datos;")
-        asm("    // Literal string — siempre texto al heap")
+        asm("    // Literal string - siempre texto al heap")
         asm("    if (strcmp(_et, \"LiteralCadena\") == 0) _es_texto = 1;")
         asm("    // LlamadaFuncion: solo si el nombre coincide con funciones que retornan texto")
         asm("    if (strcmp(_et, \"LlamadaFuncion\") == 0) {")
@@ -202,7 +694,16 @@ funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("        }")
         asm("    }")
         asm("}")
-        asm("if (_es_texto) {")
+        // D-1.2 (Fase 23, Manual 4 §5.2/§3.2/§3.3): rc/arc/débil por tipo declarado
+        asm("int _es_rc = 0; int _es_arc = 0; int _es_debil = 0;")
+        asm("if (_dv->tipo_param.datos && _dv->tipo_param.datos[0] != 0) {")
+        asm("    const char* _tpd = _dv->tipo_param.datos;")
+        asm("    if (strncmp(_tpd, \"rc<\", 3) == 0) _es_rc = 1;")
+        asm("    else if (strncmp(_tpd, \"arc<\", 4) == 0) _es_arc = 1;")
+        asm("    else if (strncmp(_tpd, \"weak<\", 5) == 0 || strncmp(_tpd, \"faible<\", 7) == 0 || strncmp(_tpd, \"fraco<\", 6) == 0 || strncmp(_tpd, \"débil<\", 6) == 0) _es_debil = 1;")
+        asm("}")
+        asm("int _kind = (_es_rc ? 1 : (_es_arc ? 2 : (_es_debil ? 3 : (_es_texto ? 0 : -1))));")
+        asm("if (_kind >= 0) {")
         asm("    // ME-B8: registro idempotente por nombre (paridad emit_declarations.py)")
         asm("    // evita double free: la variable se libera SOLO en el scope de su declaracion")
         asm("    int _dup = 0;")
@@ -212,10 +713,49 @@ funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("        _G_scope_vars_depth[_idx] = _G_scope_depth;")
         asm("        strncpy(_G_scope_vars_names[_idx], _dv->nombre.datos, 63);")
         asm("        _G_scope_vars_names[_idx][63] = 0;")
+        asm("        _G_scope_vars_kind[_idx] = _kind;")
         asm("    }")
         asm("}")
 
+// ----------------------------------------------------------
+// gen_visitar_delegar
+// F1.2c: `delegar expresion` == `retornar err(...)` (Manual 2 §2 L132,
+// Manual 3 §7). Patron `?` de Resultado: si el tag es err, propaga el valor;
+// si es ok, continua (el valor se descarta).
+// ----------------------------------------------------------
+funcion gen_visitar_delegar(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
+    inseguro:
+        asm("struct SentenciaDelegar* _dl = (struct SentenciaDelegar*)stmt;")
+        asm("if (!_dl) return;")
+        asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"SentenciaDelegar\");")
+        asm("char _dbuf[4096]; _dbuf[0] = 0;")
+        asm("if (_dl->expresion) { _oo_expr_a_c(est, _dl->expresion, _dbuf, 4096); }")
+        asm("char _dline[4128]; _dline[0] = 0;")
+        asm("snprintf(_dline, 4128, \"    Resultado _del = %s;\", _dbuf);")
+        asm("gen_emitir_str(est, \"{\");")
+        asm("gen_emitir_str(est, _dline);")
+        asm("gen_emitir_str(est, \"    if (_del.tag == 1) return _del;\");")
+        asm("gen_emitir_str(est, \"}\");")
+
 funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 4 5.2; Manual 4 §3.2; Manual 4 §3.3; Manual 2 §4.3; D-1.2
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
+    // cumple Manual 4 5.2; Manual 4 §3.2; Manual 4 §3.3; Manual 2 §4.3; D-1.2
     inseguro:
         asm("struct AsignacionVariable* _a = (struct AsignacionVariable*)stmt;")
         asm("if (!_a) return;")
@@ -227,9 +767,11 @@ funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("char _buf[4096], _buf2[4096];")
         asm("_buf[0] = 0;")
         asm("// Detect string literal assignment -> use const char*")
-        asm("const char* _var_type = \"int \";")
+        asm("const char* _var_type = \"int64_t \";")
         asm("if (_a->expresion && _a->expresion->tipo.datos && strcmp(_a->expresion->tipo.datos, \"LiteralCadena\") == 0) {")
         asm("    _var_type = \"CadenaSegura \";")
+        asm("} else if (_a->expresion && _a->expresion->tipo.datos && strcmp(_a->expresion->tipo.datos, \"LiteralDecimal\") == 0) {")
+        asm("    _var_type = \"double \";")
         asm("}")
         asm("// ME-B4: Struct constructor call -> struct <N> <var> = {0};")
         asm("const char* _struct_name = 0;")
@@ -248,6 +790,77 @@ funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("        }")
         asm("    }")
         asm("}")
+        asm("// R11: constructor ADT (ok/err/algun/ninguno) -> tipo C de la")
+        asm("// instancia registrada (Resultado_entero_texto, paridad S1). Antes")
+        asm("// caia en _var_type=int64_t y gcc fallaba 'incompatible types'.")
+        asm("const char* _adt_type = 0;")
+        asm("static char _adt_type_buf[96]; _adt_type_buf[0] = 0;")
+        asm("if (!_struct_name && _a->expresion && _a->expresion->tipo.datos && strcmp(_a->expresion->tipo.datos, \"LlamadaFuncion\") == 0) {")
+        asm("    struct LlamadaFuncion* _lf4 = (struct LlamadaFuncion*)_a->expresion;")
+        asm("    if (_lf4->nombre.datos) {")
+        asm("        char _adb[64]; int _adg = 0; char _adt[64]; _adb[0]=0; _adt[0]=0;")
+        asm("        if (_G_native_adt_ctr_info(_lf4->nombre.datos, _adb, &_adg, _adt)) {")
+        asm("            extern char _G_native_adt_inst_c[64][64]; extern char _G_native_adt_inst_base[64][64]; extern int _G_native_adt_inst_count;")
+        asm("            char _adout[64]; _adout[0]=0;")
+        asm("            int _adns = 0; for (int _adj = 0; _adj < _G_native_adt_inst_count; _adj++) { if (strcmp(_G_native_adt_inst_base[_adj], _adb) == 0) _adns++; }")
+        asm("            for (int _adi = 0; _adi < _G_native_adt_inst_count && !_adout[0]; _adi++) {")
+        asm("                if (strcmp(_G_native_adt_inst_base[_adi], _adb) == 0 && (_adns == 1 || _adg < _G_native_adt_inst_nfields[_adi])) { strcpy(_adout, _G_native_adt_inst_c[_adi]); }")
+        asm("            }")
+        asm("            if (_adout[0]) { strncpy(_adt_type_buf, _adout, 95); _adt_type_buf[95] = 0; _adt_type = _adt_type_buf; }")
+        asm("            else { snprintf(_adt_type_buf, 95, \"struct %s\", _adb); _adt_type_buf[95] = 0; _adt_type = _adt_type_buf; }")
+        asm("        }")
+        asm("    }")
+        asm("}")
+        asm("// D-6: ExprPropagar (operador ?) -> tipo del campo ok desempaquetado")
+        asm("const char* _prop_type = 0;")
+        asm("if (!_struct_name && _a->expresion && _a->expresion->tipo.datos && strcmp(_a->expresion->tipo.datos, \"ExprPropagar\") == 0) {")
+        asm("    struct ExprPropagar* _pp2 = (struct ExprPropagar*)_a->expresion;")
+        asm("    if (_pp2->expresion && _pp2->expresion->tipo.datos && strcmp(_pp2->expresion->tipo.datos, \"LlamadaFuncion\") == 0) {")
+        asm("        struct LlamadaFuncion* _plf2 = (struct LlamadaFuncion*)_pp2->expresion;")
+        asm("        if (_plf2->nombre.datos) {")
+        asm("            char _padt2[64]; _padt2[0] = 0;")
+        asm("            if (_G_native_tipo_retorno(_plf2->nombre.datos, _padt2)) {")
+        asm("                char _pft2[64]; _pft2[0] = 0;")
+        asm("                if (_G_native_adt_unwrap_tipo(_padt2, _pft2) && _pft2[0]) {")
+        asm("                    traducir_tipo_c((void*)_pft2);")
+        asm("                    extern char _gen_tmp_buf[4096];")
+        asm("                    if (_gen_tmp_buf[0]) { _prop_type = _gen_tmp_buf; }")
+        asm("                }")
+        asm("            }")
+        asm("        }")
+        asm("    }")
+        asm("}")
+        asm("// F3-10: ExprRecibirCanal -> tipo C del elemento del canal (Manual 5 §4.2),")
+        asm("// paridad S1 _elemento_canal. Fallback void* (F3-6).")
+        asm("const char* _recv_type = 0;")
+        asm("static char _recv_type_buf[96]; _recv_type_buf[0] = 0;")
+        asm("if (!_struct_name && _a->expresion && _a->expresion->tipo.datos && strcmp(_a->expresion->tipo.datos, \"ExprRecibirCanal\") == 0) {")
+        asm("    struct ExprRecibirCanal* _rva = (struct ExprRecibirCanal*)_a->expresion;")
+        asm("    if (_rva->canal && _rva->canal->tipo.datos && strcmp(_rva->canal->tipo.datos, \"Identificador\") == 0) {")
+        asm("        struct Identificador* _rvid = (struct Identificador*)_rva->canal;")
+        asm("        char _rvt[64]; _rvt[0] = 0;")
+        asm("        if (_rvid->nombre.datos) { extern int _G_native_canal_elem_tipo(const char*, char*); _G_native_canal_elem_tipo(_rvid->nombre.datos, _rvt); }")
+        asm("        if (_rvt[0]) { snprintf(_recv_type_buf, 95, \"%s \", _rvt); _recv_type_buf[95] = 0; _recv_type = _recv_type_buf; }")
+        asm("    }")
+        asm("}")
+        asm("// ME cluster_ident_type (cumple Manual 2 §2): paridad tipo_de_expr L89-93 —")
+        asm("// asignacion a variable NUEVA con RHS Identificador hereda el tipo C")
+        asm("// registrado de la variable fuente. Antes caia al default int64_t y")
+        asm("// `mensaje_nonce = nonce` emitia `int64_t mensaje_nonce = nonce;` ->")
+        asm("// gcc 'incompatible type for argument 1' (f313 std.cluster).")
+        asm("const char* _ident_type = 0;")
+        asm("static char _ident_type_buf[96]; _ident_type_buf[0] = 0;")
+        asm("if (!_struct_name && _a->expresion && _a->expresion->tipo.datos && strcmp(_a->expresion->tipo.datos, \"Identificador\") == 0) {")
+        asm("    struct Identificador* _idi = (struct Identificador*)_a->expresion;")
+        asm("    if (_idi->nombre.datos) {")
+        asm("        extern char _G_fn_vars[2048][64]; extern char _G_fn_var_tipos[2048][64]; extern int _G_fn_vars_count;")
+        asm("        for (int _iti = 0; _iti < _G_fn_vars_count; _iti++) {")
+        asm("            if (strcmp(_G_fn_vars[_iti], _idi->nombre.datos) == 0 && _G_fn_var_tipos[_iti][0]) {")
+        asm("                strncpy(_ident_type_buf, _G_fn_var_tipos[_iti], 95); _ident_type_buf[95] = 0; _ident_type = _ident_type_buf; break;")
+        asm("            }")
+        asm("        }")
+        asm("    }")
+        asm("}")
         asm("strcat(_buf, \"    \");")
         asm("// ME-B7 hoisting (paridad emit_declarations.py 'Pre-pass: hoist variable declarations'):")
         asm("// la primera asignacion declara la variable; las siguientes solo asignan.")
@@ -258,12 +871,65 @@ funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("if (!_ya_decl) {")
         asm("    if (_struct_name) {")
         asm("        strcat(_buf, \"struct \"); strcat(_buf, _struct_name); strcat(_buf, \" \");")
+        asm("    } else if (_prop_type) {")
+        asm("        strcat(_buf, _prop_type); strcat(_buf, \" \");")
+        asm("    } else if (_recv_type) {")
+        asm("        strcat(_buf, _recv_type);")
+        asm("    } else if (_ident_type) {")
+        asm("        strcat(_buf, _ident_type); strcat(_buf, \" \");")
         asm("    } else if (_ret_type) {")
         asm("        traducir_tipo_c((void*)_ret_type);")
         asm("        extern char _gen_tmp_buf[4096];")
         asm("        strcat(_buf, _gen_tmp_buf); strcat(_buf, \" \");")
+        asm("    } else if (_adt_type) {")
+        asm("        strcat(_buf, _adt_type); strcat(_buf, \" \");")
         asm("    } else {")
         asm("        strcat(_buf, _var_type);")
+        asm("    }")
+        asm("}")
+        asm("// r153 (H-R153-20b): paridad gen_visitar_declaracion R18 — registrar el")
+        asm("// tipo C FINAL de la variable declarada por asignacion SOLO si el slot")
+        asm("// esta vacio (SIN tipo): el caso H-R153-20 original son constantes de")
+        asm("// modulo (WARN_LINT_INDENT etc.) que solo se ven por una asignacion.")
+        asm("// Para variables YA registradas por `let`/parametro, el primer tipo es")
+        asm("// canonico (Synapse es estaticamente tipado): re-registrar con el tipo")
+        asm("// del RHS (int64_t para `x = x + 1`) destruye el CadenaSegura del let")
+        asm("// y el '+' de texto resuelve al fallback entero_a_texto(texto) ->")
+        asm("// gcc rc=1 'incompatible type for argument 1'. No pisa colecciones")
+        asm("// (paridad H-R153-9b).")
+        asm("extern char _G_fn_var_tipos[2048][64];")
+        asm("{")
+        asm("    int _ft20 = -1;")
+        asm("    for (int _fv20 = 0; _fv20 < _G_fn_vars_count; _fv20++) {")
+        asm("        if (strcmp(_G_fn_vars[_fv20], _a->nombre.datos) == 0) { _ft20 = _fv20; break; }")
+        asm("    }")
+        asm("    if (_ft20 >= 0 && _G_fn_var_tipos[_ft20][0] == 0) {")
+        asm("        const char* _ft20v = 0;")
+        asm("        static char _ftb20[96]; _ftb20[0] = 0;")
+        asm("        if (_struct_name) { snprintf(_ftb20, 95, \"struct %s\", _struct_name); _ft20v = _ftb20; }")
+        asm("        else if (_prop_type) { _ft20v = _prop_type; }")
+        asm("        else if (_recv_type) { strncpy(_ftb20, _recv_type, 95); _ftb20[95] = 0; int _fl20 = (int)strlen(_ftb20); if (_fl20 > 0 && _ftb20[_fl20-1] == ' ') _ftb20[_fl20-1] = 0; _ft20v = _ftb20; }")
+        asm("        else if (_ident_type) { _ft20v = _ident_type; }")
+        asm("        else if (_ret_type) {")
+        asm("            // r153 (H-R153-22): coleccion (Lista<T>/Mapa<K,V>) registra el SPAN")
+        asm("            // crudo — traducir_tipo_c ya puso void* en _gen_tmp_buf (el C es el")
+        asm("            // handle), pero el for-en necesita el span para despachar la caminata")
+        asm("            // del runtime y el elemento real. Antes registraba void* -> for-en de")
+        asm("            // texto sobre el handle (gcc rc=1 en generar_junit/json y probe).")
+        asm("            if (strncmp(_ret_type, \"Lista<\", 6) == 0 || strncmp(_ret_type, \"Mapa<\", 5) == 0) { _ft20v = _ret_type; }")
+        asm("            else { extern char _gen_tmp_buf[4096]; _ft20v = _gen_tmp_buf; }")
+        asm("        }")
+        asm("        else if (_adt_type) { _ft20v = _adt_type; }")
+        asm("        else { _ft20v = _var_type; }")
+        asm("        if (_ft20v && _ft20v[0]) {")
+        asm("            char _ftc20[64]; strncpy(_ftc20, _ft20v, 63); _ftc20[63] = 0;")
+        asm("            int _ftl20 = (int)strlen(_ftc20);")
+        asm("            while (_ftl20 > 0 && _ftc20[_ftl20-1] == ' ') { _ftc20[_ftl20-1] = 0; _ftl20--; }")
+        asm("            if (strncmp(_G_fn_var_tipos[_ft20], \"Lista<\", 6) != 0 && strncmp(_G_fn_var_tipos[_ft20], \"Mapa<\", 5) != 0) {")
+        asm("                memcpy(_G_fn_var_tipos[_ft20], _ftc20, _ftl20 < 63 ? _ftl20 : 63);")
+        asm("                _G_fn_var_tipos[_ft20][_ftl20 < 63 ? _ftl20 : 63] = 0;")
+        asm("            }")
+        asm("        }")
         asm("    }")
         asm("}")
         asm("strcat(_buf, _a->nombre.datos);")
@@ -276,10 +942,10 @@ funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("strcat(_buf, _buf2);")
         asm("strcat(_buf, \";\");")
         asm("gen_emitir_str(est, _buf);")
-        // M22.3: RAII tracking — solo funciones y operadores garantizados de retornar texto
+        // M22.3: RAII tracking - solo funciones y operadores garantizados de retornar texto
         asm("extern int _G_scope_depth;")
         asm("extern int _G_scope_vars_depth[256]; extern char _G_scope_vars_names[256][64];")
-        asm("extern int _G_scope_vars_total;")
+        asm("extern int _G_scope_vars_total; extern int _G_scope_vars_kind[256];")
         asm("int _es_texto2 = 0;")
         asm("if (_a->expresion && _a->expresion->tipo.datos) {")
         asm("    const char* _et = _a->expresion->tipo.datos;")
@@ -315,7 +981,16 @@ funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("        }")
         asm("    }")
         asm("}")
-        asm("if (_es_texto2) {")
+        // D-1.2 (Fase 23, Manual 4 §5.2/§3.2/§3.3): rc/arc/débil por tipo de expresion
+        asm("int _es_rc2 = 0; int _es_arc2 = 0; int _es_debil2 = 0;")
+        asm("if (_a->expresion && _a->expresion->tipo.datos) {")
+        asm("    const char* _et2 = _a->expresion->tipo.datos;")
+        asm("    if (strncmp(_et2, \"rc<\", 3) == 0) _es_rc2 = 1;")
+        asm("    else if (strncmp(_et2, \"arc<\", 4) == 0) _es_arc2 = 1;")
+        asm("    else if (strncmp(_et2, \"weak<\", 5) == 0 || strncmp(_et2, \"faible<\", 7) == 0 || strncmp(_et2, \"fraco<\", 6) == 0 || strncmp(_et2, \"débil<\", 6) == 0) _es_debil2 = 1;")
+        asm("}")
+        asm("int _kind2 = (_es_rc2 ? 1 : (_es_arc2 ? 2 : (_es_debil2 ? 3 : (_es_texto2 ? 0 : -1))));")
+        asm("if (_kind2 >= 0) {")
         asm("    // ME-B8: registro idempotente por nombre (paridad emit_declarations.py)")
         asm("    // evita double free: la variable se libera SOLO en el scope de su declaracion")
         asm("    int _dup = 0;")
@@ -325,13 +1000,22 @@ funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("        _G_scope_vars_depth[_idx] = _G_scope_depth;")
         asm("        strncpy(_G_scope_vars_names[_idx], _a->nombre.datos, 63);")
         asm("        _G_scope_vars_names[_idx][63] = 0;")
+        asm("        _G_scope_vars_kind[_idx] = _kind2;")
         asm("    }")
         asm("}")
 
 // ----------------------------------------------------------
-// gen_visitar_asignacion_campo  (ME-B9.x, paridad visitar_asignacion_campo)
+// gen_visitar_asignacion_campo (ME-B9.x, paridad visitar_asignacion_campo)
 // ----------------------------------------------------------
 funcion gen_visitar_asignacion_campo(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct AsignacionCampo* _ac = (struct AsignacionCampo*)stmt;")
         asm("if (!_ac) return;")
@@ -351,17 +1035,136 @@ funcion gen_visitar_asignacion_campo(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("char _linea[8192];")
         asm("snprintf(_linea, 8192, \"    %s%s%s = %s;\", _buf, _sep, _ac->nombre_campo.datos ? _ac->nombre_campo.datos : \"\", _buf2);")
         asm("gen_emitir_str(est, _linea);")
+        // cumple Manual 4 §3.3 (ME r198_cesion_struct, H-R197-1): asignar un
+        // `texto` local/parametro a un campo de struct TRANSFIERE la propiedad
+        // al campo (paridad S1 visitar_asignacion_campo): el cleanup RAII del
+        // scope (gen_cerrar_bloque_c, emision_c.syn) NO debe liberar el ORIGEN
+        // — el slab reciclabia el buffer y el concat siguiente corrompia el
+        // campo (config.toml `ruta` corrupta, repro determinista r197).
+        // Sentinela de scope: depth=-1 + nombre vacio (misma convención que
+        // el 'Mark as removed' del propio gen_cerrar_bloque_c).
+        // cumple Manual 2 §5.1 (ME r198): el cleanup del scope respeta la
+        // cesión de propiedad — el origen Transferido sale sin liberarse.
+        asm("if (_ac->expresion && _ac->expresion->tipo.datos && strcmp(_ac->expresion->tipo.datos, \"Identificador\") == 0) {")
+        asm("    struct Identificador* _ri = (struct Identificador*)_ac->expresion;")
+        asm("    if (_ri->nombre.datos) {")
+        asm("        extern int _G_scope_vars_depth[256]; extern char _G_scope_vars_names[256][64]; extern int _G_scope_vars_total; extern int _G_scope_vars_kind[256];")
+        asm("        for (int _ti = 0; _ti < _G_scope_vars_total; _ti++) {")
+        asm("            if (_G_scope_vars_kind[_ti] == 0 && _G_scope_vars_depth[_ti] >= 0 && strcmp(_G_scope_vars_names[_ti], _ri->nombre.datos) == 0) { _G_scope_vars_depth[_ti] = -1; _G_scope_vars_names[_ti][0] = 0; break; }")
+        asm("        }")
+        asm("    }")
+        asm("}")
 
 // ----------------------------------------------------------
 // gen_visitar_expr
 // ----------------------------------------------------------
+// ----------------------------------------------------------
+// gen_visitar_log (R8: log(...) -> printf; paridad S1 visitar_log)
+// ----------------------------------------------------------
+funcion gen_visitar_log(est: GeneradorCEst, nodo_log: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        nodo_log != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
+    inseguro:
+        asm("struct LogLlamada* _ll = (struct LogLlamada*)nodo_log;")
+        asm("if (!_ll) return;")
+        asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"LogLlamada\");")
+        asm("char _lfmt[1024]; _lfmt[0] = 0;")
+        asm("char _largs[4096]; _largs[0] = 0;")
+        asm("struct ListaNodo* _lc = _ll->argumentos;")
+        asm("int _lprim = 1;")
+        asm("while (_lc) {")
+        asm("    struct Nodo* _la = (struct Nodo*)_lc->cabeza;")
+        asm("    if (_la) {")
+        asm("        if (!_lprim) { strcat(_lfmt, \" \"); strcat(_largs, \", \"); }")
+        asm("        _lprim = 0;")
+        asm("        char _labuf[4096]; _labuf[0] = 0;")
+        asm("        _oo_expr_a_c(est, _la, _labuf, 4096);")
+        asm("        const char* _lt = _la->tipo.datos;")
+        asm("        int _ltex = 0; int _ldec = 0;")
+        asm("        if (_lt && strcmp(_lt, \"LiteralCadena\") == 0) _ltex = 1;")
+        asm("        else if (_lt && strcmp(_lt, \"LiteralDecimal\") == 0) _ldec = 1;")
+        asm("        else if (_lt && strcmp(_lt, \"Identificador\") == 0) {")
+        asm("            struct Identificador* _lid = (struct Identificador*)_la;")
+        asm("            if (_lid->nombre.datos) {")
+        asm("                extern char _G_fn_vars[2048][64]; extern char _G_fn_var_tipos[2048][64]; extern int _G_fn_vars_count;")
+        asm("                for (int _vi = 0; _vi < _G_fn_vars_count; _vi++) {")
+        asm("                    if (strcmp(_G_fn_vars[_vi], _lid->nombre.datos) == 0) {")
+        asm("                        if (strcmp(_G_fn_var_tipos[_vi], \"CadenaSegura\") == 0) _ltex = 1;")
+        asm("                        if (strcmp(_G_fn_var_tipos[_vi], \"double\") == 0) _ldec = 1;")
+        asm("                        break;")
+        asm("                    }")
+        asm("                }")
+        asm("            }")
+        asm("        }")
+        asm("        else if (_lt && strcmp(_lt, \"LlamadaFuncion\") == 0) {")
+        asm("            struct LlamadaFuncion* _llf = (struct LlamadaFuncion*)_la;")
+        asm("            if (_llf->nombre.datos) {")
+        asm("                char _lrt[64]; _lrt[0] = 0;")
+        asm("                if (_G_native_tipo_retorno(_llf->nombre.datos, _lrt)) {")
+        asm("                    if (strcmp(_lrt, \"cadena\") == 0 || strcmp(_lrt, \"texto\") == 0 || strcmp(_lrt, \"CadenaSegura\") == 0) _ltex = 1;")
+        asm("                    if (strcmp(_lrt, \"decimal\") == 0) _ldec = 1;")
+        asm("                }")
+        asm("                if (strcmp(_llf->nombre.datos, \"concat\") == 0 || strcmp(_llf->nombre.datos, \"entero_a_texto\") == 0 || strcmp(_llf->nombre.datos, \"decimal_a_texto\") == 0 || strcmp(_llf->nombre.datos, \"leer_linea\") == 0 || strcmp(_llf->nombre.datos, \"subcadena\") == 0) _ltex = 1;")
+        asm("            }")
+        asm("        }")
+        asm("        else if (_lt && strcmp(_lt, \"OpBinaria\") == 0) {")
+        asm("            struct OpBinaria* _lop = (struct OpBinaria*)_la;")
+        asm("            if (_lop->operador && _lop->operador->tipo == 30) {")
+        asm("                struct Nodo* _loi = (struct Nodo*)_lop->izquierdo;")
+        asm("                struct Nodo* _lod = (struct Nodo*)_lop->derecho;")
+        asm("                if (_loi && _loi->tipo.datos && strcmp(_loi->tipo.datos, \"LiteralCadena\") == 0) _ltex = 1;")
+        asm("                if (_lod && _lod->tipo.datos && strcmp(_lod->tipo.datos, \"LiteralCadena\") == 0) _ltex = 1;")
+        asm("                if (_loi && _loi->tipo.datos && strcmp(_loi->tipo.datos, \"LlamadaFuncion\") == 0) {")
+        asm("                    struct LlamadaFuncion* _obfli = (struct LlamadaFuncion*)_loi;")
+        asm("                    if (_obfli->nombre.datos && (strcmp(_obfli->nombre.datos, \"concat\") == 0 || strcmp(_obfli->nombre.datos, \"entero_a_texto\") == 0 || strcmp(_obfli->nombre.datos, \"decimal_a_texto\") == 0 || strcmp(_obfli->nombre.datos, \"leer_linea\") == 0 || strcmp(_obfli->nombre.datos, \"subcadena\") == 0)) _ltex = 1;")
+        asm("                }")
+        asm("                if (_lod && _lod->tipo.datos && strcmp(_lod->tipo.datos, \"LlamadaFuncion\") == 0) {")
+        asm("                    struct LlamadaFuncion* _obfld = (struct LlamadaFuncion*)_lod;")
+        asm("                    if (_obfld->nombre.datos && (strcmp(_obfld->nombre.datos, \"concat\") == 0 || strcmp(_obfld->nombre.datos, \"entero_a_texto\") == 0 || strcmp(_obfld->nombre.datos, \"decimal_a_texto\") == 0 || strcmp(_obfld->nombre.datos, \"leer_linea\") == 0 || strcmp(_obfld->nombre.datos, \"subcadena\") == 0)) _ltex = 1;")
+        asm("                }")
+        asm("            }")
+        asm("        }")
+        asm("        if (_ltex) {")
+        asm("            strcat(_lfmt, \"%s\");")
+        asm("            strcat(_largs, _labuf); strcat(_largs, \".datos\");")
+        asm("        } else if (_ldec) {")
+        asm("            strcat(_lfmt, \"%f\");")
+        asm("            strcat(_largs, _labuf);")
+        asm("        } else {")
+        asm("            strcat(_lfmt, \"%d\");")
+        asm("            strcat(_largs, _labuf);")
+        asm("        }")
+        asm("    }")
+        asm("    _lc = _lc->cola;")
+        asm("}")
+        asm("char _lline[5200];")
+        asm("if (_largs[0]) {")
+        asm("    snprintf(_lline, 5200, \"    printf(\\\"%s\\\\n\\\", %s);\", _lfmt, _largs);")
+        asm("} else {")
+        asm("    snprintf(_lline, 5200, \"    printf(\\\"\\\\n\\\");\");")
+        asm("}")
+        asm("gen_emitir_str(est, _lline);")
 funcion gen_visitar_expr(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct SentenciaExpr* _s = (struct SentenciaExpr*)stmt;")
         asm("if (!_s) return;")
         asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"SentenciaExpr\");")
-        asm("char _buf[4096];")
-        asm("_buf[0] = 0;")
+        asm("char _buf[4096]; _buf[0] = 0;")
+        asm("char _sbuf[4096]; _sbuf[0] = 0;")
         asm("// ME-B5: detectar asm(<cadena>) directo -> emitir instruccion cruda (paridad generator.py L203-232)")
         asm("if (_s->expr && _syn_es_tipo(_s->expr->tipo.datos, \"LlamadaFuncion\")) {")
         asm("    struct LlamadaFuncion* _asm_lf = (struct LlamadaFuncion*)_s->expr;")
@@ -409,14 +1212,29 @@ funcion gen_visitar_expr(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("        }")
         asm("    }")
         asm("}")
-        asm("if (_s->expr) { _oo_expr_a_c(est, _s->expr, _buf, 4096); }")
-        asm("strcat(_buf, \";\");")
-        asm("gen_emitir_str(est, _buf);")
+        asm("if (_s->expr && _syn_es_tipo(_s->expr->tipo.datos, \"LogLlamada\")) {")
+        asm("    gen_visitar_log(est, _s->expr);")
+        asm("    return;")
+        asm("}")
+        asm("if (_s->expr) { _oo_expr_a_c(est, _s->expr, _sbuf, 4096); }")
+        asm("char _line[4128]; _line[0] = 0;")
+        asm("strcat(_line, \"    \");")
+        asm("strcat(_line, _sbuf);")
+        asm("strcat(_line, \";\");")
+        asm("gen_emitir_str(est, _line);")
 
 // ----------------------------------------------------------
 // gen_visitar_romper
 // ----------------------------------------------------------
 funcion gen_visitar_romper(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct SentenciaRomper* _br = (struct SentenciaRomper*)stmt;")
         asm("if (!_br) return;")
@@ -427,6 +1245,14 @@ funcion gen_visitar_romper(est: GeneradorCEst, stmt: puntero) -> nulo:
 // gen_visitar_siguiente
 // ----------------------------------------------------------
 funcion gen_visitar_siguiente(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct SentenciaSiguiente* _ct = (struct SentenciaSiguiente*)stmt;")
         asm("if (!_ct) return;")
@@ -434,9 +1260,83 @@ funcion gen_visitar_siguiente(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("gen_emitir_str(est, \"    continue;\");")
 
 // ----------------------------------------------------------
-// gen_visitar_stmt_generico — Dispatcher principal
+// gen_visitar_escuchar (F3-7 - Manual 2 L113 / Manual 5 S4.2)
+// ----------------------------------------------------------
+funcion gen_visitar_escuchar(est: GeneradorCEst, stmt: puntero) -> nulo:
+    requiere:
+        stmt != nulo
+    garantiza:
+        _G_listeners_count >= 1
+    inseguro:
+        asm("struct SentenciaEscuchar* _se = (struct SentenciaEscuchar*)stmt;")
+        asm("if (!_se) return;")
+        asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"SentenciaEscuchar\");")
+        asm("extern int _G_listeners_count;")
+        asm("_G_listeners_count++;")
+        asm("char _lname[64]; snprintf(_lname, 64, \"_listener_%d\", _G_listeners_count);")
+        asm("char _lcan[1024]; _lcan[0] = 0;")
+        asm("if (_se->canal) { _oo_expr_a_c(est, _se->canal, _lcan, 1024); }")
+        asm("// Variables del cuerpo del bloque: el listener es una funcion C separada,")
+        asm("// el hoisting de la funcion contenedora NO las ve (paridad S1).")
+        asm("extern void _G_native_escuchar_vars(void* n, void* out);")
+        asm("char _lvars[4096]; _lvars[0] = 0;")
+        asm("{ struct ListaNodo* _lv = (struct ListaNodo*)_se->cuerpo; while (_lv) { _G_native_escuchar_vars(_lv->cabeza, _lvars); _lv = _lv->cola; } }")
+        asm("// Generar el cuerpo del bloque en el buffer temporal con el modo")
+        asm("// escuchar activo: dentro del bloque, ExprRecibirCanal emite")
+        asm("// canal_recibir(_canal) (la variable del listener, no la local).")
+        asm("extern char _G_emit_buf[4194304]; extern int _G_emit_pos;")
+        asm("extern int _G_listener_modo;")
+        asm("int _save_pos = _G_emit_pos;")
+        asm("int _prev_modo = _G_listener_modo; _G_listener_modo = 1;")
+        asm("{ struct ListaNodo* _lc = (struct ListaNodo*)_se->cuerpo;")
+        asm("    while (_lc) { struct Nodo* _ls = _lc->cabeza; if (_ls) { gen_visitar_stmt_generico(est, _ls); } _lc = _lc->cola; } }")
+        asm("_G_listener_modo = _prev_modo;")
+        asm("int _llen = _G_emit_pos - _save_pos;")
+        asm("char _lcuerpo[16384]; if (_llen > 16383) _llen = 16383;")
+        asm("memcpy(_lcuerpo, _G_emit_buf + _save_pos, _llen); _lcuerpo[_llen] = 0;")
+        asm("_G_emit_pos = _save_pos;")
+        asm("// Construir la funcion listener: void _listener_N(void* arg) {")
+        asm("//     (void)arg; CanalConcurrencia* _canal = (CanalConcurrencia*)arg;")
+        asm("//     <vars> while (1) { <cuerpo> } }")
+        asm("// F4.4: firma void (trampolin de fibra, Manual 5 §2.6) — sin return NULL;")
+        asm("// al salir del while (canal cerrado -> romper) la trampolina llama")
+        asm("// fibra_terminar. Se lanza con fibra_crear (antes synapse_lanzar_hilo).")
+        asm("char _lfn[16384]; _lfn[0] = 0;")
+        asm("strcat(_lfn, \"void \"); strcat(_lfn, _lname); strcat(_lfn, \"(void* arg) {\n\");")
+        asm("strcat(_lfn, \"    (void)arg;\n\");")
+        asm("strcat(_lfn, \"    CanalConcurrencia* _canal = (CanalConcurrencia*)arg;\n\");")
+        asm("// F4-6: _cerrado recibe el out-param de canal_recibir (Manual 5 §3.4);")
+        asm("// el statement-expression del receive rompe el while al cerrarse (Manual 5 §4.3).")
+        asm("strcat(_lfn, \"    bool _cerrado;\n\");")
+        asm("if (_lvars[0]) { strcat(_lfn, _lvars); }")
+        asm("strcat(_lfn, \"    while (1) {\n\");")
+        asm("if (_lcuerpo[0]) { strcat(_lfn, _lcuerpo); } else { strcat(_lfn, \"        (void)0;\n\"); }")
+        asm("strcat(_lfn, \"    }\n\");")
+        asm("strcat(_lfn, \"}\n\");")
+        asm("extern char _G_listeners[8][16384]; extern int _G_listeners_count;")
+        asm("// F4.4 fix (bug latente F3-7): el contador ya avanzo arriba para el")
+        asm("// nombre (_listener_N); almacenar en el indice N-1 SIN incrementar de")
+        asm("// nuevo (antes el doble incremento hacia los nombres 1,3,5... con N")
+        asm("// escuchar — invisible con un solo escuchar por programa, los tests")
+        asm("// F3-7 tenian exactamente uno; destapado por el probe multi-listener F4.4).")
+        asm("if (_G_listeners_count <= 8) { strncpy(_G_listeners[_G_listeners_count - 1], _lfn, 16383); _G_listeners[_G_listeners_count - 1][16383] = 0; }")
+        asm("// Emitir el lanzamiento de la fibra en el punto del escuchar")
+        asm("char _lcall[1200];")
+        asm("snprintf(_lcall, 1200, \"    fibra_crear((void(*)(void*))%s, (void*)(%s), 0);\", _lname, _lcan);")
+        asm("gen_emitir_str(est, _lcall);")
+
+// ----------------------------------------------------------
+// gen_visitar_stmt_generico - Dispatcher principal
 // ----------------------------------------------------------
 funcion gen_visitar_stmt_generico(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
     inseguro:
         asm("struct Nodo* _n = (struct Nodo*)stmt;")
         asm("if (!_n) return;")
@@ -449,10 +1349,115 @@ funcion gen_visitar_stmt_generico(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("else if (_syn_es_tipo(_t, \"SentenciaMientras\")) { gen_visitar_mientras(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"SentenciaPara\")) { gen_visitar_para(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"SentenciaRetornar\")) { gen_visitar_retornar(est, stmt); }")
+        asm("else if (_syn_es_tipo(_t, \"SentenciaDelegar\")) { gen_visitar_delegar(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"AsignacionVariable\")) { gen_visitar_asignacion(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"SentenciaExpr\")) { gen_visitar_expr(est, stmt); }")
+        asm("else if (_syn_es_tipo(_t, \"LogLlamada\")) { gen_visitar_log(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"DeclaracionVariable\")) { gen_visitar_declaracion(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"AsignacionCampo\")) { gen_visitar_asignacion_campo(est, stmt); }")
+        asm("else if (_syn_es_tipo(_t, \"SentenciaEnviarCanal\")) {")
+        asm("    // R14: envio de canal (paridad S1 emit_declarations.py visitar_enviar_canal L352-363)")
+        asm("    struct SentenciaEnviarCanal* _ecs = (struct SentenciaEnviarCanal*)stmt;")
+        asm("    if (!_ecs) return;")
+        asm("    gen_emitir_traza(est, \"nodos_flujo.syn\", \"SentenciaEnviarCanal\");")
+        asm("    char _ccan[1024]; _ccan[0] = 0;")
+        asm("    char _cval[1024]; _cval[0] = 0;")
+        asm("    if (_ecs->canal) { _oo_expr_a_c(est, _ecs->canal, _ccan, 1024); }")
+        asm("    if (_ecs->valor) { _oo_expr_a_c(est, _ecs->valor, _cval, 1024); }")
+        asm("    char _cln[2200]; _cln[0] = 0;")
+        asm("    strcat(_cln, \"    canal_enviar(\");")
+        asm("    strcat(_cln, _ccan);")
+        asm("    strcat(_cln, \", (void*)(\");")
+        asm("    strcat(_cln, _cval);")
+        asm("    strcat(_cln, \"));\");")
+        asm("    gen_emitir_str(est, _cln);")
+        asm("} else if (_syn_es_tipo(_t, \"SentenciaLanzar\")) {")
+        asm("    // F4.4: lanzar -> fibra M:N (Manual 5 §2.6). Cierra D-4/R15 (antes:")
+        asm("    // llamada directa; el thread real del S1 no estaba portado). El struct")
+        asm("    // de argumentos es ANONIMO con el MISMO layout en el call-site y en el")
+        asm("    // wrapper (tipos C compatibles -> layout identico); evita el typedef")
+        asm("    // global y el pre-scan de tipos (paridad S1 visitar_lanzar).")
+        asm("    struct SentenciaLanzar* _lzs = (struct SentenciaLanzar*)stmt;")
+        asm("    if (!_lzs) return;")
+        asm("    gen_emitir_traza(est, \"nodos_flujo.syn\", \"SentenciaLanzar\");")
+        asm("    extern int _G_lanzar_count;")
+        asm("    extern char _G_lanzar_wrappers[8][4096]; extern int _G_lanzar_wrappers_count;")
+        asm("    _G_lanzar_count++;")
+        asm("    char _wrn[64]; snprintf(_wrn, 64, \"_wrap_%d\", _G_lanzar_count);")
+        asm("    if (_lzs->llamada && _lzs->llamada->tipo.datos && strcmp(_lzs->llamada->tipo.datos, \"LlamadaFuncion\") == 0) {")
+        asm("        struct LlamadaFuncion* _lfz = (struct LlamadaFuncion*)_lzs->llamada;")
+        asm("        if (_lfz->nombre.datos) {")
+        asm("            struct ListaNodo* _lcz = _lfz->argumentos;")
+        asm("            int _nai = 0;")
+        asm("            char _flds[2048]; _flds[0] = 0;")
+        asm("            char _expv[8][1024];")
+        asm("            while (_lcz && _nai < 8) {")
+        asm("                if (_lcz->cabeza) {")
+        asm("                    struct Nodo* _az = _lcz->cabeza;")
+        asm("                    char _abz[1024]; _abz[0] = 0;")
+        asm("                    if (_az->tipo.datos && strcmp(_az->tipo.datos, \"ArgumentoTransferido\") == 0) {")
+        asm("                        struct ArgumentoTransferido* _atz = (struct ArgumentoTransferido*)_az;")
+        asm("                        if (_atz->expr) { _oo_expr_a_c(est, _atz->expr, _abz, 1024); }")
+        asm("                    } else {")
+        asm("                        _oo_expr_a_c(est, _az, _abz, 1024);")
+        asm("                    }")
+        asm("                    // Tipo C del argumento (paridad S1 tipo_de_expr):")
+        asm("                    // _syn_nativo_expr_tipo_c resuelve literales/identificadores/")
+        asm("                    // llamadas/estructuras; fallback void*.")
+        asm("                    char _azt[128]; _azt[0] = 0;")
+        asm("                    struct Nodo* _azt_n = _az;")
+        asm("                    if (_az->tipo.datos && strcmp(_az->tipo.datos, \"ArgumentoTransferido\") == 0) {")
+        asm("                        struct ArgumentoTransferido* _atz2 = (struct ArgumentoTransferido*)_az;")
+        asm("                        if (_atz2->expr) _azt_n = _atz2->expr;")
+        asm("                    }")
+        asm("                    extern int64_t _syn_nativo_expr_tipo_c(void* n, void* out);")
+        asm("                    if (_azt_n) { _syn_nativo_expr_tipo_c((void*)_azt_n, (void*)_azt); }")
+        asm("                    if (!_azt[0]) strcpy(_azt, \"void*\");")
+        asm("                    if (_nai > 0) strcat(_flds, \" \");")
+        asm("                    char _f1[256]; snprintf(_f1, 256, \"%s v%d;\", _azt, _nai); strcat(_flds, _f1);")
+        asm("                    strncpy(_expv[_nai], _abz, 1023); _expv[_nai][1023] = 0;")
+        asm("                    _nai++;")
+        asm("                }")
+        asm("                _lcz = _lcz->cola;")
+        asm("            }")
+        asm("            if (_nai > 0) {")
+        asm("                // Wrapper diferido (struct anonimo con layout identico en")
+        asm("                // call-site y wrapper). F4.5: el cast a `struct { ... }*`")
+        asm("                // genera -Wincompatible-pointer-types (cada anonimo es un")
+        asm("                // tipo distinto para gcc) — se asigna VOID* (conversion")
+        asm("                // implicita estandar, sin warning): call-site `= (void*)` y")
+        asm("                // wrapper `= (void*)_arg`.")
+        asm("                char _wfb[4096]; _wfb[0] = 0;")
+        asm("                snprintf(_wfb, 4096, \"static void %s(void* _arg) { struct { %s }* _a = (void*)_arg; pool_free(_arg); %s(_a->v0\", _wrn, _flds, _lfz->nombre.datos);")
+        asm("                for (int _wai = 1; _wai < _nai; _wai++) { char _wa[64]; snprintf(_wa, 64, \", _a->v%d\", _wai); strcat(_wfb, _wa); }")
+        asm("                strcat(_wfb, \"); }\\n\");")
+        asm("                if (_G_lanzar_wrappers_count < 8) { strncpy(_G_lanzar_wrappers[_G_lanzar_wrappers_count], _wfb, 4095); _G_lanzar_wrappers[_G_lanzar_wrappers_count][4095] = 0; _G_lanzar_wrappers_count++; }")
+        asm("                // Call-site: struct anonimo + pool_alloc + fibra_crear")
+        asm("                char _lcb[4096]; _lcb[0] = 0;")
+        asm("                snprintf(_lcb, 4096, \"    struct { %s }* _args_%d = (void*)pool_alloc(sizeof(struct { %s }));\", _flds, _G_lanzar_count, _flds);")
+        asm("                gen_emitir_str(est, _lcb);")
+        asm("                for (int _lai = 0; _lai < _nai; _lai++) {")
+        asm("                    char _las[1200]; snprintf(_las, 1200, \"    _args_%d->v%d = %s;\", _G_lanzar_count, _lai, _expv[_lai]);")
+        asm("                    gen_emitir_str(est, _las);")
+        asm("                }")
+        asm("                char _lcall[1200]; snprintf(_lcall, 1200, \"    fibra_crear(%s, _args_%d, 0);\", _wrn, _G_lanzar_count);")
+        asm("                gen_emitir_str(est, _lcall);")
+        asm("            } else {")
+        asm("                // Sin argumentos: funcion directa (firma void(void*))")
+        asm("                char _lcz0[1200]; snprintf(_lcz0, 1200, \"    fibra_crear((void(*)(void*))%s, NULL, 0);\", _lfz->nombre.datos);")
+        asm("                gen_emitir_str(est, _lcz0);")
+        asm("            }")
+        asm("        } else {")
+        asm("            gen_emitir_str(est, \"    (void)0;\");")
+        asm("        }")
+        asm("    } else {")
+        asm("        // No es LlamadaFuncion (expresion directa)")
+        asm("        char _lexpr[1024]; _lexpr[0] = 0;")
+        asm("        if (_lzs->llamada) { _oo_expr_a_c(est, _lzs->llamada, _lexpr, 1024); }")
+        asm("        char _lcz1[1200]; snprintf(_lcz1, 1200, \"    fibra_crear((void(*)(void*))%s, NULL, 0);\", _lexpr[0] ? _lexpr : \"(void(*)(void*))0\");")
+        asm("        gen_emitir_str(est, _lcz1);")
+        asm("    }")
+        asm("} else if (_syn_es_tipo(_t, \"SentenciaEscuchar\")) { gen_visitar_escuchar(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"SentenciaRomper\")) { gen_visitar_romper(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"SentenciaSiguiente\")) { gen_visitar_siguiente(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"BloqueInseguro\")) {")
@@ -464,7 +1469,196 @@ funcion gen_visitar_stmt_generico(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("        if (_sbs) { gen_visitar_stmt_generico(est, _sbs); }")
         asm("        _sbl = _sbl->cola;")
         asm("    }")
+        asm("} else if (_syn_es_tipo(_t, \"NodoCoincidir\")) {")
+        asm("    gen_visitar_coincidir(est, stmt);")
         asm("} else {")
         asm("    fprintf(stderr, \"Error Fatal Generador: Nodo tipo [%s] no reconocido\\n\", _t);")
         asm("    exit(1);")
         asm("}")
+
+// ----------------------------------------------------------
+// gen_visitar_coincidir (R11 - paridad S1 visitar_coincidir)
+// ----------------------------------------------------------
+funcion gen_visitar_coincidir(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 2 §5.1: contratos de dominio
+    requiere:
+        stmt != nulo
+    garantiza:
+        1 == 1
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
+    inseguro:
+        asm("struct NodoCoincidir* _mc = (struct NodoCoincidir*)stmt;")
+        asm("if (!_mc) return;")
+        asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"NodoCoincidir\");")
+        asm("char _eb[4096]; _eb[0]=0;")
+        // ME r188b (H-R188-2, cumple Manual 5 §3.6): sujeto receive de
+        // `coincidir c ->:` -> modo_resultado (paridad S1 emit_control.py
+        // visitar_coincidir L286-294: registrar instancia ADT + emit typedef
+        // ANTES de traducir el sujeto porque el tipo NO aparece en el fuente y
+        // el pre-scan D-2 no lo ve). El parser (parser_sentencias.syn) envuelve
+        // el sujeto identificador en NODO_RECIBIR_CANAL; aqui registro
+        // `Resultado<elem, texto>` (los CTORS ok/err vienen del R24 builtin en
+        // monomorfizacion.syn), emito el typedef de la instancia a nivel global
+        // (el pre-bloque ya especifico el struct; sin paso, el C queda
+        // con el global vaco) y prendo el flag modo_resultado AWSem expr_eval.
+        asm("extern int _G_co_modo_resultado;")
+        asm("int _prev_mr = _G_co_modo_resultado; int _mr_on = 0; int _mr_keep = -1; _G_co_modo_resultado = 0;")
+        asm("if (_mc->expresion && _mc->expresion->tipo.datos && strcmp(_mc->expresion->tipo.datos, \"ExprRecibirCanal\") == 0) {")
+        asm("    struct ExprRecibirCanal* _mrrc = (struct ExprRecibirCanal*)_mc->expresion;")
+        asm("    char _mrelem[64]; _mrelem[0] = 0;")
+        asm("    if (_mrrc->canal && _mrrc->canal->tipo.datos && strcmp(_mrrc->canal->tipo.datos, \"Identificador\") == 0) {")
+        asm("        struct Identificador* _mrrid = (struct Identificador*)_mrrc->canal;")
+        asm("        if (_mrrid->nombre.datos) { extern int _G_native_canal_elem_tipo(const char*, char*); _G_native_canal_elem_tipo(_mrrid->nombre.datos, _mrelem); }")
+        asm("    }")
+        asm("    if (_mrelem[0]) {")
+        asm("        // nombre C del elemento y nombre Synapse del generic arg")
+        asm("        const char* _mrbase = _mrelem; const char* _mrsyn = _mrelem;")
+        asm("        if (strcmp(_mrelem, \"int64_t\") == 0) { _mrsyn = \"entero\"; } else if (strcmp(_mrelem, \"double\") == 0) { _mrsyn = \"decimal\"; } else if (strcmp(_mrelem, \"CadenaSegura\") == 0) { _mrsyn = \"texto\"; }")
+        asm("        char _mrtype[96]; snprintf(_mrtype, 95, \"Resultado<%s,texto>\", _mrsyn); _mrtype[95] = 0;")
+        asm("        extern char _G_native_adt_inst_type[64][64]; extern char _G_native_adt_inst_c[64][64]; extern int _G_native_adt_inst_count;")
+        asm("        int _mrreg = -1;")
+        asm("        for (int _mrq = 0; _mrq < _G_native_adt_inst_count; _mrq++) { if (strcmp(_G_native_adt_inst_type[_mrq], _mrtype) == 0) { _mrreg = _mrq; break; } }")
+        asm("        if (_mrreg < 0) { extern int64_t _G_native_adt_registrar_syn(void* tipo_syn); _mrreg = _G_native_adt_registrar_syn((void*)_mrtype) == 1 ? _G_native_adt_inst_count - 1 : -1; }")
+        asm("        if (_mrreg >= 0 && _mrreg < _G_native_adt_inst_count) {")
+        asm("            _mr_on = 1; _mr_keep = _mrreg;")
+        asm("            _G_co_modo_resultado = 1;")
+        asm("        }")
+        asm("    }")
+        asm("}")
+        asm("if (_mc->expresion) { _oo_expr_a_c(est, _mc->expresion, _eb, 4096); }")
+        asm("_G_co_modo_resultado = _prev_mr;")
+        asm("// R11: emitir switch sobre .tag del ADT (paridad S1 emit_control.py")
+        asm("// visitar_coincidir: switch sobre var_temp.tag). Usamos la expresion")
+        asm("// inline (sin variable temporal tipada - divergencia: si la expr tiene")
+        asm("// efectos se evaluaria multiples veces; el uso canonico (identificador")
+        asm("// de variable/parametro) es puro y funciona correctamente).")
+        asm("gen_emitir_str(est, \"    {\");")
+        // ME r188b (cumple Manual 5 §3.6): typedef de la instancia DENTRO del
+        // bloque del coincide — scope C anidado nuevo por match, valido aunque
+        // haya varios `coincidir c ->:` en la MISMA funcion (H-r188b-2:
+        // typedef repetido a nivel de funcion = 'redefinition of struct').
+        asm("if (_mr_on) {")
+        asm("    gen_emitir_str_typedef_instancia(est, _mr_keep);")
+        // H-r188b-3 (paridad S1 emit_control.py: var_temp): la expresión del
+        // sujeto (statement-expression con canal_recibir) tiene EFECTOS — se
+        // evalúa UNA vez en la temporal _mv_r y el switch/casos la usan pura.
+        // Con la expresión inline el receive se repetía en el switch y en
+        // cada caso (drenaba el canal o se bloqueaba).
+        asm("    char _mrdl[4096]; snprintf(_mrdl, 4095, \"%s _mv_r = %s;\", _G_native_adt_inst_c[_mr_keep], _eb);")
+        asm("    gen_emitir_str(est, _mrdl);")
+        asm("    strcpy(_eb, \"_mv_r\");")
+        asm("}")
+        // cumple Manual 3 §3 (ME r180_coincidir_nativo R2): el switch se emite
+        // sobre el VALOR si (a) algun patron no-wildcard es un literal numero
+        // (comienza con digito) o (b) el TIPO C del sujeto es entero/bool —
+        // paridad S1 emit_control.py visitar_coincidir H-R90-6 ("tipos
+        // primitivos no tienen .tag — switch sobre el valor directo", decision
+        // por PRIMITIVOS); si no, ADT: switch sobre .tag (ruta existente, byte
+        // identica para los coincidir de tags del nucleo; las instancias ADT
+        // monomorfizadas NO llevan prefijo 'struct ' — oraculo r4).
+        asm("int _mc_lit = 0;")
+        asm("struct ListaNodo* _sc = _mc->casos;")
+        asm("while (_sc) { struct NodoCaso* _scs = (struct NodoCaso*)_sc->cabeza; if (_scs && _scs->patron.datos && _scs->patron.datos[0] >= '0' && _scs->patron.datos[0] <= '9') { _mc_lit = 1; break; } _sc = _sc->cola; }")
+        asm("if (!_mc_lit && _mc->expresion && _mc->expresion->tipo.datos && strcmp(_mc->expresion->tipo.datos, \"Identificador\") == 0) {")
+        asm("    struct Identificador* _mie2 = (struct Identificador*)_mc->expresion;")
+        asm("    if (_mie2->nombre.datos) {")
+        asm("        extern char _G_fn_vars[2048][64]; extern char _G_fn_var_tipos[2048][64]; extern int _G_fn_vars_count;")
+        asm("        for (int _mv = 0; _mv < _G_fn_vars_count; _mv++) {")
+        asm("            if (strcmp(_G_fn_vars[_mv], _mie2->nombre.datos) == 0 && _G_fn_var_tipos[_mv][0]) {")
+        asm("                // paridad S1 emit_control.py (PRIMITIVOS): el switch sobre")
+        asm("                // VALOR solo es valido en C para el sujeto entero/bool;")
+        asm("                // las instancias ADT monomorfizadas NO llevan prefijo")
+        asm("                // 'struct ' y quedan en la ruta .tag (oraculo r4).")
+        asm("                if (strncmp(_G_fn_var_tipos[_mv], \"int64_t\", 7) == 0 || strcmp(_G_fn_var_tipos[_mv], \"int\") == 0 || strcmp(_G_fn_var_tipos[_mv], \"bool\") == 0) { _mc_lit = 1; }")
+        asm("                break;")
+        asm("            }")
+        asm("        }")
+        asm("    }")
+        asm("}")
+        asm("char _sw[4096];")
+        asm("if (_mc_lit) { snprintf(_sw, 4096, \"    switch ((%s)) {\", _eb); } else { snprintf(_sw, 4096, \"    switch ((%s).tag) {\", _eb); }")
+        asm("gen_emitir_str(est, _sw);")
+        asm("struct ListaNodo* _cc = _mc->casos;")
+        asm("while (_cc) {")
+        asm("    struct NodoCaso* _cs = (struct NodoCaso*)_cc->cabeza;")
+        asm("    if (_cs && _cs->patron.datos) {")
+        asm("        const char* _p = _cs->patron.datos;")
+        asm("        if (strcmp(_p, \"_\") == 0) {")
+        asm("            gen_emitir_str(est, \"    default:{\");")
+        asm("        } else if (_p[0] >= '0' && _p[0] <= '9') {")
+        asm("            // ME r180_coincidir_nativo R2 (cumple Manual 3 §3): patron")
+        asm("            // literal numero -> case C directo con el lexema (sin binding")
+        asm("            // de variable: no hay parens que extraer).")
+        asm("            char _cl_lit[64]; snprintf(_cl_lit, 64, \"    case %s:{\", _p); gen_emitir_str(est, _cl_lit);")
+        asm("        } else {")
+        asm("            // extraer tag antes de '('")
+        asm("            char _tg[64]; int _ti=0;")
+        asm("            while (_p[_ti] && _p[_ti] != '(' && _ti < 63) { _tg[_ti]=_p[_ti]; _ti++; } _tg[_ti]=0;")
+        asm("            char _adt[64]; int _tagn=0; char _tipo[64]; _adt[0]=0; _tipo[0]=0;")
+        asm("            _G_native_adt_ctr_info(_tg, _adt, &_tagn, _tipo);")
+        asm("            char _cl[64]; snprintf(_cl, 64, \"    case %d:{\", _tagn); gen_emitir_str(est, _cl);")
+        asm("            // variable extraida: tag(var)")
+        asm("            const char* _po = strchr(_p, '(');")
+        asm("            if (_po) {")
+        asm("                char _vr[64]; int _vi=0; _po++;")
+        asm("                while (*_po && *_po != ')' && _vi < 63) { _vr[_vi++]=*_po; _po++; } _vr[_vi]=0;")
+        asm("                if (_vr[0]) {")
+        asm("                    // R18: resolver la instancia EXACTA por el tipo de la variable")
+        asm("                    // de la expresion - paridad S1 tipo_de_expr e instancias ADT.")
+        asm("                    // La heuristica de la primera instancia del base falla con")
+        asm("                    // multi-instancia del mismo base Resultado-entero-texto y")
+        asm("                    // Resultado anidado.")
+        asm("                    extern char _G_native_adt_inst_fields_c[64][8][64]; extern int _G_native_adt_inst_nfields[64]; extern int _G_native_adt_inst_count;")
+        asm("                    extern char _G_native_adt_inst_base[64][64];")
+        asm("                    extern char _G_native_adt_inst_c[64][64];")
+        asm("                    extern char _G_fn_vars[2048][64]; extern char _G_fn_var_tipos[2048][64]; extern int _G_fn_vars_count;")
+        asm("                    char _ft[64]; _ft[0]=0;")
+        asm("                    if (_mc->expresion && _mc->expresion->tipo.datos && strcmp(_mc->expresion->tipo.datos, \"Identificador\") == 0) {")
+        asm("                        struct Identificador* _mie = (struct Identificador*)_mc->expresion;")
+        asm("                        if (_mie->nombre.datos) {")
+        asm("                            for (int _vi2 = 0; _vi2 < _G_fn_vars_count && _ft[0]==0; _vi2++) {")
+        asm("                                if (strcmp(_G_fn_vars[_vi2], _mie->nombre.datos) == 0 && _G_fn_var_tipos[_vi2][0]) {")
+        asm("                                    for (int _xi2 = 0; _xi2 < _G_native_adt_inst_count && _ft[0]==0; _xi2++) {")
+        asm("                                        if (strcmp(_G_native_adt_inst_c[_xi2], _G_fn_var_tipos[_vi2]) == 0 && _tagn < _G_native_adt_inst_nfields[_xi2] && _G_native_adt_inst_fields_c[_xi2][_tagn][0]) {")
+        asm("                                            strcpy(_ft, _G_native_adt_inst_fields_c[_xi2][_tagn]);")
+        asm("                                        }")
+        asm("                                    }")
+        asm("                                }")
+        asm("                            }")
+        asm("                        }")
+        asm("                    }")
+        asm("                    for (int _xk=0; _xk<_G_native_adt_inst_count && _ft[0]==0; _xk++) {")
+        asm("                        if (strcmp(_G_native_adt_inst_base[_xk], _adt)==0 && _tagn < _G_native_adt_inst_nfields[_xk] && _G_native_adt_inst_fields_c[_xk][_tagn][0]) {")
+        asm("                            strcpy(_ft, _G_native_adt_inst_fields_c[_xk][_tagn]);")
+        asm("                        }")
+        asm("                    }")
+        asm("                    if (_ft[0]==0) { traducir_tipo_c((void*)_tipo); extern char _gen_tmp_buf[4096]; strncpy(_ft,_gen_tmp_buf,63); _ft[63]=0; }")
+        asm("                    if (_ft[0]==0) { strcpy(_ft, \"int64_t\"); }")
+        asm("                    char _vd[4096]; snprintf(_vd, 4096, \"        %s %s = (%s).dato.%s;\", _ft, _vr, _eb, _tg);")
+        asm("                    gen_emitir_str(est, _vd);")
+        asm("                    // R28: registrar la variable ligada del case (paridad S1")
+        asm("                    // visitar_coincidir ctx._variables[var_name]) - un coincidir")
+        asm("                    // ANIDADO sobre la variable ligada (tipo ADT) caia al fallback")
+        asm("                    // de la primera instancia del base y el binding emitia int64_t")
+        asm("                    // (C invalido). El doble ok(ok(42)) pasaba por casualidad; el")
+        asm("                    // triple ok(ok(ok(42))) fallaba en el nivel 2.")
+        asm("                    extern char _G_fn_vars[2048][64]; extern char _G_fn_var_tipos[2048][64]; extern int _G_fn_vars_count;")
+        asm("                    int _bvi = -1;")
+        asm("                    for (int _bv = 0; _bv < _G_fn_vars_count; _bv++) { if (strcmp(_G_fn_vars[_bv], _vr) == 0) { _bvi = _bv; break; } }")
+        asm("                    if (_bvi < 0 && _G_fn_vars_count < 2048) { strncpy(_G_fn_vars[_G_fn_vars_count], _vr, 63); _G_fn_vars[_G_fn_vars_count][63] = 0; _G_fn_var_tipos[_G_fn_vars_count][0] = 0; _bvi = _G_fn_vars_count++; }")
+        asm("                    if (_bvi >= 0) { int _blen = (int)strlen(_ft); int _bmax = (_blen < 63) ? _blen : 63; memcpy(_G_fn_var_tipos[_bvi], _ft, _bmax); _G_fn_var_tipos[_bvi][_bmax] = 0; }")
+        asm("                }")
+        asm("            }")
+        asm("        }")
+        asm("        // cuerpo del case (iterar hermanos del cuerpo del caso)")
+        asm("        struct ListaNodo* _bc = _cs->cuerpo;")
+        asm("        while (_bc) { if (_bc->cabeza) gen_visitar_stmt_generico(est, _bc->cabeza); _bc = _bc->cola; }")
+        asm("        gen_emitir_str(est, \"        break;\");")
+        asm("        gen_cerrar_bloque_c(est);")
+        asm("    }")
+        asm("    _cc = _cc->cola;")
+        asm("}")
+        asm("gen_emitir_str(est, \"    }\");")
+        asm("gen_emitir_str(est, \"    }\");")

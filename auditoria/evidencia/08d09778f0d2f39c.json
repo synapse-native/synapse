@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "08d09778f0d2f39c",
+ "expediente": "docs/alineacion/r298.md",
+ "fecha": "2026-11-24",
+ "archivos": [
+  "nucleo/generator.syn"
+ ],
+ "oraculos": {
+  "auditoria/verificar_contratos.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

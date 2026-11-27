@@ -2,7 +2,7 @@
  * validate_modelo_local.c — Suite de validación para M13.1
  * ========================================================
  * Propósito: Validar el pipeline de inferencia de modelos locales
- * (librerias/std/modelo.syn + synapse_rt.c + nucleo/optimizador_ia.syn)
+ * (std/modelo.syn + synapse_rt.c + nucleo/optimizador_ia.syn)
  *
  * Secciones de prueba:
  *   Section 1: ModeloContext — creación y destrucción (mock)

@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "4437bc919e048bd1",
+ "expediente": "docs/alineacion/r242_native_opensyn_cli.md",
+ "fecha": "2026-11-17",
+ "archivos": [
+  "nucleo/principal.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r242_opensyn_nativo.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

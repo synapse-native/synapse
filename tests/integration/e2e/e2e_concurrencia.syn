@@ -1,0 +1,39 @@
+#lang: es
+// e2e_concurrencia.syn - Prueba de integracion de concurrencia bidireccional
+// Lanza dos fibras que se comunican usando Canal<T>
+// Verifica: ausencia de deadlocks, ownership strict, paso de mensajes correcto
+// F4.4: usa la API NATIVA del lenguaje (Manual 5 S3): canal(T,N), <-, ->,
+// cerrar, lanzar (fibras M:N) - la API de std.concurrencia con externs
+// inventados _syn_canal_* fue eliminada (regla 5/8, hallazgo d2 de R51).
+// NOTA (F4-6 resuelto en R53): el valor 0 ya es distinguible del cierre — el
+// listener del `escuchar` rompe el while con el out-param `bool* cerrado`
+// (Manual 5 §3.4/§4.3), no por el centinela NULL. Se mantienen valores 1..3
+// como snapshot del comportamiento previo (el probe tests/probe_f46.syn cubre
+// el caso 0 real vs cierre).
+
+importar std.io
+
+funcion productor(ch: Canal<entero>, total: entero) -> nulo:
+    i = 1
+    mientras i <= total:
+        v = i
+        ch <- v
+        i = i + 1
+    cerrar(ch)
+    retornar
+
+funcion consumidor(ch: Canal<entero>) -> nulo:
+    escuchar ch:
+        mensaje = ch ->
+        si mensaje == nulo:
+            romper
+        escribir_linea(entero_a_texto(mensaje))
+    retornar
+
+funcion principal() -> nulo:
+    ch = canal(entero, 10)
+    lanzar productor(ch, 3)
+    consumidor(ch)
+    consumidor(ch)
+    consumidor(ch)
+    retornar

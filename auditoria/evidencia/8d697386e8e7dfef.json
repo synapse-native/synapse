@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "8d697386e8e7dfef",
+ "expediente": "docs/alineacion/r227b_stream_chunk_split.md",
+ "fecha": "2026-11-17",
+ "archivos": [
+  "runtime/core/ollama.c"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r227b_stream_chunk_split.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

@@ -1,6 +1,6 @@
 /* test_detect_hardware.c — Integration test for hardware detection (M4.1)
  * Tests: simulated 8GB vs 32GB profiles produce distinct model/config selections
- * Compile: gcc -I. -o tests/test_detect_hardware.exe tests/test_detect_hardware.c nucleo/detect_hardware.c -lm -lgdi32
+ * Compile: gcc -I. -o tests/test_detect_hardware.exe tests/test_detect_hardware.c nucleo/detect_hardware.c -lm -lgdi32 -ldxgi
  * Run:    tests/test_detect_hardware.exe
  */
 

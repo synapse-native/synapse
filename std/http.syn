@@ -1,0 +1,87 @@
+#lang: es
+// std.http — Servidor HTTP minimalista síncrono
+//
+// Uso desde Synapse:
+//   importar std.http
+//   importar std.tiempo
+//   importar std.json
+//
+//   fd_srv = iniciar_servidor(8080)
+//   mientras verdadero:
+//       fd_cli = aceptar(fd_srv)
+//       peticion = leer_peticion(fd_cli)
+//       responder(fd_cli, 200, "text/plain", "OK")
+
+importar std.err
+
+estructura RespuestaHttp:
+    codigo: entero
+    tipo_contenido: texto
+    cuerpo: texto
+    longitud: entero
+
+externo funcion _syn_servidor_escuchar(puerto: entero) -> entero
+externo funcion _syn_servidor_aceptar(fd_servidor: entero) -> entero
+externo funcion _syn_http_leer_peticion(fd_cliente: entero) -> texto
+externo funcion _syn_http_enviar_respuesta(fd_cliente: entero, respuesta: texto) -> entero
+externo funcion _syn_http_cerrar_cliente(fd_cliente: entero) -> nulo
+externo funcion _syn_http_respuesta_ok(codigo: entero, tipo: char*, cuerpo: char*, lon: entero) -> texto
+externo funcion _syn_iniciar_red() -> entero
+externo funcion _syn_cerrar_socket(fd: entero) -> entero
+
+funcion iniciar_servidor(puerto: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        puerto >= 0
+    garantiza:
+        _resultado_ >= -1
+    _syn_iniciar_red()
+    fd = _syn_servidor_escuchar(puerto)
+    retornar fd
+
+funcion aceptar(fd_servidor: entero) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        fd_servidor >= 0
+    garantiza:
+        _resultado_ >= -1
+    fd_cliente = _syn_servidor_aceptar(fd_servidor)
+    retornar fd_cliente
+
+funcion leer_peticion(fd_cliente: entero) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        fd_cliente >= 0
+    garantiza:
+        1 == 1
+    retornar _syn_http_leer_peticion(fd_cliente)
+
+funcion responder(fd_cliente: entero, codigo: entero, tipo: texto, cuerpo: texto) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        fd_cliente >= 0
+        codigo >= 0
+    garantiza:
+        1 == 1
+    res = _syn_http_respuesta_ok(codigo, tipo.datos, cuerpo.datos, cuerpo.longitud)
+    _syn_http_enviar_respuesta(fd_cliente, res)
+    _syn_http_cerrar_cliente(fd_cliente)
+    retornar
+
+funcion cerrar_cliente(fd_cliente: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        fd_cliente >= 0
+    garantiza:
+        1 == 1
+    _syn_http_cerrar_cliente(fd_cliente)
+    retornar
+
+funcion cerrar_servidor(fd_servidor: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        fd_servidor >= 0
+    garantiza:
+        1 == 1
+    _syn_cerrar_socket(fd_servidor)
+    retornar

@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "cc3cf959ff0b1a25",
+ "expediente": "docs/alineacion/r212_memoria_cifrada.md",
+ "fecha": "2026-11-11",
+ "archivos": [
+  "opensyn/memoria_persistente_cifrada.syn"
+ ],
+ "oraculos": {
+  "tests/opensyn/test_memoria_cifrada.py": true,
+  "tests/opensyn/test_memoria_cifrada_comportamiento.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

@@ -30,7 +30,7 @@ static void* productor(void* arg) {
 static void* consumidor(void* arg) {
     (void)arg;
     for (int i = 1; i <= NUM_MSGS; i++) {
-        void* p = canal_recibir(ch);
+        void* p = canal_recibir(ch, &(bool){0});
         if (p == NULL) {
             fprintf(stderr, "[CONS] canal_recibir devolvio NULL en msg %d\n", i);
             return NULL;

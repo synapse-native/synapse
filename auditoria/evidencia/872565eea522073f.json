@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "872565eea522073f",
+ "expediente": "docs/alineacion/33.5_certificacion.md",
+ "fecha": "2026-09-29",
+ "archivos": [
+  "nucleo/principal.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_33_5_certificacion.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

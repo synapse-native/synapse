@@ -1,0 +1,13 @@
+#lang: es
+importar std.http
+
+funcion principal() -> nulo:
+    fd = iniciar_servidor(0)
+    si fd >= 0:
+        log("servidor OK")
+        peticion = leer_peticion(fd)
+        log("leer_peticion OK")
+        cerrar_servidor(fd)
+    sino:
+        log("FALLO servidor")
+    log("FIN")

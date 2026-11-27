@@ -1,0 +1,50 @@
+#lang: es
+// R91 - validacion full-stack: .syq -> syq_frontend.exe -> JSON plano ->
+// puente (lowering OOP H-R90-5) -> semantica/codegen S1 -> gcc -> runtime.
+// Ejercita: estructura con crear() SIN params (M3 s3 L91 permite
+// "( [ parametros ] )" vacio — bug ciclo self->self corregido en R91),
+// metodos con y sin parametros, coincidir con patrones literales sobre
+// primitivo (H-R90-6), enumeracion, constante, @export.
+//
+// Salida esperada del binario:
+//   0
+//   100
+//   20
+//   5
+//   ok
+
+estructura Contador:
+    v: entero
+    crear():
+        self.v = 0
+    metodo pon(nv: entero):
+        self.v = nv
+    metodo sumado(n: entero) -> entero:
+        retornar self.v + n
+    metodo valor() -> entero:
+        retornar self.v
+
+enumeracion Color:
+    rojo
+    verde
+
+constante LIMITE = 10
+
+@export(python) funcion doble(v: entero) -> entero:
+    retornar v * 2
+
+funcion clasifica(n: entero) -> entero:
+    coincidir n:
+        0 => retornar 100
+        _ => retornar 200
+
+funcion principal() -> entero:
+    let c = Contador()
+    escribir_linea(entero_a_texto(c.valor()))
+    escribir_linea(entero_a_texto(clasifica(0)))
+    escribir_linea(entero_a_texto(doble(LIMITE)))
+    let m = c.sumado(5)
+    escribir_linea(entero_a_texto(m))
+    si c.valor() < LIMITE:
+        escribir_linea("ok")
+    retornar 0

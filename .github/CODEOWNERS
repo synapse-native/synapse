@@ -1,0 +1,17 @@
+# CODEOWNERS — Revisión humana obligatoria (gobernanza)
+#
+# Garantiza que ningún cambio en código de control de calidad, tests ni
+# manuales se integre sin la revisión del Arquitecto (reglas 5 y 11, y el
+# principio de "no confianza ciega" del sistema de control).
+#
+# IMPORTANTE: reemplaza @synapse-architect por el equipo/handle real del
+# Arquitecto o del equipo de gobernanza para que GitHub asigne revisores.
+# Además, configura branch protection en `main` exigiendo este CODEOWNERS
+# y los checks requeridos (auditoria, calidad-tests, trazabilidad-codigo, test).
+
+/auditoria/            @synapse-architect
+/.github/workflows/    @synapse-architect
+/tests/                @synapse-architect
+/docs/manuales/        @synapse-architect
+/docs/canon_deudas.md  @synapse-architect
+/docs/modulos_d9.md    @synapse-architect

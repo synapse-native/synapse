@@ -1,0 +1,22 @@
+{
+ "cambio_hash": "f6b961b78da460a1",
+ "expediente": "docs/alineacion/r198b3_fmt_lint.md",
+ "fecha": "2026-11-05",
+ "archivos": [
+  "lib/runtime_bindings.syq",
+  "nucleo/formatter.syn",
+  "nucleo/lint.syn",
+  "nucleo/principal.syn",
+  "opensyn/principal.syn",
+  "runtime/core/sistema.c",
+  "runtime/core/sistema.h",
+  "runtime/core/texto.c",
+  "runtime/core/texto.h",
+  "std/texto.syn"
+ ],
+ "oraculos": {
+  "auditoria/oraculos/oraculo_r198b3_fmt_lint.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

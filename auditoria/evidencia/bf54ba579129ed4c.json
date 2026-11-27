@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "bf54ba579129ed4c",
+ "expediente": "docs/alineacion/r183d_flags_debug.md",
+ "fecha": "2026-10-11",
+ "archivos": [
+  "nucleo/principal.syn",
+  "pipeline.py"
+ ],
+ "oraculos": {
+  "auditoria/oraculos/oraculo_r183d.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

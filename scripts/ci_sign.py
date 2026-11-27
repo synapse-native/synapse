@@ -63,7 +63,7 @@ def sbom(artifact, sha256, sig, pub):
         'predicate': {
             'builder': {'id': 'https://synapse-lang.org/builder'},
             'buildType': 'synapse-build',
-            'recipe': {'type': 'synapse-compiler', 'version': os.environ.get('SYNAPSE_VERSION', '5.1.1-industrial')},
+            'recipe': {'type': 'synapse-compiler', 'version': os.environ.get('SYNAPSE_VERSION', '8.1.0-industrial')},
             'metadata': {'completeness': {'parameters': True, 'environment': False, 'materials': False}, 'reproducible': False},
             'materials': [{'uri': 'git+https://github.com/synapse/nucleo/principal.syn', 'digest': {'sha256': sha256}}],
         },
@@ -75,17 +75,16 @@ def sbom(artifact, sha256, sig, pub):
     print('SLSA attestation generated')
 
 def verify_file(artifact, sig_path, pub_key_path):
-    from nucleo.ed25519_signer import verificar_archivo
+    sys.path.insert(0, '.')
+    from instaladores.common.verificar_firma import verificar_archivo
     import os
-    if os.path.exists(pub_key_path):
-        with open(pub_key_path) as f:
-            pub_key = f.read().strip()
-        with open(sig_path) as f:
-            sig = f.read().strip()
-        valid = verificar_archivo(artifact, sig, pub_key)
-        print('SIGNATURE_VALID=YES' if valid else 'SIGNATURE_VALID=NO')
-    else:
+    if not os.path.exists(artifact) or not os.path.exists(sig_path) or not os.path.exists(pub_key_path):
         print('SIGNATURE_VALID=NO')
+        sys.exit(1)
+    valid = verificar_archivo(artifact, sig_path, pub_key_path)
+    print('SIGNATURE_VALID=YES' if valid else 'SIGNATURE_VALID=NO')
+    if not valid:
+        sys.exit(1)
 
 if __name__ == '__main__':
     cmd = sys.argv[1] if len(sys.argv) > 1 else ''

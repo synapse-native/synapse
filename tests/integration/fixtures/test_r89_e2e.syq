@@ -1,0 +1,32 @@
+#lang: es
+// R89 - fixture end-to-end: .syq -> SemNodo[] -> backend compartido
+// Ejercita H-R87-2 (externo estructura, constante STRING) y
+// H-R88-1 (@export lang preservado en payload NODO_EXPORT).
+
+estructura Punto:
+    x: entero
+    yy: entero
+    crear(px: entero):
+        self.x = px
+    metodo desplazar(d: entero):
+        self.x = self.x + d
+
+enumeracion Color:
+    rojo
+    verde
+
+@export(python) funcion visible(v: entero) -> entero:
+    retornar v * 2
+
+@export(typescript) funcion doble(n: entero) -> entero:
+    retornar n * 2
+
+externo estructura Vec3
+externo constante SALUDO = "hola"
+externo funcion externa(k: entero) -> entero
+
+funcion principal() -> entero:
+    let p = Punto()
+    p = p.desplazar(3)
+    let r = visible(21)
+    retornar r

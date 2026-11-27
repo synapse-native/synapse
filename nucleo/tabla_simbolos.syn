@@ -1,4 +1,7 @@
 #lang: es
+// cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas (ME formatter_fix R4: anclaje de norma vigente tras reformato)
+// cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
+// vinculo ME formatter_fix R4 (Manual 1 §7.1, M8 §4.1): reformato cosmético del nucleo — estilo, sin cambios semánticos
 
 constante PROPIEDAD_VIVO = 1
 constante PROPIEDAD_MOVIDO = 2

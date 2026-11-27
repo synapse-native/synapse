@@ -1,0 +1,21 @@
+{
+ "cambio_hash": "41f37a35cc08666d",
+ "expediente": "docs/alineacion/r299d_contratos_generador_submodulos.md",
+ "fecha": "2026-11-24",
+ "archivos": [
+  "nucleo/generador/compilar.syn",
+  "nucleo/generador/emision_c.syn",
+  "nucleo/generador/escaneo.syn",
+  "nucleo/generador/frontend_nativo.syn",
+  "nucleo/generador/funciones.syn",
+  "nucleo/generador/monomorfizacion.syn",
+  "nucleo/generador/nodos_flujo.syn",
+  "nucleo/generador/orquestador.syn",
+  "nucleo/generador/recorrido.syn"
+ ],
+ "oraculos": {
+  "auditoria/verificar_contratos.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

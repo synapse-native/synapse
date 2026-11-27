@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "083883e76ff828e4",
+ "expediente": "docs/alineacion/r284_observabilidad_local.md",
+ "fecha": "2026-11-22",
+ "archivos": [
+  "nucleo/principal.syn",
+  "std/texto.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_r284_observabilidad_sin_red.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

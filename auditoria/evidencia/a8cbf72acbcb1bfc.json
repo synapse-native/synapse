@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "a8cbf72acbcb1bfc",
+ "expediente": "docs/alineacion/r255_lsp_ai.md",
+ "fecha": "2026-11-17",
+ "archivos": [
+  "nucleo/lsp_v3.syn"
+ ],
+ "oraculos": {
+  "tests/integration/test_ai_commands_opensyn.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

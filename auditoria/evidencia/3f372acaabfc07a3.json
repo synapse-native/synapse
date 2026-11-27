@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "3f372acaabfc07a3",
+ "expediente": "docs/alineacion/f32_1_grafo.md",
+ "fecha": "2026-09-16",
+ "archivos": [
+  "nucleo/grafo_conocimiento.syn"
+ ],
+ "oraculos": {
+  "tests/opensyn/test_grafo.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

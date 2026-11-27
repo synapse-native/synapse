@@ -1,0 +1,4 @@
+#lang: es
+funcion principal() -> nulo:
+    a = "hola" + 10
+    log("fin")

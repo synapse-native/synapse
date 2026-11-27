@@ -1,5 +1,6 @@
 #ifndef DETECT_HARDWARE_H
 #define DETECT_HARDWARE_H
+// cumple Manual 9 5.7 (detección de hardware/GPU del otro agente)
 
 #include <stdint.h>
 
@@ -28,6 +29,7 @@ typedef struct {
 } HwProfile;
 
 int synapse_detectar_hardware(HwProfile* perfil);
+int64_t detect_vram_total(void);
 void synapse_hw_sugerir_config(HwProfile* perfil);
 void synapse_hw_imprimir_perfil(const HwProfile* perfil);
 int synapse_hw_to_json(const HwProfile* perfil, char* buf, size_t cap);

@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "6e868b39d236f3cf",
+ "expediente": "docs/alineacion/r318_detect_hardware_macos_mem.md",
+ "fecha": "2026-11-23",
+ "archivos": [
+  "runtime/core/detect_hardware.c"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_r317_detect_hardware_macos.py": true,
+  "tests/auditoria/test_r318_detect_hardware_macos_mem.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

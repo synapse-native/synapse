@@ -1,0 +1,308 @@
+#lang: es
+// cumple Manual 2 §5.1 (ME r192_deuda_barrido): cláusulas de contratos booleanas alineadas.
+// nucleo/formatter.syn — Formateador nativo (backend canonico de `synapse fmt`)
+// cumple Manual 2 §12: nucleo/formatter.syn — formateador con reglas de estilo
+// cumple Manual 3 §12: colecciones de la biblioteca estándar en su API
+// cumple Manual 8 §4.1: `synapse fmt <archivo> [--check]` — backend real de
+// los subcomandos fmt (H-R152-4/R4).
+// Fase 31.4: formateador que reescribe codigo segun reglas de estilo
+// r153 (H-R153-1): reescrito contra el API que S1/S2 soportan de verdad
+// (probe r153): Listas, para..en, metodos de coleccion, longitud(),
+// subcadena(), entero_a_texto(). Eliminado: `no es nulo` / `es nulo`
+// (sintaxis no documentada en Manual 2 §2), `$valor` (interpolacion no
+// documentada) y el formateo por AST (Programa/Declaracion/SemNodo no son
+// alcanzables desde un modulo usuario — igual que lint.syn, H-R153-1); el
+// formateo es por FUENTE: indentacion a multiplo de 4, espacios alrededor de
+// operadores, un espacio tras coma, sin espacios finales ni tabs.
+
+// --- Reglas de estilo (normativas) ---
+
+estructura ReglasEstilo:
+    espacios_indentacion: entero // 4 (prohibido tabs)
+    espacios_operadores: booleano // verdadero: a + b no a+b
+    espacio_despues_coma: booleano // verdadero: funcion(a, b)
+    lineas_entre_funciones: entero // 1
+
+funcion reglas_defecto() -> ReglasEstilo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    retornar ReglasEstilo(4, verdadero, verdadero, 1)
+
+// --- API canónica del módulo (r153, H-R153-1) ---
+// El API imaginado recibía nodos AST no alcanzables desde un módulo usuario
+// (Programa/Declaracion/SemNodo). La entrada canónica es la RUTA del fuente.
+
+funcion formatear_programa(ruta: texto) -> texto:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    // cumple Manual 2 §12: formatear_programa() formatea el programa completo
+    // leyendo su fuente y aplicando las reglas de estilo por línea.
+    let contenido = leer_archivo(ruta)
+    retornar formatear_texto(contenido)
+
+funcion formatear_declaracion(linea: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    // cumple Manual 2 §12: formatear_declaracion() normaliza una línea de
+    // declaración (indentación múltiplo de 4 + espacios de operadores).
+    retornar formatear_linea(linea)
+
+funcion formatear_funcion(linea: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    // cumple Manual 2 §12: formatear_funcion() normaliza la firma/encabezado
+    // de función con las mismas reglas de estilo.
+    retornar formatear_linea(linea)
+
+// cumple Manual 1 §7.4 (ME r299_codigo_muerto): `formatear_archivo` no tenía
+// referencias; el `fmt` del CLI compone `formatear_texto(leer_archivo(ruta))`.
+
+// --- Formateo de texto completo ---
+
+// Externos del builder runtime (O(1) amortizado por anexión)
+// cumple Manual 6 §3.1: declaración externo de las funciones C del runtime
+// (runtime/core/texto.c §12.2, ME r198b3_fmt_lint) — elimina el O(n²) de
+// concatenar `resultado = resultado + linea` línea a línea (timeout de
+// `fmt --check nucleo/generator.syn`, H-R198b2-2).
+externo funcion _syn_texto_builder_crear() -> entero
+externo funcion _syn_texto_builder_anexar(id: entero, frag: texto) -> nulo
+externo funcion _syn_texto_builder_construir(id: entero) -> texto
+externo funcion _syn_texto_builder_liberar(id: entero) -> nulo
+
+funcion formatear_texto(texto: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    // cumple Manual 2 §5.1 (ME r198b3_fmt_lint): `_resultado_` contiene el
+    // valor a retornar — el resultado es la COPIA transferida por
+    // _syn_texto_builder_construir, anexando DONE cada línea formateada
+    // (slicing por ÍNDICE de fin de línea: un solo subcadena por línea, sin
+    // construir `linea_actual` carácter a carácter).
+    let acc = _syn_texto_builder_crear()
+    si acc < 0:
+        retornar ""
+    let largo = longitud(texto)
+    // r153: preserva el newline final (estabilidad de ida-y-vuelta: sin esto,
+    // un fuente bien formateado CON newline final nunca pasaria --check).
+    let termina_nl = falso
+    si largo > 0:
+        si subcadena(texto, largo - 1, 1) == "\n":
+            termina_nl = verdadero
+    // cumple Manual 1 §7.1 (ME formatter_fix, R2b): conserva UNA línea vacía
+    // como separador entre funciones/secciones (Manual 31 §5.3 "Líneas
+    // vacías: Entre funciones, entre secciones de módulo") — sin esto el
+    // formateador ELIMINABA todos los separadores y dejaba el fuente ilegible.
+    let prev_vacia = falso
+    let primero = verdadero
+    let inicio = 0
+    mientras inicio <= largo:
+        // Encuentra el fin de la línea (índice del \n o del largo)
+        let fin = inicio
+        mientras fin < largo:
+            si subcadena(texto, fin, 1) == "\n":
+                romper
+            fin = fin + 1
+        let linea = subcadena(texto, inicio, fin - inicio)
+        let linea_formateada = formatear_linea(linea)
+        si longitud(linea_formateada) > 0:
+            si no primero:
+                _syn_texto_builder_anexar(acc, "\n")
+                si prev_vacia:
+                    _syn_texto_builder_anexar(acc, "\n")
+            _syn_texto_builder_anexar(acc, linea_formateada)
+            primero = falso
+            prev_vacia = falso
+        sino:
+            prev_vacia = verdadero
+        inicio = fin + 1
+    si termina_nl y no primero:
+        _syn_texto_builder_anexar(acc, "\n")
+    let resultado = _syn_texto_builder_construir(acc)
+    _syn_texto_builder_liberar(acc)
+    retornar resultado
+
+// --- Formateo de una linea individual ---
+
+funcion formatear_linea(linea: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    let trimmed = recortar(linea)
+    si longitud(trimmed) == 0:
+        retornar ""
+    // Calcular indentacion actual (nivel = columnas / 4; tab = 4 columnas,
+    // regla del propio modulo: espacios_indentacion=4, prohibido tabs).
+    let espacios = 0
+    mientras espacios < longitud(linea):
+        let c0 = subcadena(linea, espacios, 1)
+        si c0 == " ":
+            espacios = espacios + 1
+        sino si c0 == "\t":
+            espacios = espacios + 4
+        sino:
+            romper
+    let nivel = espacios / 4
+    // Corregir indentacion a multiplo de 4
+    let nueva_indent = ""
+    let k = 0
+    mientras k < nivel:
+        nueva_indent = nueva_indent + "    "
+        k = k + 1
+    // Normalizar espacios alrededor de operadores
+    let formateado = normalizar_espacios(trimmed)
+    retornar nueva_indent + formateado
+
+// --- Normaliza espacios alrededor de = y otros operadores ---
+// cumple Manual 1 §7.1 (ME formatter_fix, R2): estilo — indentación 4 espacios prohibido tabs; reglas normativas de estilo del Manual 31 §5.3 —
+// "Espacios alrededor de operadores | Sí", "Comas | Un espacio después de
+// coma". ME formatter_fix (R2, cierre H-33.5-3): añade la rama `si c == " "`
+// que colapsa espacios consecutivos a UNO (la rama que H-33.5-3 reportó
+// ausente: un duplicado de 2 ramas en lint.syn la ensombrecía por first-wins
+// del aplanador) y protege los LITERALES DE CADENA: el contenido entre
+// comillas dobles (con escapes, M2 §2 cadena_literal) se copia VERBATIM —
+// colapsar "hola  mundo" a "hola mundo" alteraría el significado del programa.
+// cumple Manual 1 §7.4 (ME r300_formatter_comentarios): el COMENTARIO de línea
+// (`//` fuera de literal) se copia VERBATIM, junto con la sangría de alineación
+// que lo precede: la alineación deliberada dentro de comentarios (`//   1. paso`,
+// `x = 0     // nota`) es contenido del autor, no estilo colapsable (H-R299-1).
+funcion normalizar_espacios(linea: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    // cumple Manual 6 §3.1 (ME r198b3_fmt_lint): el resultado interno se
+    // acumula en el builder runtime (O(1) amortizado por carácter) en vez de
+    // `resultado = resultado + c` (O(L²) por línea; H-R198b2-2 timeout).
+    let acc = _syn_texto_builder_crear()
+    si acc < 0:
+        // Fallback seguro: sin builder disponible, línea sin cambios
+        retornar linea
+    let largo = longitud(linea)
+    let i = 0
+    let en_literal = falso
+    mientras i < largo:
+        let c = subcadena(linea, i, 1)
+        si en_literal:
+            _syn_texto_builder_anexar(acc, c)
+            si c == "\\":
+                si i + 1 < largo:
+                    _syn_texto_builder_anexar(acc, subcadena(linea, i + 1, 1))
+                i = i + 2
+            sino:
+                si c == "\"":
+                    en_literal = falso
+                i = i + 1
+        sino:
+            si c == "\"":
+                en_literal = verdadero
+                _syn_texto_builder_anexar(acc, c)
+                i = i + 1
+            sino si c == " ":
+                // ME r300_formatter_comentarios: si el hueco de espacios precede
+                // a un comentario, se conserva tal cual (alineación deliberada).
+                let inicio_hueco = i
+                mientras i < largo y subcadena(linea, i, 1) == " ":
+                    i = i + 1
+                si i + 1 < largo y subcadena(linea, i, 1) == "/" y subcadena(linea, i + 1, 1) == "/":
+                    let h = inicio_hueco
+                    mientras h < i:
+                        _syn_texto_builder_anexar(acc, " ")
+                        h = h + 1
+                sino:
+                    _syn_texto_builder_anexar(acc, " ")
+            sino si c == "/":
+                // ME r300_formatter_comentarios: comentario de línea VERBATIM
+                // (el texto del autor no se re-formatea; el fin de línea ya
+                // viene recortado por `recortar`).
+                si i + 1 < largo y subcadena(linea, i + 1, 1) == "/":
+                    mientras i < largo:
+                        _syn_texto_builder_anexar(acc, subcadena(linea, i, 1))
+                        i = i + 1
+                sino:
+                    _syn_texto_builder_anexar(acc, c)
+                    i = i + 1
+            sino si c == ",":
+                // Un espacio tras coma SOLO si queda contenido despues: una
+                // coma al final de linea no debe ganar un espacio final
+                // (M1 A7.1, WARN_LINT_TRAILING_WS).
+                _syn_texto_builder_anexar(acc, ",")
+                i = i + 1
+                mientras i < largo y subcadena(linea, i, 1) == " ":
+                    i = i + 1
+                si i < largo:
+                    _syn_texto_builder_anexar(acc, " ")
+            sino:
+                _syn_texto_builder_anexar(acc, c)
+                i = i + 1
+    // ME r198b3_fmt_lint: el resultado es la copia transferida por el
+    // builder (Manual 2 U5.1: `_resultado_` contiene el valor a retornar) y
+    // el buffer del builder queda liberado/reutilizable.
+    let resultado = _syn_texto_builder_construir(acc)
+    _syn_texto_builder_liberar(acc)
+    retornar resultado
+
+// --- Recorta espacios al inicio y final ---
+
+funcion recortar(linea: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    si longitud(linea) == 0:
+        retornar ""
+    // r153: recorta espacio Y tabulacion (regla del modulo: prohibido tabs).
+    let inicio = 0
+    mientras inicio < longitud(linea):
+        let ci = subcadena(linea, inicio, 1)
+        si ci != " " y ci != "\t":
+            romper
+        inicio = inicio + 1
+    let fin = longitud(linea) - 1
+    mientras fin >= inicio:
+        let cf = subcadena(linea, fin, 1)
+        si cf != " " y cf != "\t":
+            romper
+        fin = fin - 1
+    si inicio > fin:
+        retornar ""
+    retornar subcadena(linea, inicio, fin - inicio + 1)
+
+// --- Verificacion de formato (--check) ---
+
+funcion verificar_formato(ruta: texto) -> booleano:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        _resultado_ == 1 o _resultado_ == 0
+    let contenido = leer_archivo(ruta)
+    let formateado = formatear_texto(contenido)
+    retornar contenido == formateado
+
+// --- Escritura de formato (--write) ---
+
+funcion fmt_archivo(ruta: texto) -> booleano:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        _resultado_ == 1 o _resultado_ == 0
+    let contenido = leer_archivo(ruta)
+    let formateado = formatear_texto(contenido)
+    si contenido == formateado:
+        retornar falso // sin cambios
+    inseguro:
+        asm("FILE* _f = fopen(ruta.datos, \"wb\"); if(_f){ fwrite(formateado.datos, 1, formateado.longitud, _f); fclose(_f); }")
+    retornar verdadero // reformateado
+
+// cumple Manual 1 §7.4 (ME r299_codigo_muerto): `fmt_directorio` no tenía
+// referencias; la expansión de directorios vive en el CLI (comando `fmt`), que
+// aplica `fmt_archivo` archivo a archivo.

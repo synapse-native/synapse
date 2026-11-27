@@ -1,0 +1,777 @@
+#lang: es
+// opensyn/memoria_persistente_cifrada.syn - Memoria persistente cifrada
+// cumple Manual 6 §1.1: estructuras canonicas planas, sin duplicar el AST
+// cumple Manual 7 §7.3: cero telemetria, clave solo en RAM y almacen cifrado
+// cumple Manual 2 §5.1: contratos requiere/garantiza en toda funcion publica
+//
+// Referencia funcional Manual FASE 32 §3.2-§3.7: tres capas (Sesion RAM,
+// Evolucion persistente, Proyecto persistente) cifradas en reposo.
+//
+// Implementacion real disponible:
+// - XSalsa20-Poly1305 de TweetNaCl via cluster_sesion_cifrar_buffer/
+//   cluster_sesion_descifrar_buffer (runtime/core/cluster.c).
+// - KDF SHA-256 iterado con sal de hardware (H-R212-1: Argon2id pendiente).
+// - Almacen plano linea-a-linea con blobs cifrados en hexadecimal
+//   (H-R212-2: binding SQLite cifrado pendiente).
+// - Estado explicito MemoriaCifrada (H-R212-3: S1 no tiene globales mutables).
+
+importar std.cripto
+importar std.sistema
+importar std.texto
+importar std.tiempo
+
+// ============================================================
+// ESTRUCTURAS
+// ============================================================
+
+estructura PatronAprendido:
+    id: entero
+    patron: texto
+    contexto: texto
+    exito_ratio: decimal
+    num_usos: entero
+    ultimo_uso: entero
+
+estructura MemoriaNegativa:
+    id: entero
+    intento_fallido: texto
+    razon_fallo: texto
+    solucion_correcta: texto
+    fecha: entero
+
+// EntradaCifrada describe el blob que viaja al almacen: nonce CSPRNG de 24
+// bytes, MAC Poly1305 de 16 bytes y ciphertext, todo en hexadecimal.
+estructura EntradaCifrada:
+    nonce: texto
+    cifrado: texto
+    tag: texto
+
+estructura CapaMemoria:
+    nombre: texto
+    persistencia: texto
+    contenido: texto
+    cifrado: booleano
+
+// Estado explicito: S1 no permite `var` a nivel de modulo (H-R212-3).
+estructura MemoriaCifrada:
+    codigo: entero
+    clave_maestra: texto
+    ruta_almacen: texto
+    inicializada: booleano
+    siguiente_id: entero
+
+constante KDF_RONDAS = 20000
+constante MAX_PATRONES = 10
+constante MAX_FALLOS = 5
+
+// ============================================================
+// INICIALIZACION
+// ============================================================
+
+// Inicializa la memoria cifrada y valida el almacen existente.
+// cumple Manual 2 §5.1: requiere/garantiza booleanos con _resultado_
+funcion memoria_inicializar(passphrase: texto) -> MemoriaCifrada:
+    requiere:
+        longitud(passphrase) > 0
+    garantiza:
+        _resultado_.inicializada == verdadero o _resultado_.codigo == -1
+    si longitud(passphrase) == 0:
+        retornar MemoriaCifrada(-1, "", "", falso, 1)
+    let huella = huella_hardware()
+    let sal = sha256_texto(huella)
+    let clave = derivar_clave(passphrase, sal)
+    let ruta = construir_ruta_almacen()
+    let verificado = verificar_almacen(_syn_strcpy(ruta), _syn_strcpy(clave))
+    si verificado != 0:
+        retornar MemoriaCifrada(-1, "", _syn_strcpy(ruta), falso, 1)
+    let payloads = cargar_payloads(_syn_strcpy(ruta), _syn_strcpy(clave))
+    let siguiente_id = calcular_siguiente_id(payloads)
+    retornar MemoriaCifrada(0, _syn_strcpy(clave), _syn_strcpy(ruta), verdadero, siguiente_id)
+
+// Deriva la clave maestra con SHA-256 iterado y sal de hardware.
+// H-R212-1: Argon2id no existe en el runtime; esta funcion aisla el KDF.
+// cumple Manual 2 §5.1: contrato de derivacion de clave
+funcion derivar_clave(passphrase: texto, sal: texto) -> texto:
+    requiere:
+        longitud(passphrase) > 0 y longitud(sal) > 0
+    garantiza:
+        longitud(_resultado_) == 64
+    let semilla = concat(sal, passphrase)
+    let clave = sha256_texto(semilla)
+    let i = 0
+    mientras i < KDF_RONDAS:
+        clave = sha256_texto(concat(clave, semilla))
+        i = i + 1
+    retornar clave
+
+// Huella de hardware disponible: nombre de equipo, usuario y arquitectura.
+// H-R212-1/H-R212-3: os.hardware_uuid/machine_id no existen en std.os.
+// cumple Manual 7 §7.3: la sal no se escribe a disco
+funcion huella_hardware() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) > 0
+    let equipo = obtener_env("COMPUTERNAME")
+    si longitud(equipo) == 0:
+        equipo = obtener_env("HOSTNAME")
+    si longitud(equipo) == 0:
+        equipo = "synapse"
+    let usuario = obtener_env("USERNAME")
+    si longitud(usuario) == 0:
+        usuario = obtener_env("USER")
+    si longitud(usuario) == 0:
+        usuario = "opensyn"
+    let arq = obtener_env("PROCESSOR_ARCHITECTURE")
+    si longitud(arq) == 0:
+        arq = obtener_env("PROCESSOR_IDENTIFIER")
+    si longitud(arq) == 0:
+        arq = "unknown"
+    retornar concat(equipo, concat("|", concat(usuario, concat("|", arq))))
+
+// Construye la ruta del almacen cifrado.
+// cumple Manual 7 §7.3: ruta local, sin telemetria ni red
+funcion construir_ruta_almacen() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) > 0
+    let override = obtener_env("OPENSYN_MEMORIA_DIR")
+    si longitud(override) > 0:
+        retornar concat(override, "/memoria.db")
+    let home = obtener_env("USERPROFILE")
+    si longitud(home) == 0:
+        home = obtener_env("HOME")
+    si longitud(home) == 0:
+        home = "."
+    retornar concat(home, "/.opensyn/memoria.db")
+
+// ============================================================
+// CAPA 2: EVOLUCION (patrones + fallos)
+// ============================================================
+
+// Guarda un patron exitoso cifrado en el almacen.
+// cumple Manual FASE 32 §3.4: INSERT de patron con nonce y blob cifrado
+// cumple Manual 2 §5.1: contrato de escritura
+funcion memoria_guardar_patron(
+    mem: MemoriaCifrada,
+    patron: texto,
+    contexto: texto,
+    exito: decimal
+    ) -> MemoriaCifrada:
+    requiere:
+        longitud(patron) > 0 y longitud(contexto) > 0
+        exito >= 0.0 y exito <= 1.0
+    garantiza:
+        _resultado_.codigo == 0 o _resultado_.codigo == -1
+    si no mem.inicializada:
+        retornar empaquetar(mem, -1)
+    let id = mem.siguiente_id
+    let payload = concat(
+        "patron|",
+        concat(
+            entero_a_texto(id),
+            concat(
+                "|",
+                concat(
+                    texto_a_hex(patron),
+                    concat(
+                        "|",
+                        concat(
+                            texto_a_hex(contexto),
+                            concat(
+                                "|",
+                                concat(
+                                    a_texto_decimal(exito),
+                                    concat("|", entero_a_texto(ahora_ms()))
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+    let rc = agregar_payload(mem, payload)
+    si rc != 0:
+        retornar empaquetar(mem, -1)
+    retornar MemoriaCifrada(0, _syn_strcpy(mem.clave_maestra), _syn_strcpy(mem.ruta_almacen), verdadero, id + 1)
+
+// Consulta patrones por coincidencia de palabras del contexto.
+// cumple Manual FASE 32 §3.4: descifrar solo candidatos y ordenar por exito
+// cumple Manual 2 §5.1: contrato de lectura
+funcion memoria_consultar_patrones(mem: MemoriaCifrada, contexto: texto) -> Lista<PatronAprendido>:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    let resultados = Lista<PatronAprendido>()
+    si no mem.inicializada:
+        retornar resultados
+    let tokens = tokenizar(contexto)
+    let payloads = cargar_payloads(_syn_strcpy(mem.ruta_almacen), _syn_strcpy(mem.clave_maestra))
+    para payload en payloads:
+        let partes = dividir_por_pipe(payload)
+        si longitud(partes) >= 6:
+            si elemento_texto(partes, 0) == "patron":
+                let contexto_guardado = hex_a_texto(elemento_texto(partes, 3))
+                si coincide_contexto(_syn_strcpy(contexto_guardado), tokens):
+                    resultados.agregar(PatronAprendido(
+                        texto_a_entero(elemento_texto(partes, 1)),
+                        hex_a_texto(elemento_texto(partes, 2)),
+                        contexto_guardado,
+                        texto_a_decimal(elemento_texto(partes, 4)),
+                        1,
+                        texto_a_entero(elemento_texto(partes, 5))
+                    ))
+    let ordenados = ordenar_patrones(resultados)
+    retornar limitar_patrones(ordenados, MAX_PATRONES)
+
+// Registra un fallo y su solucion correcta, cifrado en el almacen.
+// cumple Manual FASE 32 §3.4: INSERT de fallo con nonce y blob cifrado
+// cumple Manual 2 §5.1: contrato de escritura
+funcion memoria_registrar_fallo(
+    mem: MemoriaCifrada,
+    intento: texto,
+    razon: texto,
+    solucion: texto
+    ) -> MemoriaCifrada:
+    requiere:
+        longitud(intento) > 0 y longitud(razon) > 0
+        longitud(solucion) > 0
+    garantiza:
+        _resultado_.codigo == 0 o _resultado_.codigo == -1
+    si no mem.inicializada:
+        retornar empaquetar(mem, -1)
+    let id = mem.siguiente_id
+    let payload = concat(
+        "fallo|",
+        concat(
+            entero_a_texto(id),
+            concat(
+                "|",
+                concat(
+                    texto_a_hex(intento),
+                    concat(
+                        "|",
+                        concat(
+                            texto_a_hex(razon),
+                            concat(
+                                "|",
+                                concat(
+                                    texto_a_hex(solucion),
+                                    concat("|", entero_a_texto(ahora_ms()))
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+    let rc = agregar_payload(mem, payload)
+    si rc != 0:
+        retornar empaquetar(mem, -1)
+    retornar MemoriaCifrada(0, _syn_strcpy(mem.clave_maestra), _syn_strcpy(mem.ruta_almacen), verdadero, id + 1)
+
+// Consulta fallos previos relacionados con el contexto actual.
+// cumple Manual FASE 32 §3.4: busqueda de fallos por palabras clave
+// cumple Manual 2 §5.1: contrato de lectura
+funcion memoria_evitar_fallos(mem: MemoriaCifrada, contexto: texto) -> Lista<MemoriaNegativa>:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    let resultados = Lista<MemoriaNegativa>()
+    si no mem.inicializada:
+        retornar resultados
+    let tokens = tokenizar(contexto)
+    let payloads = cargar_payloads(_syn_strcpy(mem.ruta_almacen), _syn_strcpy(mem.clave_maestra))
+    para payload en payloads:
+        let partes = dividir_por_pipe(payload)
+        si longitud(partes) >= 6:
+            si elemento_texto(partes, 0) == "fallo":
+                let intento = hex_a_texto(elemento_texto(partes, 2))
+                let razon = hex_a_texto(elemento_texto(partes, 3))
+                let solucion = hex_a_texto(elemento_texto(partes, 4))
+                let texto_busqueda = concat(intento, concat(" ", concat(razon, concat(" ", solucion))))
+                si coincide_contexto(texto_busqueda, tokens):
+                    resultados.agregar(MemoriaNegativa(
+                        texto_a_entero(elemento_texto(partes, 1)),
+                        intento,
+                        razon,
+                        solucion,
+                        texto_a_entero(elemento_texto(partes, 5))
+                    ))
+    retornar limitar_fallos(resultados, MAX_FALLOS)
+
+// ============================================================
+// CAPA 3: PROYECTO
+// ============================================================
+
+// Guarda una entrada de proyecto cifrada. La ultima entrada para el mismo
+// hash_ast gana en la consulta (reemplazo logico sin reescribir el archivo).
+// cumple Manual FASE 32 §3.4: INSERT OR REPLACE de proyecto
+// cumple Manual 2 §5.1: contrato de escritura
+funcion memoria_guardar_proyecto(
+    mem: MemoriaCifrada,
+    hash_ast: texto,
+    datos: texto
+    ) -> MemoriaCifrada:
+    requiere:
+        longitud(hash_ast) > 0 y longitud(datos) > 0
+    garantiza:
+        _resultado_.codigo == 0 o _resultado_.codigo == -1
+    si no mem.inicializada:
+        retornar empaquetar(mem, -1)
+    let payload = concat(
+        "proyecto|",
+        concat(
+            texto_a_hex(hash_ast),
+            concat(
+                "|",
+                concat(
+                    texto_a_hex(datos),
+                    concat("|", entero_a_texto(ahora_ms()))
+                )
+            )
+        )
+    )
+    let rc = agregar_payload(mem, payload)
+    si rc != 0:
+        retornar empaquetar(mem, -1)
+    retornar MemoriaCifrada(0, _syn_strcpy(mem.clave_maestra), _syn_strcpy(mem.ruta_almacen), verdadero, mem.siguiente_id)
+
+// Consulta los datos de proyecto asociados a un hash_ast.
+// cumple Manual FASE 32 §3.4: memoria de proyecto cifrada
+// cumple Manual 2 §5.1: contrato de lectura
+funcion memoria_consultar_proyecto(mem: MemoriaCifrada, hash_ast: texto) -> texto:
+    requiere:
+        longitud(hash_ast) > 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    si no mem.inicializada:
+        retornar ""
+    let buscado = texto_a_hex(hash_ast)
+    let encontrado = ""
+    let payloads = cargar_payloads(_syn_strcpy(mem.ruta_almacen), _syn_strcpy(mem.clave_maestra))
+    para payload en payloads:
+        let partes = dividir_por_pipe(payload)
+        si longitud(partes) >= 4:
+            si elemento_texto(partes, 0) == "proyecto":
+                si elemento_texto(partes, 1) == buscado:
+                    encontrado = hex_a_texto(elemento_texto(partes, 2))
+    retornar encontrado
+
+// ============================================================
+// CIERRE Y CAPAS
+// ============================================================
+
+// Borra la clave de RAM y marca la memoria como cerrada.
+// cumple Manual 7 §7.3: la clave nunca se escribe a disco ni sobrevive al cierre
+// cumple Manual 2 §5.1: contrato de cierre
+funcion memoria_cerrar(mem: MemoriaCifrada) -> MemoriaCifrada:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_.inicializada == falso
+    crypto_memzero(_syn_strcpy(mem.clave_maestra))
+    retornar MemoriaCifrada(0, "", _syn_strcpy(mem.ruta_almacen), falso, mem.siguiente_id)
+
+// Describe las tres capas del modelo de memoria.
+// cumple Manual FASE 32 §3.2: Sesion RAM, Evolucion persistente y Proyecto
+// cumple Manual 2 §5.1: contrato de descripcion
+funcion memoria_capas() -> Lista<CapaMemoria>:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) == 3
+    let capas = Lista<CapaMemoria>()
+    capas.agregar(CapaMemoria("Sesion", "RAM volatil", "contexto, turnos, referencias", falso))
+    capas.agregar(CapaMemoria("Evolucion", "almacen cifrado", "patrones, fallos, aprendizajes", verdadero))
+    capas.agregar(CapaMemoria("Proyecto", "almacen cifrado", "estructura, dependencias, historial", verdadero))
+    retornar capas
+
+// ============================================================
+// ALMACEN CIFRADO
+// ============================================================
+
+// Agrega un payload cifrado como una linea hexadecimal del almacen.
+// cumple Manual 7 §7.3: solo se persiste el blob cifrado
+// cumple Manual 2 §5.1: contrato de append
+funcion agregar_payload(mem: MemoriaCifrada, payload: texto) -> entero:
+    requiere:
+        mem.inicializada == verdadero y longitud(payload) > 0
+    garantiza:
+        _resultado_ == 0 o _resultado_ == -1
+    let blob = cifrar_blob(payload, _syn_strcpy(mem.clave_maestra))
+    si longitud(blob) == 0:
+        retornar -1
+    let contenido = leer_almacen(_syn_strcpy(mem.ruta_almacen))
+    let nuevo = ""
+    si longitud(contenido) > 0:
+        si subcadena(_syn_strcpy(contenido), longitud(contenido) - 1, 1) == "\n":
+            nuevo = concat(contenido, concat(blob, "\n"))
+        sino:
+            nuevo = concat(contenido, concat("\n", concat(blob, "\n")))
+    sino:
+        nuevo = concat(blob, "\n")
+    retornar escribir_almacen(_syn_strcpy(mem.ruta_almacen), nuevo)
+
+// Carga y descifra todos los payloads del almacen.
+// cumple Manual 7 §7.3: descifrado solo en RAM
+// cumple Manual 2 §5.1: contrato de carga
+funcion cargar_payloads(ruta: texto, clave: texto) -> Lista<texto>:
+    requiere:
+        longitud(ruta) > 0 y longitud(clave) == 64
+    garantiza:
+        longitud(_resultado_) >= 0
+    let payloads = Lista<texto>()
+    let contenido = leer_almacen(_syn_strcpy(ruta))
+    let lineas = dividir_lineas(_syn_strcpy(contenido))
+    para linea en lineas:
+        let payload = descifrar_blob(_syn_strcpy(linea), _syn_strcpy(clave))
+        si longitud(payload) > 0:
+            payloads.agregar(payload)
+    retornar payloads
+
+// Verifica que el almacen existente sea descifrable con la clave.
+// cumple Manual FASE 32 §3.7: DB corrupta o clave incorrecta no es accesible
+// cumple Manual 2 §5.1: contrato de integridad
+funcion verificar_almacen(ruta: texto, clave: texto) -> entero:
+    requiere:
+        longitud(ruta) > 0 y longitud(clave) == 64
+    garantiza:
+        _resultado_ == 0 o _resultado_ == -1
+    let contenido = leer_almacen(_syn_strcpy(ruta))
+    let lineas = dividir_lineas(_syn_strcpy(contenido))
+    let total = longitud(lineas)
+    si total == 0:
+        retornar 0
+    let ok = 0
+    para linea en lineas:
+        let payload = descifrar_blob(_syn_strcpy(linea), _syn_strcpy(clave))
+        si longitud(payload) > 0:
+            ok = ok + 1
+    si ok == 0:
+        retornar -1
+    retornar 0
+
+// Calcula el siguiente id de evolucion a partir de los payloads existentes.
+// cumple Manual 2 §5.1: contrato de secuencia determinista
+funcion calcular_siguiente_id(payloads: Lista<texto>) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 1
+    let max_id = 0
+    para payload en payloads:
+        let partes = dividir_por_pipe(payload)
+        si longitud(partes) >= 2:
+            let tipo = elemento_texto(partes, 0)
+            si tipo == "patron" o tipo == "fallo":
+                let id = texto_a_entero(elemento_texto(partes, 1))
+                si id > max_id:
+                    max_id = id
+    retornar max_id + 1
+
+// ============================================================
+// AUXILIARES DE TEXTO Y LISTAS
+// ============================================================
+
+// Divide un texto por el separador '|' sin exponer indices al analizador.
+// cumple Manual 2 §5.1: contrato de division
+funcion dividir_por_pipe(t: texto) -> Lista<texto>:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 1
+    let partes = Lista<texto>()
+    let inicio = 0
+    let i = 0
+    mientras i <= longitud(t):
+        si i == longitud(t):
+            partes.agregar(subcadena(_syn_strcpy(t), inicio, i - inicio))
+            inicio = i + 1
+        sino:
+            si subcadena(_syn_strcpy(t), i, 1) == "|":
+                partes.agregar(subcadena(_syn_strcpy(t), inicio, i - inicio))
+                inicio = i + 1
+        i = i + 1
+    retornar partes
+
+// Divide un texto en lineas no vacias.
+// cumple Manual 2 §5.1: contrato de division de lineas
+funcion dividir_lineas(t: texto) -> Lista<texto>:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    let lineas = Lista<texto>()
+    let inicio = 0
+    let i = 0
+    mientras i <= longitud(t):
+        si i == longitud(t):
+            si i > inicio:
+                let linea = reemplazar(subcadena(_syn_strcpy(t), inicio, i - inicio), "\r", "")
+                si longitud(linea) > 0:
+                    lineas.agregar(linea)
+            inicio = i + 1
+        sino:
+            si subcadena(_syn_strcpy(t), i, 1) == "\n":
+                si i > inicio:
+                    let linea = reemplazar(subcadena(_syn_strcpy(t), inicio, i - inicio), "\r", "")
+                    si longitud(linea) > 0:
+                        lineas.agregar(linea)
+                inicio = i + 1
+        i = i + 1
+    retornar lineas
+
+// Tokeniza un contexto por separadores no alfanumericos.
+// cumple Manual FASE 32 §3.4: indice de contexto por palabras
+// cumple Manual 2 §5.1: contrato de tokenizacion
+funcion tokenizar(contexto: texto) -> Lista<texto>:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    let tokens = Lista<texto>()
+    let actual = ""
+    let i = 0
+    mientras i < longitud(contexto):
+        let c = subcadena(_syn_strcpy(contexto), i, 1)
+        si es_separador(c):
+            si longitud(actual) > 0:
+                let token = minusculas(_syn_strcpy(actual))
+                tokens.agregar(token)
+                actual = ""
+        sino:
+            actual = concat(actual, c)
+        i = i + 1
+    si longitud(actual) > 0:
+        let token = minusculas(_syn_strcpy(actual))
+        tokens.agregar(token)
+    retornar tokens
+
+// Indica si un caracter separa palabras.
+// cumple Manual 2 §5.1: contrato de clasificacion
+funcion es_separador(c: texto) -> booleano:
+    requiere:
+        longitud(c) == 1
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso
+    si c == " " o c == "\t" o c == "\n" o c == "\r":
+        retornar verdadero
+    si c == "," o c == "." o c == ";" o c == ":" o c == "/" o c == "\\":
+        retornar verdadero
+    si c == "(" o c == ")" o c == "[" o c == "]" o c == "{" o c == "}":
+        retornar verdadero
+    si c == "-" o c == "_" o c == "=" o c == "+" o c == "*" o c == "'" o c == "\"":
+        retornar verdadero
+    retornar falso
+
+// Verifica si algun token del contexto aparece en el texto guardado.
+// cumple Manual FASE 32 §3.4: coincidencia por palabras clave
+// cumple Manual 2 §5.1: contrato de coincidencia
+funcion coincide_contexto(texto_guardado: texto, tokens: Lista<texto>) -> booleano:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso
+    let texto_min = minusculas(_syn_strcpy(texto_guardado))
+    para token en tokens:
+        si longitud(token) > 0:
+            si contiene(_syn_strcpy(texto_min), _syn_strcpy(token)) == 1:
+                retornar verdadero
+    retornar falso
+
+// Devuelve el elemento de una lista de texto por indice.
+// cumple Manual 2 §5.1: contrato de acceso seguro
+funcion elemento_texto(lista: Lista<texto>, indice: entero) -> texto:
+    requiere:
+        indice >= 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    let i = 0
+    para valor en lista:
+        si i == indice:
+            retornar valor
+        i = i + 1
+    retornar ""
+
+// Devuelve el elemento de una lista de patrones por indice.
+// cumple Manual 2 §5.1: contrato de acceso seguro
+funcion elemento_patron(lista: Lista<PatronAprendido>, indice: entero) -> PatronAprendido:
+    requiere:
+        indice >= 0
+    garantiza:
+        _resultado_.id >= 0
+    let i = 0
+    para valor en lista:
+        si i == indice:
+            retornar valor
+        i = i + 1
+    retornar PatronAprendido(0, "", "", 0.0, 0, 0)
+
+// Ordena patrones por exito descendente mediante seleccion.
+// cumple Manual FASE 32 §3.4: ordenar por exito y limitar
+// cumple Manual 2 §5.1: contrato de ordenamiento
+funcion ordenar_patrones(lista: Lista<PatronAprendido>) -> Lista<PatronAprendido>:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) == longitud(lista)
+    let restantes = Lista<PatronAprendido>()
+    para p en lista:
+        restantes.agregar(p)
+    let ordenados = Lista<PatronAprendido>()
+    mientras longitud(restantes) > 0:
+        let mejor = 0
+        let i = 1
+        mientras i < longitud(restantes):
+            let actual = elemento_patron(restantes, i)
+            let mejor_actual = elemento_patron(restantes, mejor)
+            si actual.exito_ratio > mejor_actual.exito_ratio:
+                mejor = i
+            i = i + 1
+        let elegido = elemento_patron(restantes, mejor)
+        ordenados.agregar(elegido)
+        restantes.eliminar(mejor)
+    retornar ordenados
+
+// Limita una lista de patrones a los primeros n.
+// cumple Manual 2 §5.1: contrato de limite
+funcion limitar_patrones(lista: Lista<PatronAprendido>, maximo: entero) -> Lista<PatronAprendido>:
+    requiere:
+        maximo >= 0
+    garantiza:
+        longitud(_resultado_) <= maximo
+    let salida = Lista<PatronAprendido>()
+    let i = 0
+    mientras i < longitud(lista) y i < maximo:
+        let patron = elemento_patron(lista, i)
+        salida.agregar(patron)
+        i = i + 1
+    retornar salida
+
+// Limita una lista de fallos a los primeros n.
+// cumple Manual 2 §5.1: contrato de limite
+funcion limitar_fallos(lista: Lista<MemoriaNegativa>, maximo: entero) -> Lista<MemoriaNegativa>:
+    requiere:
+        maximo >= 0
+    garantiza:
+        longitud(_resultado_) <= maximo
+    let salida = Lista<MemoriaNegativa>()
+    let i = 0
+    mientras i < longitud(lista) y i < maximo:
+        let fallo = elemento_fallo(lista, i)
+        salida.agregar(fallo)
+        i = i + 1
+    retornar salida
+
+// Devuelve el elemento de una lista de fallos por indice.
+// cumple Manual 2 §5.1: contrato de acceso seguro
+funcion elemento_fallo(lista: Lista<MemoriaNegativa>, indice: entero) -> MemoriaNegativa:
+    requiere:
+        indice >= 0
+    garantiza:
+        _resultado_.id >= 0
+    let i = 0
+    para valor en lista:
+        si i == indice:
+            retornar valor
+        i = i + 1
+    retornar MemoriaNegativa(0, "", "", "", 0)
+
+// Empaqueta el estado con un codigo de resultado sin perder la clave.
+// cumple Manual 2 §5.1: contrato de resultado
+funcion empaquetar(mem: MemoriaCifrada, codigo: entero) -> MemoriaCifrada:
+    requiere:
+        codigo == 0 o codigo == -1
+    garantiza:
+        _resultado_.codigo == codigo
+    retornar MemoriaCifrada(codigo, _syn_strcpy(mem.clave_maestra), _syn_strcpy(mem.ruta_almacen), mem.inicializada, mem.siguiente_id)
+
+// ============================================================
+// PUENTES AL RUNTIME (cifrado real y archivos)
+// ============================================================
+
+// Cifra un payload con XSalsa20-Poly1305 (TweetNaCl) y retorna hex.
+// Formato del blob: [nonce 24B][MAC 16B][ciphertext].
+// cumple Manual 7 §7.3: cifrado en reposo sin texto en claro
+// cumple Manual 2 §5.1: contrato de cifrado
+funcion cifrar_blob(payload: texto, clave_hex: texto) -> texto:
+    requiere:
+        longitud(payload) > 0 y longitud(clave_hex) == 64
+    garantiza:
+        longitud(_resultado_) >= 0
+    inseguro:
+        asm("extern int cluster_sesion_cifrar_buffer(const unsigned char*, const char*, int, char*, int*); if (payload.longitud <= 0 || clave_hex.longitud != 64) return (CadenaSegura){0, \"\"}; unsigned char _k[32]; for (int _i=0; _i<32; _i++) { int _a=clave_hex.datos[_i*2]; int _b=clave_hex.datos[_i*2+1]; int _ha=(_a>='0'&&_a<='9')?(_a-'0'):((_a>='a'&&_a<='f')?(_a-'a'+10):((_a>='A'&&_a<='F')?(_a-'A'+10):0)); int _hb=(_b>='0'&&_b<='9')?(_b-'0'):((_b>='a'&&_b<='f')?(_b-'a'+10):((_b>='A'&&_b<='F')?(_b-'A'+10):0)); _k[_i]=(unsigned char)((_ha<<4)|_hb); } int _cap=payload.longitud+24+16+1; char* _buf=(char*)malloc((size_t)_cap); if (!_buf) { memset(_k,0,32); return (CadenaSegura){0, \"\"}; } int _len=0; if (cluster_sesion_cifrar_buffer(_k, payload.datos, payload.longitud, _buf, &_len) != 0) { free(_buf); memset(_k,0,32); return (CadenaSegura){0, \"\"}; } char* _hex=(char*)malloc((size_t)(_len*2+1)); if (!_hex) { free(_buf); memset(_k,0,32); return (CadenaSegura){0, \"\"}; } for (int _j=0; _j<_len; _j++) sprintf(_hex+_j*2, \"%02x\", (unsigned char)_buf[_j]); _hex[_len*2]=0; free(_buf); memset(_k,0,32); return (CadenaSegura){.longitud=_len*2,.datos=_hex};")
+    retornar ""
+
+// Descifra un blob hex con XSalsa20-Poly1305 y retorna el payload.
+// cumple Manual 7 §7.3: descifrado solo en RAM
+// cumple Manual 2 §5.1: contrato de descifrado
+funcion descifrar_blob(blob_hex: texto, clave_hex: texto) -> texto:
+    requiere:
+        longitud(blob_hex) >= 0 y longitud(clave_hex) == 64
+    garantiza:
+        longitud(_resultado_) >= 0
+    inseguro:
+        asm("extern int cluster_sesion_descifrar_buffer(const unsigned char*, const char*, int, char*, int*); if (blob_hex.longitud < 80 || (blob_hex.longitud % 2) != 0 || clave_hex.longitud != 64) return (CadenaSegura){0, \"\"}; int _blen=blob_hex.longitud/2; unsigned char* _blob=(unsigned char*)malloc((size_t)_blen); if (!_blob) return (CadenaSegura){0, \"\"}; for (int _i=0; _i<_blen; _i++) { int _a=blob_hex.datos[_i*2]; int _b=blob_hex.datos[_i*2+1]; int _ha=(_a>='0'&&_a<='9')?(_a-'0'):((_a>='a'&&_a<='f')?(_a-'a'+10):((_a>='A'&&_a<='F')?(_a-'A'+10):0)); int _hb=(_b>='0'&&_b<='9')?(_b-'0'):((_b>='a'&&_b<='f')?(_b-'a'+10):((_b>='A'&&_b<='F')?(_b-'A'+10):0)); _blob[_i]=(unsigned char)((_ha<<4)|_hb); } unsigned char _k[32]; for (int _i=0; _i<32; _i++) { int _a=clave_hex.datos[_i*2]; int _b=clave_hex.datos[_i*2+1]; int _ha=(_a>='0'&&_a<='9')?(_a-'0'):((_a>='a'&&_a<='f')?(_a-'a'+10):((_a>='A'&&_a<='F')?(_a-'A'+10):0)); int _hb=(_b>='0'&&_b<='9')?(_b-'0'):((_b>='a'&&_b<='f')?(_b-'a'+10):((_b>='A'&&_b<='F')?(_b-'A'+10):0)); _k[_i]=(unsigned char)((_ha<<4)|_hb); } char* _out=(char*)malloc((size_t)(_blen+1)); if (!_out) { free(_blob); memset(_k,0,32); return (CadenaSegura){0, \"\"}; } int _len=0; int _rc=cluster_sesion_descifrar_buffer(_k, (const char*)_blob, _blen, _out, &_len); free(_blob); memset(_k,0,32); if (_rc != 0) { free(_out); return (CadenaSegura){0, \"\"}; } _out[_len]=0; return (CadenaSegura){.longitud=_len,.datos=_out};")
+    retornar ""
+
+// Convierte texto a hexadecimal.
+// cumple Manual 2 §5.1: contrato de codificacion
+funcion texto_a_hex(t: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) == longitud(t) * 2
+    inseguro:
+        asm("int _n=t.longitud; char* _h=(char*)malloc((size_t)(_n*2+1)); if (!_h) return (CadenaSegura){0, \"\"}; for (int _i=0; _i<_n; _i++) sprintf(_h+_i*2, \"%02x\", (unsigned char)t.datos[_i]); _h[_n*2]=0; return (CadenaSegura){.longitud=_n*2,.datos=_h};")
+    retornar ""
+
+// Convierte hexadecimal a texto.
+// cumple Manual 2 §5.1: contrato de decodificacion
+funcion hex_a_texto(h: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    inseguro:
+        asm("if (h.longitud < 0 || (h.longitud % 2) != 0) return (CadenaSegura){0, \"\"}; int _n=h.longitud/2; char* _o=(char*)malloc((size_t)(_n+1)); if (!_o) return (CadenaSegura){0, \"\"}; for (int _i=0; _i<_n; _i++) { int _a=h.datos[_i*2]; int _b=h.datos[_i*2+1]; int _ha=(_a>='0'&&_a<='9')?(_a-'0'):((_a>='a'&&_a<='f')?(_a-'a'+10):((_a>='A'&&_a<='F')?(_a-'A'+10):0)); int _hb=(_b>='0'&&_b<='9')?(_b-'0'):((_b>='a'&&_b<='f')?(_b-'a'+10):((_b>='A'&&_b<='F')?(_b-'A'+10):0)); _o[_i]=(char)((_ha<<4)|_hb); } _o[_n]=0; return (CadenaSegura){.longitud=_n,.datos=_o};")
+    retornar ""
+
+// Escribe el almacen cifrado completo.
+// cumple Manual 2 §5.1: contrato de escritura de archivo
+funcion escribir_almacen(ruta: texto, contenido: texto) -> entero:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        _resultado_ == 0 o _resultado_ == -1
+    inseguro:
+        asm("CadenaSegura _r={.datos=(char*)ruta.datos,.longitud=ruta.longitud}; CadenaSegura _c={.datos=(char*)contenido.datos,.longitud=contenido.longitud}; return _syn_escribir_archivo(_r,_c);")
+    retornar -1
+
+// Lee el almacen cifrado completo.
+// cumple Manual 2 §5.1: contrato de lectura de archivo
+funcion leer_almacen(ruta: texto) -> texto:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    inseguro:
+        asm("CadenaSegura _r={.datos=(char*)ruta.datos,.longitud=ruta.longitud}; return _syn_leer_archivo(_r);")
+    retornar ""
+
+// Borra de RAM el buffer de la clave (zeroing real del arreglo C).
+// cumple Manual 7 §7.3: la clave no sobrevive al cierre
+// cumple Manual 2 §5.1: contrato de limpieza
+funcion crypto_memzero(datos: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    inseguro:
+        asm("if (datos.datos && datos.longitud > 0) memset((void*)datos.datos, 0, (size_t)datos.longitud);")

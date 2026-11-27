@@ -1,0 +1,15 @@
+{
+ "cambio_hash": "203eb95e4f5a3758",
+ "expediente": "docs/alineacion/f32_2_explorer_architect.md",
+ "fecha": "2026-09-16",
+ "archivos": [
+  "opensyn/architect_det.syn",
+  "opensyn/explorer_det.syn"
+ ],
+ "oraculos": {
+  "tests/opensyn/test_architect_det.py": true,
+  "tests/opensyn/test_explorer_det.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

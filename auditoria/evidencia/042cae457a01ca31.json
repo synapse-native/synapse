@@ -1,0 +1,15 @@
+{
+ "cambio_hash": "042cae457a01ca31",
+ "expediente": "docs/alineacion/r334_verde_posix.md",
+ "fecha": "2026-11-26",
+ "archivos": [
+  "opensyn/architect_det.syn",
+  "std/texto.syn"
+ ],
+ "oraculos": {
+  "tests/opensyn/test_architect_det_comportamiento.py": true,
+  "tests/unit/test_std_contracts.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

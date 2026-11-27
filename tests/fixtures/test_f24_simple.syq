@@ -1,0 +1,7 @@
+#lang: es
+// Test simple — Fase 24
+// Usa escribir_linea (C builtin) en vez de log (colisiona con math.h)
+
+funcion principal() -> entero:
+    escribir_linea("Hola Syquex desde Fase 24")
+    retornar 0

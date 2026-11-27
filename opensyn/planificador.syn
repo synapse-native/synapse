@@ -1,0 +1,175 @@
+#lang: es
+// opensyn/planificador.syn — Planificar antes de actuar (M7 §7.2)
+// cumple Manual 7 §7.2: "Latencia de inferencia: < 1s para prompts cortos (modelo 7B en GPU)"
+// cumple Manual 7 §2.4: "El router decide cómo procesar la respuesta"
+
+importar std.io
+importar std.texto
+
+// ============================================================
+// Constantes
+// ============================================================
+
+constante MAX_PASOS = 10
+constante TOKENS_POR_PASO_ESTIMADO = 200
+constante COMPLEJIDAD_BAJA = 0
+constante COMPLEJIDAD_MEDIA = 1
+constante COMPLEJIDAD_ALTA = 2
+
+// ============================================================
+// Estructuras
+// ============================================================
+
+estructura Plan:
+    tarea: texto
+    cantidad_pasos: entero
+    complejidad: entero
+    estimacion_total_tokens: entero
+    modelo_recomendado: texto
+
+// ============================================================
+// R9: Planificar tarea (M7 §7.2)
+// ============================================================
+
+// Genera un plan multi-paso para una tarea dada.
+// cumple Manual 7 §7.2: "planifica multi-paso antes de ejecutar"
+// Origen: Claude Code (5.5x token-eficiente vs Cursor)
+funcion planificar(tarea: texto, contexto: texto) -> Plan:
+    requiere:
+        longitud(tarea) > 0
+    garantiza:
+        _resultado_.cantidad_pasos > 0 // cumple Manual 2 §5.1
+        _resultado_.cantidad_pasos <= MAX_PASOS
+    plan = Plan()
+    plan.tarea = tarea
+    plan.cantidad_pasos = 4
+    plan.complejidad = evaluar_complejidad(tarea)
+    // 4 pasos fijos: analizar, generar, validar, testear
+    plan.estimacion_total_tokens = TOKENS_POR_PASO_ESTIMADO * 4
+    plan.modelo_recomendado = seleccionar_modelo(plan.complejidad)
+    retornar plan
+
+// ============================================================
+// R9: Evaluar complejidad (M7 §7.2)
+// ============================================================
+
+// Evalúa la complejidad de una tarea para decidir esfuerzo.
+// cumple Manual 7 §7.2: "menos contexto = menos alucinación + menos latencia"
+// Origen: Claude Code (esfuerzo distinto por subtarea)
+funcion evaluar_complejidad(tarea: texto) -> entero:
+    requiere:
+        longitud(tarea) > 0
+    garantiza:
+        _resultado_ >= COMPLEJIDAD_BAJA y _resultado_ <= COMPLEJIDAD_ALTA // cumple Manual 2 §5.1
+    longitud_tarea = longitud(tarea)
+    si longitud_tarea < 50:
+        retornar COMPLEJIDAD_BAJA
+    si longitud_tarea < 200:
+        retornar COMPLEJIDAD_MEDIA
+    retornar COMPLEJIDAD_ALTA
+
+// ============================================================
+// R9: Seleccionar modelo (M7 §7.2)
+// ============================================================
+
+// Selecciona el modelo adecuado según la complejidad del plan.
+// cumple Manual 7 §7.2: "Latencia < 1s para prompts cortos"
+// Origen: Claude Code (esfuerzo/modelo distinto por subtarea)
+funcion seleccionar_modelo(complejidad: entero) -> texto:
+    requiere:
+        complejidad >= COMPLEJIDAD_BAJA y complejidad <= COMPLEJIDAD_ALTA
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    si complejidad == COMPLEJIDAD_BAJA:
+        retornar "opensyn-1.3b"
+    si complejidad == COMPLEJIDAD_MEDIA:
+        retornar "opensyn-3b"
+    retornar "opensyn-7b"
+
+// ============================================================
+// R9: Validar plan (M7 §7.2)
+// ============================================================
+
+// Verifica que el plan sea viable (sin ciclos, presupuesto OK).
+// cumple Manual 7 §7.2: "planifica multi-paso antes de ejecutar"
+funcion validar_plan(plan: Plan) -> booleano:
+    requiere:
+        plan.cantidad_pasos > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso // cumple Manual 2 §5.1
+    si plan.cantidad_pasos > MAX_PASOS:
+        retornar falso
+    si plan.estimacion_total_tokens > 10000:
+        retornar falso
+    retornar verdadero
+
+// ============================================================
+// R9: Estimar costo (M7 §7.2)
+// ============================================================
+
+// Estima el costo total de tokens para el plan.
+// cumple Manual 7 §7.2: "Latencia de inferencia: < 1s para prompts cortos"
+funcion estimar_costo(plan: Plan) -> entero:
+    requiere:
+        plan.cantidad_pasos > 0
+    garantiza:
+        _resultado_ > 0 // cumple Manual 2 §5.1
+    retornar plan.estimacion_total_tokens
+
+// ============================================================
+// R9: Nombre de complejidad (M7 §7.2)
+// ============================================================
+
+// Retorna el nombre legible de la complejidad.
+// cumple Manual 7 §7.2: "menos contexto = menos alucinación"
+funcion nombre_complejidad(complejidad: entero) -> texto:
+    requiere:
+        complejidad >= COMPLEJIDAD_BAJA y complejidad <= COMPLEJIDAD_ALTA
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    si complejidad == COMPLEJIDAD_BAJA:
+        retornar "baja"
+    si complejidad == COMPLEJIDAD_MEDIA:
+        retornar "media"
+    retornar "alta"
+
+// ============================================================
+// R9: Resumen del plan (M7 §7.2)
+// ============================================================
+
+// Genera un resumen legible del plan para el usuario.
+// cumple Manual 7 §7.2: "planifica multi-paso antes de ejecutar"
+funcion resumen_plan(plan: Plan) -> texto:
+    requiere:
+        plan.cantidad_pasos > 0
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    resumen = "Plan: "
+    resumen = concat(resumen, plan.tarea)
+    resumen = concat(resumen, " (")
+    resumen = concat(resumen, nombre_complejidad(plan.complejidad))
+    resumen = concat(resumen, ") — ")
+    resumen = concat(resumen, entero_a_texto(plan.cantidad_pasos))
+    resumen = concat(resumen, " pasos, ~")
+    resumen = concat(resumen, entero_a_texto(plan.estimacion_total_tokens))
+    resumen = concat(resumen, " tokens, modelo: ")
+    resumen = concat(resumen, plan.modelo_recomendado)
+    retornar resumen
+
+// ============================================================
+// Puentes al runtime
+// ============================================================
+
+funcion entero_a_texto(n: entero) -> texto:
+    requiere: verdadero
+    garantiza: longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    inseguro:
+        asm("char _buf[32]; int _len = snprintf(_buf, 32, \"%lld\", (long long)n); return (CadenaSegura){_len, _buf};")
+    retornar ""
+
+funcion concat(a: texto, b: texto) -> texto:
+    requiere: verdadero
+    garantiza: longitud(_resultado_) >= longitud(a) + longitud(b) // cumple Manual 2 §5.1
+    inseguro:
+        asm("int _la = a.longitud; int _lb = b.longitud; char* _buf = (char*)malloc(_la + _lb + 1); memcpy(_buf, a.datos, _la); memcpy(_buf + _la, b.datos, _lb); _buf[_la + _lb] = 0; return (CadenaSegura){_la + _lb, _buf};")
+    retornar a

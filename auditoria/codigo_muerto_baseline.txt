@@ -1,0 +1,8 @@
+# Deuda congelada de código muerto (Manual 1 §7.4): funciones públicas sin
+# referencias en el producto. Ratchet: solo puede BAJAR. No agregar a mano.
+tipo_normalizado
+builtin_cantidad_args
+builtin_tipo_parametro
+nodo_hermano
+str_char_at
+str_len_ptr

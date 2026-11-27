@@ -1,11 +1,15 @@
 """tests/integration/test_lsp_diagnostics.py — Manual 7 §7.7
 
+Cumple MTO OBL-M8-01 (LSP initialize/initialized/shutdown, Manual 8 §1.2).
+
 Valida que el LSP mapee correctamente los diagnostics en didOpen/didChange.
 """
 import pytest
 import json
 import os
 import subprocess
+
+pytestmark = pytest.mark.integration
 
 
 BINARIO_LSP = os.path.join(

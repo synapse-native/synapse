@@ -46,28 +46,57 @@ function _cargar_languageclient() {
 // Constantes de rutas de instalación
 // ---------------------------------------------------------------------------
 
-const SYNAPSE_INSTALL_DIR = 'C:\\Synapse';
-const SYNAPSE_LSP_PATH = path.join(SYNAPSE_INSTALL_DIR, 'bin', 'synapse.exe');
-const SYNAPSE_INSTALLER_URL = 'https://github.com/gedeon1972-svg/synapse-lang/releases/download/v1.5.0/synapse-v1.5.0-windows-x64.zip';
+const SYNAPSE_INSTALL_DIRS = [
+    'C:\\Program Files\\Synapse',
+    'C:\\Program Files (x86)\\Synapse',
+    'C:\\Synapse',
+    path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Synapse'),
+];
+const SYNAPSE_LSP_PATH = path.join(SYNAPSE_INSTALL_DIRS[0], 'bin', 'synapse_lsp.exe');
+const SYNAPSE_INSTALLER_URL = 'https://github.com/synapse-native/synapse/releases/latest/download/synapse-windows-x64.zip';
 
 // ---------------------------------------------------------------------------
 // Auto-descubrimiento e instalación automática del binario LSP
 // ---------------------------------------------------------------------------
 
 async function _asegurar_binario_lsp(salida) {
-    // 1. Buscar en la ruta de instalación estándar (configurada por install.ps1)
-    if (fs.existsSync(SYNAPSE_LSP_PATH)) {
-        salida.appendLine(`[Synapse] Binario LSP encontrado en instalación: ${SYNAPSE_LSP_PATH}`);
-        return SYNAPSE_LSP_PATH;
+    // Minimum file size for synapse_lsp.exe (too small = wrong binary, e.g. old lsp_v3)
+    const MIN_LSP_SIZE = 1_500_000; // ~1.5 MB
+
+    function _validar_binario(candidate, label) {
+        try {
+            const stat = fs.statSync(candidate);
+            if (stat.size < MIN_LSP_SIZE) {
+                salida.appendLine(`[Synapse] ${label} demasiado pequeño (${stat.size} bytes < ${MIN_LSP_SIZE}), descartando`);
+                return false;
+            }
+            return true;
+        } catch { return false; }
     }
 
-    // 2. Buscar en PATH del sistema
+    // 1. Buscar en rutas de instalación estándar (Program Files, C:\Synapse, LocalAppData)
+    for (const dir of SYNAPSE_INSTALL_DIRS) {
+        const lspCandidate = path.join(dir, 'bin', 'synapse_lsp.exe');
+        if (fs.existsSync(lspCandidate) && _validar_binario(lspCandidate, lspCandidate)) {
+            salida.appendLine(`[Synapse] Binario LSP encontrado en instalación: ${lspCandidate}`);
+            return lspCandidate;
+        }
+        const candidate = path.join(dir, 'bin', 'synapse.exe');
+        if (fs.existsSync(candidate)) {
+            salida.appendLine(`[Synapse] Binario LSP encontrado en instalación (fallback synapse.exe): ${candidate}`);
+            return candidate;
+        }
+    }
+
+    // 2. Buscar en PATH del sistema (synapse_lsp.exe primero, luego synapse.exe)
     const pathEntries = process.env.PATH?.split(';') || [];
     for (const entry of pathEntries) {
-        const candidate = path.join(entry, 'synapse_lsp.exe');
-        if (fs.existsSync(candidate)) {
-            salida.appendLine(`[Synapse] Binario LSP encontrado en PATH: ${candidate}`);
-            return candidate;
+        for (const exe of ['synapse_lsp.exe', 'synapse.exe', 'synapse']) {
+            const candidate = path.join(entry, exe);
+            if (fs.existsSync(candidate) && (exe !== 'synapse_lsp.exe' || _validar_binario(candidate, exe))) {
+                salida.appendLine(`[Synapse] Binario LSP encontrado en PATH: ${candidate}`);
+                return candidate;
+            }
         }
     }
 
@@ -75,12 +104,13 @@ async function _asegurar_binario_lsp(salida) {
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri?.fsPath;
     if (workspaceRoot) {
         const candidates = [
+            path.join(workspaceRoot, 'dist', 'bin', 'synapse_lsp.exe'),
             path.join(workspaceRoot, 'test_lsp_bin.exe'),
             path.join(workspaceRoot, 'nucleo', 'lsp_test.exe'),
             path.join(workspaceRoot, 'build', 'bin', 'synapse_lsp.exe'),
         ];
         for (const c of candidates) {
-            if (fs.existsSync(c)) {
+            if (fs.existsSync(c) && _validar_binario(c, path.basename(c))) {
                 salida.appendLine(`[Synapse] Binario LSP encontrado en workspace: ${c}`);
                 return c;
             }
@@ -144,13 +174,16 @@ async function _instalar_synapse_automatico(salida) {
                     Write-Host "ADVERTENCIA: install.ps1 no encontrado, saltando post-instalacion"
                 }
                 
-                # Verificar que el binario existe (synapse.exe, no synapse_lsp.exe)
-                $LspPath = Join-Path "${SYNAPSE_INSTALL_DIR}" "bin\\synapse.exe"
+                # Verificar que el binario LSP existe
+                $LspPath = Join-Path "${SYNAPSE_INSTALL_DIR}" "bin\\synapse_lsp.exe"
+                if (!(Test-Path $LspPath)) {
+                    $LspPath = Join-Path "${SYNAPSE_INSTALL_DIR}" "bin\\synapse.exe"
+                }
                 if (Test-Path $LspPath) {
                     Write-Host "INSTALL_OK"
                     exit 0
                 } else {
-                    Write-Host "ERROR: synapse.exe no encontrado tras extraccion"
+                    Write-Host "ERROR: synapse_lsp.exe no encontrado tras extraccion"
                     exit 1
                 }
             } catch {
@@ -289,8 +322,9 @@ async function _detectar_hardware(salida) {
 function _crear_opciones_servidor(raizSynapse, lspBinaryPath, detectResult) {
     const cfg = vscode.workspace.getConfiguration('synapse');
 
-    // Construir args de línea de comandos para el LSP
-    const args = ['--lsp'];
+    // cumple Manual 8 §1.2: synapse_lsp.exe es LSP standalone (sin --lsp), synapse.exe requiere --lsp
+    const isLspStandalone = lspBinaryPath && lspBinaryPath.toLowerCase().includes('synapse_lsp');
+    const args = isLspStandalone ? [] : ['--lsp'];
     if (detectResult && !detectResult.ai_enabled) {
         args.push('--ai-enabled=false');
     }
@@ -310,22 +344,19 @@ function _crear_opciones_servidor(raizSynapse, lspBinaryPath, detectResult) {
             options: {
                 cwd: raizSynapse,
                 env: { ...process.env },
-                stdio: 'pipe',
             },
-            transport: 0,
         };
     }
 
     // Usar la ruta validada (instalación o auto-descubierta)
+    // No transport: vscode-languageclient usa stdio por defecto (Content-Length framing)
     return {
         command: lspBinaryPath,
         args: args,
         options: {
             cwd: raizSynapse,
             env: { ...process.env },
-            stdio: 'pipe',
         },
-        transport: 0,
     };
 }
 
@@ -455,7 +486,134 @@ function _registrar_comandos_ia(contexto, cliente) {
         }
     );
 
-    contexto.subscriptions.push(comandoStatus, comandoExplain, comandoComplete);
+    // synapse.aiTranspile — Transpilar código Python a Synapse
+    const comandoTranspile = vscode.commands.registerCommand(
+        'synapse.aiTranspile',
+        async () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor) {
+                vscode.window.showWarningMessage('No hay editor activo');
+                return;
+            }
+
+            const seleccion = editor.selection;
+            let codigo = editor.document.getText(seleccion);
+            if (!codigo) {
+                vscode.window.showWarningMessage('Selecciona código Python a transpilar');
+                return;
+            }
+
+            try {
+                const resultado = await cliente.sendRequest('synapse/aiTranspile', {
+                    textDocument: { uri: editor.document.uri.toString() },
+                    code: codigo,
+                    from: 'python',
+                    to: 'synapse',
+                });
+
+                if (resultado?.ai_available && resultado?.code) {
+                    editor.edit((editBuilder) => {
+                        const posicion = editor.selection.active;
+                        editBuilder.replace(seleccion, resultado.code);
+                    });
+                } else {
+                    vscode.window.showWarningMessage(
+                        resultado?.message || 'IA local no disponible para transpilación'
+                    );
+                }
+            } catch (err) {
+                vscode.window.showErrorMessage(`Error transpilación: ${err.message}`);
+            }
+        }
+    );
+
+    // synapse.aiBindings — Generar bindings Synapse desde cabecera C
+    const comandoBindings = vscode.commands.registerCommand(
+        'synapse.aiBindings',
+        async () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor) {
+                vscode.window.showWarningMessage('No hay editor activo');
+                return;
+            }
+
+            const seleccion = editor.selection;
+            let header = editor.document.getText(seleccion);
+            if (!header) {
+                vscode.window.showWarningMessage('Selecciona una cabecera C o escribe el contenido');
+                return;
+            }
+
+            try {
+                const resultado = await cliente.sendRequest('synapse/aiBindings', {
+                    textDocument: { uri: editor.document.uri.toString() },
+                    header: header,
+                });
+
+                if (resultado?.ai_available && resultado?.bindings) {
+                    const panel = vscode.window.createOutputChannel('Synapse Bindings');
+                    panel.clear();
+                    panel.appendLine('=== Bindings Synapse generados ===');
+                    panel.appendLine('');
+                    panel.appendLine(resultado.bindings);
+                    panel.show();
+                } else {
+                    vscode.window.showWarningMessage(
+                        resultado?.message || 'IA local no disponible para bindings'
+                    );
+                }
+            } catch (err) {
+                vscode.window.showErrorMessage(`Error bindings: ${err.message}`);
+            }
+        }
+    );
+
+    // synapse.aiFix — Sugerir correcciones para el código con errores (M8 §2.3)
+    const comandoFix = vscode.commands.registerCommand(
+        'synapse.aiFix',
+        async () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor) {
+                vscode.window.showWarningMessage('No hay editor activo');
+                return;
+            }
+
+            const seleccion = editor.selection;
+            let codigo = editor.document.getText(seleccion);
+            if (!codigo) {
+                vscode.window.showWarningMessage('Selecciona el código con errores a corregir');
+                return;
+            }
+
+            try {
+                const resultado = await cliente.sendRequest('synapse/aiFix', {
+                    textDocument: { uri: editor.document.uri.toString() },
+                    code: codigo,
+                });
+
+                if (resultado?.ai_available && resultado?.fixes?.length > 0) {
+                    const panel = vscode.window.createOutputChannel('Synapse IA');
+                    panel.clear();
+                    panel.appendLine('=== Correcciones sugeridas por IA ===');
+                    panel.appendLine('');
+                    for (const correccion of resultado.fixes) {
+                        panel.appendLine(typeof correccion === 'string'
+                            ? correccion
+                            : (correccion.title || correccion.description || JSON.stringify(correccion)));
+                    }
+                    panel.show();
+                } else {
+                    vscode.window.showWarningMessage(
+                        resultado?.message || 'IA local no disponible o sin correcciones'
+                    );
+                }
+            } catch (err) {
+                vscode.window.showErrorMessage(`Error IA: ${err.message}`);
+            }
+        }
+    );
+
+    contexto.subscriptions.push(comandoStatus, comandoExplain, comandoComplete, comandoTranspile, comandoBindings, comandoFix);
 }
 
 // ---------------------------------------------------------------------------

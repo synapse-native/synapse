@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "e9008a4c3d4a259e",
+ "expediente": "docs/alineacion/r313_link_flags.md",
+ "fecha": "2026-11-23",
+ "archivos": [
+  "pipeline.py",
+  "runtime/core/concurrency.c"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_r313_link_flags.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

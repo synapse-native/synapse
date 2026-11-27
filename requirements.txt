@@ -1,8 +1,12 @@
 pytest>=7.0.0
+pytest-timeout>=2.1.0
+pytest-xdist>=3.5.0
 pytest-cov>=4.0.0
 pytest-md>=0.2.0
 pytest-emoji>=0.2.0
 flake8>=6.0.0
+# cumple Manual 9 §6.2: firma/verificación Ed25519 del instalador (verificar_firma.py)
+cryptography>=41.0.0
 psutil>=5.9.0
 requests>=2.31.0
 tqdm>=4.65.0

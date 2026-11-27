@@ -1,0 +1,15 @@
+{
+ "cambio_hash": "42ec57da65bfb713",
+ "expediente": "docs/alineacion/r302_deriva_generados.md",
+ "fecha": "2026-11-23",
+ "archivos": [
+  "opensyn/bindings_generator.py",
+  "opensyn/full_pipeline.py",
+  "opensyn/generate_runtime_bindings.py"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_r302_generados_sin_deriva.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

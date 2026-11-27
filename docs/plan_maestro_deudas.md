@@ -1,0 +1,958 @@
+# PLAN MAESTRO DE DEUDAS — mandato "repara todas las deudas, nunca deuda nueva o antigua"
+
+**Fecha:** 2026-10-03 · **Base:** 4ebd025 (R177) · **Autoridad:** Arquitecto —
+"estas autorizado a tomar las decisiones siempre que sigas las reglas".
+**Última sincronización:** 2026-11-25 — se marcan como resueltos los hallazgos
+cerrados por r288 y r324-r329 (antes seguían como ABIERTO en este registro).
+
+**Regla de dirección del Arquitecto (sesión 2026-10-03):** los tests SOLO se
+modifican para ALINEARLOS al manual. Si el código está alineado y el test no,
+se modifica el test aplicando TDD (RED→GREEN) y verificando con MTO.
+Todo ME sigue el ciclo MTS completo (plan → leer → codificar → oráculo →
+gates → commit → docs post-commit) y cita Manual X §Y en cada archivo tocado.
+
+## Cola de MEs (prioridad por radio/costo, actualizable)
+
+- **H-SNAP-DEBUG-1 (RESUELTO 2026-11-24 — ME `r324_ms_snapshot_impl`, commit `a0d758a`):**
+  Las funciones `ms_snapshot_contar_vars`, `ms_snapshot_tamano` y `ms_snapshot_contiene`
+  están declaradas en `runtime/core/debug.h` y expuestas a nivel de lenguaje en
+  `std/debug.syn` y en el catálogo de `opensyn/router.syn`. Sin embargo, no existe
+  ninguna definición C en `runtime/core/debug.c` ni en ningún otro módulo del runtime.
+  Cualquier programa de usuario que invoque estas funciones falla en el enlace con
+  `undefined reference to 'ms_snapshot_contar_vars'`. Además, la conftest de pytest
+  emite advertencias al compilar arneses de snapshots de memoria.
+  **Resolución aplicada:** las tres funciones y el atajo `ms_diff_entre` se
+  implementaron en `runtime/core/debug.c` sobre la estructura de `ms_tomar_en`;
+  `pytest tests/integration/test_memory_snapshots.py` 9/9, `alineacion.py
+  --verificar r324` 0 brechas (evidencia `0306660b3f387528.json`) y
+  `contrastar.py` PASS.
+
+- **H-ENCODING-NUL-1 (RESUELTO 2026-11-24 — ME `r325_fix_raw_nul_encoding`, commit `52d024c`):**
+  En `runtime/core/string_utils.c` (línea 529), la función `lsp_build_completion_response`
+  contiene un byte nulo literal `0x00` en disco dentro de comillas simples (`dup[rpos] = '\x00';`)
+  en lugar de la secuencia de escape válida `'\0'` o el entero `0`. Esto ocasiona
+  que GCC emita `warning: null character(s) preserved in literal` y que editores,
+  lectores y visores de diffs traten al archivo fuente como un binario corrupto.
+  Además, `auditoria/verificar_encoding.py` actualmente no detecta bytes NUL sueltos en código fuente.
+  **Resolución aplicada:** el byte crudo se sustituyó por `\0` en
+  `string_utils.c` y `verificar_encoding.py` ahora detecta NUL en todas las
+  fuentes versionadas; `pytest test_verificar_encoding` 7/7, encoding 0
+  defectos/0 NUL, `alineacion.py --verificar r325` 0 brechas (evidencia
+  `fc60fbc4bdee9791.json`) y `contrastar.py` PASS.
+
+- **H-RUNTIME-DEBUG-CHAR-1 (RESUELTO 2026-11-24 — ME `r326_fix_debug_home_dir`, commit `56d01a2`):**
+  En `runtime/core/debug.c` (líneas 89 y 93), la función `_syn_home_dir()` utiliza
+  `h[0] == '\\0'` y `h[0] != '\\0'` en lugar del carácter terminador nulo `'\0'`.
+  En C, `'\\0'` se interpreta como una constante multi-carácter (0x5C30). Si la variable
+  de entorno `HOME` está definida pero vacía (`""`), la condición no conmuta a
+  `USERPROFILE` y retorna una cadena vacía en lugar de `"."`, corrompiendo la ruta
+  de trazas (`/.synapse/traces`). GCC emite `warning: multi-character character constant [-Wmultichar]`.
+  **Resolución aplicada:** las comparaciones se corrigieron al escape canónico
+  `'\0'` en `runtime/core/debug.c`; desaparece `-Wmultichar` y el fallback a
+  `USERPROFILE`/`"."` opera con `HOME=""`; `alineacion.py --verificar r326` 0
+  brechas (evidencia `1413de67e69ca778.json`) y `contrastar.py` PASS.
+
+- **H-VSCODE-URL-1 (RESUELTO 2026-11-24 — ME `r327_vscode_release_url`, commit `1a16fde`):**
+  En `vscode-synapse/extension.js` (línea 56), la constante `SYNAPSE_INSTALLER_URL` apunta a
+  `https://github.com/gedeon1972-svg/synapse-lang/releases/download/v1.5.0/synapse-v1.5.0-windows-x64.zip`.
+  Si un usuario final instala la extensión `.vsix` en una máquina sin Synapse en el PATH y
+  hace clic en "Instalar Synapse", la extensión descarga un paquete antiguo v1.5.0 desde un
+  fork personal en lugar del release oficial `8.1.0-industrial` de `synapse-native/synapse`.
+  **Resolución aplicada:** `SYNAPSE_INSTALLER_URL` apunta al release oficial de
+  `synapse-native/synapse`; URL verificada en el reporte R327.
+
+- **H-RUNTIME-CACHE-COLD-1 (RESUELTO 2026-11-24 — ME `r329_installer_prewarm_runtime_cache`, commit `f571ce8`):**
+  El compilador nativo (`dist/bin/synapse.exe`) utiliza la caché en disco `~/.synapse/cache/runtime_obj/`
+  para enlazar objetos precompilados (`.o`) en ~1,25 s (cierre de H-R279-2). Sin embargo, en una
+  instalación nueva en máquina limpia donde dicha caché no existe o no se puede acceder, el compilador
+  recompila los ~50 archivos C del runtime (incluyendo `sqlite3.c` de 8.5 MB) con `-O2` en una sola
+  invocación de GCC, demorando entre 90 y 180 segundos sin barra de progreso. Esto causa fallos
+  por timeout en suites E2E (como `test_compila_y_ejecuta_syquex` en `test_smoke_usuario_final.py`)
+  y genera la percepción de un compilador colgado para el usuario final.
+  **Resolución aplicada:** `instaladores/windows/prewarm_runtime_cache.ps1`
+  compila el runtime con el gcc del toolchain y escribe los sidecars `.sha` en
+  `%USERPROFILE%\.synapse\cache\runtime_obj`; `instaladores/windows/synapse.iss`
+  lo ejecuta en `[Run]` post-instalación. Medido en staging: 39 objetos, 0
+  fallos, e ISCC compila el instalador; `contrastar.py` PASS.
+
+- **H-R274-1 (RESUELTO 2026-11-20, MEDIO):** Manual 9 §6.1 exige «Firmas
+  Ed25519: todos los artefactos distribuidos están firmados y verificados» y
+  §6.3 detalla `.sig` por artefacto; el oráculo r274 sólo verificaba
+  determinismo y SHA-256. **Resolución aplicada:** `distribuir.py
+  --requerir-firma` firma y autoverifica cada artefacto (el pipeline de release
+  ya lo invoca así) y el oráculo incorpora `--firmas`, incluido en
+  `--estricto`: verifica con `synapse.pub` que todo artefacto distribuido tenga
+  `.sig` válida y falla si falta la distribución, si falta una firma o si un
+  byte cambió. Oráculo de cierre ejecutado: `--estricto` rc=0 y `--firmas`
+  rc=1 tras manipular un artefacto; regresión
+  `tests/auditoria/test_oraculo_r274_firmas.py` 4/4. Evidencia:
+  `docs/verificacion_ME_r274_gates_independientes.md`.
+- **H-R275-1 (RESUELTO 2026-11-20, commit aa83822, MEDIO):** el emisor nativo S2
+  (`dist/bin/synapse.exe`) no compila `opensyn/permisos.syn`: emite
+  `str_eq(car_sep, ...)` con `car_sep` como `int64_t` en `es_ruta_workspace`
+  (comparación sobre texto indexado). S1 (`main.py`) sí lo compila, así que la
+  sonda E2E del sandbox de r275 se compila con S1 y deja el aviso
+  `[R275][WARN]`; `check --no-emit` sí usa el binario nativo real. Medido en la
+  corrida E2E del 2026-11-20 (4/4 PASS, sonda S1). **Resolución asignada:**
+  alinear la emisión de `str_eq` para texto indexado en S2 o cambiar la
+  comparación de `permisos.syn` a `subcadena(...)`; oráculo de cierre:
+  `python auditoria/oraculos/oraculo_r275_opensyn_e2e_bench.py` debe reportar
+  `[OK]` sin el `[R275][WARN]` de compilación S1. Evidencia: `docs/reportes/R275.md`.
+  **Resolución aplicada:** la divergencia estaba en el emisor, no en el fuente:
+  `texto[i]` se emitía como `int64_t` en las tres rutas de valor y en la rama de
+  **declaración** de `gen_visitar_declaracion` (`nucleo/generator.syn`), así que
+  `let c = s[3]` quedaba tipado entero y `str_eq` no compilaba. Se infiere y
+  emite `CadenaSegura` en las cuatro rutas (Manual 2 §4.1, §8.2) y se mantiene la
+  comparación de `permisos.syn` como estaba. Oráculo de cierre: nuevo
+  `auditoria/oraculos/oraculo_r275b_texto_indexado.py` rc=0 y `oraculo_r275`
+  rc=0 **sin** `[R275][WARN]` con el GGUF local; sonda del test E2E compilada
+  con S2 (`compilador = S2`). Evidencia: `docs/reportes/R275b.md`.
+- **H-R275-2 (RESUELTO 2026-11-20, commit aa83822, ALTO):** el sello de frescura
+  del bootstrap (`oraculo_r252_paridad_bootstrap.py`) quedaba en punto muerto
+  para cualquier edición de `nucleo/principal.syn`: no certificaba y `--sellar`
+  no re-sellaba, de modo que el núcleo no podía reconstruirse con sello válido.
+  **Resolución aplicada:** con `--sellar`, re-sella si la etapa 2 es posterior a
+  la fuente y `S2 == S3`; un artefacto stale sigue fallando. Regresión nueva
+  `tests/auditoria/test_oraculo_r252_resellado.py` (3 casos). Y, en el mismo
+  defecto de fondo, S2 resolvía módulos y fuentes del runtime sólo desde el cwd
+  del proceso (el E2E compila en `tmp_path`): `nucleo/principal.syn` los busca
+  ahora junto al ejecutable y sus padres, conservando el orden previo.
+- **H-R276-1 (RETIRADO 2026-11-20, ALTO — gate vacuo):** el ME
+  `r276_hardware_detector` (plan + oráculo, commits `0426ab4`/`1518eb4`) no
+  entregó código de producción y su oráculo no verificaba nada: devolvía
+  `[OK]` y rc=0 aun sin `dist/bin/synapse.exe` ni `synapse_stage2.stamp`
+  (`[OK] [r276] --estricto: Artifact consistency check passed (no stale stamp)`),
+  `--mutar` era `[INFO]` y `--e2e` un «placeholder»; el `--sellar` escribía un
+  sello con hash de ceros. Su fila de memoria citaba `docs/reportes/R276.md`,
+  que nunca existió. **Resolución aplicada:** plan y oráculo eliminados (un gate
+  que siempre dice OK es peor que ninguno), fila falsa retirada de
+  `MEMORIA_PROYECTO.md`. La funcionalidad real de detección de hardware y
+  selección de modelo vive desde Fase 29 (`runtime/core/detect_hardware.c`,
+  `opensyn/installer.syn`, `std/os.syn`) y la cubre
+  `tests/opensyn/test_installer.py` (1 passed). El id `r276` queda para
+  `r276_multiplataforma_release`.
+- **H-R314-1 (CERRADO ACEPTADO 2026-11-25, BAJO):** `instaladores/windows/synapse.iss`
+  referencia `dl_helper.exe` (helper de descarga con ventana de progreso), pero
+  el ejecutable no está versionado ni existe su fuente en el repositorio: solo
+  aparecía en árboles de trabajo locales. **Resolución aplicada:** la entrada
+  lleva `skipifsourcedoesntexist`, y el `.iss` ya degrada a `curl` cuando el
+  helper no está (`DownloadFile`); el oráculo
+  `tests/auditoria/test_r314_installer_workflow.py` impide que vuelva a exigir
+  artefactos ausentes. **Decisión (Arquitecto, 2026-11-25):** no se versiona la
+  fuente de `dl_helper` ni se compila en CI; el componente `opensyn` mantiene
+  `skipifsourcedoesntexist` y el fallback `curl`, y el oráculo r314 impide que
+  vuelva a exigir el artefacto. Se cierra como aceptado.
+- **H-R331-1 (CERRADO 2026-11-26, MEDIO):** el build modular de
+  `opensyn/principal.syn` falla en CI: `_modelo.c` llama `longitud` sin
+  declaración y `_oraculo.c` referencia `generar_texto` sin definición (runs
+  45734531006 y 45734530794). El build unity no lo detecta porque concatena
+  todos los módulos en una sola unidad. **Resolución asignada:** declarar los
+  prototipos del runtime de texto en el recorte modular y asegurar que
+  `generar_texto` se emita/enlace; oráculo: jobs `Build Windows Installer` y
+  `Cross-Compile Synapse` en CI. **Cierre 2026-11-26 (commits `694cd92` y
+  `c8af8f4`):** `generator.py` declara `int64_t longitud(CadenaSegura)` en el
+  header modular; `emit_expressions.py` traduce `longitud(tensor)` a
+  `filas * columnas` (antes emitía una llamada sin firma C); y
+  `verificar_release_limpio.py` acepta `<fuente>.exe` en POSIX y resuelve el
+  cwd a absoluto (el smoke de ARM fallaba con `FileNotFoundError` sobre una
+  ruta relativa). Verificado en local: `opensyn.exe` = `OpenSyn 1.1.0`; 4
+  passed en los oráculos; `Cross-Compile` y `Build Installer` en success sobre
+  `c8af8f4`. La matriz de release compila, firma y verifica 4/4; el smoke
+  Linux/ARM queda en cola detrás del runner macOS.
+- **H-R276-2 (ABIERTO 2026-11-20, MEDIO):** la certificación de release quedó
+  medida sólo en Windows local. El gate `scripts/verificar_release_limpio.py` y
+  el job `smoke_release_limpio` de `release_matrix.yml` ya cubren integridad,
+  firmas y smoke en cuatro plataformas, pero **no se ejecutó** la matriz ni una
+  VM Windows limpia desde esta sesión: sin run de CI no hay evidencia de
+  Linux x64/ARM64 ni de macOS. **Resolución asignada:** ejecutar la matriz en
+  CI sobre el tag del release y adjuntar los artefactos `smoke-<plataforma>` a
+  `docs/reportes/R276.md`; después, instalación silenciosa en VM Windows limpia
+  (`test_installer` de r273 + `verificar_release_limpio.py` en la VM) y
+  actualizar el reporte con la evidencia real. Cierre cuando las cuatro
+  plataformas tengan `PASS` publicado y la VM limpia tenga log adjunto.
+  **Progreso 2026-11-23 (r308–r321):** la matriz ya compila y enlaza en las
+  cuatro filas; la única causa de fallo restante es
+  `Package and Sign binary with Ed25519` en Linux x64/ARM64, Windows y macOS
+  (`.github/workflows/release_matrix.yml` aborta a propósito sin el secreto).
+  Ver `docs/reportes/R316.md`–`R321.md`. Cierre cuando el Arquitecto cargue
+  `ED25519_PRIVATE_KEY` y la matriz publique `PASS` en las cuatro plataformas.
+  **Progreso 2026-11-26:** el secreto se cargó desde
+  `release_keys/private.pem` (32 bytes; pareja verificada de `public.pem`).
+  Run `45739735189`: los cuatro jobs `release_matrix` (linux_x64, linux_arm64,
+  darwin_arm64, win_x64) compilan, firman y verifican `SIGNATURE_VALID=YES`.
+  Queda el smoke de Linux (2 fallos) y macOS (en cola) y la VM limpia de R234
+  para cerrar H-R276-2.
+  **Progreso 2026-11-26 (H-R331-1):** run `45782162841` sobre `c8af8f4`:
+  `release_matrix` 4/4 success (Linux x64/ARM64, macOS, Windows); los smokes
+  esperan al runner macOS (en cola). El smoke de ARM del run anterior falló por
+  ruta relativa y quedó corregido en `c8af8f4`.
+- **H-R277-1 (ABIERTO 2026-11-20, MEDIO — deuda medida):** la primera medición
+  de contratos del ME `r277_contracts_audit` (commit `3eff2fa`) cuenta **600
+  funciones públicas sin `requiere` + `garantiza`** en 68 archivos (de 1.161
+  auditadas; 561 declaraciones `externo` exentas), de las que `nucleo/generator.syn`
+  (36), `nucleo/analizador_semantico.syn` (34) y `nucleo/lexer.syn` (26) son
+  las mayores. El gate `auditoria/verificar_contratos.py` ya impide que la
+  deuda **crezca** (ratchet contra `auditoria/contratos_baseline.txt`) y está
+  cableado al CI. **Resolución asignada:** Plan Maestro formalizado en
+  `docs/plan_QUEMA_CONTRATOS_H_R277_1.md` estructurado en 5 bloques de MEs
+  secuenciales (`r294_contratos_std_util`, `r295_contratos_std_avanzado`,
+  `r296_contratos_syquex`, `r297_contratos_nucleo_front` y `r298_contratos_nucleo_codegen`),
+  combinando contratos con semántica real verificable (nunca `verdadero` de
+  relleno) y privatización con prefijo `_` de funciones internas. Cierre cuando
+  `python auditoria/verificar_contratos.py --estricto` dé rc=0 con
+  `auditoria/contratos_baseline.txt` sin entradas (sólo cabecera).
+  **Progreso 2026-11-25 (ME `r330_contratos_wasm`, commit `160e5a8`):** la
+  deuda bajó a **111 funciones** (672 auditadas) al contratar las 83 de
+  `nucleo/wasm_backend.syn`; el resto se concentra en `nodos_flujo.syn` (14),
+  `parser_sentencias.syn` (10), `std/modelo.syn` (7) y
+  `parser_expr.syn`/`lifetimes.syn`/`generator_pgo.syn` (7 cada uno). El
+  baseline sigue siendo el criterio: `--estricto` exige vaciarlo.
+- **H-PARIDAD-S1-S2 (ABIERTO 2026-11-21, ALTO — divergencia dual de compiladores):**
+  Actualmente coexisten dos implementaciones del compilador: S1 en Python
+  (`compilador/*.py`) y S2 nativo en Synapse (`nucleo/*.syn`), con 89 tests
+  invocando a `main.py` de forma directa en lugar del binario nativo, lo que
+  oculta defectos en S2 hasta fases tardías. **Resolución asignada:** Plan
+  Maestro formalizado en `docs/plan_MIGRACION_PARIDAD_S2_SEED.md` en 3 MEs:
+  `r291_congelamiento_s1_harness_s2` (congelamiento de `compilador/` y fixture
+  canónica de tests hacia `dist/bin/synapse.exe`), `r292_semilla_c_bootstrap_nativo`
+  (emisión de `bootstrap/seed/synapse_stage0.c` para bootstrap nativo sin
+  Python) y `r293_jubilacion_s1_fuente_unica` (archivo de S1 a histórico y
+  consagración de S2 como única fuente viva de verdad).
+- **H-R252-1 (RETIRADO 2026-11-19: FALSO POSITIVO DE MEDICIÓN), texto original conservado como registro:**
+  Medido con la cadena real (`build.py --skip-test`, rc=0), el sello PASA:
+  etapa 2 y etapa 3 son ambas salidas del emisor nativo y valen
+  `b032e2ddc78dd235` (2.558.970 B); una cuarta generación reprodujo el mismo hash.
+  El artefacto de 2.077.570 B que se había rotulado «etapa 2» era la salida de
+  `main.py` (etapa 1). Detalle y evidencia: `docs/reportes/R249.md`, sección
+  «Corrección medida». **H-R252-4 RESUELTO 2026-11-19 (ME r270):** el enlace
+  nativo no usaba `-static` en win32 (`nucleo/principal.syn:764`) aunque S1 sí
+  (`pipeline.py:981`); se añadió `_static_flag` para win32 y el bootstrap
+  reconstruido sella S2=S3 en `30C07EF61C5F25A7…` (2.559.482 B), con
+  `synapse.exe` y `dist/bin/synapse.exe` al día (`--estricto` PASS).
+  **Verificado de forma independiente (2026-11-19):** la cadena reconstruida
+  desde cero reproduce el mismo hash (`30c07ef61c5f25a7`, 2.559.482 B),
+  `--estricto` da `RC=0` y `objdump -p synapse_stage2.exe` sólo lista DLL del
+  sistema (`ADVAPI32`, `KERNEL32`, `msvcrt`, `WS2_32`), ninguna del toolchain —
+  el objetivo del hallazgo. Evidencia en `docs/reportes/R249.md`.
+- **H-R252-5 (RESUELTO 2026-11-19, ME r270b, commit 84f67ba):** el guard de
+  frescura del oráculo r252 comparaba **mtime**: tocar `nucleo/principal.syn`
+  sin cambiar contenido (`git checkout`, guardado del editor) ponía el sello en
+  rojo con el hash correcto; ocurrió al verificar r270 y obligó a reconstruir la
+  cadena. **Resolución aplicada:** el oráculo escribe `synapse_stage2.stamp`
+  con el SHA-256 del contenido de la fuente (`--sellar`, invocado por `build.py`
+  y el job `bootstrap` de CI) y certifica por contenido; sin sello conserva el
+  criterio de `mtime` con aviso para un checkout limpio. Falla si la fuente
+  cambió desde el build, nombrando ambos hashes; y desde el commit `8e2c41f`
+  tampoco acredita si la etapa 2 presente no es la sellada (tests del directorio
+  `auditoria` regeneran etapas en la raíz). Evidencia: 6 tests nuevos en
+  `tests/auditoria/test_r270b_frescura_contenido.py`, `contrastar` 3/3 PASS,
+  `verificar_alineacion` sin brechas, y `touch` de la fuente sobre los
+  artefactos reales sin falso rojo. Reporte: `docs/reportes/R270b.md`.
+- **H-R252-1 (original, RETIRADO — se conserva como registro de la lección H-R252-3):**
+  el bootstrap NO cierra en esta rama. Medido con el oráculo
+  `auditoria/oraculos/oraculo_r252_paridad_bootstrap.py --artefactos`:
+  `synapse_stage2.exe` (construido por S1) = `737a4000dabccbea`, 2.077.570 bytes;
+  `synapse_stage3.exe` (construido por S2) = `b032e2ddc78dd235`, 2.558.970 bytes.
+  2.0 de 2.1 MB difieren, así que no es ruido de timestamps: son programas
+  distintos. Causa raíz identificada en los logs de enlace: S1 (`pipeline.py`)
+  compila **modular** (un `.c` y un `.o` por módulo del núcleo) y enlaza con
+  `-static`, mientras que S2 (`nucleo/principal.syn:764`) emite **unity**
+  (`synapse_unity.c`) y enlaza sin `-static` y con
+  `-Wl,--allow-multiple-definition`. Mientras los dos caminos de emisión no
+  coincidan, la regla de hierro de Manual 1 §6 (diff 0 bytes entre etapa 2 y 3)
+  no puede cumplirse. El sello de CI (`job bootstrap` de `ci-tests.yml`) nunca
+  lo detectó porque ese job no se ha ejecutado en esta rama con el estado
+  actual. ~~**Resolución asignada:** ME de seguimiento `r252b_emision_paridad`~~
+  **RETIRADA**: el supuesto no se sostiene (ver el párrafo anterior). Reemplazada
+  por H-R252-4 (`-static` en el enlace nativo).
+
+- **R229-R234 / Plan de Mejoras Arquitectónicas y Cierre Fase 32 (REGISTRADO 2026-11-16):**
+  Plan maestro en `docs/plan_MEJORAS_ARQUITECTURA_R229_R233.md`.
+  - **R229 / ME r229_cache_resiliencia (CERRADO 2026-11-17, commit 6a5176b):** caché persistente solo en `~/.synapse/cache/`; si no es escribible, degradación avisada a objetos efímeros en `build/obj/runtime_ephemeral` (sin fallback persistente) para erradicar `WinError 5` (`docs/plan_ME_r229_cache_resiliencia.md`).
+  - **R230 / ME r230_opensyn_contratos_mocks (CERRADO 2026-11-18, commit fa3349f):** respuestas vacías del LLM se interceptan como `ERR_RESPUESTA_VACIA` antes de `validar_con_check`/backend en validación y pipeline; 3 oráculos nuevos, focalizados 8/8; regresión `tests/opensyn` 136 passed, 1 skipped, 1 failed (timeout preexistente del instalador).
+  - **R231 / ME r231_verificacion_aot_fronteras:** Subfase 32.5 auto-refutación de casos límite derivados del AST.
+  - **R232 / ME r232_rag_memoria_estructural:** Subfase 32.6 RAG con análisis de impacto del Architect y firmas AST en base cifrada.
+  - **R233 / ME r233_compilador_puro_nativo:** driver de compilación nativo en `synapse.exe` y congelamiento de Python en Stage 0.
+  - **R234 / ME r234_certificacion_usuario_final (EN CURSO 2026-11-17, paso 1 de 4):** arnés de prueba de humo post-instalación E2E en máquina limpia y reporte final (`docs/plan_ME_r234_certificacion_usuario_final.md`).
+    - **Paso 1 ENTREGADO:** `tests/e2e/test_smoke_usuario_final.py` 7/7 sobre solo `dist/bin` (versión y `check` con PATH sin Python ni GCC, compilación + ejecución `.syn` y `.syq`, `opensyn --version`/`status`, LSP nativo `initialize`). `docs/reportes/FASE_32_CERTIFICACION.md` con la tabla de evidencia; requisitos Manual 9 §7 y Manual 7 §7.3 marcados NO CUMPLE (parcial) en `docs/verificacion_ME_r234_certificacion_usuario_final.md`.
+    - **H-R234-1 (ALTO) RESUELTO 2026-11-17 (ME r236_toolchain_gcc):** `nucleo/principal.syn` resuelve el compilador C antes de invocarlo (`SYNAPSE_GCC` → `gcc.exe` junto al binario → `tools\mingw64\bin` → `mingw64\bin` → `..\toolchain_gcc12\mingw64\bin` → `..\..\toolchain_gcc12\mingw64\bin` → PATH) y antepone su directorio al PATH del hijo, así que compilar ya no depende de que el usuario configure MinGW. Oráculo nuevo `tests/auditoria/test_oraculos_r236_toolchain_gcc.py` 3/3 (checkout sin gcc en PATH, layout de instalador, precedencia de `SYNAPSE_GCC`); evidencia `4871e66aeb5e856c`; `contrastar` PASS; `nucleo/principal.syn` registrado en D-9 (1244 líneas). Reporte: `docs/reportes/R236.md`. **Seguimiento H-R234-2 (RESUELTO 2026-11-17, ME r237_instalador_toolchain):** `instaladores/windows/synapse.iss` gana el componente `toolchain` que copia `dist\toolchain_gcc12\mingw64\*` a `{app}\toolchain_gcc12\mingw64` (el directorio que el resolver busca desde `{app}\bin`); el subset lo prepara `instaladores/windows/empaquetar_toolchain.py` (3836 archivos, 300 MB de los 936 del toolchain completo) y `install.ps1` verifica el toolchain incluido. Oráculo `tests/auditoria/test_oraculos_r237_instalador_toolchain.py` 4/4; ISCC compiló el `.iss` y la instalación silenciosa `/COMPONENTS=toolchain` dejó un `gcc` que compila sin PATH del sistema; evidencia `7b4be78d842ad19e`; reporte `docs/reportes/R237.md`. **Queda abierto el paso 2 de R234:** la VM Windows realmente limpia (instalación silenciosa completa + `synapse --version` + compilación).
+    - **Paso 2 PARCIAL (2026-11-23, R307):** `tests/auditoria/test_instalador_silencioso.py` alineado al flujo oficial (compila con `-o` y ejecuta el binario) y en 4/4 local; `test_smoke_usuario_final.py` 7/7. Falta la instalación desatendida en VM limpia.
+    - **Pendiente:** instalación desatendida en VM limpia, Manual 7 §7.3 (monitoreo de conexiones salientes + permisos mínimos) e informe final con las cuatro cláusulas en CUMPLE.
+
+- **FRENTE H — Deuda de ecosistema, manuales y encoding (REGISTRADO 2026-11-18):**
+  Cartera completa en `docs/gobernancia/PLAN_MEJORAS_ECOSISTEMA_R270_R284.md` y
+  política en `docs/gobernancia/POLITICA_MANUALES.md`. No usa ids ocupados
+  (r218/r219, r240–r253, r256); `r252b_emision_paridad` queda absorbido por
+  `r270_bootstrap_emision_paridad`.
+  - **H-R252-1/H-R252-4 → r270_bootstrap_emision_paridad (RESUELTO 2026-11-19):**
+    stage2 stale descartado y enlace nativo win32 con `-static`; S2=S3
+    `30C07EF61C5F25A7…` (2.559.482 B), `--estricto` PASS. Sin deuda abierta.
+  - **Manuales → r271_manuales_canonicos (CERRADO 2026-11-19, d3613bb):** Manual 31/32
+    renombrados a `MANUAL 31.md`/`MANUAL 32.md` (D-MAN-1 A); anexos indexados
+    como apoyo citable sin número (D-MAN-2 A); `.indice.json` cubre 11 manuales
+    y 3 anexos; gate `verificar_manuales.py --todo` cableado en pre-commit/CI.
+    D-MAN-3 A fija el barrido único de `book2` en r282.
+  - **Encoding documental → r272_docs_encoding (CERRADO 2026-11-19, b3720d3):**
+    `verificar_manuales.py --encoding --docs` recorre todo `docs/` y rechaza BOM,
+    U+FFFD, C1 y doble codificación; la auditoría canónica y `R205.md` declaran
+    ser documento informativo frente a `docs/manuales/` y conservan su contenido
+    (≥1.275 líneas en la auditoría). Los manuales de producción ya eran válidos y
+    no se reescribieron. Oráculo nuevo `test_docs_encoding_r272.py` 3/3;
+    `contrastar` 2/2 PASS; sin archivos de producción (sin expediente).
+  - **Instalador → r273_installer_modelo_grande (CERRADO 2026-11-19, 7cc1d91):**
+    el GGUF de 873 MB agotaba el timeout de 10 s; causa medida (9.000 ms de
+    10.300 ms en `_syn_hash_archivo`: `sha256_update` byte a byte, transform sin
+    ventana rodante y ningún digest memorizado). Cerrado con hashing por bloques
+    + ventana rodante, streaming de 1 MiB y caché por ruta+tamaño+mtime en
+    `~/.synapse/cache/hash/`: 6,5 s en frío y 0,07 s caliente; el test
+    preexistente pasa sin tocarlo. Desbloquea r275/r276/r279.
+  - **Encoding de código → r280_codigo_encoding (CERRADO 2026-11-20, 38ba6f9):** gate `auditoria/verificar_encoding.py` (U+FFFD, C1, mojibake, UTF-8 inválido y BOM nuevo) con ratchet; 2307 archivos, 0 defectos de pérdida, 46 BOM históricos congelados y 2 fixtures UTF-16 exentos (**H-R280-3**). Correcciones en axon/runtime/std sin cambio de semántica; tests 6/6 + 5/5 + 17/17 + 4/4; build rc=0. **H-R280-2 RESUELTO 2026-11-22 (ME `r288_bom_sweep`, commit `5c954a6`):** BOM histórico eliminado de 39 fuentes de producción con cita `// cumple Manual 2 §1.2`; `verificar_encoding.py --estricto` OK (0 BOM).
+  - **Suite acotada → r279_suite_rapida (CERRADO 2026-11-21, ec85c17):** gate `auditoria/verificar_suite.py` con ratchet de composición (3078 tests recolectados, 243 skips declarados en 10 suites) y medición cronometrada por suite; `network` opt-in en `pytest.ini`; jobs `suite-rapida` (shards) y `suite-ratchet` en CI, conservando la suite completa por target. Medido: `e2e` 8 passed/0 skipped/0 failed en 271,98 s; gate 4/4; `contrastar` 2/2. **H-R279-1 abierto:** la corrida cronometrada completa de las diez suites no se ejecutó desde esta máquina (integración >2 h); cierre cuando el run de CI publique `--medir --comparar` para las diez suites sin skips nuevos.
+  - **H-R279-2 (CERRADO 2026-11-21 — commit `339b794`):** `test_r3_param_adt_s1/s2` fallaban por `subprocess.TimeoutExpired` a 120 s. Medición: el enlace nativo tardaba 93,18 s porque recompilaba ~50 fuentes del runtime en cada invocación; no era el test. Fix en `nucleo/principal.syn`: enlaza los `.o` de `~/.synapse/cache/runtime_obj/` si el SHA-256 del fuente coincide con su sidecar y el compilador es el mismo toolchain, con fallback a fuentes y solo con `-O2`. Resultado: 93,18 s → 1,25 s, el test (inmutable) pasa en 24,54 s y `tests/unit` baja de 537,82 s a 207,19 s. Reporte: `docs/reportes/R281.md`.
+  - **Gates → r274_gates_independientes (P0 · EN PROGRESO):** H-R252-2 y H-CONTROL-1/2/3;
+    ningún sello puede vivir solo dentro de `build.py` o de un job de CI.
+  - **P1/P2:** r275 E2E real + benchmark local; r276 limpia multiplataforma y
+    release firmado; r277 contratos (r253); r278 VS Code/debugger
+    (r240/r241); r279 suite acotada; r280 encoding de código; r281 D-9 y
+    duplicados; r282 docs informativos; r283 versionado de manuales; r284
+    diagnóstico local opt-in. Todo sin nube, telemetría ni MCP (Manual 1 §5.7;
+    Manual 32 §1.3).
+
+- **R220/ME r220_harness_runtime_path (CERRADO 2026-11-15, commit 1319d82):**
+  harness de tests con PATH/CPATH canonico. Antepone `toolchain_gcc12/mingw64/bin`
+  a PATH (cierra `0xC000014B` por `libwinpthread-1.dll`) y agrega
+  `-I runtime/core` dirigido solo al fuente FFI (no CPATH global, para no
+  sombrear `<math.h>`). Oraculo
+  `tests/auditoria/test_oraculos_r220_harness_runtime_path.py` 4/4; regresion
+  afectada 15+4+38+11 GREEN. Plan integral de continuidad:
+  `docs/plan_MEJORA_INTEGRAL_R220.md`. Tests existentes NO modificados.
+- **R222/ME r222_std_texto_contracts (CERRADO 2026-11-15, commit 805ab8d):**
+  restaura los envoltorios historicos `cmp_texto`, `strlen_s`, `strstr_f`,
+  `strchr_f`, `atoi_f`, `strcpy_f` y `strncpy_f` en `std/texto.syn` con
+  contratos; agrega `requiere: verdadero` a `contiene` sin revertir H-R196-1.
+  Oraculo `tests/auditoria/test_oraculos_r222_std_texto.py` 4/4; contratos
+  20/20; `contrastar` y `alineacion --verificar` PASS
+  (`auditoria/evidencia/beb9f255cf3636f8.json`). Deuda H-R222-3: duplicados de
+  `contiene`/`indice_de`/`reemplazar` en `std/texto.syn` para barrido R228.
+- **R223/ME r223_syquex_frontend (CERRADO 2026-11-15, commit 63aefa3):**
+  cierra los 10 RED de Syquex. Causa raiz doble: `importar std` sin punto dejaba
+  `sub` sin inicializar y leia `est->nodos[sub]` (`SIGSEGV` en `sq_declaracion`);
+  `T_CANAL` no se aceptaba como primario y `sq_args(est, -1)` escribia
+  `est->nodos[-1]`. Fix en `syquex/parser.syn` (`sub = -1` + asm guarded) y
+  `syquex/expr.syn` (`T_CANAL` como nombre contextual). Oraculos
+  `test_concurrency.py` 5/5 y `test_result.py` 5/5; `contrastar` PASS;
+  alineacion verificada (`auditoria/evidencia/12b61e28b17a5b04.json`).
+- **R222b/ME r222b_wrappers_regression (CERRADO 2026-11-15, commit ebc1dd6):**
+  regresion de R222: `router.syn` y `lsp_v3.syn` redefinian `cmp_texto`,
+  `strstr_f` y `atoi_f` tras restaurarse en `std/texto.syn`. Se eliminan los
+  duplicados locales, se vacia `tests/fixtures/compilacion_baseline.txt` y se
+  agrega oraculo de compilacion real 3/3. `test_compilacion_fase32.py` 2/2;
+  `build.py` S2==S3 `327fc514adb5`; unit+syquex 795 passed/1 skip; dirigida
+  57/57. Gates y evidencia `74f53ae26613e627`.
+- **R221 baseline por bloques (EN CURSO 2026-11-15):** unit+syquex 796 tests ->
+  795 passed / 1 skipped / 0 failed tras R222+R223+R222b. `test_compilacion_fase32.py`
+  2/2 y `build.py` S2==S3 `327fc514adb5`. `tests/auditoria` recolecta
+  230; el run completo excede 30 min (se corto en r183). Subset fallido
+  re-ejecutado: 6 RED ambientales/prexistentes (exe `synapse.exe` stale por
+  `_tmp_ast_abi_drv.syn`, `dist/bin/opensyn.exe` anterior a su fuente, chat
+  OpenSyn sin `modelo_synapse.gguf`, y contrato `std/io.syn::stdin_eof` que el
+  test busca como `resultado` pero el codigo usa `_resultado_`). No relacionados
+  con R222/R223; asignados a R226 (release/CI/entorno) y R228 (barrido).
+  Pendiente baseline de integration completa.
+- **R221 smoke operativo 2026-11-15:** `build.py` S2==S3 `327fc514adb5`;
+  `synapse_stage2.exe check --no-emit` sobre `router.syn` y `lsp_v3.syn` rc=0;
+  `tests/e2e/e2e_hola.syn` compila y ejecuta ("Hola Mundo"); 
+  `examples/syquex/04_resultado.syq` compila y ejecuta; LSP nativo responde
+  `initialize` JSON-RPC correctamente. Distribucion fresca y firmada
+  (`SIGNATURE_VALID=YES`, `synapse.exe` SHA `327fc514adb5`); `dist/bin`
+  refrescado (`synapse`, `opensyn`, `synapse_lsp`) e instalador Windows
+  recompilado. `opensyn doctor` solo falla por `llama-server.exe` ausente
+  (el GGUF si existe). Brecha de producto confirmada:
+  `synapse_stage2.exe opensyn ...` no despacha el CLI nativo (r242 pendiente).
+- **R221 E2E IA 2026-11-15:** se instalo `llama-server` b10819 en
+  `dist/opensyn/ia`; `opensyn doctor` rc=0, servidor OpenAI en :8088 responde
+  `/v1/models` y `/v1/chat/completions`, y `opensyn status` lo detecta activo.
+  Hallazgo H-R221-1 (PARCIAL R227, commit 24a7feb): el fallback
+  `POST /completion` con prompt instruct y el streaming hasta `stop:true`
+  estan cubiertos por mock HTTP 2/2 y regresion dirigida 26 passed/1 skipped.
+  El GGUF local `deepseek-coder-1.3b-Q4_K_M.gguf` y el `llama-server` real no
+  se levantaron en la suite; validar el chat OpenSyn real con el GGUF instruct
+  antes de declarar H-R221-1 cerrado.
+- **H-R221-1 smoke REAL 2026-11-17 (CERRADO tras r235 — ver abajo):** se
+  levanto `dist/opensyn/ia/llama-server.exe` b10819 con el GGUF local sobre
+  :8088 y se ejecuto un probe `.syn` compilado con el pipeline real
+  (`_syn_ollama_consultar` + streaming), observado por un proxy TCP que solo
+  registra el path (el modelo/servidor siguen siendo reales).
+  (a) El GGUF **SI es instruct**: `general.name =
+  deepseek-ai_deepseek-coder-1.3b-instruct`; queda **REFUTADA** la hipotesis
+  "parece base/no-instruct" registrada en R222b/R227.
+  (b) Con la plantilla nativa del GGUF: la consulta usa
+  `/v1/chat/completions` y devuelve texto limpio; el streaming usa
+  `/completion` con prompt `### System/Instruction/Response` (`ESTADO:0`,
+  `ERROR:` vacio). Con el binario real regenerado
+  (`main.py opensyn/principal.syn -o dist/bin/opensyn.exe`) el chat conecta y
+  responde. Nota: `dist/bin/opensyn.exe` estaba STALE (2026-11-15, sin las
+  cadenas de R227) antes de este smoke.
+  (c) **H-R221-1-R1 (NUEVO, ALTO — fallback no dispara con blanco):** con una
+  plantilla de chat que cierra de inmediato (reproducible con
+  `--chat-template-file`), `/v1/chat/completions` responde
+  `content: "\n\n"`; `_openai_consultar` compara `resultado.longitud > 0`
+  (`runtime/core/ollama.c`) y lo acepta como exito, por lo que **no** se
+  reintenta `POST /completion`. E2E real: probe imprime `CONSULTA:` (dos
+  saltos) y el chat de `dist/bin/opensyn.exe` muestra "[Error] No hubo
+  respuesta del servidor IA local". Fix propuesto: recortar blancos y
+  descartar `content` que solo contenga tokens de plantilla (`<|im_end|>`,
+  `<|im_start|>`) antes de decidir el fallback; oraculo nuevo con mock
+  server que devuelva `"\n\n"`. Resolucion asignada: **ME r235_fallback_blanco**
+  (cola, antes de declarar H-R221-1 cerrado). Sin cambios de produccion en
+  este smoke: `runtime/core/ollama.c` intacto.
+- **R235 / H-R221-1-R1 RESUELTO 2026-11-17 (ME r235_fallback_blanco):**
+  `runtime/core/ollama.c` agrega `_oll_contenido_util()` y solo acepta como
+  respuesta un `content`/`completion` con texto util (ignora blancos y
+  marcadores `<|im_end|>`, `<|im_start|>`, `<|endoftext|>`, `<|eot_id|>`,
+  `<|EOT|>`, `<s>`, `</s>`); si el chat trae solo eso, reintenta
+  `POST /completion` y, si tampoco hay texto, devuelve cadena vacia (el
+  llamador .syn muestra "sin respuesta" en vez de una burbuja fantasma).
+  Oraculo nuevo `tests/auditoria/test_oraculos_r235_fallback_blanco.py` 3/3
+  (blanco, marcadores, texto real sin fallback) + regresion R227 2/2.
+  Gates: `verificar_alineacion` 0 brechas, `alineacion --verificar` evidencia
+  `8bffa132a1f1f3df`, `contrastar --plan` PASS. Smoke REAL con
+  `llama-server` + GGUF instruct y `--chat-template-file` vacia: probe
+  `CONSULTA:Hola!` (antes: dos saltos) y, por el proxy, `/v1/chat/completions`
+  seguido de `/completion`; el chat de `dist/bin/opensyn.exe` responde
+  contenido en lugar del error. Con esto **H-R221-1 queda CERRADO**
+  (fallback + streaming + smoke real, con y sin plantilla valida).
+  Evidencia: `docs/reportes/R235.md` y `docs/reportes/R227_smoke_real.md`.
+- **R227b / H-R221-1 streaming chunked RESUELTO 2026-11-17 (ME r227b_stream_chunk_split, commit a76e546):** el smoke real de R227 reprodujo un cuelgue intermitente del streaming: si el CRLF de un chunk chunked quedaba partido entre dos lecturas TCP, `_syn_ollama_stream_leer` no avanzaba pero tampoco releía la red y giraba en CPU. `_oll_dechunk` ahora retorna al entrar en fase 5 sin reentrar y `_syn_ollama_stream_leer` lee más red cuando la fase no es 1 (tramas parciales en fases 0/3/4). Oráculo nuevo `tests/auditoria/test_oraculos_r227b_stream_chunk_split.py` 1/1; regresión R227+R235+R227b 6/6. Smoke real con `llama-server` b10819 + `deepseek-coder-1.3b-Q4_K_M.gguf`: `CONSULTA` y `STREAM` con contenido en 7036 ms. Gates: evidencia `8d697386e8e7dfef`, `contrastar` PASS, `verificar_alineacion` 0 brechas. Manual 7 §2.2. Reporte: `docs/reportes/R227b.md`.
+- **R198b1/ME r198b1_resello (CERRADA 2026-10-27, commit b657bb8):**
+  cierre H-R198b-1 — re-sello auto-sanante de `cambio_hash` en
+  `auditoria/alineacion.py`: `cmd_verificar` era un círculo (el re-sello
+  solo corría tras pasar y el mismatch retornaba antes; el mensaje pedía
+  re-ejecutar lo que no podía sanar). Fix: helper
+  `resellar_hash_expediente(me, ch)` + predicado `_solo_brecha_hash_stale`
+  (no enmascara otros errores) + re-verificación de una pasada in-proceso
+  (converge: la huella cubre blobs de producción, nunca el expediente);
+  aviso no bloqueante de sello sin stage (huella sobre blobs del INDEX,
+  lección R188/d948cab). Oráculo tests/auditoria/test_oraculos_r198b1_resello.py
+  4/4 (A2 END-TO-END: expediente con hash anulado → rc=0 y expediente
+  byte-a-byte restaurado — el caso que antes exigía edición manual).
+  Gates: contrastar RC=0, verificacion_ME validada, verificar_alineacion
+  SIN BRECHAS. **Deuda H-R198b1-2 CERRADA en R198b2 (dd20276, 2026-10-28):**
+  el test inmutable requería la ancla MTS en el desugar y se satisfizo
+  con TDD RED→GREEN añadiendo el comentario de cita al archivo de
+  producción (ver entrada R198b2).
+  **Barrido de cierre R198b2 (2026-10-28, reporte R198b2_barrido.md)**
+  **— H-R198b2-1 CERRADA 2026-10-29 (cierre ambiental verificado):**
+  regenerados synapse_stage2.exe (main.py nucleo/principal.syn -o,
+  rc=0, sintia 08:46) + copia byte-idéntica synapse.exe (el test r3 solo la
+  refresca si NO existe: la copia vieja quería 2026-10-11) +
+  dist/bin/opensyn.exe (main.py, rc=0, 08:39) → test_r3_binario_synapse_check
+  + test_guard_frescura_exe_vs_ultimo_commit_fuente 2/2 GREEN (0,64 s).
+  pytest tests/auditoria COMPLETO fuera de timeout — 222 tests, 214 passed,
+  7 failed, 1 skipped (49:51); 7/7 failed reproducen deterministas en
+  aislamiento (153 s): 0 regresiones de R198b2 (paridad_nodos 4/4 con el
+  cierre H-R198b1-2 confirmado). Hallazgos agrupados en 4 deudas NUEVAS
+  (H-R198b2-2 re-estadificada tras regenerar exes: fallan igual con exes
+  frescos → defectos de COMPORTAMIENTO del dispatcher nativo, ME de
+  fmt/lint propio):
+  H-R198b2-1 exes stale ambientales (check_cli r3: synapse_stage2.exe
+  anterior a coverage.syn; guard H-AUD-OP-2: dist/bin/opensyn.exe
+  2026-09-26 anterior a principal.syn 2026-10-27 — regenerar exes, ME
+  futuro corto); H-R198b2-2 familia fmt/lint de stage2 (fmt --check rc=0
+  esperado 1; timeout generator.syn; lint no lee Temp), H-R198b2-3
+  contrato-test desalineado (test_r2_binding_std_io_syn espera `resultado`
+  y std/io.syn lleva `_resultado_` canónico de f10401f — dirección: alinear
+  el test al manual por TDD CON aprobación previa del Arquitecto, tests
+  inmutables), H-R198b2-4 oráculo R198b1 con fixture de FECHA literal
+  2026-10-27 (test_resane_end_to_end rota al cambiar el día: el .antes.json
+  del caso debe sellarse con fecha de HOY, no la del ME). Todo a cola sin
+  bloquear la integración.
+- **R198b2/ME r198b2_ancla (CERRADA 2026-10-28, commit dd20276):**
+  cierre H-R198b1-2 — ancla MTS `# cumple Manual 2 §12` NUEVA en el desugar
+  REAL de NODO_PARA_EN(57) (`compilador/puente_canonico.py::_nodo_para_en`,
+  L614, junto al `cumple Manual 3 §3 (H-R153-1)` preexistente);
+  comentario de documentación, cero diff en la emisión.
+  test_paridad_nodos 4/4 GREEN (RED→GREEN: el failed preexistente
+  verificado con stash en R198b1 ya no existe) + familia del gate
+  19 passed (test_gate_mts_oraculos + test_paridad_nodos).
+  Gates: plan MTS docs/plan_ME_r198b2_ancla.md con bloque estricto,
+  contrastar RC=0 (oráculo release, verificacion_ME_r198b2_ancla
+  validada), expediente docs/alineacion/r198b2_ancla.md 0 brechas
+  (3 CUMPLE: 3 §11.1 + 6 §5.1 de mapa y 2 §12 nuevo, evidencia
+  8881708525cba028), verificar_alineacion SIN BRECHAS. Reporte:
+  docs/reportes/R198b2.md.
+- **R198b/ME r198b_contratos (CERRADA 2026-10-27, commit f10401f):**
+  cierre H-R196-3 — veredicto CONTRA la hipótesis de R198: el emisor de
+  contratos NO estaba roto (emitía fielmente el AST, M2 §5.1 en CADA
+  `retornar` con `_resultado_` del tipo REAL, emit_declarations.py
+  L781-816); las cláusulas de std/opensyn estaban bajo semánticas no
+  canónicas y se corrigieron hacia el manual (precedente H-R196-1):
+  std/sistema.syn subcadena (1,2)→(1,1) fin EXCLUSIVO (r196) en
+  `garantiza` de `_validar_ruta_segura` + patrón de resolución relativa;
+  opensyn/principal.syn L213 alias bare `resultado`→`_resultado_`
+  (ruta_config_absoluta; la compilación S1 fallaba con robo del
+  `_resultado_` int64 de otra función) y L1065 `longitud(_resultado_)
+  >= 0`→`_resultado_ >= 0` (pct_contexto — el C inventado NO compilaba;
+  cláusula del recorrido de validación M7 §4.2). Oráculo NUEVO
+  auditoria/oraculos/oraculo_r198b_contratos.py 3/3 (compilación
+  principal.syn rc=0; sandbox contratos 5/5 antes 3✓/1✗/1E
+  rc=0xC0000009; regresión r198 3/3); contratos/sandbox 44 passed +
+  borrowing 17. Gates: plan MTS contrastar RC=0; expediente r198b_contratos
+  0 brechas (3 CUMPLE, evidencia ca4229aa1e9364ab); sello
+  r198b_contratos.antes.json (base 3aa5b6c). Reporte
+  docs/reportes/R198b.md. Hallazgo NUEVO H-R198b-1 (círculo del re-sello;
+  CERRADA por r198b1, arriba).
+- **R198/ME r198_cesion_struct (CERRADA 2026-10-26, commit 18ee4ee):**
+  cierre H-R197-1 — cesión de `texto` a campo de struct transfiere la
+  propiedad al CAMPO y el ORIGEN queda CONSUMIDO (move semantics M4 §3.3,
+  paridad H-R182c-1 extendida de args a asignación-campo; M2 §5.1 el cleanup
+  RAII del scope respeta la cesión; M2 §12 contratos en el probe nuevo).
+  Emisores S1 (emit_declarations.py visitar_asignacion_campo) y nativo
+  (nodos_flujo.syn gen_visitar_asignacion_campo + unity regenerada con
+  _rebuild_generator.py). Probe determinista auditoria/probes/
+  probe_cesion_struct.syn (C sin `_syn_texto_liberar(p)` en armado, salida
+  íntegra rc=0) + oráculo auditando/oraculos/oraculo_r198_cesion.py 3/3; E2E
+  real del instalador: config.toml `ruta` íntegra.
+  Gates: plan MTS docs/plan_ME_r198_cesion_struct.md contrastar RC=0,
+  expediente docs/alineacion/r198_cesion_struct.md 0 brechas (evidencia
+  e004e8e8e8645718, 5 CUMPLE), verificar_alineacion SIN BRECHAS. Reporte:
+  docs/reportes/R198.md. Resoluciones ACTUALIZADAS: la deuda fija H-R196-3
+  (emisor de contratos con `garantiza` sobre el valor de retorno texto:
+  probe rc=0xC0000009 hoy vs 0xC0000374 ayer, misma cláusula) queda con
+  resolución asignada al **ME r198b** junto al hallazgo nuevo de la misma
+  familia (compilación S1 de opensyn/principal.syn falla: `garantiza:
+  longitud(resultado)` sin renombrar a `_resultado_` + robo del
+  `_resultado_` int64 de otra función — el emisor de contratos debe resolver
+  el símbolo del valor de retorno por TIPOS, no por nombre de variable).
+  *Nota de alcance:* el plan de r197 contemplaba "bootstrap 3 etapas" para
+  esta familia; el fix del emisor S1 NO requiere bootstrap (S1 Python es el
+  compilador de producción); la paridad nativa quedó cubierta por el módulo
+  + rebuild de la unity — bootstrap integral queda pendiente del ME de
+  bootstrap dedicado.
+- **R197/ME r197_instalador_usuario (CERRADA 2026-10-25, commit ad4f5bd):**
+  hallazgos de EJECUTAR el instalador como usuario real (rc=0 ≠ funciona):
+  (R1) wrapper `_syn_hash_archivo(CadenaSegura)` en runtime/core/modelo.c —
+  la nativa `const char*` de axon.c leía `longitud` como puntero y el hash
+  salía VACÍO ("checksum incorrecto" con el archivo CORRECTO); E2E real RC=0
+  con hash verificado (gguf 873 MB).
+  (R2) descarga TLS vía curl del sistema (`curl -L -fsS --create-dirs`) —
+  `_syn_descargar` es HTTP/1.0 plano sin TLS/redirects (HF 30x HTML).
+  (R3) externos `-> entero` (int64_t, r194; el TU del instalador no compilaba)
+  + convención 0=éxito en escribir_config.
+  Gates: expediente r197 0 brechas (evidencia 0491b2530072b608), plan MTS
+  contrastar RC=0, verificar_alineacion SIN BRECHAS, familia instalador 17/17,
+  oráculo 8/8. Reporte: docs/reportes/R197.md.
+  **Deuda NUEVA a cola:** H-R197-1 (REPRO DETERMINISTA: el emisor libera el
+  parámetro `texto` cedido a un campo de struct al retornar — H-R182c-1
+  extendida a structs — y el slab TLS reciclado corrompe el campo →
+  config.toml `ruta` prefix reciclado; fix: emisor + self-host + rebuild +
+  bootstrap 3 etapas, ME propio; provoca también los 2 fallos PREEXISTENTES
+  de test_oraculos_config_ruta — rc=0xC0000374 heap corruption en el
+  contrato garantiza del probe, bisect con stash OK) y H-R197-3
+  (seleccionar_modelo hardcodeado; §7.2.5 exige leer modelos.toml M9 §5.6;
+  DESVIACION en expediente con correccion anclada al diff installer.syn:10-11;
+  ME propio con binding TOML).
+- **R196/ME r196_deuda_contrato_y_cobertura (CERRADA 2026-10-23, commit d022ad8):**
+  los 2 fallos DETERMINISTAS del barrido r195 cerrados (los 5 del grupo A
+  pasaban aislados — infra del barrido):
+  (R1/H-R196-1, decisión Arquitecto ratificada "corregir contrato al manual")
+  `requiere: longitud(subcadena) > 0` retirado de contiene/indice_de en
+  std/texto.syn (4 sitios; M8 §1.7.3 declara bindings SIN precondición; el
+  barrido r192 la añadió sin mandato). Runtime E2E ya lo manejaba
+  (contiene("hola","")→1, indice_de→0). Cierra
+  test_string_utils::test_contiene_subcadena_vacia (13/13).
+  (R2) cobertura 44.719%→51.228% (≥45%) con tests NUEVOS
+  tests/syquex/test_sandbox_cover_r196.py (probes .syn por el pipeline:
+  sandbox H-CFG-2 dentro/fuera + builtins de texto); cierra
+  test_syquex_coverage::test_cobertura_total_minima (verificado aislado rc=0).
+  Gates: expediente sellado (hash del index), contrastar RC=0 (2× en hook),
+  verificar_alineacion SIN BRECHAS, oráculo r196 4/4.
+  **Deuda NUEVA a cola:** H-R196-2 (std/texto.syn con 12 funciones duplicadas
+  en 2 bloques; dedupe ME futuro) y H-R196-3 (frontend Syquex SEGFAULT
+  0xC0000005 compilando .syq con Resultado/err/ok/abrir/atrapar — 10 fallos
+  del medidor de coverage: test_result×5 + test_concurrency×5, fuera del
+  barrido de integración; repro aislado; familia de H-R182b; ME futuro de
+  bisección).
+  Reporte: docs/reportes/R196.md.
+- **R195/ME r195_instalador (CERRADA 2026-10-23, commit 53578a6):** mandato del
+  Arquitecto ("deja el instalador completamente funcional y operativo") — los 3
+  skips declarados de la familia instalador se cerraron ENTREGANDO el artefacto
+  que cada test INMUTABLE exige (sin tocar tests):
+  (R1/M9 §4.1) scripts/uninstall.py NUEVO — reversa de install.sh
+  (/opt/synapse + symlink + log) e installer.syn (~/.opensyn);
+  --list/--dry-run/--yes; E2E probado en HOME temporal rc=0; skip TDD de
+  test_uninstall.py:28 CERRADO.
+  (R2/M9 §2.5) synapse_lsp.exe REAL compilado en raíz con el pipeline del
+  proyecto (nucleo/lsp_v3.syn --release, 304 KB); el skip de
+  test_install_windows.py:33 CERRADO (artefacto local regenerable, no comiteado).
+  (R3/M9 §7) install.sh delegador NUEVO en raíz (exec a
+  instaladores/linux/install.sh); el skip de test_install_linux.py:25 CERRADO.
+  Suite familia instalador: 25 passed / 0 skipped / 0 failed (rc=0).
+  Gates: contrastar RC=0, verificar_alineacion SIN BRECHAS, sin cambios de
+  producción (gate de lectura no aplica).
+  Reporte: docs/reportes/R195.md.
+- **R194/ME debt_gobernanza (CERRADA 2026-10-22, commit aade9dc):**
+  mandato explícito del Arquitecto ("eligencia el agujero de seguridad; catálogo real,
+  nada de placeholder; completa las citas; no se deja deuda") → 6 frentes en un ME:
+  (R1) H-CFG-2 CERRADO — sandbox `_syn_ruta_validar` (runtime/core/sistema.c,
+  composición `_syn_normalizar_ruta`+`_syn_ruta_en_directorio` H-EOF-3a/b,
+  contención del cwd) enraizado en AMBOS emisores: builtin `leer_archivo`/
+  `existe_archivo` SIN import pasan por el validador antes del runtime
+  (emit_expressions.py + orquestador.syn enraizado al sandbox, separador
+  `_syn_leer_archivo(_syn_ruta_validar(arg))`); externs añadidos a ambos
+  preámbulos con firma `int64_t` alineada a std/sistema.syn (evita conflicting
+  types en TU compartidos — hallazgo del bootstrap); oráculo NUEVO
+  tests/auditoria/test_oraculos_r194_sandbox.py 4/4 (E2E pipeline real:
+  lectura dentro OK, evasión fuera RECHAZADA sin crash, paridad nativa).
+  (R2) H-R144-3 CERRADA con evidencia: 5/5 SHA256 de modelos.toml verificadas
+  2026-10-22 contra X-Linked-ETag (LFS) de HuggingFace.
+  (R3) MTO saneado de citas fantasma y GREEN sin citador; 3 SIN_CITA heredados
+  de Fase 32 CERRADOS (OBL-M7-04/05/06 añadidas, auditar rc=0).
+  (R4) Full-scan auditor: 0 SIN_CITA, 0 SNIFF, 0 SIN_OBL.
+  (R5) D-R163-1 RATIFICADA (Arquitecto: "todo se ajusta a los manuales, incluyendo
+  el roadmap" → k=claves vigente dfdb1bd) y 33.3 (R149 §5) CERRADO — única
+  desviación vigente test_ai_explain ya cerrada en R183e.
+  (R6) D-R194-1 RATIFICADA por el Arquitecto (sesión 2026-10-22): las suites-guarda
+  estructurales ya commiteadas (24 archivos, 113 aserciones) son VÁLIDAS; lista
+  cerrada FAMILIA_ESTRUCTURAL_RATIFICADA en auditar_calidad_tests.py (D-R194-1);
+  los archivos NUEVOS/MODIFICADOS fuera de ella faten con --estricto-sniff;
+  el RESUMEN muestra el conteo exento (nunca oculto).
+  Bootstrap S1/S2/S3 con el fix sellado (S2==S3 verificado por build.py).
+  Gestión de deuda restante: el barrido integración r191 quedó en CERO
+  (grupos A+B+C cerrados en r193/r192); deuda nueva que aparezca en el
+  barrido del día se tria con la misma cola.
+- **R192/ME deuda_barrido_r191 (CERRADA 2026-10-20, commit 4e97f3f):** 19 fallos del barrido
+  completo de integración (1600 tests, post-commit d8f03ac, PYTEST_RC\=1,
+  2h39m), TRIADOS con worktree dual (HEAD 621051a vs working tree): TODOS
+  PREEXISTENTES (NO regresión de r191):
+  (A) infra 8: test_axon_e2e 3 (test_axon_lock: AssertionError del lock),
+  test_gen_helper, test_path_traversal_binary; test_cache_audit 1
+  (test_axon_lock_existente); test_opensyn_cli 3 (has_chat_mode /
+  principal_syn_exists / wrapper_exists); test_cache_adv_10 1
+  (test_segunda_compilacion_mas_rapida).
+  (B) paridad nativa S1 9: test_fase2_nativa_hm 2 (r17 orden instancia↔struct,
+  r18 match binding); test_cobertura_d5 2 (codegen_s1 extenso/principal);
+  test_binario_real_10 2 (suma, escribir_linea); test_contracts_e2e 2
+  (garantiza_pasa, requiere_pasa_en_runtime); test_e2e_borrow_abort 1.
+  (C) borrow checker 2: test_borrowing_adv_10 test_borrow_conflicto_detectado
+  + test_borrow_mutual_exclusivo — el parser NO acepta `d: &mutable Dato`
+  ("Se esperaba RPAREN") por lo que el conflicto `&mut` doble nunca llega al
+  checker; deuda del parser de params (M2 §9.3).
+  Resolución asignada: barrido grupo C en el próximo ME de lifetimes (r192);
+  grupos A/B en ME de fixtures/infra. Reporte de triaje: fila del día en
+  AUDITORIA_ALINEACION_MANUALES.
+  **CIERRE DEL GRUPO A (2026-10-21, a78c57a, ME r193_fixtures_infra):** los 8
+  fallos de infra CERRADOS con dos hallazgos de producción descubiertos por
+  ese frente (H-R193-1/H-R193-2): el enlace cacheado `_link_object` faltaba
+  de paridad respecto del enlace normal (módulos quantum/federated/IA,
+  `-Wl,--allow-multiple-definition` por el dup de quantum_err_corr.o,
+  `-static` win32 + SYNAPSE_GCC_FLAGS) y la key de caché de los .o comparaba
+  `base_flags` crudo (doble espacio desalineado entre caminos ⇒ 46 .o recompilados
+  en cada pasada ~90 s). E2E: 2.ª pasada 0,9 s con [CACHE HIT] y 0
+  recompilas — cache.syn (M1 §4) operativo. Oráculo r193 PASS (grupo A
+  completo RC=0); unit 514 ✓; expediente 0 brechas (270133df57df7614);
+  contrastar RC=0. Reporte: docs/reportes/R193.md. BARRIDO r191 EN CERO
+  (A+B+C).
+  **CIERRE (2026-10-20, 4e97f3f):** grupos B (paridad nativa S1: fase2_hm
+  112✓, cobertura_d5 15✓, binario_real 8✓, contracts_e2e 9✓ rc de ley
+  1c1044c, borrow_abort 1✓) y C (borrowing_adv_10 7✓ — la sintaxis vigente
+  es `&mut` M4 §4.2; la forma retirada `&mutable` Foster se alineó al manual).
+  Nemotecnia de la deuda: los fallos eran asserts desalineados a
+  convenciones ratificadas + contratos invalidados por el emisor roto
+  ME-27_T3, no bugs del compilador. Contratos reactivados S1+nativo con
+  paridad (M2 §5.1/§5.3 §12); std barrida (M2 §5.1 §12 + M3 §12).
+  Reporte: docs/reportes/R192.md.
+  78b8947/621051a):** deuda de asserts/features medida en vivo tras el fix
+  canónico (H-canon-LET RESUELTA en 643b413 + R183e). Primer lote de 5
+  archivos:
+  11 FAILED → 3 reparados (test_generator 3 asserts alineados al emisor
+  vigente: Lifetime Scope `= 42LL; + return _ret_`, mangle
+  `_principal_impl` H-R181-4, acceso puntero `= ptr->a;`) y 1 archivo
+  con SyntaxError de docstring reparado (test_debugger_timetravel →
+  colección bloqueada desde baseline previo) → 49 passed.
+  CIERRE (2026-10-18): los 4 RED de test_cli_run_debug cerrados en r190
+  (debug CLI alineado a M8 §3.4 con traza real; ayuda rc=0 sin sesión;
+  navegación mantiene rc≠0 contrato r150) y el lote declarado del baseline
+  (pgo 2 / lifetimes 2 / federated 5) cerrado en r191: aserción pgo al
+  rc de ley 1c1044c, checker S1 aplica M2 §9.3 (MISMATCH de
+  retorno-&local y de consumo-con-préstamo-vivo; enum+plantillas 6 idiomas,
+  línea precisa §10.1), federated al literal canónico `nulo` (M2 §4.3).
+  Oráculos r190 3/3 y r191 3/3; unit 514✓; lote 45+1✓.
+  ACTUALIZACIÓN R183e (misma sesión, medido): test_listen 4/4 RESUELTOS
+  — los tests usaban sintaxis `valor => ...` dentro de `escuchar` que
+  NO está en el manual; alineados a la forma canónica M5 §4.2
+  (`mensaje = ch ->` + bloque, all rc=0 por probe antes de editar);
+  con ello ya solo quedan 4 FAILED: test_cli_run_debug (4 — feature
+  gap del dispatcher: `synapse debug --help/step/reverse/snapshots`
+  rc=1, ME_27/29/30 del roadmap; M8 §5.2). HALLAZGO H-R184-1 (NUEVA,
+  con resolución asignada el ME R184): el parser S1 no acepta la forma
+  canónica `coincidir ch ->:` del M5 §3.6 ("se esperaba COLON, se
+  encontró ARROW") — el pattern ok(v) => / err(_) alineado al §3.6
+  queda bloqueado en S1 (S2/nativo por verificar). Más cola declarada
+  del baseline r183e (84 entradas pre-fix, clasificadas/assert por
+  revisar): parser_ext (5, hoy GREEN), axon_e2e (3),
+  federated/pgo/lifetimes/borrowing (2 c/u). Reglas del lote: asserts
+  nuevos corresponden al modelo del emisor vigente Lifetime
+  Scope/WeakRef con decisiones ratificadas; los errores de entorno se
+  documentan como feature gap, no se debilitan aserciones.
+- **R187/ME f14_mto_ci (COMPLETADO, 2026-10-14, 75dc6cf):** cierre del lote
+  en vuelo de la sesión anterior (recuperación, no deuda del maestro):
+  F1.4 check de cuerpo-bloque tras `funcion:` en el PARSER (M2 §2 L56/L60,
+  rc=1; `_validar_cuerpos` del lexer eliminado, M1 §3.1), release_matrix.yml
+  real + build.py S2==S3 + distribuir.py sellado (M9), fixtures canónicos
+  (M2 §13), paridad emisor embebido (H-R181-3), harnesses A2.3/A3.1.
+  Deuda/testigo asignado a ME futuro: H-R187-1 (preexistente: '(' sin
+  cerrar en firma malformada activa la continuación multilínea r153 y
+  suprime NEWLINE/INDENT/DEDENT del resto del archivo — ruido de cascada,
+  decisión del Arquitecto). Reporte: docs/reportes/R187.md.
+  **H-R187-1 CERRADO ACEPTADO (2026-11-25):** el diagnóstico primario
+  (`Se esperaba RPAREN`) es correcto y el parser aborta; el ruido posterior no
+  cambia el rc ni oculta un éxito. Corregir la profundidad de paréntesis exige
+  una regla nueva de continuación multilínea (S1 y S2), fuera del alcance de un
+  cierre documental. Se registra como limitación aceptada.
+
+### ME R178 — check_cli (H-R176-2) — `synapse check` en cli.py
+requisito: Manual 8 §4 (+ subfase 26.1 del ROADMAP: flag `--check`/`--no-emit`
+para validación rápida usada por el LSP/OpenSyn).
+texto: el test test_cli_check (3 fallos) declara en su propio mensaje
+"Binario synapse no encontrado — implementar CLI (M8 §4)" — feature gap
+DECLARADO. El dispatcher Python no implementa `check` (valida sintaxis +
+semántica sin generar código).
+implementacion: cli.py despacha `check` al backend (validación sin emitir
+binario, paridad con `--check`/`--no-emit` existente en pipeline.py/ principal.syn
+según lo que el test exija); oráculo E2E tests/auditoria/test_oraculos_check_cli.py.
+impacto: cierra 3 fallos de integración.
+estado: COMPLETADO (R178 95b2374 — H-R176-2 cerrada, oráculo 4/4, OBL-M8-16)
+
+### ME R179 — h_r177_1 test_r27: alinear test↔manual↔código (aridad de ctor)
+requisito: Manual 2 (declaracion_estructura / instanciación: constructor con
+argumentos por campo). Ley: Manual 2 L67 define el ctor posicional.
+Decisión autorizada: el CÓDIGO vigente (H-R153-4b ratificada en r153: se RELAJÓ
+el check de aridad aceptando ctor posicional con 1 arg por campo, paridad
+S1↔nativo) está ALINEADO al Manual 2 (la gramática del ctor posicional existe
+en el manual y S1+nativo la implementan de forma paritaria). El test
+test_r27_struct_ctor_con_argumentos_rechazado espera el comportamiento PRE-r153
+(rechazo rc=7) que ya NO es la ley vigente.
+implementacion (TDD/MTO con autorización de dirección del Arquitecto):
+invertir la aserción del test a la semántica ACEPTADA por el manual (o
+reemplazarla por el caso que sí se rechaza según M2) — RED primero: el test
+nuevo falla contra el código actual solo si el código desviara al manual;
+GREEN con el código alineado vigente. Verificación MTO del requisito.
+impacto: cierra r27 (último fallo de la familia nativa rc=5/rc=0 → familia en CERO).
+estado: COMPLETADO (R179 0faea8e — H-R177-1 cerrada, oráculo 4/4, OBL-M2-05)
+
+### ME R180 — coincidir_nativo (H-R177-2): paridad de parser nativo
+requisito: Manual 2 §2 — el patrón de `coincidir` según M2 L123-127 es
+IDENTIFICADOR/tag/var o "_" (wildcard). S1 además acepta literales (H-R90-6).
+Decisión autorizada: implementar en el parser NATIVO el wildcard `_` y los
+literales de primitivos que S1 ya acepta (paridad M1 §3.1: mismo AST canónico;
+el manual define patron ::= ... | "_" para wildcard, los literales extienden
+H-R90-6 vigente en S1).
+implementacion: nucleo/parser_sentencias.syn (patrón: token_es_inicio_patron =
+token_es_nombre OR T_NUMERO — el wildcard `_` ya lexea como T_IDENTIFICADOR),
+emisor NodoCoincidir nativo con case C para literales/wildcard → default
+(gen_visitar_coincidir: switch sobre VALOR si dígito en patrones o tipo C
+exacto int64_t/int/bool — espejo PRIMITIVOS de emit_control.py; ruta ADT
+.tag byte-idéntica), S1 _parsear_coincidir acepta TokenID.NUMERO; puente de
+patrones intacto (el patrón sigue siendo un span de texto).
+oráculo E2E: coincidir con literal y wildcard compila y corre en nativo.
+impacto: paridad total de coincidir S1↔nativo (para patrones numero/wildcard;
+residuales: patrón cadena — C no soporta case string, falla igual en ambas
+tuberías — y forma de BLOQUE en nativo → ME R183).
+estado: COMPLETADO (R180 be5d447 — H-R177-2 cerrada, oráculo 4/4 273.75 s,
+OBL-M3-06; H-R180-3 lección TDD: heurística invertida detectada por el
+oráculo r4 y corregida a tipo C exacto; H-R180-2 lección de cadena:
+rebuild generator.syn SIEMPRE tras editar generador/ y antes de bootstrapear)
+
+### ME R181 — harness_gcc (H-R176-1): entorno de integración
+requisito: Manual 9 §6.2 (entorno de CI reproducible: los tests del repo no
+pueden depender de exes/objetos inexistentes ni de rutas de include rotas).
+Diagnóstico previo (R176): embedded_libs.h no resuelto desde tests/, link del
+runtime completo con --allow-multiple-definition, 21 RED TDD exigen artefactos
+que nadie construye.
+implementacion: reparar el comando gcc del harness (rutas -I, orden de objetos,
+targets on-demand para los artefactos que los RED exigen — construcción real,
+no stubs). Los tests NO se tocan (no es su deuda).
+impacto: ~27 fallos de una vez + habilita medir los RED TDD de verdad.
+estado: COMPLETADO (R181 9657482 — H-R176-1 cerrada: CPATH raíz + quantum .o on-demand + shim weak GNUC S1/nativo; oráculo 5/5; quantum 8/8; TestEjecucionReal migrado a exit code via MTO; bootstrap 3 etapas stage2==stage3 c2889554…c91d43; deudas NO-harness halladas en el camino a filas R184/R185/R186)
+
+### ME R184 — lexer_y_keyword (H-R181-3, hallado en R181)
+requisito: Manual 2 §2/§3 — la gramática de parámetros acepta IDENTIFICADOR; el
+lexer debe clasificar `y` como AND SOLO en posición de operador (o el parser
+debe reconocer `y` como nombre de parámetro). Ley: identifiers suelen ir en L21
+del lexer (y=keyword AND).
+hallazgo: `crear_punto(x: entero, y: entero)` no se parsea porque `y` es
+keyword AND del lexer S1 (lexer.py L21, ruta keywords L630-650) — el test
+test_programa_estructura_ejecuta (TestEjecucionReal, aserción MTO rc==55) queda
+RED por esta deuda, no por su aserción.
+implementacion: análisis de contexto del lexer (operador binario vs posición de
+nombre: tras `:` o `,` es identificador) o reorden de tabla de keywords; TDD
+con el checksum de estructura como GREEN.
+impacto: cierra el RED de estructura; desbloquea programas con `y` como
+nombre.
+estado: COMPLETADO (R184 e4e4022 — regla keyword+':' degrada a identificador con exclusiones sino/requiere/garantiza/inseguro/recuperar y literales verdadero/falso/nulo nunca son nombres (H-R184-1a); fallback primario AND/OR/NOT→Identificador; paridad S1 lexer.py L652 ↔ nativo lexer.syn L529 + parser_expressions.py L184 ↔ parser_expr.syn L624; oráculo r2/r3)
+
+### ME R185 — stdlib_colision_generador (H-R181-4, hallado en R181)
+requisito: Manual 2 §9.1/§12 — el C generado debe ser válido; los nombres de
+funciones de usuario no pueden colisionar con la stdlib cuyo header se incluye
+incondicionalmente.
+hallazgo: una función usuario `abs(x: entero)` genera `int64_t abs(int64_t);`
+en conflicto con `int abs(int)` de stdlib.h (incluida incondicionalmente) →
+gcc error "conflicting types for 'abs'"; afecta a min/max/exit/cualquier
+nombre stdlib.
+implementacion: prefijado de símbolos usuario (paridad con el mangle de
+monomorfos) o no-emisión de prototipos innecesarios cuando la función es local
+al modulo; TDD con test_programa_si_sino_ejecuta (aserción MTO rc==5) como
+GREEN.
+impacto: cierra el RED de si_sino; elimina una clase entera de colisiones.
+estado: COMPLETADO (R185 e4e4022 — _COLISIONES_STDLIB 50 nombres en context.py + tabla _resv en orquestador.syn en paridad exacta (oráculo r4); firma/prototipo/llamada emiten _syn_usuario_<n>; externas FFI sin mangle (M6 §3.1); definición _G_native_funcdefs añadida a ambos preámbulos del generador Python — sin ella el unity del compilador no enlazaba)
+
+### ME R186 — toml_raii_runtime (H-R181-1, hallado en R181)
+requisito: Manual 5 §5 (toml del runtime) + Manual 2 §9.1 — el test
+test_toml_compile_and_run exige compilar, Y ejecutar la escritura/lectura toml
+RAII.
+hallazgo: tras R181 el test COMPILA Y ENLAZA (CPATH + shim weak) pero el exe
+falla en runtime (salida vacía / segfault 0xC0000005 con toolchain canónico):
+deuda funcional RAII/toml del path standalone (probe de R181).
+implementacion: diagnóstico del segfault (determinar si es del código toml
+embebido o del runtime RAII en el path standalone de la suite), reparación y
+paridad S1↔nativo.
+impacto: cierra el último RED de la familia que era de enlace-ahora-runtime
+toml.
+estado: COMPLETADO (R184-R186 e4e4022 — causa raíz doble: H-R188-1 params struct ownership liberados en el callee (→ préstamo, M4 §3.3) y H-R181-1 literales estáticos pasados a RAII texto (→ _syn_texto_duplicar al pool); conftest rt_objs pre-colección (H-R186-1); test_toml_raii 2/2 + oráculo r5 FIN RAII OK)
+
+### ME R188 — doble_free_params_struct (H-R188-1, hallado y CERRADO en R184)
+requisito: Manual 4 §3.3 — la propiedad solo se transfiere con move explícito;
+el default es préstamo; Manual 4 §5.2 — cleanup y liveness en el ámbito del
+llamador.
+hallazgo: emit_declarations.py registraba TODOS los parámetros con destructor
+en el scope del callee → pop_scope liberaba el NodoToml/NodoJson del LLAMADOR
+en la 1ª llamada → handle colgante → use-after-free + doble free (0xC0000374)
+en la 2ª/3ª llamada (diagnosticado con bisect toml_dbg+stub: doble [LIBERAR
+tipo=1] del mismo handle).
+implementacion: _es_destructor_ownership (context.py L574) distingue dtors de
+ownership (NodoToml/NodoJson → PRÉSTAMO, no se consumen en el callee) de
+_syn_texto_liberar (pool del callee, seguro porque el llamador DUPLICA los
+literales — H-R181-1).
+impacto: test_toml_raii 2/2 GREEN; sin fila de trabajo pendiente.
+estado: COMPLETADO (2026-10-07 en R184 e4e4022)
+
+### ME R182a — wasm backend F25 funcional — **COMPLETADO 0c74d80 (2026-10-09)**
+requisito: Manual 1 §3.2 — "Traduce el AST validado a código intermedio: C
+(C99/C11), LLVM IR o WAT (WASM)."; Manual 8 §4.2 — `--target native|wasm|llvm`.
+hallazgo: los "3 RED del plan" ya estaban verdes (test_wasm_extended 9/9, el C es
+autocontenido); el fallo REAL era el criterio F25 "genera WASM válido": el WAT
+emitía call a funciones no definidas sin import, sin locals, sin drop, y wat2wasm
+(locae en emsdk, fuera de PATH) rechazaba todo módulo.
+implementacion: wat_generator (imports automáticos env con firma inferida
+determinista, locals recursivos, drop en sentencia, export principal/main,
+result omitido para nulo, default inalcanzable con result, imports antes de toda
+definición); pipeline (búsqueda wat2wasm en emsdk lokal).
+oráculo: tests/auditoria/test_oraculos_r182a_wasm_valido.py 4/4 (wat2wasm rc=0,
+magic 0asm, export entrada, imports-primero, determinismo byte a byte).
+estado: **COMPLETADO** (2026-10-09, commit 0c74d80) — evidencia
+auditoria/evidencia/b88df2bbbc5ea917.json; 514 unit, 16 wat_gen, 18 wasm/spa.
+
+### ME R182b — cierre deuda pre-existente test_traductor/test_concurrency
+- Hallazgo H-R182a-1 CERRADO (2026-10-10, commit 24d3912): causa raíz = bits
+  altos del puntero sin escribir en los 5 literales sintéticos del desugar de
+  `para` (syquex/parser.syn); el emisor JSON reconstruía una dirección inválida
+  → segfault. Regresión tests/syquex 279 passed / 1 skipped.
+- oráculo: auditoria/oraculos/oraculo_r182b.py PASS; evidencia
+  auditoria/evidencia/37994ff3735a2c44.json; reporte docs/reportes/R182b.md.
+- estado: **COMPLETADO**.
+
+### ME R182+ — feature gaps (cola, una por ME con TDD)
+- H-R90-5 (métodos sobre locales en .syq).
+- ME_27/29/30 (~21 RED TDD: aiComplete/aiExplain/aiFix, federated, quantum
+  build, build/release) — R181 (harness) COMPLETADO: ya medibles.
+- YAML de CI release (10): signing/SLSA — infraestructura, requiere secretos →
+  documentar como deuda de infra con resolución asignada si no es local.
+- ~46 asserts residuales por familia (axon, borrowing, debug CLI, escuchar,
+  serialización embebida, lexer rc/modulo, salida_metal.c) tras R181.
+estado: PENDIENTE
+
+### ME r188a — deuda_cero_1 (H-R184-1): receive-modo-resultado S1 — **COMPLETADO 9f6b1cd (2026-10-16)**
+requisito: Manual 5 §3.6 — forma canónica `coincidir <canal> ->:` (flecha del
+receive OPCIONAL ante el ':' del bloque).
+hallazgo H-R184-1: el parser S1 rechazaba la forma canónica ("se esperaba COLON,
+se encontró ARROW"); el desugar sería trivial (el receive-es-sujeto
+Result҉ADO<elem,texto>).
+implementacion: flecha opcional en parser_control.py; ExprRecibirCanal
+.modo_resultado (ast_nodes); semantic_types tipo Resultado<elem,texto>;
+context.registrar_instancia_adt (tipo invisible para el pre-scan D-2);
+emit_control sujeto/typedef/compound + emit_expressions canal_recibir(&_ce0)
+con ADT especializado (_ce0: bool). Paridad de ENTRADA nativa:
+nucleo/parser_sentencias.syn + lexer.syn (fft: TokenID.ARROW opcional).
+oráculo: tests/auditoria/test_oraculos_r188_deuda_cero_1.py 4/4 (E2E ok=7/
+cerrado-2, histórica sin regresión, firma multilínea).
+estado: COMPLETADO (9f6b1cd, evidencia 2afa8c33ad689160 + a2bbf48...
+impacto: lee.
+
+### ME r188b — receive_resultado_nativo (H-R188-2): codegen nativo del receive-resultado — **COMPLETADO 2202cce (2026-10-17)**
+requisito: Manual 5 §3.6 (M1 §3.1: mismo semantismo en ambos pipelines).
+hallazgo: el stage1 NATIVO ACEPTA la sintaxis `coincidir c ->:` (rc=0,
+grays compartida) pero su codegen/semantico trata el sujeto como
+struct ADT/puntero → C roto (probe nativo rc=5, log capturado).
+implementacion: semántica nativa del receive-modo-resultado (expr_eval o
+equivalente: tipo Resultado<elem,texto>) + gen_visitar_coincidir (recorrido.syn/
+generador: recibir + construir ADT especializado + case .tag) hasta probe
+nativo rc=0 con paridad S1 (misma salida de las dos ramas).
+oráculo: coincidir-canal con flecha compila y ejecuta en NATIVO (ok/err);
+expediente/probes según MTS.
+impacto: cierra la brecha nativa de §3.6 (después del r188a S1).
+estado: **COMPLETADO** (2202cce, 2026-10-17) — causa raíz: el sujeto tras la
+flecha llegaba al codegen como identificador/puntero sin envoltura de receive.
+R1: parser_sentencias.syn re-wrapea el sujeto como NODO_RECIBIR_CANAL;
+monomorfizacion.syn R24 (ADT builtin Resultado/Opcion + ctors ok/err,
+paridad context.py S1) + gen_emitir_str_typedef_instancia (M2 §12);
+nodos_flujo.syn sujeto → instancia + typedef + flag _G_co_modo_resultado;
+expr_eval.syn statement-expression `canal_recibir(...&_ce0)` con ADT
+especializado; orquestador/generator_constants/generator.py global único
+(H-R151-3). Hoistos H-r188b-1/2/3 cerrados (typedef dentro del bloque, temp
+única, global compartido). Oráculo test_oraculos_r188b.py 3/3; bootstrap
+S2==S3 2534e776…; regresión 15/15; unit 514✓; expediente 0 brechas
+(c661ce1d660ed5b4); contrastar RC=0; verificar_alineacion SIN BRECHAS.
+Reporte: docs/reportes/R189.md
+
+## Reglas transversales del plan
+1. Cada ME: plan citando Manual X §Y → `alineacion.py --leer --me <id>` →
+   codificar con `// cumple Manual X §Y` → oráculo E2E → unit/regresión →
+   expediente + contrastar + verificar_alineacion → commit → docs post-commit.
+2. Tests: solo para alinearlos al manual (dirección test→código o código→test
+   según dónde viva la verdad, con TDD RED→GREEN y MTO). NUNCA relajar un test
+   que codifica el manual vigente.
+3. Deuda hallada en el camino: se repara o se registra con resolución asignada
+   (cero deuda sin seguimiento). Deuda antigua del mismo archivo/área: misma
+   oportunidad de reparación (mandato "no importa de quién es").
+4. Antes de commitear: artefactos regenerados por suites → `git checkout --`.
+5. Prohibido --no-verify; los 7 gates del pre-commit mandan.
+
+### ME R183 — coincidir_bloque_nativo (H-R180-1, hallazgo de R180) — **COMPLETADO 70ca347 (2026-10-08)**
+requisito: Manual 3 §3 L140 — `caso ::= patron "=>" ( sentencia | NEWLINE
+INDENT bloque DEDENT )`: la segunda alternativa (cuerpo en bloque) ES ley
+(y S1 la implementa: r5_ref compila y corre `tres/hola/4`).
+hallazgo: el pipeline NATIVO falla con `Error Fatal Generador: Nodo tipo
+[DefinicionFuncion] no reconocido` para CUALQUIER coincidir con cuerpos-bloque,
+INCLUSO patrones ADT pre-existentes (bisección R180: sin coincidir pasa;
+una-línea pasa; bloque-literal y bloque-ADT fallan igual) — el problema está
+en la construcción del AST del caso con cuerpo-bloque o en el walk del
+generador nativo, no en los literales.
+implementacion: rastrear parsear_coincidir nativo (parser_sentencias.syn: rama
+NEWLINE-INDENT del cuerpo del caso) y el walk del generador (recorrido.syn /
+nodos_flujo.syn) hasta la divergencia; TDD con probe bloque-ADT (bisect_d de
+/tmp/probe_lf) como RED.
+oráculo: bloque-ADT y bloque-literal compilan rc=0 y ejecutan en nativo con
+paridad S1.
+impacto: cierra la segunda forma del caso en nativo (paridad total M3 §3).
+estado: **COMPLETADO** (2026-10-08, commit 70ca347) — causa raíz: el anti-cuelgue
+R11 del bucle de casos en parsear_coincidir corría también tras un caso parseado
+con éxito y consumía el DESINDENTAR que cierra el bloque de casos (b4: el bucle
+externo se comía el cierre del cuerpo de la función → `funcion principal`
+expuesto como def anidada → rc=1 "DefinicionFuncion no reconocido") o el patrón
+numérico del caso siguiente (b1/exotic: rc=8). Fix: flag `caso_parseado` — el
+anti-cuelgue solo corre si la iteración no produjo caso. Oráculo NUEVO
+test_oraculos_r183_coincidir_bloques.py 7/7 (RED 5/2 confirmado); bootstrap
+S2==S3 d8493487…397a944; expediente r183.md huella 19d51d2bf8e46079;
+verificar_alineacion SIN BRECHAS; contrastar PASA; MTO OBL-M3-07; unit 510/510;
+r180 4/4; r11 5/5. Reporte: docs/reportes/R183.md

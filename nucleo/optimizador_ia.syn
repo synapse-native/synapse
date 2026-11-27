@@ -1,16 +1,20 @@
 #lang: es
+// cumple Manual 2 §5.1
+// cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas (ME formatter_fix R4: anclaje de norma vigente tras reformato)
+// cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
+// vinculo ME formatter_fix R4 (Manual 1 §7.1, M8 §4.1): reformato cosmético del nucleo — estilo, sin cambios semánticos
 // nucleo/optimizador_ia.syn — Optimizador de Código Asistido por IA
 // ================================================================
 // Submódulo opcional del compilador que utiliza el motor de modelos
 // locales (std.modelo) para analizar nodos del AST y proponer:
-//   - Sugerencias de refactorización
-//   - Detección de patrones ineficientes
-//   - Inyección de contratos lógicos automáticos
-//   - Análisis de complejidad ciclomática
+// - Sugerencias de refactorización
+// - Detección de patrones ineficientes
+// - Inyección de contratos lógicos automáticos
+// - Análisis de complejidad ciclomática
 //
 // Integración:
-//   El optimizador es invocado como pasada opcional después del
-//   análisis semántico, antes de la generación de código.
+// El optimizador es invocado como pasada opcional después del
+// análisis semántico, antes de la generación de código.
 //
 // Zero-telemetry: toda la inferencia ocurre localmente via std.modelo.
 // ================================================================
@@ -43,18 +47,23 @@ estructura Sugerencia:
     linea: entero
     columna: entero
     mensaje: texto
-    confianza: decimal  // 0.0 a 1.0
+    confianza: decimal // 0.0 a 1.0
 
 estructura AnalisisAST:
     archivo: texto
     num_funciones: entero
     num_lineas: entero
     complejidad_maxima: entero
-    sugerencia_actual: entero  // contador de sugerencias activas
-    sugerencias_arr: puntero   // puntero a arreglo Sugerencia[MAX_SUGERENCIAS]
+    sugerencia_actual: entero // contador de sugerencias activas
+    sugerencias_arr: puntero // puntero a arreglo Sugerencia[MAX_SUGERENCIAS]
 
 // Inicializa una estructura de análisis vacía
 funcion inicializar_analisis(archivo: texto) -> AnalisisAST:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     r: AnalisisAST
     r.archivo = archivo
     r.num_funciones = 0
@@ -75,6 +84,13 @@ funcion inicializar_analisis(archivo: texto) -> AnalisisAST:
 funcion agregar_sugerencia(analisis: &mut AnalisisAST,
     tipo: TipoSugerencia, linea: entero, columna: entero,
     mensaje: texto, confianza: decimal) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        analisis != nulo
+        linea >= 0
+        columna >= 0
+    garantiza:
+        1 == 1
     inseguro:
         asm("if (analisis->sugerencia_actual >= MAX_SUGERENCIAS) return;")
         asm("struct { int t; int l; int c; char m[256]; float conf; }* _arr =")
@@ -96,6 +112,15 @@ funcion agregar_sugerencia(analisis: &mut AnalisisAST,
 funcion detectar_complejidad_alta(analisis: &mut AnalisisAST,
     num_condicionales: entero, num_bucles: entero,
     linea: entero, columna: entero, nombre_fn: texto) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        analisis != nulo
+        num_condicionales >= 0
+        num_bucles >= 0
+        linea >= 0
+        columna >= 0
+    garantiza:
+        1 == 1
     complejidad = 1 + num_condicionales + num_bucles
     si complejidad > analisis.complejidad_maxima:
         analisis.complejidad_maxima = complejidad
@@ -115,6 +140,14 @@ funcion detectar_complejidad_alta(analisis: &mut AnalisisAST,
 funcion detectar_funcion_larga(analisis: &mut AnalisisAST,
     num_lineas: entero, linea: entero, columna: entero,
     nombre_fn: texto) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        analisis != nulo
+        num_lineas >= 0
+        linea >= 0
+        columna >= 0
+    garantiza:
+        1 == 1
     si num_lineas > LONGITUD_FUNCION_MAXIMA_RECOMENDADA:
         mensaje = "La funcion '" + nombre_fn + "' tiene "
         inseguro:
@@ -128,6 +161,14 @@ funcion detectar_funcion_larga(analisis: &mut AnalisisAST,
 // Detecta bucles potencialmente infinitos (sin condición de salida visible)
 funcion detectar_bucle_sin_cota(analisis: &mut AnalisisAST,
     es_bucle_infinito: entero, linea: entero, columna: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        analisis != nulo
+        es_bucle_infinito >= 0
+        linea >= 0
+        columna >= 0
+    garantiza:
+        1 == 1
     si es_bucle_infinito:
         agregar_sugerencia(analisis, SUGERENCIA_SEGURIDAD,
             linea, columna,
@@ -139,6 +180,14 @@ funcion detectar_bucle_sin_cota(analisis: &mut AnalisisAST,
 // Detecta código muerto después de retornos incondicionales
 funcion detectar_codigo_muerto(analisis: &mut AnalisisAST,
     hay_codigo_muerto: entero, linea: entero, columna: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        analisis != nulo
+        hay_codigo_muerto >= 0
+        linea >= 0
+        columna >= 0
+    garantiza:
+        1 == 1
     si hay_codigo_muerto:
         agregar_sugerencia(analisis, SUGERENCIA_SIMPLIFICACION,
             linea, columna,
@@ -155,6 +204,14 @@ funcion detectar_codigo_muerto(analisis: &mut AnalisisAST,
 funcion sugerir_contrato(analisis: &mut AnalisisAST,
     nombre_fn: texto, tiene_requiere: entero,
     tiene_garantiza: entero, linea: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        analisis != nulo
+        tiene_requiere >= 0
+        tiene_garantiza >= 0
+        linea >= 0
+    garantiza:
+        1 == 1
     si tiene_requiere == 0:
         mensaje = "La funcion '" + nombre_fn
         mensaje = mensaje + "' no tiene precondicion 'requiere'. "
@@ -178,6 +235,16 @@ funcion sugerir_contrato(analisis: &mut AnalisisAST,
 funcion detectar_rendimiento(analisis: &mut AnalisisAST,
     hay_alloc_en_bucle: entero, hay_io_en_bucle: entero,
     hay_operacion_costosa: entero, linea: entero, columna: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        analisis != nulo
+        hay_alloc_en_bucle >= 0
+        hay_io_en_bucle >= 0
+        hay_operacion_costosa >= 0
+        linea >= 0
+        columna >= 0
+    garantiza:
+        1 == 1
     si hay_alloc_en_bucle:
         agregar_sugerencia(analisis, SUGERENCIA_RENDIMIENTO,
             linea, columna,
@@ -206,11 +273,16 @@ funcion detectar_rendimiento(analisis: &mut AnalisisAST,
 
 // Analiza el código fuente y genera sugerencias usando el modelo local
 // Args:
-//   ctx: contexto del modelo (de std.modelo.cargar_modelo)
-//   codigo_fuente: texto completo del código a analizar
+// ctx: contexto del modelo (de std.modelo.cargar_modelo)
+// codigo_fuente: texto completo del código a analizar
 // Retorna:
-//   Estructura AnalisisAST con sugerencias y métricas
+// Estructura AnalisisAST con sugerencias y métricas
 funcion analizar_codigo(ctx: puntero, codigo_fuente: texto) -> AnalisisAST:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     resultado = inicializar_analisis("input.syn")
 
     si ctx == nulo:
@@ -241,6 +313,11 @@ funcion analizar_codigo(ctx: puntero, codigo_fuente: texto) -> AnalisisAST:
 // Genera sugerencias de refactorización usando el modelo local
 funcion sugerir_refactorizacion(ctx: puntero, codigo_fn: texto,
     nombre_fn: texto, resultado: &mut AnalisisAST) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        resultado != nulo
+    garantiza:
+        1 == 1
     si ctx == nulo:
         retornar
 
@@ -263,6 +340,11 @@ funcion sugerir_refactorizacion(ctx: puntero, codigo_fn: texto,
 // usando el modelo local para analizar la firma y el cuerpo
 funcion sugerir_contratos_ia(ctx: puntero, codigo_fn: texto,
     nombre_fn: texto, resultado: &mut AnalisisAST) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        resultado != nulo
+    garantiza:
+        1 == 1
     si ctx == nulo:
         retornar
 

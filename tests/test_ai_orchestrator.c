@@ -31,6 +31,28 @@ static int tests_failed = 0;
 
 #define ASSERT_EQ(a, b, msg) ASSERT_OK((a) == (b), msg)
 
+// Copia local de json_escape para el test (no depende de llama_client estático)
+static char* json_escape(const char* input) {
+    if (!input) return strdup("");
+    size_t len = strlen(input);
+    char* output = (char*)malloc(len * 2 + 1);
+    if (!output) return NULL;
+    char* dst = output;
+    for (size_t i = 0; i < len; i++) {
+        char c = input[i];
+        switch (c) {
+            case '"': *dst++ = '\\'; *dst++ = '"'; break;
+            case '\\': *dst++ = '\\'; *dst++ = '\\'; break;
+            case '\n': *dst++ = '\\'; *dst++ = 'n'; break;
+            case '\r': *dst++ = '\\'; *dst++ = 'r'; break;
+            case '\t': *dst++ = '\\'; *dst++ = 't'; break;
+            default: *dst++ = c; break;
+        }
+    }
+    *dst = '\0';
+    return output;
+}
+
 void test_ai_orch_crear_destruir() {
     printf("\n=== Test: ai_orch_crear / destruir ===\n");
     
@@ -192,28 +214,6 @@ void test_payload_json_formato() {
     char* test5 = json_escape(NULL);
     ASSERT_OK(test5 && strcmp(test5, "") == 0, "NULL input");
     free(test5);
-}
-
-// Necesito exponer json_escape para el test - lo copio aquí
-static char* json_escape(const char* input) {
-    if (!input) return strdup("");
-    size_t len = strlen(input);
-    char* output = (char*)malloc(len * 2 + 1);
-    if (!output) return NULL;
-    char* dst = output;
-    for (size_t i = 0; i < len; i++) {
-        char c = input[i];
-        switch (c) {
-            case '"': *dst++ = '\\'; *dst++ = '"'; break;
-            case '\\': *dst++ = '\\'; *dst++ = '\\'; break;
-            case '\n': *dst++ = '\\'; *dst++ = 'n'; break;
-            case '\r': *dst++ = '\\'; *dst++ = 'r'; break;
-            case '\t': *dst++ = '\\'; *dst++ = 't'; break;
-            default: *dst++ = c; break;
-        }
-    }
-    *dst = '\0';
-    return output;
 }
 
 int main() {

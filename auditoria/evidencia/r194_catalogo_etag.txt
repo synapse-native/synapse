@@ -1,0 +1,12 @@
+# Evidencia H-R144-3 (ME r194_deuda_gobernanza) — captura 2026-10-22
+# X-Linked-ETag (LFS oid) de HuggingFace vs sha256 de opensyn/modelos.toml
+URL=https://huggingface.co/TheBloke/deepseek-coder-1.3B-instruct-GGUF/resolve/main/deepseek-coder-1.3b-instruct.Q4_K_M.gguf
+X-Linked-ETag: "04cebb6fafa40ae628cf6bfeb76032ec792852f54020c559ad0a56b9f2839118"
+URL=https://huggingface.co/TheBloke/CodeLlama-7B-GGUF/resolve/main/codellama-7b.Q4_K_M.gguf
+X-Linked-ETag: "c3866cb985de17d398c2d7e85bb8a9c717a76bb997dce0e72a0cb169063e6d17"
+URL=https://huggingface.co/TheBloke/CodeLlama-7B-GGUF/resolve/main/codellama-7b.Q5_K_M.gguf
+X-Linked-ETag: "f4222b2c639e3f5adee3cf2391f02fb0ee1307e5ef5a48399affb5f3802dd857"
+URL=https://huggingface.co/TheBloke/CodeLlama-13B-GGUF/resolve/main/codellama-13b.Q4_K_M.gguf
+X-Linked-ETag: "b889f38ea793b823756e0eb9d3b60a5c5061c2df2d99b6f2fdb7c28328f043ce"
+URL=https://huggingface.co/TheBloke/CodeLlama-34B-GGUF/resolve/main/codellama-34b.Q4_K_M.gguf
+X-Linked-ETag: "26e7ece4d609b8515b4f72543b555692dc6ca2ff2bee336a6a1f4f2c97978cee"

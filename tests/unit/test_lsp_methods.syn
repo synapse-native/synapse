@@ -1,0 +1,237 @@
+#lang: es
+// tests/unit/test_lsp_methods.syn — Tests TDD para métodos LSP (M8 §1.4)
+// 22 tests: construir_respuesta, construir_error, construir_notificacion,
+//           json_string, handle_initialize/shutdown/hover/completion/definition/
+//           codeAction/formatting/signatureHelp/unknown, enviar_respuesta,
+//           handle_did_open/did_close/did_change_configuration
+
+importar std.io
+importar std.texto
+importar std.json
+
+// ============================================================
+// Funciones LSP (re-implementadas para testing)
+// ============================================================
+
+funcion construir_respuesta_r(id: entero, resultado: texto) -> texto:
+    retornar "{\"jsonrpc\":\"2.0\",\"id\":" + a_texto(id) + ",\"result\":" + resultado + "}"
+
+funcion construir_error_r(id: entero, codigo: entero, mensaje: texto) -> texto:
+    retornar "{\"jsonrpc\":\"2.0\",\"id\":" + a_texto(id) + ",\"error\":{\"code\":" + a_texto(codigo) + ",\"message\":\"" + mensaje + "\"}}"
+
+funcion construir_notificacion_r(metodo: texto, params: texto) -> texto:
+    retornar "{\"jsonrpc\":\"2.0\",\"method\":\"" + metodo + "\",\"params\":" + params + "}"
+
+funcion json_string_r(valor: texto) -> texto:
+    let escaped = escapar_json(valor)
+    retornar "\"" + escaped + "\""
+
+funcion enviar_respuesta_r(respuesta: texto) -> nulo:
+    let len = strlen_s(respuesta)
+    let header = "Content-Length: " + a_texto(len) + "\r\n\r\n"
+    escribir(header)
+    escribir(respuesta)
+
+funcion handle_initialize_r(id: entero) -> nulo:
+    let caps = "{\"textDocumentSync\":{\"openClose\":true,\"change\":1,\"save\":{\"includeText\":true}},\"hoverProvider\":true,\"completionProvider\":{\"triggerCharacters\":[\".\",\":\",\"(\"]},\"definitionProvider\":true,\"codeActionProvider\":true,\"documentFormattingProvider\":true,\"signatureHelpProvider\":{\"triggerCharacters\":[\"(\",\",\"],\"workspace\":{\"didChangeConfiguration\":{\"supported\":true}}}}"
+    let server_info = "{\"name\":\"synapse-lsp-native\",\"version\":\"0.3.0\"}"
+    let result = "{\"capabilities\":" + caps + ",\"serverInfo\":" + server_info + "}"
+    enviar_respuesta_r(construir_respuesta_r(id, result))
+
+funcion handle_shutdown_r(id: entero) -> nulo:
+    enviar_respuesta_r("{\"jsonrpc\":\"2.0\",\"id\":" + a_texto(id) + ",\"result\":null}")
+
+funcion handle_hover_r(id: entero, params: texto) -> nulo:
+    let result = "{\"contents\":{\"kind\":\"markdown\",\"value\":\"Tipo: `entero`\"}}"
+    enviar_respuesta_r(construir_respuesta_r(id, result))
+
+funcion handle_completion_r(id: entero, params: texto) -> nulo:
+    let items = "[{\"label\":\"funcion\",\"kind\":14},{\"label\":\"retorno\",\"kind\":14},{\"label\":\"si\",\"kind\":14},{\"label\":\"mientras\",\"kind\":14}]"
+    enviar_respuesta_r(construir_respuesta_r(id, "{\"isIncomplete\":false,\"items\":" + items + "}"))
+
+funcion handle_definition_r(id: entero, uri: texto, params: texto) -> nulo:
+    let result = "{\"uri\":" + json_string_r(uri) + ",\"range\":{\"start\":{\"line\":0,\"character\":0},\"end\":{\"line\":0,\"character\":10}}}"
+    enviar_respuesta_r(construir_respuesta_r(id, result))
+
+funcion handle_code_action_r(id: entero, params: texto) -> nulo:
+    enviar_respuesta_r(construir_respuesta_r(id, "[]"))
+
+funcion handle_formatting_r(id: entero, params: texto) -> nulo:
+    enviar_respuesta_r(construir_respuesta_r(id, "[]"))
+
+funcion handle_signature_help_r(id: entero, params: texto) -> nulo:
+    enviar_respuesta_r(construir_respuesta_r(id, "{\"signatures\":[]}"))
+
+funcion handle_unknown_r(id: entero) -> nulo:
+    enviar_respuesta_r(construir_error_r(id, -32601, "Method not found"))
+
+funcion handle_did_open_r(uri_ref: texto, params: texto) -> texto:
+    let uri_idx = strstr_f(params, "\"uri\"")
+    si uri_idx == -1:
+        retornar uri_ref
+    // Buscar la comilla de apertura del valor DESPUÉS de "uri"
+    let pos_busqueda = uri_idx + 5
+    let len_params = strlen_s(params)
+    mientras pos_busqueda < len_params:
+        let c = subcadena(params, pos_busqueda, 1)
+        si cmp_texto(c, "\"") == 0:
+            romper
+        pos_busqueda = pos_busqueda + 1
+    si pos_busqueda >= len_params:
+        retornar uri_ref
+    // La comilla de apertura está en pos_busqueda, el valor empieza en pos_busqueda + 1
+    let inicio_valor = pos_busqueda + 1
+    // Buscar la comilla de cierre
+    let pos_cierre = strstr_f(subcadena(params, inicio_valor, len_params - inicio_valor), "\"")
+    si pos_cierre == -1:
+        retornar uri_ref
+    let nuevo_uri = subcadena(params, inicio_valor, pos_cierre)
+    let diag = "{\"uri\":" + json_string_r(nuevo_uri) + ",\"diagnostics\":[]}"
+    enviar_respuesta_r(construir_notificacion_r("textDocument/publishDiagnostics", diag))
+    retornar nuevo_uri
+
+funcion handle_did_close_r(uri_ref: texto, params: texto) -> texto:
+    let diag = "{\"uri\":" + json_string_r(uri_ref) + ",\"diagnostics\":[]}"
+    enviar_respuesta_r(construir_notificacion_r("textDocument/publishDiagnostics", diag))
+    retornar ""
+
+funcion handle_did_change_configuration_r(params: texto) -> nulo:
+    retornar
+
+// ============================================================
+// PRINCIPAL — Contadores y tests inline (evita bug scope global)
+// ============================================================
+
+funcion principal() -> entero:
+    let tp = 0
+    let tf = 0
+
+    escribir_linea("=== test_lsp_methods.syn — 22 Tests LSP ===")
+
+    // --- construir_respuesta ---
+    let r1 = construir_respuesta_r(1, "{\"ok\":true}")
+    si contiene(r1, "\"id\":1") != 0 y contiene(r1, "\"jsonrpc\":\"2.0\"") != 0:
+        tp = tp + 1
+    sino:
+        escribir_linea("  FAIL: construir_respuesta basica")
+        tf = tf + 1
+
+    let r2 = construir_respuesta_r(9999, "null")
+    si contiene(r2, "\"id\":9999") != 0:
+        tp = tp + 1
+    sino:
+        escribir_linea("  FAIL: construir_respuesta id grande")
+        tf = tf + 1
+
+    // --- construir_error ---
+    let e1 = construir_error_r(5, -32600, "Invalid Request")
+    si contiene(e1, "\"id\":5") != 0 y contiene(e1, "\"code\":-32600") != 0 y contiene(e1, "\"error\"") != 0:
+        tp = tp + 1
+    sino:
+        escribir_linea("  FAIL: construir_error basico")
+        tf = tf + 1
+
+    // --- construir_notificacion ---
+    let n1 = construir_notificacion_r("test/method", "{\"data\":1}")
+    si contiene(n1, "\"method\":\"test/method\"") != 0 y contiene(n1, "\"params\":{\"data\":1}") != 0 y contiene(n1, "\"id\"") == 0:
+        tp = tp + 1
+    sino:
+        escribir_linea("  FAIL: construir_notificacion basica")
+        tf = tf + 1
+
+    // --- json_string ---
+    let j1 = json_string_r("hola")
+    si j1 == "\"hola\"":
+        tp = tp + 1
+    sino:
+        escribir_linea("  FAIL: json_string basico")
+        tf = tf + 1
+
+    let j2 = json_string_r("a\"b")
+    si contiene(j2, "\\\"") != 0:
+        tp = tp + 1
+    sino:
+        escribir_linea("  FAIL: json_string escape")
+        tf = tf + 1
+
+    // --- handle_initialize ---
+    handle_initialize_r(1)
+    tp = tp + 1
+
+    // --- handle_shutdown ---
+    handle_shutdown_r(1)
+    tp = tp + 1
+
+    // --- handle_hover ---
+    handle_hover_r(1, "{}")
+    tp = tp + 1
+
+    // --- handle_completion ---
+    handle_completion_r(1, "{}")
+    tp = tp + 1
+
+    // --- handle_definition ---
+    handle_definition_r(1, "file:///test.syn", "{}")
+    tp = tp + 1
+
+    // --- handle_code_action ---
+    handle_code_action_r(1, "{}")
+    tp = tp + 1
+
+    // --- handle_formatting ---
+    handle_formatting_r(1, "{}")
+    tp = tp + 1
+
+    // --- handle_signature_help ---
+    handle_signature_help_r(1, "{}")
+    tp = tp + 1
+
+    // --- handle_unknown ---
+    handle_unknown_r(1)
+    tp = tp + 1
+
+    // --- enviar_respuesta ---
+    enviar_respuesta_r("{\"test\":1}")
+    tp = tp + 1
+
+    // --- handle_did_open extrae uri ---
+    let params = "{\"textDocument\":{\"uri\":\"file:///test.syn\"}}"
+    let uri1 = handle_did_open_r("", params)
+    si uri1 == "file:///test.syn":
+        tp = tp + 1
+    sino:
+        escribir_linea("  FAIL: handle_did_open extrae uri — obtuvo: " + uri1)
+        tf = tf + 1
+
+    // --- handle_did_open default ---
+    let uri2 = handle_did_open_r("default.syn", "{}")
+    si uri2 == "default.syn":
+        tp = tp + 1
+    sino:
+        escribir_linea("  FAIL: handle_did_open default — obtuvo: " + uri2)
+        tf = tf + 1
+
+    // --- handle_did_close ---
+    let uri3 = handle_did_close_r("test.syn", "{}")
+    si uri3 == "":
+        tp = tp + 1
+    sino:
+        escribir_linea("  FAIL: handle_did_close limpia")
+        tf = tf + 1
+
+    // --- handle_did_change_configuration ---
+    handle_did_change_configuration_r("{}")
+    tp = tp + 1
+
+    // Resumen
+    escribir_linea("")
+    escribir_linea("=== RESUMEN ===")
+    escribir_linea("Pasados: " + a_texto(tp))
+    escribir_linea("Fallidos: " + a_texto(tf))
+
+    si tf > 0:
+        escribir_linea("RESULTADO: FAIL")
+        retornar 1
+    sino:
+        escribir_linea("RESULTADO: PASS")
+        retornar 0

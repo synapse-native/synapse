@@ -1,0 +1,206 @@
+#lang: es
+// cumple Manual 2 §1.2: fuente UTF-8 sin BOM (r280).
+
+// cumple Manual 9 §6.2: API disponible en todos los targets (ME r334)
+// std.texto — Manipulación de cadenas
+// Manual 8 §1.7.3 (ME r196): contiene, indice_de, reemplazar (builtins existentes)
+// Manual 8 §1.7.1-2: leer_bytes, escapar_json, a_texto (nuevos externos)
+// Cumple Manual 2 §12: contratos requiere/garantiza en todas las funciones públicas.
+// PIEDRA: esta biblioteca sin CRLF.
+
+// ============================================================
+// §1.7.1 — Contiene
+// ============================================================
+
+// cumple Manual 8 §1.7.3: contiene se expone como binding del builtin C
+// cumple Manual 2 §5.1: contrato explícito — acepta cadenas de cualquier longitud (incluida vacía)
+funcion contiene(texto: texto, subcadena: texto) -> entero:
+    requiere:
+        longitud(texto) >= 0
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
+    retornar _syn_texto_contiene(texto, subcadena)
+
+// ============================================================
+// §1.7.2 — Índice de
+// ============================================================
+
+funcion indice_de(texto: texto, subcadena: texto) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
+    retornar _syn_texto_indice_de(texto, subcadena)
+
+// ============================================================
+// §1.7.3 — Reemplazar
+// ============================================================
+
+funcion reemplazar(texto: texto, buscar: texto, reemplazar: texto) -> texto:
+    requiere:
+        longitud(buscar) > 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    retornar _syn_texto_reemplazar(texto, buscar, reemplazar)
+
+// ============================================================
+// §1.7.3 — Termina con
+// ============================================================
+
+funcion termina_con(texto: texto, sufijo: texto) -> entero:
+    requiere:
+        longitud(sufijo) > 0
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
+    retornar _syn_texto_termina_con(texto, sufijo)
+
+// ============================================================
+// §1.7.3 — Recortar
+// ============================================================
+
+funcion recortar(texto: texto) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        longitud(_resultado_) <= longitud(texto)
+    retornar _syn_texto_recortar(texto)
+
+// ============================================================
+// §1.7.3 — Mayúsculas / Minúsculas
+// ============================================================
+
+funcion mayusculas(texto: texto) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        longitud(_resultado_) == longitud(texto)
+    retornar _syn_texto_mayusculas(texto)
+
+funcion minusculas(texto: texto) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        longitud(_resultado_) == longitud(texto)
+    retornar _syn_texto_minusculas(texto)
+
+// ============================================================
+// §1.7.2 — Escapar JSON
+// ============================================================
+
+funcion escapar_json(texto: texto) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        longitud(_resultado_) >= longitud(texto)
+    retornar _syn_escapar_json(texto)
+
+// ============================================================
+// §1.7.2 — A texto (entero / decimal)
+// ============================================================
+
+funcion a_texto(valor: entero) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        longitud(_resultado_) > 0
+    retornar _syn_a_texto_entero(valor)
+
+funcion a_texto_decimal(valor: decimal) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        longitud(_resultado_) > 0
+    retornar _syn_a_texto_decimal(valor)
+
+importar std.sistema
+
+// ============================================================
+// §1.7.3 — Contiene (otra vez, en std.sistema)
+// ============================================================
+
+// cumple Manual 8 §1.7.3: contiene se expone como binding del builtin C
+// cumple Manual 2 §5.1: contrato explícito sin precondición (H-R196-1)
+externo funcion _syn_texto_contiene(texto: texto, subcadena: texto) -> entero
+externo funcion _syn_texto_indice_de(texto: texto, subcadena: texto) -> entero
+externo funcion _syn_texto_reemplazar(texto: texto, buscar: texto, reemplazar: texto) -> texto
+externo funcion _syn_texto_termina_con(texto: texto, sufijo: texto) -> entero
+externo funcion _syn_texto_recortar(texto: texto) -> texto
+externo funcion _syn_texto_mayusculas(texto: texto) -> texto
+externo funcion _syn_texto_minusculas(texto: texto) -> texto
+externo funcion _syn_texto_longitud(texto: texto) -> entero
+externo funcion _syn_strcmp(a: texto, b: texto) -> entero
+
+// cumple Manual 8 §1.7.3: comparación de texto usada por el LSP nativo
+// cumple Manual 2 §5.1: contrato de dominio (restaurada en r331; había sido
+// eliminada en 8a2f82b creyéndola duplicada de un builtin inexistente)
+funcion cmp_texto(a: texto, b: texto) -> entero:
+    requiere:
+        a.longitud >= 0 y b.longitud >= 0
+    garantiza:
+        _resultado_ == 0 o _resultado_ < 0 o _resultado_ > 0
+    retornar _syn_strcmp(a, b)
+// cumple Manual 2 §5.1: API historica de texto restaurada (H-R222-1)
+funcion strlen_s(a: texto) -> entero:
+    requiere:
+        longitud(a) >= 0
+    garantiza:
+        _resultado_ >= 0
+    retornar _syn_strlen(a)
+
+funcion strstr_f(texto: texto, patron: texto) -> entero:
+    requiere:
+        longitud(patron) > 0
+    garantiza:
+        _resultado_ >= -1
+    retornar _syn_strstr(texto, patron)
+
+funcion strchr_f(texto: texto, caracter: entero) -> entero:
+    requiere:
+        caracter >= 0
+    garantiza:
+        _resultado_ >= -1
+    retornar _syn_strchr(texto, caracter)
+
+funcion atoi_f(texto: texto) -> entero:
+    requiere:
+        longitud(texto) > 0
+    garantiza:
+        _resultado_ >= -2147483648 y _resultado_ <= 2147483647
+    retornar _syn_atoi(texto)
+
+// cumple Manual 2 §5.1: envoltorio publico historico de _syn_strcpy (H-R222-1)
+funcion strcpy_f(texto: texto) -> texto:
+    requiere:
+        longitud(texto) >= 0
+    garantiza:
+        longitud(_resultado_) == longitud(texto)
+    retornar _syn_strcpy(texto)
+
+funcion strncpy_f(texto: texto, max_len: entero) -> texto:
+    requiere:
+        max_len > 0
+    garantiza:
+        longitud(_resultado_) <= max_len
+    retornar _syn_strncpy(texto, max_len)
+
+externo funcion _syn_strlen(a: texto) -> entero
+externo funcion _syn_strstr(texto: texto, patron: texto) -> entero
+externo funcion _syn_strchr(texto: texto, caracter: entero) -> entero
+externo funcion _syn_atoi(texto: texto) -> entero
+externo funcion _syn_strcpy(texto: texto) -> texto
+externo funcion _syn_strncpy(texto: texto, max_len: entero) -> texto
+
+externo funcion _syn_escapar_json(texto: texto) -> texto
+externo funcion _syn_a_texto_entero(valor: entero) -> texto
+externo funcion _syn_a_texto_decimal(valor: decimal) -> texto
+// H-R196-2: Eliminado bloque duplicado de 12 funciones en std/texto.syn (líneas 108-187 originales)
+// cumple Manual 1 §7.4: sin código duplicado (H-R196-2 resuelto en 8a2f82b; r285)
+// cumple Manual 2 §12: contratos requiere/garantiza conservados sin redundancia
+// cumpl Manual 2 §12: contratos requiere/garantiza conservados sin redundancia

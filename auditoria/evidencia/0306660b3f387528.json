@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "0306660b3f387528",
+ "expediente": "docs/alineacion/r324_ms_snapshot_impl.md",
+ "fecha": "2026-11-24",
+ "archivos": [
+  "runtime/core/debug.c"
+ ],
+ "oraculos": {
+  "tests/integration/test_memory_snapshots.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

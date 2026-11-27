@@ -1,0 +1,15 @@
+{
+ "cambio_hash": "c01c7e55ec8d56b9",
+ "expediente": "docs/alineacion/r205b_lsp_v3.md",
+ "fecha": "2026-11-10",
+ "archivos": [
+  "nucleo/lsp_v3.syn"
+ ],
+ "oraculos": {
+  "tests/integration/test_lsp_protocol_validation.py": true,
+  "tests/integration/test_lsp_workspace.py": true,
+  "tests/unit/test_lsp_multimsg.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

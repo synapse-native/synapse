@@ -1,0 +1,65 @@
+#lang: es
+# cumple Manual 2 §5.1
+# cumple Manual 9 §6.1
+#std/quantum_memory.syn — Bindings para Quantum Memory (M16.4)
+# ======================================================================
+# Expone las primitivas de simulacion de decoherencia cuantica
+# (nucleo/quantum_memory.c) al lenguaje Synapse via std.quantum_memory.
+#
+# Zero-telemetry: todo el proceso es local y soberano.
+# ======================================================================
+
+# ============================================================
+# Declaraciones externas
+# ============================================================
+
+# Aplicar ruido T1 (Amplitude Damping)
+externo funcion _syn_qm_aplicar_t1(sistema: Puntero, t1: Flotante, tiempo: Flotante) -> Entero
+
+# Aplicar ruido T2 (Phase Damping)
+externo funcion _syn_qm_aplicar_t2(sistema: Puntero, t2: Flotante, tiempo: Flotante) -> Entero
+
+# Simular con correccion QEC
+externo funcion _syn_qm_simular_con_qec(sistema: Puntero, t1: Flotante, t2: Flotante, tiempo: Flotante) -> Entero
+
+# ============================================================
+# Wrappers de alto nivel
+# ============================================================
+
+funcion aplicar_t1(sistema: Puntero, t1: Flotante, tiempo: Flotante) -> Entero:
+    // cumple Manual 2 §5.1: sistema no nulo, tiempos no negativos
+    requiere:
+        sistema != nulo
+    requiere:
+        t1 >= 0.0
+    requiere:
+        tiempo >= 0.0
+    garantiza:
+        _resultado_ >= 0
+    retornar _syn_qm_aplicar_t1(sistema, t1, tiempo)
+
+funcion aplicar_t2(sistema: Puntero, t2: Flotante, tiempo: Flotante) -> Entero:
+    // cumple Manual 2 §5.1: sistema no nulo, tiempos no negativos
+    requiere:
+        sistema != nulo
+    requiere:
+        t2 >= 0.0
+    requiere:
+        tiempo >= 0.0
+    garantiza:
+        _resultado_ >= 0
+    retornar _syn_qm_aplicar_t2(sistema, t2, tiempo)
+
+funcion simular_con_qec(sistema: Puntero, t1: Flotante, t2: Flotante, tiempo: Flotante) -> Entero:
+    // cumple Manual 2 §5.1: sistema no nulo, tiempos no negativos
+    requiere:
+        sistema != nulo
+    requiere:
+        t1 >= 0.0
+    requiere:
+        t2 >= 0.0
+    requiere:
+        tiempo >= 0.0
+    garantiza:
+        _resultado_ >= 0
+    retornar _syn_qm_simular_con_qec(sistema, t1, t2, tiempo)

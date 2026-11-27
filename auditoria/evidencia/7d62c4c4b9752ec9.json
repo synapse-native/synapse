@@ -1,0 +1,19 @@
+{
+ "cambio_hash": "7d62c4c4b9752ec9",
+ "expediente": "docs/alineacion/r203_update_nativo.md",
+ "fecha": "2026-11-08",
+ "archivos": [
+  "nucleo/actualizador.syn",
+  "nucleo/principal.syn",
+  "runtime/core/actualizador.c",
+  "runtime/core/actualizador.h"
+ ],
+ "oraculos": {
+  "tests/integration/test_cli.py": true,
+  "tests/integration/test_contracts.py": true,
+  "tests/integration/test_release_matrix.py": true,
+  "tests/integration/test_update_nativo.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

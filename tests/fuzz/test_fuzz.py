@@ -1,3 +1,4 @@
+# cumple Manual 3 12.1
 """
 test_fuzz.py — Tests de fuzzing F11 (Documento Maestro Parte VII) + M10.3
 
@@ -22,6 +23,9 @@ import time
 import logging
 import traceback
 import hashlib
+import pytest
+
+pytestmark = pytest.mark.fuzz
 
 PROJECT_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
 MAIN_PY = os.path.join(PROJECT_ROOT, 'main.py')
@@ -283,9 +287,9 @@ def test_fuzz_corpus_mutation():
 
 def test_fuzz_engine_smoke():
     """Verificar que el motor de fuzzing funciona minimamente."""
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
     try:
-        from tests.fuzz.fuzz_engine import FuzzEngine, ResultadoFuzz
+        from fuzz_engine import FuzzEngine, ResultadoFuzz
         engine = FuzzEngine(seed=42)
         resultado = engine.iterar(n=10)
         assert resultado.total == 10, f"Esperaba 10 iteraciones, obtuvo {resultado.total}"

@@ -1,0 +1,29 @@
+{
+  "plataforma": "win_x64",
+  "dist": "D:\\proyecto_synapse\\instaladores\\dist\\distribucion",
+  "checks": {
+    "obligatorios": {
+      "faltan": [],
+      "esperados": 8
+    },
+    "integridad": {
+      "archivos": 19,
+      "malos": [],
+      "sin_sidecar": [],
+      "firmados_no_listados": []
+    },
+    "firmas": {
+      "verificadas": 7,
+      "invalidas": []
+    },
+    "smoke": {
+      "estado": "OK",
+      "pasos": [
+        "--version: Synapse Compiler 8.1.0-industrial",
+        "compilar+ejecutar: Hola Mundo"
+      ]
+    }
+  },
+  "resultado": "PASS",
+  "errores": []
+}

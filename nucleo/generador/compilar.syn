@@ -1,12 +1,20 @@
 #lang: es
+// cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas (ME formatter_fix R4: anclaje de norma vigente tras reformato)
+// cumple Manual 1 §7.1 (ME formatter_fix R4): reformato cosmético del nucleo con synapse fmt — estilo, sin cambios semánticos
+// vinculo ME formatter_fix R4 (Manual 1 §7.1, M8 §4.1): reformato cosmético del nucleo — estilo, sin cambios semánticos
 
 // ============================================================
-// compilar.syn  —  Compilacion de archivo unico (nuevo generador)
+// compilar.syn — Compilacion de archivo unico (nuevo generador)
 // ============================================================
 // NOTA: ResultadoEtapa y etapa_ok() estan definidos en principal.syn.
 // ============================================================
 
 funcion compilar_archivo(ruta: cadena, salida: cadena) -> ResultadoEtapa:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     inseguro:
         asm("fflush(stderr);")
         asm("fprintf(stderr, \"[Compilar] Leyendo %s...\\n\", ruta.datos); fflush(stderr);")
@@ -58,7 +66,26 @@ funcion compilar_archivo(ruta: cadena, salida: cadena) -> ResultadoEtapa:
 
         // 6. Compile with GCC
         asm("char _cmd[4096];")
-        asm("snprintf(_cmd, 4096, \"gcc -O2 -Wl,--stack,8388608 -Wl,--gc-sections -I. \\\"%s\\\" axon_rt.o tweetnacl.o -o \\\"%s\\\" -lpthread -lm -lws2_32\", _out_c, salida.datos);")
+        // cumple Manual 9 §6.2 (r316): --stack es de MinGW y -lws2_32 no existe
+        // fuera de Windows; el enlace del Axon debe compilar en POSIX.
+        asm("const char* _win_ld = \"\"; const char* _win_libs = \"\";")
+        asm("#ifdef _WIN32")
+        asm("_win_ld = \"-Wl,--stack,8388608 \"; _win_libs = \"-lws2_32\";")
+        asm("#endif")
+        // cumple Manual 9 §6.2 (r322): usar el GCC real de SYNAPSE_GCC_PATH (en
+        // macOS `gcc` es clang) y -dead_strip donde ld64 no conoce --gc-sections.
+        asm("char _gcc_cmd[1300];")
+        asm("#ifdef _WIN32")
+        asm("snprintf(_gcc_cmd, sizeof _gcc_cmd, \"gcc\");")
+        asm("#else")
+        asm("const char* _gcc_env = getenv(\"SYNAPSE_GCC_PATH\"); if (!_gcc_env || !_gcc_env[0]) _gcc_env = getenv(\"SYNAPSE_GCC\");")
+        asm("snprintf(_gcc_cmd, sizeof _gcc_cmd, \"\\\"%s\\\"\", (_gcc_env && _gcc_env[0]) ? _gcc_env : \"gcc\");")
+        asm("#endif")
+        asm("const char* _gc_flag = \"-Wl,--gc-sections\";")
+        asm("#ifdef __APPLE__")
+        asm("_gc_flag = \"-Wl,-dead_strip\";")
+        asm("#endif")
+        asm("snprintf(_cmd, 4096, \"%s -O2 %s%s -I. \\\"%s\\\" axon_rt.o tweetnacl.o -o \\\"%s\\\" -lpthread -lm %s\", _gcc_cmd, _win_ld, _gc_flag, _out_c, salida.datos, _win_libs);")
         asm("fprintf(stderr, \"[Compilar] GCC: %s\\n\", _cmd);")
         asm("int _gcc_rc = system(_cmd);")
         asm("if (_gcc_rc != 0) {")

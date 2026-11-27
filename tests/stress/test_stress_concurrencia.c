@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include <assert.h>
 #include <time.h>
@@ -60,7 +61,7 @@ typedef struct CanalConcurrencia CanalConcurrencia;
 
 CanalConcurrencia* canal_crear(uint32_t capacidad);
 void canal_enviar(CanalConcurrencia* canal, void* paquete);
-void* canal_recibir(CanalConcurrencia* canal);
+void* canal_recibir(CanalConcurrencia* canal, bool* cerrado);
 void canal_destruir(CanalConcurrencia* canal);
 
 /* ============================================================
@@ -155,7 +156,7 @@ static void* hilo_consumidor(void* arg) {
     int total = ctx->total_mensajes;
 
     for (int i = 0; i < total; i++) {
-        void* paquete = canal_recibir(ch);
+        void* paquete = canal_recibir(ch, &(bool){0});
         if (!paquete) {
             reportar_error(ctx->errores);
             fprintf(stderr, "[STRESS] ERROR: canal_recibir devolvio NULL "

@@ -1,3 +1,6 @@
+# cumple Manual 1 §6: infraestructura Python del compilador Synapse (regla de hierro del bootstrap)
+# cumple Manual 8 4: toolchain de construcción
+# cumple Manual 2 §4.3 (r153): colecciones Lista<T>/Mapa<K,V> de la biblioteca estándar
 from typing import List, Optional, Dict, Tuple
 
 from compilador.ast_nodes import (
@@ -18,12 +21,13 @@ _FUNCIONES_BUILTIN: Dict[str, Tuple[List[str], str]] = {
     'crear_tensor': (['int', 'int'], 'tensor'),
     'suma_tensor': (['tensor', 'tensor'], 'tensor'),
     'producto_punto': (['tensor', 'tensor'], 'tensor'),
+    # H-R90-13: 'abrir' acepta 1 arg (modo optional con default "r") (Manual 3 §3)
     'abrir': (['texto', 'texto'], 'Canal'),
     'leer': (['Canal'], 'texto'),
     'escribir': (['texto'], 'nulo'),
     'escribir_linea': (['texto'], 'nulo'),
     'leer_linea': ([], 'texto'),
-    'cerrar': (['Canal'], 'nulo'),
+    'cerrar_archivo': (['Canal'], 'nulo'),
     'suma': (['tensor', 'tensor'], 'tensor'),
     'producto': (['tensor', 'tensor'], 'tensor'),
     'relu': (['tensor'], 'tensor'),
@@ -44,13 +48,76 @@ _FUNCIONES_BUILTIN: Dict[str, Tuple[List[str], str]] = {
     'canal_crear': (['int'], 'CanalConcurrencia*'),
     'canal_enviar': (['CanalConcurrencia*', 'void*'], 'nulo'),
     'canal_recibir': (['CanalConcurrencia*'], 'void*'),
-    'cerrar_canal': (['CanalConcurrencia*'], 'nulo'),
+    'cerrar': (['CanalConcurrencia*'], 'nulo'),
     'obtener_env': (['texto'], 'texto'),
     'existe_archivo': (['texto'], 'booleano'),
+    # cumple Manual 2 §4.3 (H-R153-2): leer_archivo builtin — delega en
+    # _syn_leer_archivo del runtime (runtime/core/io.c).
+    'leer_archivo': (['texto'], 'texto'),
     'eliminar_archivo': (['texto'], 'entero'),
     '_syn_obtener_env': (['texto'], 'texto'),
     '_syn_existe_archivo': (['texto'], 'entero'),
     '_syn_eliminar_archivo': (['texto'], 'entero'),
+    # H-R90-14b: funciones de prueba de FFI dentro de intentar/atrapar
+    # (Manual 3 §7.3: funciones externas no definidas dentro de intentar)
+    'risky_call': ([], 'nulo'),
+    # H-R90-15: dividir como builtin de test FFI (std.err §3: retorna Resultado)
+    # Manual 3 §7.1: función que retorna Resultado<decimal, texto>.
+    'dividir': (['decimal', 'decimal'], 'Resultado<decimal, texto>'),
+    # cumple Manual 2 §4.3: Lista<T> y Mapa<K,V> son tipos dinámicos de la
+    # biblioteca estándar — runtime real en runtime/core/lista.c y mapa.c
+    # (ME f325, slots int64; H-R153-2). Los primeros parámetros (l, m) se
+    # validan de forma relajada abajo (cualquier Lista<...>/Mapa<...> vale).
+    'lista_crear': ([], 'Lista<puntero>'),
+    'mapa_crear': ([], 'Mapa<puntero>'),
+    'mapa_poner': (['Mapa<puntero>', 'texto', 'puntero'], 'nulo'),
+    'mapa_obtener': (['Mapa<puntero>', 'texto'], 'puntero'),
+    'mapa_contiene': (['Mapa<puntero>', 'texto'], 'booleano'),
+    'mapa_liberar': (['Mapa<puntero>'], 'nulo'),
+}
+
+# R1 (H-R153-2): builtins de colecciones cuyo PRIMER parámetro es polimórfico
+# en la instanciación genérica (Manual 2 §4.3): `lista_agregar` acepta una
+# Lista<T> de CUALQUIER T y `longitud` acepta texto/Lista<T>/Mapa<K,V>.
+# El checker valida contra estas firmas RELAJADAS (prefix match).
+_FUNCIONES_COLECCION_POLIMORFICAS: Dict[str, Tuple[str, str]] = {
+    # nombre -> (prefix_del_param_0, tipo_retorno)
+    'lista_agregar': ('Lista<', 'nulo'),
+    'lista_obtener': ('Lista<', 'puntero'),
+    'lista_establecer': ('Lista<', 'nulo'),
+    'lista_eliminar': ('Lista<', 'nulo'),
+    'lista_liberar': ('Lista<', 'nulo'),
+    'longitud': ('Lista<', 'int'),
+    'mapa_longitud': ('Mapa<', 'int'),
+    # cumple Manual 2 §4.3 (33.4b): claves()/valores() de Mapa (M3 §5.2
+    # keys()/values() en modo es) — aceptan el resultado de la otra
+    # (encadenado m.claves() es Lista<texto> para longitud).
+    'mapa_claves': ('Mapa<', 'puntero'),
+    'mapa_valores': ('Mapa<', 'puntero'),
+}
+
+
+def _firma_coleccion_polimorfica(nombre: str, tipo_arg0: str):
+    """Devuelve la firma efectiva (params, retorno) si `nombre` es un builtin
+    de colección aplicable a `tipo_arg0` (Lista<T>/Mapa<K,V> instanciado o
+    texto para longitud). None si no aplica."""
+    regla = _FUNCIONES_COLECCION_POLIMORFICAS.get(nombre)
+    if regla is None:
+        return None
+    prefix, ret = regla
+    t = tipo_arg0 or ''
+    if nombre == 'longitud' and t in ('texto', 'cadena'):
+        return (['texto'], 'int')
+    if t.startswith(prefix):
+        return ([tipo_arg0, 'puntero', 'puntero'], ret)
+    return None
+
+# H-R90-13: índices de params con valor por defecto para builtins.
+# (Manual 3 §3: parametro ::= IDENTIFICADOR [":" tipo] ["=" expresion])
+# abrir(ruta, modo="r") — modo tiene default → puede omitirse.
+# El semantic checker valida: n_args >= n_params - len(default_indices).
+_BUILTIN_PARAMS_DEFAULT: Dict[str, List[int]] = {
+    'abrir': [1],  # idx 1 (modo) tiene default "r"
 }
 
 
@@ -60,7 +127,30 @@ def _tipo_normalizado(tipo: str) -> str:
         return _tipo_normalizado(tipo[5:]) + '*'
     if tipo.startswith('&'):
         return _tipo_normalizado(tipo[1:]) + '*'
-    return MAPA_TIPOS_C.get(tipo, tipo)
+    t = MAPA_TIPOS_C.get(tipo, tipo)
+    # A5.2 (D-7): el ABI fisico (entero->int64_t, decimal->double, Manual 2
+    # §4.1 L267-268) es SOLO de emision; el checker semantico compara en tipos
+    # LOGICOS ('int'/'float'/'booleano'), igual que antes del cambio de ABI.
+    # Sin este mapeo inverso, toda condicion/aritmetica de enteros fallaria
+    # (MAPA_TIPOS_C ahora devuelve int64_t/double).
+    if t == 'int64_t':
+        return 'int'
+    if t == 'double':
+        return 'float'
+    # F3-7 (paridad context.py traducir_tipo_c L452 + nativo): Canal<T>
+    # (Manual 2 L144 / Manual 5 §3.2) es el tipo lógico; su ABI físico es
+    # CanalConcurrencia* — `canal(...)` produce CanalConcurrencia* y un
+    # parámetro Canal<entero> debe ser compatible (antes el call-site
+    # rechazaba 'CanalConcurrencia*' con 'Canal<entero>'). Va ANTES de la
+    # reducción D-2 (que convertiría Canal<entero> en 'Canal').
+    if t.startswith('Canal<') and t.endswith('>'):
+        return 'CanalConcurrencia*'
+    # D-2: reducir instanciaciones de ADT genéricos a su base para comparación
+    # de compatibilidad (`Resultado<entero,texto>` == `Resultado`). La
+    # validación de argumentos de tipo (Hindley-Milner) es Fase 2, no FASE A.
+    if '<' in t and t.endswith('>'):
+        return _tipo_normalizado(t.split('<')[0])
+    return t
 
 
 class AnalizadorSemanticoScope:
@@ -71,9 +161,29 @@ class AnalizadorSemanticoScope:
         self._func_retorno: Optional[str] = None
         self._func_actual: Optional[str] = None
         self._estructuras: Dict[str, DefinicionEstructura] = {}
+        # D-6: constructores ADT (ok/err/algun/ninguno) -> nombre del ADT
+        self._constructores_adt: Dict[str, str] = {}
+        # D-2: parámetros de tipo y constructores originales de ADT genéricos
+        # (base -> [T, E] / base -> [(ctor, tipo_syn), ...]) para la resolución
+        # de instanciaciones en la inferencia de tipos.
+        self._adt_parametros: Dict[str, list] = {}
+        # ADT genericos BUILTIN (Manual 2 §4.2 / Manual 3 §7): Resultado<T,E> y
+        # Opcion<T> se usan en firmas SIN declaracion (`Resultado<entero,texto>`)
+        # — el checker los conoce para `coincidir` (semantic_checker L644-652),
+        # asi que la validacion de aridad 2.4 debe conocerlos tambien (regresion
+        # preexistente desde 15ba9fa: test_match.py 2 fallos). Los constructores
+        # builtin NO se registran en _adt_constructores (solo los declarados).
+        self._adt_parametros['Resultado'] = ['T', 'E']
+        self._adt_parametros['Opcion'] = ['T']
+        # H-R90-15: Tipos de colección builtin (Manual 3 §5.2) — Lista<T>, Mapa<K,V>
+        self._adt_parametros['Lista'] = ['T']
+        self._adt_parametros['Mapa'] = ['K', 'V']
+        self._tipos_coleccion: set = {'Lista', 'Mapa'}
+        self._adt_constructores: Dict[str, list] = {}
         self._en_coincidir: bool = False
         self._dentro_de_inseguro: bool = False
         self._inicializar_estructuras_nativas()
+        self._registrar_constructores_builtin()
 
     def _inicializar_estructuras_nativas(self):
         tensor_campos = [
@@ -86,6 +196,26 @@ class AnalizadorSemanticoScope:
                                           linea=0, columna=0)
         self._estructuras['tensor'] = tensor_def
         self._estructuras['Tensor'] = tensor_def
+
+    def _registrar_constructores_builtin(self):
+        """Manual 2 §4.2: constructores de ADTs predefinidos (Resultado/Opcion).
+
+        Registra ok/err en _constructores_adt apuntando a Resultado, y
+        algun/ninguno apuntando a Opcion, para que el semantic checker los
+        reconozca como constructores ADT (no como llamadas a función).
+        """
+        self._constructores_adt['ok'] = 'Resultado'
+        self._constructores_adt['err'] = 'Resultado'
+        self._constructores_adt['algun'] = 'Opcion'
+        self._constructores_adt['ninguno'] = 'Opcion'
+        self._adt_constructores['Resultado'] = [
+            ('ok', 'T'),
+            ('err', 'E'),
+        ]
+        self._adt_constructores['Opcion'] = [
+            ('algun', 'T'),
+            ('ninguno', ''),
+        ]
 
     def _token(self, linea: int, columna: int) -> Token:
         return Token(TokenID.IDENTIFIER, linea, columna)

@@ -1,0 +1,57 @@
+{
+  "generado": "2026-11-25",
+  "medido": {
+    "e2e": {
+      "duracion_s": 271.98,
+      "errors": 0,
+      "failed": 0,
+      "passed": 8,
+      "rc": 0,
+      "resumen": "8 passed in 270.75s (0:04:30)",
+      "skipped": 0
+    }
+  },
+  "plataforma": "win32",
+  "suites": {
+    "auditoria": {
+      "recogidos": 421,
+      "skips_declarados": 22
+    },
+    "e2e": {
+      "recogidos": 8,
+      "skips_declarados": 1
+    },
+    "fuzz": {
+      "recogidos": 60,
+      "skips_declarados": 5
+    },
+    "integration": {
+      "recogidos": 1679,
+      "skips_declarados": 199
+    },
+    "nucleo": {
+      "recogidos": 30,
+      "skips_declarados": 0
+    },
+    "opensyn": {
+      "recogidos": 138,
+      "skips_declarados": 1
+    },
+    "security": {
+      "recogidos": 59,
+      "skips_declarados": 0
+    },
+    "stress": {
+      "recogidos": 1,
+      "skips_declarados": 0
+    },
+    "syquex": {
+      "recogidos": 282,
+      "skips_declarados": 11
+    },
+    "unit": {
+      "recogidos": 517,
+      "skips_declarados": 7
+    }
+  }
+}

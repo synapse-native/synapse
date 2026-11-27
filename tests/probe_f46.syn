@@ -1,0 +1,25 @@
+#lang: es
+// probe_f46.syn - F4-6: el valor 0 es distinguible del cierre en Canal<entero>.
+// El listener del `escuchar` rompe el while cuando *cerrado == true (Manual 5
+// §4.3); el 0 real se entrega desboxeado y el bloque lo procesa. Antes del fix,
+// 0 -> NULL (boxeo) y el cierre -> NULL: indistinguibles, el listener rompia
+// al recibir 0.
+
+importar std.io
+
+funcion consumidor(ch: Canal<entero>) -> nulo:
+    escuchar ch:
+        mensaje = ch ->
+        escribir_linea(entero_a_texto(mensaje))
+    retornar
+
+funcion principal() -> nulo:
+    ch = canal(entero, 10)
+    lanzar consumidor(ch)
+    // El productor envia 0 (el caso que rompia) seguido de otros valores.
+    ch <- 0
+    ch <- 5
+    ch <- 0
+    ch <- 7
+    cerrar(ch)
+    retornar

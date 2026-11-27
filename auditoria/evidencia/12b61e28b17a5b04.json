@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "12b61e28b17a5b04",
+ "expediente": "docs/alineacion/r223_syquex_frontend.md",
+ "fecha": "2026-11-15",
+ "archivos": [
+  "syquex/expr.syn",
+  "syquex/parser.syn"
+ ],
+ "oraculos": {
+  "tests/syquex/test_concurrency.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

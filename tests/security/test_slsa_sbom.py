@@ -1,3 +1,4 @@
+# cumple Manual 9 4
 """
 tests/security/test_slsa_sbom.py — Pruebas de SBOM y Cadena de Suministro (M10.2)
 

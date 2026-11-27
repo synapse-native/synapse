@@ -1,0 +1,16 @@
+{
+ "cambio_hash": "24a7c2c76d9873d2",
+ "expediente": "docs/alineacion/r204_tools_escritura.md",
+ "fecha": "2026-11-09",
+ "archivos": [
+  "opensyn/herramientas.syn",
+  "opensyn/permisos.syn",
+  "opensyn/principal.syn"
+ ],
+ "oraculos": {
+  "tests/integration/test_herramientas_escritura.py": true,
+  "tests/integration/test_permisos_opensyn.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

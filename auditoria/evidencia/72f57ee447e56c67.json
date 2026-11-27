@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "72f57ee447e56c67",
+ "expediente": "docs/alineacion/r229_cache_resiliencia.md",
+ "fecha": "2026-11-17",
+ "archivos": [
+  "pipeline.py"
+ ],
+ "oraculos": {
+  "tests/unit/test_cache_fallback.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

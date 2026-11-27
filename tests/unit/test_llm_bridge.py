@@ -1,3 +1,4 @@
+# cumple Manual 9 4
 """
 Tests para F12.3: Puente de IA Local (Ollama)
 

@@ -1,0 +1,474 @@
+#lang: es
+// cumple Manual 2 §1.2 (ME r243): fuente UTF-8 sin BOM — el BOM inicial impedia detectar #lang.
+// opensyn/verificacion_aot.syn - Verificación AOT con auto-refutación
+// cumple Manual 7 §4.2: validación del código generado con synapse check --no-emit
+// cumple Manual 7 §6.3: bucle de validación/corrección y error exacto
+// cumple Manual 2 §5.1: contratos requiere/garantiza en funciones públicas
+// cumple Manual 6 §1.1: el código validado es el que produce el pipeline sobre SemNodo[]
+// Fase 32.5: generar, compilar y ejecutar casos límite para verificar robustez
+
+importar std.io
+importar std.texto
+importar std.tiempo
+importar std.cripto
+
+// Timeout de compilación y ejecución (Roadmap Fase 32.5; referencia funcional
+// Manual FASE 32 §6.4, documento no indexado por el gate de alineación).
+constante AOT_TIMEOUT_COMPILACION_MS = 30000
+constante AOT_TIMEOUT_EJECUCION_MS = 5000
+// maximo.*5 casos por verificacion (Manual 7 §6.3)
+constante AOT_MAX_CASOS = 5
+
+// cumple Manual 7 §4.2: primitivo de subproceso sin shell, con timeout.
+externo funcion _syn_capturar_comando_timeout(cmd: texto, timeout_ms: entero) -> texto
+
+// ============================================================
+// ESTRUCTURAS
+// ============================================================
+
+estructura CasoLimite:
+    descripcion: texto
+    codigo_ejecucion: texto
+    valor_esperado: texto
+
+estructura ResultadoCaso:
+    caso: texto
+    estado: texto
+    codigo_salida: entero
+    stdout_texto: texto
+    stderr_texto: texto
+    error: texto
+
+estructura Verificacion:
+    casos_ejecutados: entero
+    fallos: entero
+    resultados: Lista<ResultadoCaso>
+
+estructura EjecucionProceso:
+    codigo_salida: entero
+    salida: texto
+    timed_out: booleano
+
+// ============================================================
+// VERIFICACIÓN DE CASO LÍMITE
+// ============================================================
+
+// cumple Manual 7 §4.2: compila y ejecuta un caso con timeout real.
+funcion verificar_caso_limite(codigo: texto, caso: CasoLimite) -> ResultadoCaso:
+    requiere:
+        longitud(codigo) > 0 y longitud(caso.codigo_ejecucion) > 0
+    garantiza:
+        longitud(_resultado_.estado) > 0
+    let base = aot_nombre_base(caso)
+    let archivo_syn = concat(base, ".syn")
+    let archivo_exe = concat(base, ".exe")
+    let codigo_completo = concat(concat(codigo, "\n\n"), caso.codigo_ejecucion)
+    let escrito = _syn_escribir_archivo(archivo_syn, codigo_completo)
+    si escrito != 0:
+        aot_limpiar(base)
+        retornar ResultadoCaso(caso.descripcion, "error_escritura", -1, "", "", "No se pudo escribir el caso límite")
+
+    let comando_compilacion = concat(concat("synapse ", archivo_syn), concat(" -o ", archivo_exe))
+    let compilacion = aot_ejecutar(comando_compilacion, AOT_TIMEOUT_COMPILACION_MS)
+    si compilacion.timed_out:
+        aot_limpiar(base)
+        retornar ResultadoCaso(caso.descripcion, "timeout_compilacion", -1, "", compilacion.salida, "La compilación excedió 30 segundos")
+    si compilacion.codigo_salida != 0:
+        aot_limpiar(base)
+        retornar ResultadoCaso(caso.descripcion, "error_compilacion", compilacion.codigo_salida, "", compilacion.salida, compilacion.salida)
+
+    let comando_ejecucion = concat("./", archivo_exe)
+    let ejecucion = aot_ejecutar(comando_ejecucion, AOT_TIMEOUT_EJECUCION_MS)
+    aot_limpiar(base)
+    si ejecucion.timed_out:
+        retornar ResultadoCaso(caso.descripcion, "timeout_ejecucion", -1, "", ejecucion.salida, "El binario excedió 5 segundos (posible bucle infinito)")
+    si ejecucion.codigo_salida == -1:
+        retornar ResultadoCaso(caso.descripcion, "error_ejecucion", -1, "", ejecucion.salida, "No se pudo ejecutar el binario")
+    retornar ResultadoCaso(caso.descripcion, "completado", ejecucion.codigo_salida, ejecucion.salida, "", "")
+
+// ============================================================
+// GENERACIÓN DE CASOS LÍMITE
+// ============================================================
+
+// cumple Manual 7 §6.3: hasta 5 casos por verificación.
+funcion generar_casos_limite(codigo: texto) -> Lista<CasoLimite>:
+    requiere:
+        longitud(codigo) > 0
+    garantiza:
+        longitud(_resultado_) >= 0 y longitud(_resultado_) <= AOT_MAX_CASOS
+    let casos = Lista<CasoLimite>()
+    si aot_tiene_principal(codigo):
+        retornar casos
+    let lineas = aot_dividir_lineas(codigo)
+    let i = 0
+    mientras i < longitud(lineas):
+        let linea = recortar(elemento_texto(lineas, i))
+        si subcadena(linea, 0, 7) == "funcion":
+            let nombre = aot_nombre_funcion(linea)
+            let tipos = aot_tipos_params(linea)
+            si longitud(nombre) > 0 y aot_tipos_conocidos(tipos):
+                si longitud(tipos) == 0:
+                    aot_agregar_caso(casos, _syn_strcpy(nombre), tipos, -1, "sin_parametros", 0)
+                sino:
+                    let j = 0
+                    mientras j < longitud(tipos):
+                        let tipo = elemento_texto(tipos, j)
+                        si tipo == "entero":
+                            aot_agregar_caso(casos, _syn_strcpy(nombre), tipos, j, "entero_cero", 0)
+                            aot_agregar_caso(casos, _syn_strcpy(nombre), tipos, j, "entero_negativo", 1)
+                            aot_agregar_caso(casos, _syn_strcpy(nombre), tipos, j, "entero_maximo", 0)
+                        si tipo == "texto":
+                            aot_agregar_caso(casos, _syn_strcpy(nombre), tipos, j, "texto_vacio", 0)
+                            aot_agregar_caso(casos, _syn_strcpy(nombre), tipos, j, "texto_largo", 0)
+                            aot_agregar_caso(casos, _syn_strcpy(nombre), tipos, j, "texto_unicode", 0)
+                        si tipo == "decimal":
+                            aot_agregar_caso(casos, _syn_strcpy(nombre), tipos, j, "decimal_cero", 0)
+                            aot_agregar_caso(casos, _syn_strcpy(nombre), tipos, j, "decimal_nan", 1)
+                        j = j + 1
+        i = i + 1
+    aot_truncar(casos)
+    retornar casos
+
+// ============================================================
+// VERIFICACIÓN COMPLETA
+// ============================================================
+
+// cumple Manual 7 §4.2: primero --check; después auto-refutación acotada.
+funcion verificar_codigo_generado(codigo: texto, archivo_original: texto) -> Resultado<texto, texto>:
+    requiere:
+        longitud(codigo) > 0
+    garantiza:
+        _resultado_.tag >= 0
+    si no validar_con_compilador(codigo):
+        retornar err(concat("Error sintáctico en ", archivo_original))
+    si no verificar_contratos(codigo):
+        retornar err(concat("Contratos no se cumplen en ", archivo_original))
+    let casos = generar_casos_limite(codigo)
+    let resultados = Lista<ResultadoCaso>()
+    let fallos = 0
+    para caso en casos:
+        let resultado = verificar_caso_limite(codigo, caso)
+        resultados.agregar(resultado)
+        si no aot_resultado_valido(resultado, caso.valor_esperado):
+            fallos = fallos + 1
+    let verificacion = Verificacion(longitud(resultados), fallos, resultados)
+    retornar ok(concat(concat(concat("casos=", entero_a_texto(verificacion.casos_ejecutados)), concat(" fallos=", entero_a_texto(verificacion.fallos))), concat(" archivo=", archivo_original)))
+
+// ============================================================
+// FUNCIONES AUXILIARES
+// ============================================================
+
+// cumple Manual 7 §4.2: validación sintáctica sin emitir binario.
+funcion validar_con_compilador(codigo: texto) -> booleano:
+    requiere:
+        longitud(codigo) > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso
+    let base = aot_nombre_check(codigo)
+    let archivo = concat(base, ".syn")
+    let escrito = _syn_escribir_archivo(archivo, codigo)
+    si escrito != 0:
+        aot_limpiar(base)
+        retornar falso
+    let comando = concat("synapse check --no-emit ", archivo)
+    let ejecucion = aot_ejecutar(comando, AOT_TIMEOUT_COMPILACION_MS)
+    aot_limpiar(base)
+    si ejecucion.timed_out:
+        retornar falso
+    retornar ejecucion.codigo_salida == 0
+
+// cumple Manual 2 §5.1: toda función generada debe conservar sus contratos.
+funcion verificar_contratos(codigo: texto) -> booleano:
+    requiere:
+        longitud(codigo) > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso
+    let lineas = aot_dividir_lineas(codigo)
+    let i = 0
+    mientras i < longitud(lineas):
+        let linea = recortar(elemento_texto(lineas, i))
+        si subcadena(linea, 0, 7) == "funcion":
+            let tiene_requiere = falso
+            let tiene_garantiza = falso
+            let j = i + 1
+            mientras j < longitud(lineas) y j <= i + 25:
+                let sig = recortar(elemento_texto(lineas, j))
+                si j > i + 1 y subcadena(sig, 0, 7) == "funcion":
+                    j = i + 26
+                sino:
+                    si indice_de(sig, "requiere:") >= 0:
+                        tiene_requiere = verdadero
+                    si indice_de(sig, "garantiza:") >= 0:
+                        tiene_garantiza = verdadero
+                    j = j + 1
+            si no tiene_requiere o no tiene_garantiza:
+                retornar falso
+        i = i + 1
+    retornar verdadero
+
+// cumple Manual 7 §6.3: un caso negativo sólo es válido si el binario
+// termina con error (contrato/asserción), no si se cuelga o no compila.
+funcion aot_resultado_valido(resultado: ResultadoCaso, esperado: texto) -> booleano:
+    requiere:
+        longitud(resultado.estado) > 0 y longitud(esperado) > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso
+    si esperado == "error":
+        retornar resultado.estado == "completado" y resultado.codigo_salida != 0
+    retornar resultado.estado == "completado"
+
+// cumple Manual 7 §4.2: ejecuta sin shell y separa rc de la salida.
+funcion aot_ejecutar(comando: texto, timeout_ms: entero) -> EjecucionProceso:
+    requiere:
+        longitud(comando) > 0 y timeout_ms > 0
+    garantiza:
+        _resultado_.codigo_salida >= -1
+    let bruto = _syn_capturar_comando_timeout(comando, timeout_ms)
+    let rc = aot_rc(bruto)
+    let salida = aot_salida(bruto)
+    retornar EjecucionProceso(rc, salida, rc == 124)
+
+// cumple Manual 7 §4.2: el runtime devuelve "[RC]<codigo>\n<salida>".
+funcion aot_rc(bruto: texto) -> entero:
+    requiere:
+        longitud(bruto) >= 0
+    garantiza:
+        _resultado_ >= -1
+    let nl = indice_de(bruto, "\n")
+    si nl >= 4 y subcadena(bruto, 0, 4) == "[RC]":
+        retornar aot_entero_de_texto(subcadena(bruto, 4, nl - 4))
+    retornar -1
+
+// cumple Manual 7 §4.2: parseo acotado del código de salida sin depender de
+// una cadena terminada en NUL (la salida del runtime es un slice).
+funcion aot_entero_de_texto(t: texto) -> entero:
+    requiere:
+        longitud(t) >= 0
+    garantiza:
+        _resultado_ >= 0
+    let n = 0
+    let i = 0
+    mientras i < longitud(t):
+        let digito = indice_de("0123456789", subcadena(t, i, 1))
+        si digito >= 0:
+            n = n * 10 + digito
+        i = i + 1
+    retornar n
+
+funcion aot_salida(bruto: texto) -> texto:
+    requiere:
+        longitud(bruto) >= 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    let nl = indice_de(bruto, "\n")
+    si nl < 0:
+        retornar ""
+    si nl + 1 >= longitud(bruto):
+        retornar ""
+    retornar subcadena(bruto, nl + 1, longitud(bruto) - nl - 1)
+
+funcion aot_limpiar(base: texto) -> nulo:
+    requiere:
+        longitud(base) > 0
+    garantiza:
+        verdadero
+    _syn_eliminar_archivo(concat(base, ".syn"))
+    _syn_eliminar_archivo(concat(base, ".exe"))
+    _syn_eliminar_archivo(concat(base, ".syn.json"))
+    _syn_eliminar_archivo(concat(base, ".c"))
+    _syn_eliminar_archivo(concat(concat("_", base), ".c"))
+    _syn_eliminar_archivo(concat(concat("_", base), ".c.o"))
+
+funcion aot_dividir_lineas(t: texto) -> Lista<texto>:
+    requiere:
+        longitud(t) >= 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    let lineas = Lista<texto>()
+    let inicio = 0
+    let i = 0
+    mientras i < longitud(t):
+        si subcadena(t, i, 1) == "\n":
+            lineas.agregar(subcadena(t, inicio, i - inicio))
+            inicio = i + 1
+        i = i + 1
+    si inicio <= longitud(t):
+        lineas.agregar(subcadena(t, inicio, longitud(t) - inicio))
+    retornar lineas
+
+funcion aot_dividir_por(t: texto, separador: texto) -> Lista<texto>:
+    requiere:
+        longitud(separador) == 1
+    garantiza:
+        longitud(_resultado_) >= 1
+    let partes = Lista<texto>()
+    let inicio = 0
+    let i = 0
+    mientras i < longitud(t):
+        si subcadena(t, i, 1) == separador:
+            partes.agregar(subcadena(t, inicio, i - inicio))
+            inicio = i + 1
+        i = i + 1
+    partes.agregar(subcadena(t, inicio, longitud(t) - inicio))
+    retornar partes
+
+funcion aot_nombre_funcion(linea: texto) -> texto:
+    requiere:
+        longitud(linea) >= 7
+    garantiza:
+        longitud(_resultado_) >= 0
+    let pos = indice_de(linea, "(")
+    si pos <= 8:
+        retornar ""
+    retornar recortar(subcadena(linea, 8, pos - 8))
+
+funcion aot_tipos_params(linea: texto) -> Lista<texto>:
+    requiere:
+        longitud(linea) >= 7
+    garantiza:
+        longitud(_resultado_) >= 0
+    let tipos = Lista<texto>()
+    let abre = indice_de(linea, "(")
+    let cierra = indice_de(linea, ")")
+    si abre < 0 o cierra <= abre:
+        retornar tipos
+    let params = subcadena(linea, abre + 1, cierra - abre - 1)
+    si longitud(recortar(params)) == 0:
+        retornar tipos
+    let partes = aot_dividir_por(params, ",")
+    para parte en partes:
+        let dos_puntos = indice_de(parte, ":")
+        si dos_puntos >= 0:
+            tipos.agregar(recortar(subcadena(parte, dos_puntos + 1, longitud(parte) - dos_puntos - 1)))
+    retornar tipos
+
+funcion aot_tipos_conocidos(tipos: Lista<texto>) -> booleano:
+    requiere:
+        longitud(tipos) >= 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso
+    para tipo en tipos:
+        si tipo != "entero" y tipo != "texto" y tipo != "decimal" y tipo != "booleano":
+            retornar falso
+    retornar verdadero
+
+funcion aot_agregar_caso(casos: Lista<CasoLimite>, nombre: texto, tipos: Lista<texto>, indice: entero, sufijo: texto, espera_error: entero) -> nulo:
+    requiere:
+        longitud(nombre) > 0
+    garantiza:
+        verdadero
+    let nombre_local = _syn_strcpy(nombre)
+    let argumentos = aot_argumentos(tipos, indice, aot_valor_caso(_syn_strcpy(sufijo)))
+    let llamada = concat(concat(nombre_local, "("), concat(argumentos, ")"))
+    let driver = concat(concat("funcion principal() -> entero:\n    ", llamada), "\n    retornar 0\n")
+    let esperado = "sin_crash"
+    si espera_error != 0:
+        esperado = "error"
+    casos.agregar(CasoLimite(_syn_strcpy(concat(concat(nombre_local, "_"), sufijo)), _syn_strcpy(driver), _syn_strcpy(esperado)))
+
+funcion aot_argumentos(tipos: Lista<texto>, indice: entero, valor: texto) -> texto:
+    requiere:
+        longitud(tipos) >= 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    let args = ""
+    let i = 0
+    mientras i < longitud(tipos):
+        let actual = aot_valor_default(elemento_texto(tipos, i))
+        si i == indice:
+            actual = valor
+        si i > 0:
+            args = concat(args, ", ")
+        args = concat(args, actual)
+        i = i + 1
+    retornar args
+
+funcion aot_valor_default(tipo: texto) -> texto:
+    requiere:
+        longitud(tipo) > 0
+    garantiza:
+        longitud(_resultado_) > 0
+    let resultado = "0"
+    si tipo == "texto":
+        resultado = "\"\""
+    si tipo == "decimal":
+        resultado = "0.0"
+    si tipo == "booleano":
+        resultado = "falso"
+    retornar resultado
+
+funcion aot_valor_caso(sufijo: texto) -> texto:
+    requiere:
+        longitud(sufijo) > 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    let resultado = "0"
+    si sufijo == "entero_negativo":
+        resultado = "-1"
+    si sufijo == "entero_maximo":
+        resultado = "2147483647"
+    si sufijo == "texto_largo":
+        resultado = concat(concat("\"", repetir("a", 10000)), "\"")
+    si sufijo == "texto_unicode":
+        resultado = "\"áéíóúñ\""
+    si sufijo == "decimal_nan":
+        resultado = "0.0/0.0"
+    retornar resultado
+
+funcion aot_truncar(casos: Lista<CasoLimite>) -> nulo:
+    requiere:
+        longitud(casos) >= 0
+    garantiza:
+        verdadero
+    mientras longitud(casos) > AOT_MAX_CASOS:
+        casos.eliminar(AOT_MAX_CASOS)
+
+funcion aot_tiene_principal(codigo: texto) -> booleano:
+    requiere:
+        longitud(codigo) > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso
+    let lineas = aot_dividir_lineas(codigo)
+    para linea en lineas:
+        let limpia = recortar(linea)
+        si subcadena(limpia, 0, 7) == "funcion" y aot_nombre_funcion(limpia) == "principal":
+            retornar verdadero
+    retornar falso
+
+funcion aot_nombre_base(caso: CasoLimite) -> texto:
+    requiere:
+        longitud(caso.descripcion) > 0
+    garantiza:
+        longitud(_resultado_) > 0
+    retornar concat(concat("opensyn_aot_", sha256_texto(_syn_strcpy(caso.codigo_ejecucion))), concat("_", entero_a_texto(longitud(caso.codigo_ejecucion))))
+
+funcion aot_nombre_check(codigo: texto) -> texto:
+    requiere:
+        longitud(codigo) > 0
+    garantiza:
+        longitud(_resultado_) > 0
+    retornar concat(concat("opensyn_aot_check_", entero_a_texto(ahora_ms())), concat("_", entero_a_texto(longitud(codigo))))
+
+funcion elemento_texto(lista: Lista<texto>, indice: entero) -> texto:
+    requiere:
+        indice >= 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    let i = 0
+    para valor en lista:
+        si i == indice:
+            retornar _syn_strcpy(valor)
+        i = i + 1
+    retornar ""
+
+funcion repetir(caracter: texto, veces: entero) -> texto:
+    requiere:
+        veces >= 0
+    garantiza:
+        longitud(_resultado_) == veces
+    let resultado = ""
+    let i = 0
+    mientras i < veces:
+        resultado = concat(resultado, caracter)
+        i = i + 1
+    retornar resultado

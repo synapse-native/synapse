@@ -1,0 +1,37 @@
+#lang: es
+// std.cripto — Funciones criptográficas (SHA-256 + Ed25519)
+// Integrante de la Biblioteca Estandar de Synapse.
+//
+// Uso desde Synapse:
+//   importar std.cripto
+//   hash = sha256_texto("datos")
+//   log("SHA-256: ", hash)
+//
+//   // Verificar firma Ed25519
+//   si ed25519_verificar(mensaje, firma, clave_publica) == 0:
+//       log("Firma valida")
+//   sino:
+//       log("Firma invalida")
+
+externo funcion _syn_sha256_texto(datos: texto) -> texto
+externo funcion _syn_ed25519_verificar(mensaje: texto, firma: texto, clave_publica: texto) -> entero
+
+funcion sha256_texto(datos: texto) -> texto:
+    // cumple Manual 2 §5.1: hash SHA-256 produce exactamente 64 hex chars
+    requiere:
+        longitud(datos) >= 0
+    garantiza:
+        longitud(_resultado_) == 64
+    retornar _syn_sha256_texto(datos)
+
+funcion ed25519_verificar(mensaje: texto, firma: texto, clave_publica: texto) -> entero:
+    // cumple Manual 2 §5.1: firma Ed25519 base64 (88 chars) y clave pública (44 chars)
+    requiere:
+        longitud(mensaje) >= 0
+    requiere:
+        longitud(firma) == 88
+    requiere:
+        longitud(clave_publica) == 44
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
+    retornar _syn_ed25519_verificar(mensaje, firma, clave_publica)

@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "3a4c6f5519a31d06",
+ "expediente": "docs/alineacion/r299e_contratos_syquex.md",
+ "fecha": "2026-11-24",
+ "archivos": [
+  "syquex/expr.syn",
+  "syquex/parser.syn"
+ ],
+ "oraculos": {
+  "auditoria/verificar_contratos.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

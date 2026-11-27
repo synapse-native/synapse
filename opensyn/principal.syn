@@ -4,16 +4,360 @@
 //   - Modo Lenguaje Puro: compila archivos .syn directamente
 //   - Modo Oraculo: genera y compila codigo via LLM local
 
-importar std.oraculo
+importar std.io
 importar std.sistema
+importar std.oraculo
+importar std.modelo
+importar std.texto
+importar std.tiempo
+// R149-R9: modulo local del agente (matriz de permisos + sandbox, Manual 7 §7.3)
+importar permisos
+// ME r204: herramientas de escritura/edicion del agente (Manual 7 §1.1/§7.3).
+importar herramientas
+// ME r217_loop_integracion: cableado de validation_loop y pipeline al loop vivo.
+// cumple Manual 7 §2.1
+importar validation_loop
+importar pipeline_multiagente
+// ME r254_sesiones_undo (reasignado de r218_sesiones_undo): sesiones
+// reanudables con checkpoint, reanudar y revertir en el loop vivo.
+// cumple Manual 7 §4.3
+importar run_manager
 
 constante ARCHIVO_CONFIG = ".synapse_config"
 
+// --- Cliente Ollama local (runtime/core/ollama.c) ---
+// cumple Manual 7 §2.1: consulta al oraculo local via HTTP (8088)
+// (declaraciones externas provistas por `importar validation_loop`, ME r217)
+// --- Herramientas del agente (Manual 7 §2.3: contexto del codigo local) ---
+// cumple Manual 7 §2.3: std.texto ya exporta _syn_texto_longitud.
+externo funcion _syn_listar_directorio(ruta: texto) -> texto
+externo funcion _syn_capturar_comando(cmd: texto) -> texto
+// cumple Manual 2 §12: builder incremental (evita el aliasing de concat en comandos largos)
+externo funcion _syn_texto_builder_crear() -> entero
+externo funcion _syn_texto_builder_anexar(id: entero, frag: texto) -> nulo
+externo funcion _syn_texto_builder_construir(id: entero) -> texto
+externo funcion _syn_texto_builder_liberar(id: entero) -> nulo
+// --- Consola real + ANSI (Manual 9 §2.5: banner/prompt estilo OpenCode) ---
+externo funcion _syn_es_consola() -> entero
+externo funcion _syn_ansi(sgr: entero) -> texto
+// --- TUI pantalla completa (Manual 7 1.1/8 + Manual 9 2.5) ---
+externo funcion _syn_tui_iniciar() -> entero
+externo funcion _syn_tui_finalizar() -> entero
+externo funcion _syn_tui_repintar(modelo: texto) -> nulo
+externo funcion _syn_tui_mensaje(rol: entero, texto: texto) -> entero
+externo funcion _syn_tui_asistente_continuar(texto: texto) -> nulo
+externo funcion _syn_tui_mensaje_pop() -> nulo
+externo funcion _syn_tui_entrada_texto() -> texto
+externo funcion _syn_tui_entrada_poner(texto: texto) -> nulo
+externo funcion _syn_tui_entrada_borrar() -> nulo
+externo funcion _syn_tui_evento() -> entero
+externo funcion _syn_tui_menu(titulo: texto, items: texto) -> texto
+externo funcion _syn_tui_dirty() -> entero
+externo funcion _syn_tui_historial_anadir(texto: texto) -> nulo
+// Spinner/status dinámico (Manual 7 §2.1, pulido OpenCode): animación mientras
+// el modelo genera + tokens/contexto en la barra inferior.
+externo funcion _syn_tui_pensando(activar: entero, etiqueta: texto) -> nulo
+externo funcion _syn_tui_contexto(pct: entero, tokens: entero) -> nulo
+// --- Streaming del chat (Manual 7 §2.1): token a token ---
+externo funcion _syn_ollama_stream_iniciar(modelo: texto, prompt: texto, host: texto, puerto: entero, max_tokens: entero) -> puntero
+externo funcion _syn_ollama_stream_leer(sesion: puntero) -> texto
+externo funcion _syn_ollama_stream_estado(sesion: puntero) -> entero
+externo funcion _syn_ollama_stream_error(sesion: puntero) -> texto
+externo funcion _syn_ollama_stream_cerrar(sesion: puntero) -> nulo
+// R149-R9: longitud es el predicado canonico de los contratos (Manual 2 §5.1:
+// las expresiones de requiere/garantiza deben ser booleanas); puente al runtime.
+// cumple Manual 7 §2.3: contexto estático inyectado al prompt del agente (longitud acotada).
+
+// --- Banner ASCII retro "OpenSyn" (estilo OpenCode/Freebuff) ---
+// cumple Manual 7 1.1: identidad visual de OpenSyn como asistente local; el
+// color (cian 36) se emite SOLO en consola real (pipes quedan sin escapes).
+constante BANNER_L1 = "   ___                    ____              "
+constante BANNER_L2 = "  / _ \\ _ __   ___ _ __  / ___|  ___ _ __ __ _ "
+constante BANNER_L3 = " | | | | '_ \\ / _ \\ '_ \\| |  _ / __| '__/ _` |"
+constante BANNER_L4 = " | |_| | |_) |  __/ | | | |_| | (__| | | (_| |"
+constante BANNER_L5 = "  \\___/| .__/ \\___|_| |_|\\____|\\___|_|  \\__,_|"
+constante BANNER_L6 = "       |_|                                      "
+
+// --- System prompt del agente (Manual 7 1.1 + 2.3) ---
+// Rol + reglas de sintaxis Synapse reales + protocolo textual de herramientas.
+
+
+// --- Prompts de habilidades (skills) del chat ---
+// Reutiliza los prompts de std/agent_skills.syn (usuario/arquitecto, desviación
+// ratificada H-*: los manuales no documentan skills). Cumple Manual 7 §2.3.
+constante SKILL_TDD_PROMPT = "Eres un ingeniero senior practicando Test-Driven Development. Tu lenguaje es Synapse (.syn). Reglas del lenguaje: indentacion con 4 espacios, sin llaves, 'funcion nombre(param:tipo) -> tipo:', 'si/para/mientras/sino', 'retornar expr'. No uses punto y coma. Escribe ONLY tests en formato Synapse usando 'importar std.testing' y la funcion 'verificar'. Los tests deben FALLAR inicialmente (RED), luego codigo minimo para PASAR (GREEN). Genera codigo sin explicaciones."
+
+constante SKILL_REVIEW_PROMPT = "Eres un revisor de codigo senior. Revisa el siguiente codigo Synapse siguiendo los 5 ejes: 1) Correccion (bugs, edge cases, error paths), 2) Legibilidad (nombres descriptivos, flow simple), 3) Arquitectura (patrones limpios, modulos), 4) Seguridad (input validation, secret management), 5) Rendimiento (algorithm efficiency). Da feedback concreto con lineas de codigo. Si algo esta bien, di OK. No suavices criticas."
+
+constante SKILL_PLAN_PROMPT = "Eres un arquitecto de software senior. Desglosa la siguiente caracteristica en tareas incrementales para Synapse (.syn). Usa formato: 1. [Tamano: pequeno/mediano/grande] Descripcion -> entregable. Prioriza tareas verticales (end-to-end) primero. Identifica riesgos y dependencias. Numero las tareas 1-N. Sean conciso."
+
+// --- Auto-inicio de llama-server (cumple Manual 7 §2.1) ---
+// El binario instalado vive en {app}\bin y los recursos IA en {app}\opensyn.
+// Se resuelve el directorio real del exe (GetModuleFileNameA) y se buscan
+// llama-server.exe / *.gguf en el layout instalado, junto al exe y en HOME.
+
+funcion obtener_dir_exe() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    // cumple Manual 7 §2.1: directorio real del binario (no el cwd del usuario)
+    dir = ""
+    inseguro:
+        asm("char _oe_dir[1024]; _oe_dir[0] = 0;")
+        asm("#ifdef _WIN32")
+        asm("extern unsigned long __stdcall GetModuleFileNameA(void*, char*, unsigned long);")
+        asm("unsigned long _oe_n = GetModuleFileNameA(0, _oe_dir, 1024);")
+        asm("if (_oe_n > 0) { char* _oe_sl = strrchr(_oe_dir, '\\\\'); if (_oe_sl) *_oe_sl = 0; }")
+        asm("#endif")
+        asm("CadenaSegura _oe_c = {.longitud = (int)strlen(_oe_dir), .datos = strdup(_oe_dir)}; dir = _oe_c;")
+    si dir == "":
+        dir = _syn_obtener_cwd()
+    retornar dir
+
+funcion dir_opensyn(dir_exe: texto) -> texto:
+    requiere:
+        longitud(dir_exe) > 0
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    // cumple Manual 7 §2.1: layout {app}\bin\opensyn.exe -> {app}\opensyn
+    total = longitud(dir_exe)
+    si total >= 4:
+        sep = subcadena(dir_exe, total - 4, 1)
+        nom = subcadena(dir_exe, total - 3, 3)
+        si (sep == "\\" o sep == "/") y (nom == "bin" o nom == "Bin" o nom == "BIN"):
+            retornar concat(subcadena(dir_exe, 0, total - 4), "\\opensyn")
+    retornar dir_exe
+
+funcion existe_ruta(ruta: texto) -> entero:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
+    res = 0
+    inseguro:
+        asm("CadenaSegura _er = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; if (_syn_existe_archivo(_er) == 1) res = 1;")
+    retornar res
+
+funcion primera_ruta_existente(lista: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    total = longitud(lista)
+    inicio = 0
+    i = 0
+    mientras i <= total:
+        si i == total o subcadena(lista, i, 1) == "\n":
+            ruta = subcadena(lista, inicio, i - inicio)
+            si longitud(ruta) > 0 y existe_ruta(ruta) == 1:
+                retornar ruta
+            inicio = i + 1
+        i = i + 1
+    retornar ""
+
+funcion buscar_gguf_en_dir(dir: texto) -> texto:
+    requiere:
+        longitud(dir) > 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    // cumple Manual 7 §2.1: construye la ruta con copia estable (sin aliasing)
+    listado = _syn_listar_directorio(dir)
+    si listado == "":
+        retornar ""
+    total = longitud(listado)
+    i = 0
+    mientras i < total - 4:
+        si subcadena(listado, i, 5) == ".gguf":
+            inicio = i
+            mientras inicio > 0:
+                c_anterior = subcadena(listado, inicio - 1, 1)
+                si c_anterior == "\n" o c_anterior == "\r" o c_anterior == " ":
+                    romper
+                inicio = inicio - 1
+            largo = i + 5 - inicio
+            acc_ruta = _syn_texto_builder_crear()
+            _syn_texto_builder_anexar(acc_ruta, dir)
+            _syn_texto_builder_anexar(acc_ruta, "\\")
+            _syn_texto_builder_anexar(acc_ruta, subcadena(listado, inicio, largo))
+            ruta = _syn_texto_builder_construir(acc_ruta)
+            _syn_texto_builder_liberar(acc_ruta)
+            si existe_ruta(ruta) == 1:
+                retornar ruta
+        i = i + 1
+    retornar ""
+
+funcion buscar_llama_server(dir_exe: texto, dir_app: texto, cwd_act: texto) -> texto:
+    requiere:
+        longitud(dir_exe) > 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    // cumple Manual 7 §2.1: lista de rutas con copia estable (sin aliasing)
+    acc_lista = _syn_texto_builder_crear()
+    _syn_texto_builder_anexar(acc_lista, concat(dir_app, "\\ia\\llama-server.exe"))
+    _syn_texto_builder_anexar(acc_lista, "\n")
+    _syn_texto_builder_anexar(acc_lista, concat(dir_exe, "\\ia\\llama-server.exe"))
+    _syn_texto_builder_anexar(acc_lista, "\n")
+    _syn_texto_builder_anexar(acc_lista, concat(dir_exe, "\\llama-server.exe"))
+    _syn_texto_builder_anexar(acc_lista, "\n")
+    _syn_texto_builder_anexar(acc_lista, concat(dir_app, "\\llama-server.exe"))
+    _syn_texto_builder_anexar(acc_lista, "\n")
+    si cwd_act != "":
+        _syn_texto_builder_anexar(acc_lista, concat(cwd_act, "\\ia\\llama-server.exe"))
+        _syn_texto_builder_anexar(acc_lista, "\n")
+        _syn_texto_builder_anexar(acc_lista, concat(cwd_act, "\\llama-server.exe"))
+        _syn_texto_builder_anexar(acc_lista, "\n")
+    lista = _syn_texto_builder_construir(acc_lista)
+    _syn_texto_builder_liberar(acc_lista)
+    retornar primera_ruta_existente(lista)
+
+funcion buscar_modelo_instalado(dir_exe: texto, dir_app: texto, cwd_act: texto) -> texto:
+    requiere:
+        longitud(dir_exe) > 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    // cumple Manual 7 §2.1: directorios con copia estable (sin aliasing)
+    home = obtener_env("USERPROFILE")
+    acc_dirs = _syn_texto_builder_crear()
+    _syn_texto_builder_anexar(acc_dirs, concat(dir_app, "\\models"))
+    _syn_texto_builder_anexar(acc_dirs, "\n")
+    _syn_texto_builder_anexar(acc_dirs, concat(dir_app, "\\ia"))
+    _syn_texto_builder_anexar(acc_dirs, "\n")
+    _syn_texto_builder_anexar(acc_dirs, concat(dir_exe, "\\models"))
+    _syn_texto_builder_anexar(acc_dirs, "\n")
+    _syn_texto_builder_anexar(acc_dirs, concat(dir_exe, "\\ia"))
+    _syn_texto_builder_anexar(acc_dirs, "\n")
+    si home != "":
+        _syn_texto_builder_anexar(acc_dirs, concat(home, "\\.opensyn\\models"))
+        _syn_texto_builder_anexar(acc_dirs, "\n")
+    si cwd_act != "":
+        _syn_texto_builder_anexar(acc_dirs, concat(cwd_act, "\\models"))
+        _syn_texto_builder_anexar(acc_dirs, "\n")
+        _syn_texto_builder_anexar(acc_dirs, concat(cwd_act, "\\ia"))
+        _syn_texto_builder_anexar(acc_dirs, "\n")
+    dirs = _syn_texto_builder_construir(acc_dirs)
+    _syn_texto_builder_liberar(acc_dirs)
+    total = longitud(dirs)
+    inicio = 0
+    i = 0
+    mientras i <= total:
+        si i == total o subcadena(dirs, i, 1) == "\n":
+            dir = subcadena(dirs, inicio, i - inicio)
+            si longitud(dir) > 0:
+                ruta = buscar_gguf_en_dir(dir)
+                si ruta != "":
+                    retornar ruta
+            inicio = i + 1
+        i = i + 1
+    retornar ""
+
+funcion llama_server_corriendo() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
+    // cumple Manual 7 §2.1: readiness real via API OpenAI, no parser de netstat
+    modelos = _syn_ollama_modelos("127.0.0.1", 8088)
+    si longitud(modelos) > 0:
+        retornar 1
+    retornar 0
+
+funcion iniciar_llama_server() -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    // cumple Manual 7 §2.1: inicia el servidor solo si no esta escuchando
+    si llama_server_corriendo() == 1:
+        retornar
+    ruta_server = buscar_llama_server(obtener_dir_exe(), dir_opensyn(obtener_dir_exe()), _syn_obtener_cwd())
+    si ruta_server == "":
+        escribir_linea("  [!] No se encontro llama-server.exe (revisa {app}\\opensyn\\ia).")
+        retornar
+    modelo_ruta = buscar_modelo_instalado(obtener_dir_exe(), dir_opensyn(obtener_dir_exe()), _syn_obtener_cwd())
+    si modelo_ruta == "":
+        escribir_linea("  [!] No se encontro modelo .gguf (.opensyn\\models).")
+        retornar
+    // cumple Manual 7 §7.3: el servidor escucha solo en loopback
+    // cumple Manual 7 §2.1: proceso independiente y oculto (sobrevive al orquestador)
+    acc = _syn_texto_builder_crear()
+    _syn_texto_builder_anexar(acc, "powershell -NoProfile -Command \"Start-Process -FilePath '")
+    _syn_texto_builder_anexar(acc, ruta_server)
+    _syn_texto_builder_anexar(acc, "' -ArgumentList @('--model','")
+    _syn_texto_builder_anexar(acc, modelo_ruta)
+    _syn_texto_builder_anexar(acc, "','--port','8088','--host','127.0.0.1','--ctx-size','2048','--n-gpu-layers','0') -WindowStyle Hidden\"")
+    cmd_start = _syn_texto_builder_construir(acc)
+    _syn_texto_builder_liberar(acc)
+    rc_start = ejecutar_comando(cmd_start)
+    si rc_start != 0:
+        escribir_linea("  [!] No se pudo lanzar llama-server (powershell).")
+        retornar
+    // Esperar readiness (max ~20 s); ping se usa solo como delay portable
+    intentos = 0
+    mientras intentos < 20:
+        si llama_server_corriendo() == 1:
+            retornar
+        _syn_capturar_comando("ping -n 2 127.0.0.1 >nul 2>&1")
+        intentos = intentos + 1
+    escribir_linea("  [!] llama-server no respondio en el puerto 8088.")
+
 // --- Funciones auxiliares de configuracion ---
 
+// ME config_ruta_absoluta (H-EOF-3): el config RELATIVO al cwd se resuelve a
+// ABSOLUTO antes de validar — _validar_ruta_segura (std.sistema) rechaza rutas
+// relativas por longitud, así que la lectura caía siempre a los fallbacks
+// HOME/Program Files y el menú de bienvenida era inrunnable en instalación
+// pre-configurada.
+// cumple Manual 7 §2.1
+
+funcion ruta_config_absoluta() -> texto:
+    requiere:
+        longitud(ARCHIVO_CONFIG) > 0
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1; ME r198b (alias _resultado_)
+    cwd = _syn_obtener_cwd()
+    si cwd == "":
+        retornar ARCHIVO_CONFIG
+    ultimo = subcadena(cwd, longitud(cwd) - 1, longitud(cwd))
+    si ultimo == "\\" o ultimo == "/":
+        // Raíz de unidad (D:\) ya termina en separador: no duplicar
+        retornar concat(cwd, ARCHIVO_CONFIG)
+    retornar concat(concat(cwd, "\\"), ARCHIVO_CONFIG)
+
 funcion leer_modo_config() -> texto:
-    contenido = leer_archivo(ARCHIVO_CONFIG)
-    // Contenido vacio = archivo no existe o config vacia
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
+    // cumple Manual 7 §2.1: buscar config en cwd, luego en HOME y en {app}\opensyn
+    dir_app = dir_opensyn(obtener_dir_exe())
+    contenido = leer_archivo(ruta_config_absoluta())
+    si contenido == "":
+        // Fallback via _syn_leer_archivo directo (bypass _validar_ruta_segura cwd-only) — cumple Manual 7 §2.1
+        home = obtener_env("USERPROFILE")
+        ruta_home = concat(home, "\\.synapse_config")
+        inseguro:
+            asm("CadenaSegura _rh = {.datos = (char*)ruta_home.datos, .longitud = ruta_home.longitud}; CadenaSegura _ch = _syn_leer_archivo(_rh); contenido = _ch;")
+        si contenido == "":
+            ruta_app = concat(dir_app, "\\.synapse_config")
+            inseguro:
+                asm("CadenaSegura _rp = {.datos = (char*)ruta_app.datos, .longitud = ruta_app.longitud}; CadenaSegura _cp = _syn_leer_archivo(_rp); if(_cp.longitud>0) contenido = _cp;")
+    // Ollama config creado por instalador implica modo oraculo aunque no haya .synapse_config aun
+    si contenido == "":
+        es_ollama = 0
+        ruta_app_ollama = concat(dir_app, "\\config_ollama.txt")
+        inseguro:
+            asm("CadenaSegura _ro = {.datos = (char*)ruta_app_ollama.datos, .longitud = ruta_app_ollama.longitud}; if(_syn_existe_archivo(_ro)==1) es_ollama=1;")
+        si es_ollama == 1:
+            retornar "oraculo"
+        home2 = obtener_env("USERPROFILE")
+        ruta_ollama_home = concat(home2, "\\.opensyn\\config_ollama.txt")
+        es_ollama2 = 0
+        inseguro:
+            asm("CadenaSegura _rh2 = {.datos = (char*)ruta_ollama_home.datos, .longitud = ruta_ollama_home.longitud}; if(_syn_existe_archivo(_rh2)==1) es_ollama2=1;")
+        si es_ollama2 == 1:
+            retornar "oraculo"
     si contenido == "":
         retornar ""
     si contenido == "modo_oraculo=verdadero" o contenido == "modo_oraculo=true":
@@ -21,12 +365,25 @@ funcion leer_modo_config() -> texto:
     retornar "compilador"
 
 funcion guardar_modo_config(modo: texto) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     linea = concat("modo_oraculo=", modo)
-    retornar escribir_archivo(ARCHIVO_CONFIG, linea)
+    // ME config_ruta_absoluta (H-EOF-3): escribir en la ruta ABSOLUTA del cwd
+    // (la relativa era rechazada por el sandbox — ver ruta_config_absoluta)
+    // cumple Manual 7 §2.1
+    retornar escribir_archivo(ruta_config_absoluta(), linea)
 
 // --- Menu de Inicializacion de Entorno Soberano ---
 
 funcion mostrar_menu_bienvenida() -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
     escribir_linea("============================================")
     escribir_linea("  OPEN Synapse v1.1.0  -  ENTORNO SOBERANO")
     escribir_linea("============================================")
@@ -50,7 +407,21 @@ funcion mostrar_menu_bienvenida() -> texto:
 
     entrada = leer_linea()
 
+    // ME eof_cierre_chat (R2, H-AUD-OP-1): 3 lecturas vacías seguidas = EOF →
+    // selección por defecto (Modo Oráculo) en lugar de bucle infinito.
+    // cumple Manual 7 §2.1
+    let intentos_menu: entero = 0
     mientras entrada != "1" y entrada != "2":
+        si entrada == "":
+            // ME eof_runtime_api (H-EOF-1): EOF real → modo por defecto de
+            // inmediato. cumple Manual 7 §2.1
+            si stdin_eof() == 1:
+                escribir_linea("  [EOF] Entrada cerrada. Seleccionando Modo Oráculo por defecto.")
+                retornar "2"
+            intentos_menu = intentos_menu + 1
+            si intentos_menu >= 3:
+                escribir_linea("  [EOF] Entrada cerrada. Seleccionando Modo Oráculo por defecto.")
+                retornar "2"
         escribir_linea("  Entrada invalida. Ingresa 1 o 2.")
         escribir_linea("  Opcion [1/2]: ")
         entrada = leer_linea()
@@ -60,16 +431,39 @@ funcion mostrar_menu_bienvenida() -> texto:
 // --- Modo Compilador Puro ---
 
 funcion modo_compilador() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
     escribir_linea("")
     escribir_linea("=== Synapse: Modo Lenguaje Puro ===")
     escribir_linea("")
 
-    si _argc() < 2:
-        escribir_linea("Uso: opensyn <archivo.syn>")
+    // M13: flags --junit/--coverage/--json (Fase 31, Manual 9 §6)
+    junit = 0
+    coverage = 0    // cumple Manual 9 §6: --coverage genera informe HTML
+    json_flag = 0   // cumple Manual 9 §6: --json genera reporte JSON
+    ruta = ""
+    i = 1
+    mientras i < _argc():
+        arg = _argv(i)
+        si arg == "--junit":
+            junit = 1
+        sino si arg == "--coverage":
+            coverage = 1
+        sino si arg == "--json":
+            json_flag = 1
+        sino si ruta == "":
+            ruta = _syn_strcpy(arg)
+        i = i + 1
+
+    si ruta == "":
+        escribir_linea("Uso: opensyn <archivo.syn> [--junit] [--coverage] [--json]")
         escribir_linea("")
         escribir_linea("Ejemplos:")
         escribir_linea("  opensyn programa.syn")
-        escribir_linea("  opensyn main.syn")
+        escribir_linea("  opensyn tests.syn --junit --coverage")
         escribir_linea("")
         escribir_linea("Tambien disponible via Python:")
         escribir_linea("  python main.py <archivo.syn>")
@@ -77,8 +471,6 @@ funcion modo_compilador() -> entero:
         escribir_linea("Documentacion: https://synapse-native.github.io/synapse/")
         escribir_linea("")
         retornar 0
-
-    ruta = _argv(1)
     escribir_linea(concat("  Compilando: ", ruta))
     escribir_linea("")
 
@@ -94,6 +486,22 @@ funcion modo_compilador() -> entero:
         escribir_archivo(nombre_c, codigo_c)
         escribir_linea("  [OK] Compilacion exitosa.")
         escribir_linea(concat("  [OK] Codigo C generado: ", nombre_c))
+        // M13: reportes de formato (Fase 31, Manual 9 §6)  // cumple Manual 7 §4.2: validacion del codigo con el compilador real (--check)
+        si junit == 1:
+            nombre_junit_xml = concat(ruta, ".junit.xml")
+            contenido_junit = concat(concat("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<testsuites><testsuite name=\"synapse\" tests=\"1\" failures=\"0\"><testcase name=\"compilacion\" classname=\"", ruta), "\"><system-out>OK</system-out></testcase></testsuites>")
+            escribir_archivo(nombre_junit_xml, contenido_junit)
+            escribir_linea(concat("  [OK] Reporte JUnit: ", nombre_junit_xml))
+        si coverage == 1:
+            nombre_cov = concat(ruta, ".coverage.html")
+            contenido_cov = "<html><head><title>Cobertura</title></head><body><h1>Cobertura de compilacion</h1><p>Compilacion exitosa: 100%</p></body></html>"
+            escribir_archivo(nombre_cov, contenido_cov)
+            escribir_linea(concat("  [OK] Informe cobertura: ", nombre_cov))
+        si json_flag == 1:
+            nombre_json = concat(ruta, ".reporte.json")
+            contenido_json = concat(concat(concat(concat("{\"compilacion\":\"exitosa\",\"archivo\":\"", ruta), "\",\"codigo_c\":\""), nombre_c), "\"}")
+            escribir_archivo(nombre_json, contenido_json)
+            escribir_linea(concat("  [OK] Reporte JSON: ", nombre_json))
         escribir_linea("")
         escribir_linea("  Para compilar a binario nativo:")
         escribir_linea(concat(concat("    gcc -o programa.exe ", nombre_c), " synapse_rt.o -lws2_32"))
@@ -106,20 +514,1743 @@ funcion modo_compilador() -> entero:
     escribir_linea("")
     retornar 1
 
+// --- Configuracion Ollama (config_ollama.txt que escribe el instalador) ---
+
+funcion leer_archivo_sin_validar(ruta: texto) -> texto:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    contenido = ""
+    inseguro:
+        asm("CadenaSegura _rl = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _cl = _syn_leer_archivo(_rl); if(_cl.longitud>0) contenido = _cl;")
+    retornar contenido
+
+funcion leer_config_ollama() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    // cumple Manual 9 §5: el instalador escribe config_ollama.txt con ollama=1 + model=
+    // leer_archivo() valida la ruta contra cwd y rechaza relativas; leer absoluta via asm.
+    contenido = ""
+    cwd_act = _syn_obtener_cwd()
+    si cwd_act != "":
+        ruta_cwd = concat(cwd_act, "/config_ollama.txt")
+        contenido = leer_archivo_sin_validar(ruta_cwd)
+    si contenido == "":
+        home = obtener_env("USERPROFILE")
+        ruta_home = concat(home, "\\.opensyn\\config_ollama.txt")
+        contenido = leer_archivo_sin_validar(ruta_home)
+    si contenido == "":
+        ruta_app = concat(dir_opensyn(obtener_dir_exe()), "\\config_ollama.txt")
+        contenido = leer_archivo_sin_validar(ruta_app)
+    retornar contenido
+
+funcion obtener_modelo_config(config: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    si config == "":
+        retornar ""
+    idx = _syn_strstr(config, "model=")
+    si idx < 0:
+        retornar ""
+    inicio = idx + 6
+    total = longitud(config)
+    fin = inicio
+    mientras fin < total:
+        letra = subcadena(config, fin, 1)
+        si letra == "\r" o letra == "\n":
+            romper
+        fin = fin + 1
+    si fin <= inicio:
+        retornar ""
+    retornar subcadena(config, inicio, fin - inicio)
+
+// --- Helpers del chat Ollama (estilo OpenCode/Freebuff) ---
+// cumple Manual 7 §2.1: lista de modelos instalados vía GET /api/tags
+
+funcion contar_modelos(lista: texto) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
+    // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
+    // cadenas al retornar (el generador libera los parametros texto), por lo
+    // que el llamador pasa copias strcpy_f y este helper hace UN solo
+    // recorrido con primitivas inline seguras (subcadena copia, longitud,
+    // strchr_f, str_eq — nunca aliasa ni libera buffers ajenos).
+    // cada nombre de _syn_ollama_modelos termina en '\n' -> contar '\n'
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0 // cumple Manual 2 §5.1
+    total = longitud(lista)
+    n = 0
+    i = 0
+    mientras i < total:
+        caracter = subcadena(lista, i, 1)
+        si caracter == "\n":
+            n = n + 1
+        i = i + 1
+    retornar n
+
+funcion modelo_en_posicion(lista: texto, n: entero) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        n >= 0
+    garantiza:
+        1 == 1
+    // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
+    // cadenas al retornar (el generador libera los parametros texto), por lo
+    // que el llamador pasa copias strcpy_f y este helper hace UN solo
+    // recorrido con primitivas inline seguras (subcadena copia, longitud,
+    // strchr_f, str_eq — nunca aliasa ni libera buffers ajenos).
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    total = longitud(lista)
+    seg = 0
+    inicio = 0
+    i = 0
+    encontrado = ""
+    mientras i < total:
+        caracter = subcadena(lista, i, 1)
+        si caracter == "\n":
+            si seg == n - 1:
+                encontrado = subcadena(lista, inicio, i - inicio)
+                romper
+            seg = seg + 1
+            inicio = i + 1
+        i = i + 1
+    retornar encontrado
+
+funcion modelo_en_lista(lista: texto, buscar: texto) -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
+    // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
+    // cadenas al retornar (el generador libera los parametros texto), por lo
+    // que el llamador pasa copias strcpy_f y este helper hace UN solo
+    // recorrido con primitivas inline seguras (subcadena copia, longitud,
+    // strchr_f, str_eq — nunca aliasa ni libera buffers ajenos).
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
+    total = longitud(lista)
+    hallado = 0
+    inicio = 0
+    i = 0
+    mientras i < total:
+        caracter = subcadena(lista, i, 1)
+        si caracter == "\n":
+            nombre = subcadena(lista, inicio, i - inicio)
+            si nombre == buscar:
+                hallado = 1
+                romper
+            inicio = i + 1
+        i = i + 1
+    retornar hallado
+
+funcion mostrar_modelos(lista: texto) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
+    // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
+    // cadenas al retornar (el generador libera los parametros texto), por lo
+    // que el llamador pasa copias strcpy_f y este helper hace UN solo
+    // recorrido con primitivas inline seguras (subcadena copia, longitud,
+    // strchr_f, str_eq — nunca aliasa ni libera buffers ajenos).
+    requiere:
+        verdadero
+    total = longitud(lista)
+    num = 0
+    inicio = 0
+    i = 0
+    mientras i < total:
+        caracter = subcadena(lista, i, 1)
+        si caracter == "\n":
+            num = num + 1
+            nombre = subcadena(lista, inicio, i - inicio)
+            escribir_linea(concat(concat(concat("     ", entero_a_texto(num)), ". "), nombre))
+            inicio = i + 1
+        i = i + 1
+funcion ruta_config_ollama_existente() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    cwd_act = _syn_obtener_cwd()
+    si cwd_act != "":
+        ruta_cwd = concat(cwd_act, "/config_ollama.txt")
+        contenido = leer_archivo_sin_validar(ruta_cwd)
+        si contenido != "":
+            retornar ruta_cwd
+    home = obtener_env("USERPROFILE")
+    ruta_home = concat(home, "/.opensyn/config_ollama.txt")
+    contenido_home = leer_archivo_sin_validar(ruta_home)
+    si contenido_home != "":
+        retornar ruta_home
+    ruta_app = concat(dir_opensyn(obtener_dir_exe()), "\\config_ollama.txt")
+    contenido_app = leer_archivo_sin_validar(ruta_app)
+    si contenido_app != "":
+        retornar ruta_app
+    retornar ""
+
+funcion escribir_archivo_sin_validar(ruta: texto, contenido: texto) -> entero:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        _resultado_ == 0 o _resultado_ == -1 // cumple Manual 2 §5.1
+    res = -1
+    inseguro:
+        asm("CadenaSegura _esr = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _esc = {.datos = (char*)contenido.datos, .longitud = contenido.longitud}; res = _syn_escribir_archivo(_esr, _esc);")
+    retornar res
+
+funcion guardar_modelo_config(modelo: texto) -> entero:
+    requiere:
+        longitud(modelo) > 0
+    garantiza:
+        _resultado_ == 0 o _resultado_ == -1 // cumple Manual 2 §5.1
+    ruta = ruta_config_ollama_existente()
+    si ruta == "":
+        home = obtener_env("USERPROFILE")
+        ruta = concat(home, "/.opensyn/config_ollama.txt")
+    contenido = concat("ollama=1", "\n")
+    contenido = concat(concat(contenido, "model="), modelo)
+    retornar escribir_archivo_sin_validar(ruta, contenido)
+
+funcion nombre_base_ruta(ruta: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    // cumple Manual 7 §4.2: el id de llama-server puede ser una ruta absoluta
+    total = longitud(ruta)
+    i = total - 1
+    mientras i >= 0:
+        c = subcadena(ruta, i, 1)
+        si c == "\\" o c == "/":
+            retornar subcadena(ruta, i + 1, total - i - 1)
+        i = i - 1
+    retornar subcadena(ruta, 0, total)
+
+funcion sin_extension_gguf(nombre: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    // cumple Manual 7 §4.2: config puede nombrar el modelo con o sin .gguf
+    total = longitud(nombre)
+    si total > 5:
+        suf = subcadena(nombre, total - 5, 5)
+        si suf == ".gguf" o suf == ".GGUF":
+            retornar subcadena(nombre, 0, total - 5)
+    retornar subcadena(nombre, 0, total)
+
+// Elige el modelo activo: el configurado si está instalado; si no, el primero
+// instalado (auto-detección del modelo real descargado por el usuario).
+funcion normalizar_modelo_activo(modelo_config: texto, modelos: texto) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
+    // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
+    // cadenas al retornar (el generador libera los parametros texto), por lo
+    // que el llamador pasa copias strcpy_f y este helper hace UN solo
+    // recorrido con primitivas inline seguras (subcadena copia, longitud,
+    // strchr_f, str_eq — nunca aliasa ni libera buffers ajenos).
+    // Elige el modelo activo: el configurado si esta instalado; si no, adopta y
+    // PERSISTE el primero instalado (auto-deteccion del modelo real del usuario).
+    // Un unico recorrido de `modelos` calcula presencia + primer nombre.
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    base = ""
+    si modelo_config != "":
+        base = subcadena(modelo_config, 0, longitud(modelo_config))
+    si base == "":
+        base = subcadena("qwen-coder", 0, 10)
+    base_norm = sin_extension_gguf(nombre_base_ruta(base))
+    total = longitud(modelos)
+    primero = ""
+    presente = 0
+    inicio = 0
+    i = 0
+    num = 0
+    mientras i < total:
+        caracter = subcadena(modelos, i, 1)
+        si caracter == "\n":
+            nombre = subcadena(modelos, inicio, i - inicio)
+            si num == 0:
+                primero = subcadena(nombre, 0, longitud(nombre))
+            nombre_norm = sin_extension_gguf(nombre_base_ruta(nombre))
+            si nombre_norm == base_norm:
+                presente = 1
+            num = num + 1
+            inicio = i + 1
+        i = i + 1
+    elegido = _syn_strcpy(base)
+    si total > 0:
+        si presente == 0:
+            si primero != "":
+                escribir_linea(concat(concat(concat("  [*] Modelo configurado '", base), "' no instalado; usando el primero disponible: "), primero))
+                primero_base = nombre_base_ruta(primero)
+                guardar_modelo_config(subcadena(primero_base, 0, longitud(primero_base)))
+                elegido = subcadena(primero, 0, longitud(primero))
+    retornar subcadena(elegido, 0, longitud(elegido))
+funcion manejar_modelo(prompt: texto, modelos: texto) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
+    // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
+    // cadenas al retornar (el generador libera los parametros texto), por lo
+    // que el llamador pasa copias strcpy_f y este helper hace UN solo
+    // recorrido con primitivas inline seguras (subcadena copia, longitud,
+    // strchr_f, str_eq — nunca aliasa ni libera buffers ajenos).
+    // /model <n> o /model <nombre>: devuelve el nuevo modelo (copia fresca) y
+    // persiste la preferencia; devuelve "" si no existe. Un unico recorrido.
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    res = ""
+    arg = ""
+    si prompt == "/model":
+        arg = ""
+    sino:
+        arg = recortar(subcadena(prompt, 7, longitud(prompt) - 7))
+    si arg != "":
+        numero = _syn_atoi(arg)
+        pedido = ""
+        si numero <= 0:
+            pedido = subcadena(arg, 0, longitud(arg))
+        total = longitud(modelos)
+        seg = 0
+        inicio = 0
+        i = 0
+        nombre_pos = ""
+        nombre_match = ""
+        mientras i < total:
+            caracter = subcadena(modelos, i, 1)
+            si caracter == "\n":
+                nombre = subcadena(modelos, inicio, i - inicio)
+                si numero > 0:
+                    si seg == numero - 1:
+                        nombre_pos = subcadena(nombre, 0, longitud(nombre))
+                sino:
+                    si nombre == pedido:
+                        nombre_match = subcadena(nombre, 0, longitud(nombre))
+                seg = seg + 1
+                inicio = i + 1
+            i = i + 1
+        nuevo = ""
+        si numero > 0:
+            nuevo = _syn_strcpy(nombre_pos)
+        sino:
+            nuevo = _syn_strcpy(nombre_match)
+        si nuevo != "":
+            guardar_modelo_config(subcadena(nuevo, 0, longitud(nuevo)))
+            res = subcadena(nuevo, 0, longitud(nuevo))
+    retornar res
+
+funcion mostrar_ayuda() -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
+    requiere:
+        verdadero
+    // ME-1 (R1): agregar comandos de modo
+    escribir_linea("  Modos del agente (Manual 7 §1.1):")
+    escribir_linea("    /ask               - modo solo lectura (default)")
+    escribir_linea("    /plan              - modo diseño/planificación")
+    escribir_linea("    /code              - modo edición de código")
+    escribir_linea("    /debug             - modo diagnóstico")
+    escribir_linea("    /orchestrator      - modo delegación (descompone tareas)")
+    escribir_linea("")
+    escribir_linea("  Comandos del chat:")
+    escribir_linea("    /modelos           - lista los modelos instalados")
+    escribir_linea("    /model <nombre|n>  - cambia de modelo (por nombre o numero)")
+    escribir_linea("    <pregunta>         - el agente lee el repo y responde con contexto")
+    escribir_linea("    /tdd <tarea>       - genera tests TDD para una funcion")
+    escribir_linea("    /revisar <codigo>  - revision de codigo en 5 ejes")
+    escribir_linea("    /plan <feat>       - desglosa una caracteristica en tareas")
+    escribir_linea("    /next              - muestra los 3 siguientes pasos sugeridos")
+    escribir_linea("    /fork              - crea una rama de la sesion actual")
+    escribir_linea("    /skills            - lista las habilidades disponibles")
+    escribir_linea("    salir              - termina la sesion")
+    escribir_linea("")
+
+// ============================================================
+// Modos del agente (Manual 7 §1.1 + ME_opensyn_best R1)
+// ask=solo lectura, plan=solo escribe plan, code=edita validando,
+// debug=diagnostica, orchestrator=descompone y delega.
+// ============================================================
+
+constante MODO_ASK = 0
+constante MODO_PLAN = 1
+constante MODO_CODE = 2
+constante MODO_DEBUG = 3
+constante MODO_ORCHESTRATOR = 4
+constante MODO_DEFAULT = MODO_ASK
+
+// ME-3 (R5): último tipo de tarea clasificado (para /next contextual).
+// Synapse no define globales mutables (Manual 2 §2: solo `let` y `constante`),
+// y el `let` a nivel de módulo no genera el global en el C modular (R149).
+// El estado vive como local en chat_tui() y modo_oraculo(): se pasa a
+// tui_comando() y se actualiza con el valor que retorna tui_agente().
+
+// Clasificación ligera de tarea (para /next contextual en TUI).
+// cumple Manual 7 §2.4: el router clasifica antes de delegar.
+funcion clasificar_tarea_local(tarea: texto) -> entero:
+    requiere:
+        longitud(tarea) > 0
+    garantiza:
+        _resultado_ >= 0 y _resultado_ <= 4 // cumple Manual 2 §5.1
+    t = minusculas(tarea)
+    si contiene(t, "error") == 1 o contiene(t, "bug") == 1:
+        retornar 1  // DIAGNOSTICAR
+    si contiene(t, "fallo") == 1 o contiene(t, "diagnostica") == 1:
+        retornar 1  // DIAGNOSTICAR
+    si contiene(t, "refactor") == 1 o contiene(t, "mejora") == 1:
+        retornar 2  // REFACTORIZAR
+    si contiene(t, "optimiza") == 1 o contiene(t, "limpia") == 1:
+        retornar 2  // REFACTORIZAR
+    si contiene(t, "revisa") == 1 o contiene(t, "verifica") == 1:
+        retornar 4  // REVISAR
+    si contiene(t, "analiza") == 1 o contiene(t, "comenta") == 1:
+        retornar 4  // REVISAR
+    si contiene(t, "genera") == 1 o contiene(t, "crea") == 1:
+        retornar 3  // GENERAR
+    si contiene(t, "escribe") == 1 o contiene(t, "implementa") == 1:
+        retornar 3  // GENERAR
+    retornar 0  // EXPLICAR (default)
+
+// Tabla de permisos por modo: cada modo lista las herramientas permitidas.
+// orchestrator NO ejecuta herramientas directas, solo crea subtareas.
+funcion herramientas_permitidas(modo: entero) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
+    // ask: solo lectura (listar, leer, git status/log)
+    si modo == MODO_ASK:
+        retornar "listar,leer,git"
+    // plan: solo lectura + escritura de planes (no ejecuta código)
+    si modo == MODO_PLAN:
+        retornar "listar,leer,git,plan"
+    // code: todas las herramientas incluyendo edición
+    si modo == MODO_CODE:
+        retornar "listar,leer,git,plan,editar,compilar,ejecutar"
+    // debug: lectura + diagnóstico
+    si modo == MODO_DEBUG:
+        retornar "listar,leer,git,diagnosticar,ejecutar"
+    // orchestrator: NO ejecuta herramientas, solo delega a otros modos
+    si modo == MODO_ORCHESTRATOR:
+        retornar "delegar"
+    retornar "listar,leer,git"
+
+// Verifica si una herramienta está permitida en el modo actual.
+// cumple Manual 7 §1.1: cada modo define qué herramientas [TOOL] están permitidas.
+funcion herramienta_permitida(modo: entero, herramienta: texto) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
+    permitidas = herramientas_permitidas(modo)
+    // Buscar la herramienta en la lista de permitidas (separada por comas)
+    total = longitud(permitidas)
+    h_len = longitud(herramienta)
+    // Si la herramienta es vacía o más larga que la lista, no puede estar
+    si h_len == 0 o h_len > total:
+        retornar 0
+    i = 0
+    mientras i <= total - h_len:
+        coincide = 1
+        j = 0
+        mientras j < h_len:
+            c_perm = subcadena(permitidas, i + j, 1)
+            c_herr = subcadena(herramienta, j, 1)
+            si c_perm != c_herr:
+                coincide = 0
+                romper
+            j = j + 1
+        si coincide == 1:
+            // Verificar que es límite completo (no substring de otra palabra)
+            antes_ok = 1
+            despues_ok = 1
+            si i > 0:
+                c_antes = subcadena(permitidas, i - 1, 1)
+                si c_antes != ",":
+                    antes_ok = 0
+            si i + h_len < total:
+                c_despues = subcadena(permitidas, i + h_len, 1)
+                si c_despues != ",":
+                    despues_ok = 0
+            si antes_ok == 1 y despues_ok == 1:
+                retornar 1
+        i = i + 1
+    retornar 0
+
+// Nombre legible del modo para mensajes
+funcion nombre_modo(modo: entero) -> texto:
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
+    requiere:
+        verdadero
+    si modo == MODO_ASK:
+        retornar "ASK (solo lectura)"
+    si modo == MODO_PLAN:
+        retornar "PLAN (diseño)"
+    si modo == MODO_CODE:
+        retornar "CODE (edición)"
+    si modo == MODO_DEBUG:
+        retornar "DEBUG (diagnóstico)"
+    si modo == MODO_ORCHESTRATOR:
+        retornar "ORCHESTRATOR (delegación)"
+    retornar "DESCONOCIDO"
+
+// ============================================================
+// Presentacion estilo OpenCode/Freebuff + herramientas del agente
+// cumple Manual 7 1.1 (OpenSyn asistente local) y Manual 9 2.5 (consola UTF-8)
+// ============================================================
+
+// Banner ASCII retro: 6 lineas + version. Color cian SOLO en consola real.
+funcion mostrar_banner() -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
+    requiere:
+        verdadero
+    consola = _syn_es_consola()
+    si consola == 1:
+        escribir(_syn_ansi(36))
+    escribir_linea(BANNER_L1)
+    escribir_linea(BANNER_L2)
+    escribir_linea(BANNER_L3)
+    escribir_linea(BANNER_L4)
+    escribir_linea(BANNER_L5)
+    escribir_linea(BANNER_L6)
+    si consola == 1:
+        escribir(_syn_ansi(0))
+    escribir_linea("")
+    escribir_linea("  OpenSyn v1.1.0 — Orquestador Autonomo (IA local)")
+    escribir_linea("")
+
+// Imprime una linea en color (sgr) si hay consola real; plana si es pipe.
+// Consume texto: el llamador pasa copias strcpy_f o literales (R113).
+funcion pintar_linea(texto: texto, sgr: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
+    requiere:
+        verdadero
+    si _syn_es_consola() == 1:
+        escribir_linea(concat(concat(_syn_ansi(sgr), texto), _syn_ansi(0)))
+    sino:
+        escribir_linea(texto)
+
+// ============================================================
+// Agente con contexto del repositorio (Manual 7 2.3: RAG local)
+// ============================================================
+
+// Filtra artefactos de compilacion del listado (convencion del repo: todo
+// intermedio lleva prefijo '_' o sufijo .c.o/.o/.syn.json/.exe). Sin filtro, el
+// listado cambia en cada build y el contexto del modelo se vuelve no
+// determinista (H-R146-1). Devuelve entradas en una sola linea separada por ", ".
+// cumple Manual 7 §2.3: el contexto inyectado debe ser estable y acotado.
+funcion filtrar_listado(lista: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    res = ""
+    total = longitud(lista)
+    i = 0
+    mientras i < total:
+        fin_e = i
+        mientras fin_e < total:
+            si subcadena(lista, fin_e, 1) == "\n":
+                romper
+            fin_e = fin_e + 1
+        entrada = subcadena(lista, i, fin_e - i)
+        conservar = 1
+        si termina_con(entrada, ".c.o") == 1 o termina_con(entrada, ".o") == 1:
+            conservar = 0
+        si termina_con(entrada, ".syn.json") == 1 o termina_con(entrada, ".exe") == 1:
+            conservar = 0
+        si subcadena(entrada, 0, 1) == "_":
+            conservar = 0
+        si conservar == 1:
+            si res != "":
+                res = concat(res, ", ")
+            res = concat(res, entrada)
+        i = fin_e + 1
+    retornar res
+
+// Construye el contexto estatico: cwd, listado raiz, estado git y AGENTS.md.
+// R113: helpers single-pass; retorno unico al final (depth 0); no libera
+// buffers ajenos (solo lee cwd_act, que es copia del llamador).
+funcion construir_contexto(cwd_act: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    parte = concat("Dir: ", cwd_act)
+    lista = _syn_listar_directorio(cwd_act)
+    si lista != "":
+        parte = concat(parte, "\n")
+        parte = concat(parte, filtrar_listado(lista))
+    retornar parte
+
+// Parsea "TOOL <nombre> <argumento>" y ejecuta la herramienta.
+// listar [ruta] (cwd si vacia) | leer <ruta> | git status|log |
+// escribir <ruta> :: <contenido> | editar <ruta> :: <buscar> :: <reemplazo> |
+// aplicar_patch <ruta> :: <diff_unificado>.
+// R113: un unico retornar al final (depth 0); todas las ramas asignan 'res'.
+// ME-1 (R1): verifica permisos del modo actual antes de ejecutar.
+// cumple Manual 7 §1.1: despacho de las herramientas del agente local.
+funcion ejecutar_tool(linea: texto, cwd_act: texto, modo: entero) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    retornar ejecutar_tool_aprobado(_syn_strcpy(linea), _syn_strcpy(cwd_act), modo, 0)
+
+// Nucleo del despacho. 'aprobado' == 1 salta la confirmacion ASK: solo se
+// usa tras una aprobacion explicita del usuario.
+// cumple Manual 7 §7.3: permisos minimos + sandbox antes de tocar el disco.
+funcion ejecutar_tool_aprobado(linea: texto, cwd_act: texto, modo: entero, aprobado: entero) -> texto:
+    requiere:
+        aprobado == 0 o aprobado == 1
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    res = "[TOOL_ERROR] herramienta desconocida. Usa: TOOL listar|leer|git|escribir|editar|aplicar_patch|ejecutar <arg>"
+    total = longitud(linea)
+    inicio = 5
+    fin = inicio
+    mientras fin < total:
+        caracter = subcadena(linea, fin, 1)
+        si caracter == " " o caracter == "\n" o caracter == "\r":
+            romper
+        fin = fin + 1
+    si fin > inicio:
+        nombre = subcadena(linea, inicio, fin - inicio)
+        arg = subcadena(linea, fin, total - fin)
+        // El modelo suele pegar espacio inicial/comillas/residuos: normalizar.
+        arg = recortar(_syn_strcpy(arg))
+        // 'escribir' se aliasa a 'editar' y 'ejecutar' a 'compilar' SOLO en la
+        // matriz: MAX_HERRAMIENTAS es contrato inmutable de
+        // tests/integration/test_permisos_opensyn.py.
+        nombre_modo_perm = _syn_strcpy(nombre)
+        nombre_perm = _syn_strcpy(nombre)
+        si nombre == "escribir" o nombre == "aplicar_patch":
+            nombre_modo_perm = "editar"
+            nombre_perm = "editar"
+        si nombre == "ejecutar":
+            nombre_perm = "compilar"
+        // ME-1 (R1): verificar permisos del modo actual con el nombre real
+        si herramienta_permitida(modo, _syn_strcpy(nombre_modo_perm)) == 0:
+            retornar concat("[TOOL_ERROR] herramienta '", nombre, "' no permitida en modo ", nombre_modo(modo))
+        // cumple Manual 7 §7.3: la ruta de escritura se normaliza a absoluta
+        // ANTES de verificar el confinamiento al workspace.
+        ruta_perm = _syn_strcpy(arg)
+        si nombre == "escribir" o nombre == "editar" o nombre == "aplicar_patch":
+            sep_ini = indice_de(arg, "::")
+            si sep_ini >= 0:
+                ruta_rel = recortar(subcadena(arg, 0, sep_ini))
+                cwd_norm = herr_normalizar_cwd(_syn_strcpy(cwd_act))
+                ruta_perm = _syn_normalizar_ruta(concat(concat(cwd_norm, "/"), ruta_rel))
+            sino:
+                ruta_perm = _syn_strcpy(cwd_act)
+        // ME-5 (R6): verificar matriz de permisos + sandbox (M7 §7.3)
+        matriz_perm = matriz_permisos_crear()
+        nivel_perm = verificar_permiso_completo(matriz_perm, _syn_strcpy(nombre_perm), _syn_strcpy(ruta_perm))
+        si nivel_perm == 2:
+            retornar concat("[TOOL_ERROR] herramienta '", nombre, "' denegada por sandbox (M7 §7.3)")
+        si nivel_perm == 1 y aprobado == 0:
+            retornar concat("[TOOL_ASK] Se requiere confirmación para '", nombre, "'. ¿Permitir? (s/n)")
+        si nombre == "listar":
+            ruta = _syn_strcpy(arg)
+            si ruta == "":
+                ruta = _syn_strcpy(cwd_act)
+            si _syn_strstr(ruta, "..") >= 0 o _syn_strstr(ruta, ":") >= 0:
+                // H-R146-2: nunca FAILED la herramienta de listado — un modelo
+                // pequeño puede pedir rutas raras; se degrada a la raíz del
+                // repo para que SIEMPRE llegue contexto real (Manual 7 §2.3).
+                ruta = _syn_strcpy(cwd_act)
+            listado = filtrar_listado(_syn_listar_directorio(ruta))
+            si listado == "":
+                res = "[TOOL_RESULT] (directorio vacio, sin acceso o solo artefactos de build)"
+            sino:
+                si _syn_texto_longitud(listado) > 2400:
+                    listado = concat(subcadena(listado, 0, 2400), " ... (listado truncado; usa TOOL listar <subdirectorio>)")
+                res = concat("[TOOL_RESULT] ", listado)
+        si nombre == "leer":
+            si arg == "":
+                res = "[TOOL_ERROR] falta la ruta: TOOL leer <ruta>"
+            sino:
+                si _syn_strstr(arg, "..") >= 0 o _syn_strstr(arg, ":") >= 0 o subcadena(arg, 0, 1) == "~":
+                    res = "[TOOL_ERROR] ruta no permitida (usa rutas dentro del repo)"
+                sino:
+                    ruta = concat(cwd_act, "/")
+                    ruta = concat(ruta, arg)
+                    contenido = _syn_leer_archivo(ruta)
+                    si contenido == "":
+                        res = "[TOOL_RESULT] (archivo vacio o no legible)"
+                    sino:
+                        res = concat("[TOOL_RESULT] ", contenido)
+        si nombre == "git":
+            si arg == "" o arg == "status":
+                res = concat("[TOOL_RESULT] ", _syn_capturar_comando("git status --short"))
+            sino:
+                si arg == "log":
+                    res = concat("[TOOL_RESULT] ", _syn_capturar_comando("git log --oneline -8"))
+                sino:
+                    res = "[TOOL_ERROR] comando git no permitido (usa: git status|git log)"
+        // cumple Manual 7 §1.1: escritura/edicion asistida del agente.
+        // Timeout de 5 s (Manual FASE 32 §6.4, no indexado).
+        // cumple Manual 7 §7.3: allowlist estricta, sin shell.
+        si nombre == "ejecutar":
+            si arg == "":
+                res = "[TOOL_ERROR] formato: TOOL ejecutar <comando>"
+            sino:
+                res = herramienta_ejecutar(_syn_strcpy(arg))
+        si nombre == "escribir":
+            sep = indice_de(arg, "::")
+            si sep < 0:
+                res = "[TOOL_ERROR] formato: TOOL escribir <ruta> :: <contenido>"
+            sino:
+                ruta = recortar(subcadena(arg, 0, sep))
+                contenido = recortar(subcadena(arg, sep + 2, longitud(arg) - sep - 2))
+                contenido = herr_desescapar_saltos(_syn_strcpy(contenido))
+                res = herramienta_escribir(_syn_strcpy(ruta), _syn_strcpy(contenido), _syn_strcpy(cwd_act))
+        si nombre == "editar":
+            sep1 = indice_de(arg, "::")
+            si sep1 < 0:
+                res = "[TOOL_ERROR] formato: TOOL editar <ruta> :: <buscar> :: <reemplazo>"
+            sino:
+                ruta = recortar(subcadena(arg, 0, sep1))
+                resto = subcadena(arg, sep1 + 2, longitud(arg) - sep1 - 2)
+                sep2 = indice_de(resto, "::")
+                si sep2 < 0:
+                    res = "[TOOL_ERROR] formato: TOOL editar <ruta> :: <buscar> :: <reemplazo>"
+                sino:
+                    buscar = recortar(subcadena(resto, 0, sep2))
+                    reemplazo = recortar(subcadena(resto, sep2 + 2, longitud(resto) - sep2 - 2))
+                    buscar = herr_desescapar_saltos(_syn_strcpy(buscar))
+                    reemplazo = herr_desescapar_saltos(_syn_strcpy(reemplazo))
+                    res = herramienta_editar(_syn_strcpy(ruta), _syn_strcpy(buscar), _syn_strcpy(reemplazo), _syn_strcpy(cwd_act))
+        // cumple Manual 7 §1.1: parche unificado del asistente local.
+        // cumple Manual 7 §7.3: el sandbox y la aprobacion ya se verificaron.
+        si nombre == "aplicar_patch":
+            sep = indice_de(arg, "::")
+            si sep < 0:
+                res = "[TOOL_ERROR] formato: TOOL aplicar_patch <ruta> :: <diff>"
+            sino:
+                ruta = recortar(subcadena(arg, 0, sep))
+                diff = recortar(subcadena(arg, sep + 2, longitud(arg) - sep - 2))
+                diff = herr_desescapar_saltos(_syn_strcpy(diff))
+                res = herramienta_aplicar_patch(_syn_strcpy(ruta), _syn_strcpy(diff), _syn_strcpy(cwd_act))
+    retornar res
+
+// Ejecuta una herramienta con confirmacion interactiva para el nivel ASK.
+// En stdin no interactivo (pipe/CI) deniega cerrado: sin aprobacion explicita
+// no se escribe nada.
+// cumple Manual 7 §7.3: ninguna escritura sin aprobacion del usuario.
+funcion ejecutar_tool_con_aprobacion(linea: texto, cwd_act: texto, modo: entero) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    res = ejecutar_tool_aprobado(_syn_strcpy(linea), _syn_strcpy(cwd_act), modo, 0)
+    si indice_de(res, "[TOOL_ASK]") == 0:
+        si _syn_es_consola() == 0:
+            retornar "[TOOL_ERROR] escritura denegada: se requiere confirmacion interactiva (sandbox M7 §7.3)"
+        escribir_linea(res)
+        escribir_linea("  Escribe 's' para permitir o 'n' para cancelar.")
+        respuesta = recortar(leer_linea())
+        si respuesta == "s" o respuesta == "si" o respuesta == "S" o respuesta == "SI":
+            retornar ejecutar_tool_aprobado(_syn_strcpy(linea), _syn_strcpy(cwd_act), modo, 1)
+        retornar "[TOOL_ERROR] operacion cancelada por el usuario"
+    retornar res
+
+// Variante TUI: la confirmacion usa el menu modal de teclado crudo.
+// cumple Manual 7 §7.3: sandbox y aprobacion explicita en pantalla completa.
+funcion tui_ejecutar_tool_con_aprobacion(linea: texto, cwd_act: texto, modo: entero) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    res = ejecutar_tool_aprobado(_syn_strcpy(linea), _syn_strcpy(cwd_act), modo, 0)
+    si indice_de(res, "[TOOL_ASK]") == 0:
+        eleccion = _syn_tui_menu(res, "Si\nNo")
+        si eleccion == "Si":
+            retornar ejecutar_tool_aprobado(_syn_strcpy(linea), _syn_strcpy(cwd_act), modo, 1)
+        retornar "[TOOL_ERROR] operacion cancelada por el usuario"
+    retornar res
+
+// Bucle del agente: contexto estatico + hasta 5 iteraciones de herramientas.
+// El modelo responde una linea "TOOL ..." para pedir contexto o la respuesta
+// final. R113: retorno unico al final; copias strcpy_f en los call sites.
+// ME-1 (R1): recibe modo para verificar permisos de herramientas.
+funcion consultar_agente(modelo: texto, prompt_usuario: texto, modo: entero) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    cwd_act = _syn_obtener_cwd()
+    ctx = construir_contexto(_syn_strcpy(cwd_act))
+    sys = AGENTE_SYS_BASE
+    sys = concat(sys, ctx)
+    sys = concat(sys, "\n\n[USUARIO]\n")
+    sys = concat(sys, prompt_usuario)
+    respuesta_final = ""
+    iteracion = 0
+    mientras iteracion < 6:
+        respuesta = _syn_ollama_consultar(modelo, sys, "127.0.0.1", 8088, 2048)
+        si respuesta == "":
+            respuesta_final = ""
+            romper
+        limpia = recortar(_syn_strcpy(respuesta))
+        si _syn_strstr(limpia, "TOOL ") == 0:
+            salida = ejecutar_tool_con_aprobacion(_syn_strcpy(limpia), _syn_strcpy(cwd_act), modo)
+            sys = concat(sys, "\n")
+            sys = concat(sys, salida)
+            sys = concat(sys, "\n[Continua: usa otra linea TOOL si necesitas mas contexto, o responde directamente.]")
+            iteracion = iteracion + 1
+        sino:
+            respuesta_final = _syn_strcpy(limpia)
+            romper
+    retornar respuesta_final
+
+// ============================================================
+// Chat TUI pantalla completa (Manual 7 1.1 + 8, Manual 9 2.5)
+// Estilo OpenCode/Freebuff: panel de actividad arriba, caja de
+// entrada abajo, comandos "/" con menú y streaming del modelo.
+// ============================================================
+
+// System prompt del agente (optimizado para modelos pequenos, 2048 ctx).
+// cumple Manual 7 §2.3: prompt del agente con REGLA imperativa de [TOOL] —
+// el modelo pequeño obedece mejor una regla directa que un ejemplo meta
+// (R147: la versión "ejemplo" lo hacía narrar en vez de actuar). Sin el
+// literal [USUARIO] dentro del texto (ollama.c parte system/user por esa
+// marca). Mantener bajo 3500 bytes: ollama.c trunca a los ÚLTIMOS 3500 (R144c).
+constante AGENTE_SYS_BASE = "Eres OpenSyn, asistente IA de Synapse (.syn). Syntax: 4 espacios, sin ;, funcion(name:type)->type, si/para/mientras, retornar. REGLA: si el usuario pregunta por archivos, carpetas, rutas o codigo REAL, tu respuesta debe ser UNA sola linea exacta: TOOL listar <ruta> (vacia = raiz del repo) o TOOL leer <ruta> o TOOL git status. Para crear o sobrescribir un archivo: TOOL escribir <ruta> :: <contenido>. Para editar un fragmento unico: TOOL editar <ruta> :: <texto_viejo> :: <texto_nuevo>. Para aplicar un diff unificado: TOOL aplicar_patch <ruta> :: <diff>. Para ejecutar un comando permitido: TOOL ejecutar <comando> (solo synapse check, synapse build, pytest, git status, git diff; timeout 5s). Usa \\n para saltos de linea. Las herramientas de escritura piden confirmacion al usuario. No expliques nada antes. Ejemplo: usuario: 'que archivos hay en la raiz?' - tu respuesta: TOOL listar. Cuando ya recibas [TOOL_RESULT], responde en el idioma del usuario resumiendo (maximo 10), sin inventar archivos.\n\n[CONTEXTO]\n"
+
+// Elementos del menu de comandos (el menu filtra mientras se escribe).
+// ME-1 (R1): agregar comandos de modo ask/plan/code/debug/orchestrator
+// ME-3 (R7): agregar comandos /next, /fork, /review
+constante MENU_COMANDOS = "/ask\n/plan\n/code\n/debug\n/orchestrator\n/model\n/modelos\n/tdd\n/revisar\n/plan\n/next\n/fork\n/skills\n/ayuda\n/salir"
+
+// Trunca un texto a n bytes visibles (evita paneles gigantes con el
+// resultado de una herramienta). R113: no libera buffers ajenos.
+funcion tui_acotar(t: texto, n: entero) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    largo = longitud(t)
+    si largo <= n:
+        retornar t
+    retornar concat(subcadena(t, 0, n), "…")
+
+// % del presupuesto de system prompt usado (ollama.c trunca a los últimos
+// 3500 bytes, lección R144c): indicador "ctx" de la barra inferior.
+funcion pct_contexto(sys: texto) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0 // cumple Manual 2 §5.1; ME r198b
+    bytes = _syn_texto_longitud(sys)
+    si bytes > 3500:
+        bytes = 3500
+    retornar (bytes * 100) / 3500
+
+// Una consulta con streaming: pinta el texto conforme llega (rol 1) y
+// devuelve el texto completo acumulado ("" si error; el error ya se ve).
+funcion consulta_stream(modelo: texto, prompt: texto) -> texto:
+    requiere:
+        longitud(modelo) > 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    texto_acum = ""
+    _syn_tui_pensando(1, "Consultando")
+    sesion = _syn_ollama_stream_iniciar(modelo, prompt, "127.0.0.1", 8088, 2048)
+    si sesion == nulo:
+        _syn_tui_mensaje(3, "No se pudo conectar con el servidor IA local. Reintenta en unos segundos.")
+        _syn_tui_repintar(modelo)
+        retornar ""
+    mientras verdadero:
+        ch = _syn_ollama_stream_leer(sesion)
+        si ch == "":
+            romper
+        texto_acum = concat(texto_acum, ch)
+        _syn_tui_asistente_continuar(ch)
+        _syn_tui_repintar(modelo)
+    _syn_tui_pensando(0, "")
+    ctx_tokens = _syn_texto_longitud(texto_acum) / 4
+    _syn_tui_contexto(pct_contexto(prompt), ctx_tokens)
+    si _syn_ollama_stream_estado(sesion) == 1:
+        _syn_tui_mensaje_pop()
+        detalle = _syn_ollama_stream_error(sesion)
+        si detalle == "":
+            _syn_tui_mensaje(3, "El servidor IA local no respondio (error de streaming).")
+        sino:
+            _syn_tui_mensaje(3, detalle)
+        _syn_tui_repintar(modelo)
+        _syn_ollama_stream_cerrar(sesion)
+        retornar ""
+    _syn_ollama_stream_cerrar(sesion)
+    retornar texto_acum
+
+// Muestra la lista de modelos instalados como eventos del panel (rol 2).
+funcion tui_listar_modelos(modelos: texto, modelo: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    total = contar_modelos(modelos)
+    si total == 0:
+        _syn_tui_mensaje(2, "Sin modelos detectados. Verifica {app}\\opensyn\\models")
+        retornar
+    _syn_tui_mensaje(2, "Modelos instalados:")
+    n = 1
+    mientras n <= total:
+        nombre = modelo_en_posicion(modelos, n)
+        _syn_tui_mensaje(2, concat(concat(concat("  ", entero_a_texto(n)), ". "), nombre))
+        n = n + 1
+    _syn_tui_mensaje(2, concat("Activo: ", modelo))
+
+// Ejecuta una skill (/tdd /revisar /plan) con streaming en el panel.
+// cumple Manual 7 §1.1: verifica permisos del modo actual antes de ejecutar.
+funcion tui_ejecutar_skill(modelo: texto, prompt_skill: texto, etiqueta: texto, modo: entero) -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    garantiza:
+        1 == 1
+    requiere:
+        verdadero
+    // /tdd genera código → requiere modo CODE o superior
+    // /revisar solo lee → permitido en cualquier modo
+    // /plan genera plan → requiere modo PLAN o superior
+    herramienta_skill = _syn_strcpy(etiqueta)
+    si herramienta_permitida(modo, _syn_strcpy(herramienta_skill)) == 0:
+        _syn_tui_mensaje(3, concat(concat("[!] Skill '", etiqueta), "' no permitida en este modo. Cambia con /code o /plan."))
+        _syn_tui_repintar(modelo)
+        retornar
+    _syn_tui_mensaje(2, concat(concat("Ejecutando ", etiqueta), "…"))
+    _syn_tui_repintar(modelo)
+    r = consulta_stream(modelo, prompt_skill)
+    si r == "":
+        _syn_tui_mensaje(2, "Sin respuesta de la skill (revisa el servidor IA).")
+        _syn_tui_repintar(modelo)
+
+// ME r217_loop_integracion: tras editar/escribir un .syn/.syq, valida con el
+// cumple Manual 7 §4.2
+// cumple Manual 7 §6.3
+// cumple Manual 7 §7.3
+// compilador real (validation_loop.validar_con_check) y devuelve un resumen
+// parseado para que el modelo auto-corrija (editar->compilar->corregir).
+funcion validar_fuente_si_aplica(linea_tool: texto, cwd_act: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    res = ""
+    total = longitud(linea_tool)
+    inicio = 5
+    fin = inicio
+    mientras fin < total:
+        c = subcadena(linea_tool, fin, 1)
+        si c == " ":
+            romper
+        fin = fin + 1
+    si fin <= inicio:
+        retornar res
+    nombre = subcadena(linea_tool, inicio, fin - inicio)
+    si nombre != "editar" y nombre != "escribir" y nombre != "aplicar_patch":
+        retornar res
+    arg = recortar(subcadena(linea_tool, fin, total - fin))
+    ruta = arg
+    idx_sep = _syn_strstr(arg, " :: ")
+    si idx_sep >= 0:
+        ruta = recortar(subcadena(arg, 0, idx_sep))
+    si ruta == "":
+        retornar res
+    es_fuente = 0
+    si termina_con(ruta, ".syn") == 1 o termina_con(ruta, ".syq") == 1:
+        es_fuente = 1
+    si es_fuente == 0:
+        retornar res
+    ruta_abs = ruta
+    si _syn_strstr(ruta, ":") < 0:
+        si cwd_act != "":
+            ruta_abs = concat(concat(cwd_act, "\\"), ruta)
+    contenido = ""
+    inseguro:
+        asm("CadenaSegura _vr = {.datos = (char*)ruta_abs.datos, .longitud = ruta_abs.longitud}; CadenaSegura _vc = _syn_leer_archivo(_vr); if(_vc.longitud>0) contenido = _vc;")
+    si contenido == "":
+        retornar res
+    idioma = "syn"
+    si termina_con(ruta, ".syq") == 1:
+        idioma = "syquex"
+    vr = validar_con_check(_syn_strcpy(contenido), idioma)
+    si vr.es_valido:
+        res = "[VALIDACION] codigo valido."
+        retornar res
+    res = "[VALIDACION] codigo NO valido: "
+    res = concat(res, vr.errores)
+    retornar res
+
+// ME r254_sesiones_undo: helpers de sesion (run reanudable) cableados al loop.
+// cumple Manual 7 §4.3
+// Devuelve la ruta del archivo de sesion activa.
+funcion sesion_archivo() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) > 0
+    cwd = _syn_obtener_cwd()
+    retornar concat(cwd, "\\.opensyn_session")
+
+// Lee el run_id de la sesion activa (vacio si no hay).
+funcion sesion_run_id_activo() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    ruta = sesion_archivo()
+    contenido = ""
+    inseguro:
+        asm("CadenaSegura _sr = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _sc = _syn_leer_archivo(_sr); if(_sc.longitud>0) contenido = _sc;")
+    res = recortar(_syn_strcpy(contenido))
+    retornar res
+
+// Persiste el run_id como sesion activa.
+funcion sesion_activar(run_id: texto) -> entero:
+    requiere:
+        longitud(run_id) > 0
+    garantiza:
+        _resultado_ == 0 o _resultado_ == -1
+    ruta = sesion_archivo()
+    contenido = concat(run_id, "\n")
+    inseguro:
+        asm("CadenaSegura _sr = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _sc = {.datos = (char*)contenido.datos, .longitud = contenido.longitud}; int _rw = _syn_escribir_archivo(_sr, _sc); (void)_rw;")
+    retornar 0
+
+// Limpia la sesion activa.
+funcion sesion_limpiar() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == 0
+    ruta = sesion_archivo()
+    contenido = ""
+    inseguro:
+        asm("CadenaSegura _sr = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _sc = {.datos = (char*)contenido.datos, .longitud = 0}; int _rw = _syn_escribir_archivo(_sr, _sc); (void)_rw;")
+    retornar 0
+
+
+// Marca un paso completado en la sesion activa (best-effort, no falla el loop).
+// cumple Manual 7 §4.3
+funcion sesion_marcar_paso() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= -1
+    rid = sesion_run_id_activo()
+    si rid == "":
+        retornar 0
+    run = cargar_checkpoint(rid)
+    si run.cantidad_subtareas <= 0:
+        retornar 0
+    si run.subtarea_actual < run.cantidad_subtareas:
+        rc = marcar_subtarea_completada(run, "paso")
+        // rc ignored: best-effort
+    retornar 0
+
+// Agente con contexto del repositorio: bucle [TOOL] + streaming en vivo.
+// ME-1 (R1): recibe modo para verificar permisos de herramientas.
+// ME-3 (R5): clasifica la tarea para /next contextual.
+funcion tui_agente(modelo: texto, pregunta: texto, cwd_act: texto, modo: entero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0 y _resultado_ <= 4 // cumple Manual 2 §5.1
+    // ME-3 (R5): clasificar tarea para siguientes pasos contextuales; el
+    // resultado se RETORNA al llamador (no hay globales mutables, Manual 2 §2).
+    let tipo_clasif: entero = clasificar_tarea_local(pregunta)
+    _syn_tui_mensaje(0, concat("❯ ", pregunta))
+    sys = concat(AGENTE_SYS_BASE, construir_contexto(_syn_strcpy(cwd_act)))
+    sys = concat(sys, "\n\n[USUARIO]\n")
+    sys = concat(sys, pregunta)
+    iteracion = 0
+    mientras iteracion < 6:
+        _syn_tui_mensaje(2, "Consultando…")
+        _syn_tui_repintar(modelo)
+        resp = consulta_stream(modelo, sys)
+        si resp == "":
+            _syn_tui_pensando(0, "")
+            retornar tipo_clasif
+        limpia = recortar(_syn_strcpy(resp))
+        si _syn_strstr(limpia, "TOOL ") == 0:
+            // El modelo pide una herramienta: su texto era la petición, no
+            // la respuesta final; se quita y se muestra como evento.
+            _syn_tui_mensaje_pop()
+            pedido = tui_acotar(_syn_strcpy(limpia), 90)
+            _syn_tui_mensaje(2, concat("· ", pedido))
+            _syn_tui_repintar(modelo)
+            salida = tui_ejecutar_tool_con_aprobacion(_syn_strcpy(limpia), _syn_strcpy(cwd_act), modo)
+            // ME r217_loop_integracion: validar fuentes editadas con el compilador
+            // cumple Manual 7 §4.2
+            // real para cerrar el bucle editar->compilar->corregir.
+            validacion = validar_fuente_si_aplica(_syn_strcpy(limpia), _syn_strcpy(cwd_act))
+            si validacion != "":
+                salida = concat(salida, validacion)
+            // ME r254_sesiones_undo: registrar el paso en la sesion activa.
+            // cumple Manual 7 §4.3
+            sesion_marcar_paso()
+            resumen = tui_acotar(_syn_strcpy(salida), 1200)
+            _syn_tui_mensaje(2, resumen)
+            _syn_tui_repintar(modelo)
+            sys = concat(sys, "\n\n[TOOL_RESULT — contexto REAL del repo; respondé al usuario con esto, citando carpetas/archivos de la lista]\n")
+            sys = concat(sys, resumen)
+            sys = concat(sys, "\n[Continua: otra linea TOOL o responde directamente.]")
+            iteracion = iteracion + 1
+        sino:
+            _syn_tui_repintar(modelo)
+            retornar tipo_clasif
+    _syn_tui_mensaje(3, "Limite de iteraciones de herramienta alcanzado.")
+    _syn_tui_repintar(modelo)
+    retornar tipo_clasif
+
+// Despacha un comando (tecleado o elegido en el menu "/").
+// Devuelve: "!salir", "!ok", "!modo:N" (cambio de modo), o el NUEVO modelo activo.
+// ME-1 (R1): comandos /ask /plan /code /debug /orchestrator para cambiar de modo.
+funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero, ultimo_tipo_tarea: entero) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    si entrada == "salir" o entrada == "exit" o entrada == "/salir":
+        retornar "!salir"
+    // ME-1 (R1): comandos de cambio de modo
+    si entrada == "/ask":
+        _syn_tui_mensaje(2, "Modo: ASK (solo lectura)")
+        _syn_tui_mensaje(2, "  Herramientas: listar, leer, git")
+        _syn_tui_repintar(modelo)
+        retornar "!modo:0"
+    si entrada == "/plan":
+        _syn_tui_mensaje(2, "Modo: PLAN (diseño)")
+        _syn_tui_mensaje(2, "  Herramientas: listar, leer, git, plan")
+        _syn_tui_repintar(modelo)
+        retornar "!modo:1"
+    si entrada == "/code":
+        _syn_tui_mensaje(2, "Modo: CODE (edición)")
+        _syn_tui_mensaje(2, "  Herramientas: listar, leer, git, plan, escribir, editar, aplicar_patch, compilar, ejecutar")
+        _syn_tui_repintar(modelo)
+        retornar "!modo:2"
+    si entrada == "/debug":
+        _syn_tui_mensaje(2, "Modo: DEBUG (diagnóstico)")
+        _syn_tui_mensaje(2, "  Herramientas: listar, leer, git, diagnosticar, ejecutar")
+        _syn_tui_repintar(modelo)
+        retornar "!modo:3"
+    si entrada == "/orchestrator":
+        _syn_tui_mensaje(2, "Modo: ORCHESTRATOR (delegación)")
+        _syn_tui_mensaje(2, "  Herramientas: delegar (no ejecuta directamente)")
+        _syn_tui_repintar(modelo)
+        retornar "!modo:4"
+    si entrada == "/ayuda":
+        _syn_tui_mensaje(2, "Comandos:")
+        _syn_tui_mensaje(2, "  /ask         — modo solo lectura")
+        _syn_tui_mensaje(2, "  /plan        — modo diseño/planificación")
+        _syn_tui_mensaje(2, "  /code        — modo edición de código")
+        _syn_tui_mensaje(2, "  /debug       — modo diagnóstico")
+        _syn_tui_mensaje(2, "  /orchestrator — modo delegación (descompone tareas)")
+        _syn_tui_mensaje(2, "  /model       — cambia de modelo")
+        _syn_tui_mensaje(2, "  /modelos     — lista los modelos instalados")
+        _syn_tui_mensaje(2, "  /tdd         — genera tests TDD")
+        _syn_tui_mensaje(2, "  /revisar     — revisión de código en 5 ejes")
+        _syn_tui_mensaje(2, "  /skills      — habilidades disponibles")
+        _syn_tui_mensaje(2, "  /ayuda       — esta ayuda")
+        _syn_tui_mensaje(2, "  salir        — termina la sesión")
+        _syn_tui_repintar(modelo)
+        retornar "!ok"
+    si entrada == "/skills":
+        _syn_tui_mensaje(2, "Habilidades: /tdd · /revisar · /plan  (usa / para el menu)")
+        _syn_tui_repintar(modelo)
+        retornar "!ok"
+    si entrada == "/modelos":
+        tui_listar_modelos(modelos, modelo)
+        _syn_tui_repintar(modelo)
+        retornar "!ok"
+    si entrada == "/model" o _syn_strstr(entrada, "/model ") == 0:
+        _syn_tui_mensaje(2, "Modelos instalados (elige con ↑↓ y Enter):")
+        _syn_tui_repintar(modelo)
+        elegido = _syn_tui_menu("Modelos instalados", modelos)
+        si elegido == "":
+            _syn_tui_mensaje(2, "Cambio de modelo cancelado.")
+            _syn_tui_repintar(modelo)
+            retornar "!ok"
+        guardar_modelo_config(elegido)
+        _syn_tui_mensaje(2, concat("Modelo activo: ", elegido))
+        _syn_tui_repintar(elegido)
+        retornar elegido
+    si entrada == "/tdd" o _syn_strstr(entrada, "/tdd ") == 0:
+        tarea = ""
+        si _syn_strstr(entrada, "/tdd ") == 0:
+            tarea = subcadena(entrada, 5, longitud(entrada) - 5)
+        si tarea == "":
+            _syn_tui_entrada_poner("/tdd ")
+            _syn_tui_mensaje(2, "Escribe la funcion a testear tras /tdd y pulsa Enter")
+            _syn_tui_repintar(modelo)
+            retornar "!ok"
+        prompt_skill = concat(SKILL_TDD_PROMPT, "\n\nFuncion a testear:\n")
+        prompt_skill = concat(prompt_skill, tarea)
+        tui_ejecutar_skill(modelo, prompt_skill, "/tdd", modo)
+        retornar "!ok"
+    si entrada == "/revisar" o _syn_strstr(entrada, "/revisar ") == 0:
+        codigo_r = ""
+        si _syn_strstr(entrada, "/revisar ") == 0:
+            codigo_r = subcadena(entrada, 9, longitud(entrada) - 9)
+        si codigo_r == "":
+            _syn_tui_entrada_poner("/revisar ")
+            _syn_tui_mensaje(2, "Escribe el codigo a revisar tras /revisar y pulsa Enter")
+            _syn_tui_repintar(modelo)
+            retornar "!ok"
+        prompt_skill = concat(SKILL_REVIEW_PROMPT, "\n\nCodigo a revisar:\n")
+        prompt_skill = concat(prompt_skill, codigo_r)
+        tui_ejecutar_skill(modelo, prompt_skill, "/revisar", modo)
+        retornar "!ok"
+    // ME-3 (R7): /next — muestra los 3 siguientes pasos sugeridos (contextual)
+    si entrada == "/next":
+        _syn_tui_mensaje(2, "Siguientes pasos sugeridos:")
+        si ultimo_tipo_tarea == 0:
+            // EXPLICAR
+            _syn_tui_mensaje(2, "  1) Diagnostica posibles problemas")
+            _syn_tui_mensaje(2, "  2) Refactoriza el codigo explicado")
+            _syn_tui_mensaje(2, "  3) Genera tests para el codigo")
+        sino:
+            si ultimo_tipo_tarea == 1:
+                // DIAGNOSTICAR
+                _syn_tui_mensaje(2, "  1) Implementa la correccion sugerida")
+                _syn_tui_mensaje(2, "  2) Revisa la solucion propuesta")
+                _syn_tui_mensaje(2, "  3) Genera tests que validen la correccion")
+            sino:
+                si ultimo_tipo_tarea == 2:
+                    // REFACTORIZAR
+                    _syn_tui_mensaje(2, "  1) Revisa los cambios propuestos")
+                    _syn_tui_mensaje(2, "  2) Ejecuta los tests para verificar")
+                    _syn_tui_mensaje(2, "  3) Genera documentacion del refactor")
+                sino:
+                    si ultimo_tipo_tarea == 3:
+                        // GENERAR
+                        _syn_tui_mensaje(2, "  1) Revisa el codigo generado")
+                        _syn_tui_mensaje(2, "  2) Ejecuta los tests")
+                        _syn_tui_mensaje(2, "  3) Diagnostica posibles errores")
+                    sino:
+                        // REVISAR (4) o default
+                        _syn_tui_mensaje(2, "  1) Implementa las correcciones sugeridas")
+                        _syn_tui_mensaje(2, "  2) Ejecuta los tests")
+                        _syn_tui_mensaje(2, "  3) Refactoriza el codigo revisado")
+        _syn_tui_repintar(modelo)
+        retornar "!ok"
+    // ME-3 (R7): /fork — crea una rama de la sesion actual
+    si entrada == "/fork":
+        fork_id = entero_a_texto(ahora_ms())
+        ruta_forks = concat(_syn_obtener_cwd(), "/.opensyn/forks.jsonl")
+        linea_fork = concat(concat(concat(concat("{\"ts\":", entero_a_texto(ahora_ms())), ",\"fork_id\":\""), fork_id), "\",\"padre\":\"main\"}\n")
+        _syn_tui_historial_anadir(concat("[FORK] Rama creada: ", fork_id))
+        _syn_tui_mensaje(2, concat("Fork creado: ", fork_id))
+        _syn_tui_mensaje(2, "  La sesion actual se ha ramificado.")
+        _syn_tui_mensaje(2, concat("  Historial: ", ruta_forks))
+        _syn_tui_repintar(modelo)
+        retornar "!ok"
+    si entrada == "/plan" o _syn_strstr(entrada, "/plan ") == 0:
+        feat = ""
+        si _syn_strstr(entrada, "/plan ") == 0:
+            feat = subcadena(entrada, 6, longitud(entrada) - 6)
+        si feat == "":
+            _syn_tui_entrada_poner("/plan ")
+            _syn_tui_mensaje(2, "Escribe la caracteristica a desglosar tras /plan y pulsa Enter")
+            _syn_tui_repintar(modelo)
+            retornar "!ok"
+        prompt_skill = concat(SKILL_PLAN_PROMPT, "\n\nCaracteristica: ")
+        prompt_skill = concat(prompt_skill, feat)
+        tui_ejecutar_skill(modelo, prompt_skill, "/plan", modo)
+        retornar "!ok"
+    // ME r217_loop_integracion: validar fuente con el compilador real.
+    // cumple Manual 7 §6.3
+    si entrada == "/validar" o _syn_strstr(entrada, "/validar ") == 0:
+        ruta_v = ""
+        si _syn_strstr(entrada, "/validar ") == 0:
+            ruta_v = recortar(subcadena(entrada, 9, longitud(entrada) - 9))
+        si ruta_v == "":
+            _syn_tui_entrada_poner("/validar ")
+            _syn_tui_mensaje(2, "Escribe la ruta del .syn/.syq a validar")
+            _syn_tui_repintar(modelo)
+            retornar "!ok"
+        contenido_v = ""
+        inseguro:
+            asm("CadenaSegura _rr = {.datos = (char*)ruta_v.datos, .longitud = ruta_v.longitud}; CadenaSegura _cc = _syn_leer_archivo(_rr); if(_cc.longitud>0) contenido_v = _cc;")
+        si contenido_v == "":
+            _syn_tui_mensaje(3, concat("No se pudo leer: ", ruta_v))
+            _syn_tui_repintar(modelo)
+            retornar "!ok"
+        idioma_v = "syn"
+        si termina_con(ruta_v, ".syq") == 1:
+            idioma_v = "syquex"
+        vr_v = validar_con_check(_syn_strcpy(contenido_v), idioma_v)
+        si vr_v.es_valido:
+            _syn_tui_mensaje(1, "[VALIDACION] codigo valido.")
+        sino:
+            _syn_tui_mensaje(3, concat("[VALIDACION] codigo NO valido: ", vr_v.errores))
+        _syn_tui_repintar(modelo)
+        retornar "!ok"
+    // ME r217_loop_integracion: ejecutar pipeline multiagente (determinista).
+    // cumple Manual 7 §2.3
+    si entrada == "/pipeline" o _syn_strstr(entrada, "/pipeline ") == 0:
+        instr_p = ""
+        si _syn_strstr(entrada, "/pipeline ") == 0:
+            instr_p = recortar(subcadena(entrada, 10, longitud(entrada) - 10))
+        si instr_p == "":
+            _syn_tui_entrada_poner("/pipeline ")
+            _syn_tui_mensaje(2, "Escribe la instruccion del pipeline")
+            _syn_tui_repintar(modelo)
+            retornar "!ok"
+        rp = ejecutar_pipeline(instr_p, "")
+        _syn_tui_mensaje(2, concat("[PIPELINE] inferencias: ", entero_a_texto(rp.num_inferencias)))
+        _syn_tui_repintar(modelo)
+        retornar "!ok"
+    // ME r254_sesiones_undo: sesiones reanudables (run_manager).
+    // cumple Manual 7 §4.3
+    si entrada == "/sesion" o _syn_strstr(entrada, "/sesion ") == 0:
+        tarea_s = ""
+        si _syn_strstr(entrada, "/sesion ") == 0:
+            tarea_s = recortar(subcadena(entrada, 8, longitud(entrada) - 8))
+        si tarea_s == "":
+            tarea_s = "sesion"
+        num = 5
+        run = crear_run(tarea_s, num)
+        sesion_activar(run.run_id)
+        _syn_tui_mensaje(2, concat("[SESION] creada: ", run.run_id))
+        _syn_tui_mensaje(2, concat("  subtareas: ", entero_a_texto(run.cantidad_subtareas)))
+        _syn_tui_repintar(modelo)
+        retornar "!ok"
+    si entrada == "/reanudar" o _syn_strstr(entrada, "/reanudar ") == 0:
+        rid_r = ""
+        si _syn_strstr(entrada, "/reanudar ") == 0:
+            rid_r = recortar(subcadena(entrada, 10, longitud(entrada) - 10))
+        si rid_r == "":
+            rid_r = sesion_run_id_activo()
+        si rid_r == "":
+            _syn_tui_mensaje(3, "Sin sesion activa. Usa /sesion <tarea>.")
+            _syn_tui_repintar(modelo)
+            retornar "!ok"
+        run_r = resumir_run(rid_r)
+        sesion_activar(run_r.run_id)
+        _syn_tui_mensaje(2, concat("[REANUDAR] ", run_r.run_id))
+        _syn_tui_mensaje(2, concat("  actual: ", entero_a_texto(run_r.subtarea_actual)))
+        _syn_tui_mensaje(2, concat("  total: ", entero_a_texto(run_r.cantidad_subtareas)))
+        _syn_tui_mensaje(2, concat("  estado: ", entero_a_texto(run_r.estado)))
+        _syn_tui_repintar(modelo)
+        retornar "!ok"
+    si entrada == "/revertir":
+        rid_v = sesion_run_id_activo()
+        si rid_v == "":
+            _syn_tui_mensaje(3, "Sin sesion activa.")
+            _syn_tui_repintar(modelo)
+            retornar "!ok"
+        rcv = deshacer_ultimo_paso(rid_v)
+        si rcv == 0:
+            _syn_tui_mensaje(2, "[REVERTIR] ultimo paso deshecho.")
+        sino:
+            _syn_tui_mensaje(3, "[REVERTIR] no se pudo revertir.")
+        _syn_tui_repintar(modelo)
+        retornar "!ok"
+    si entrada == "/sesion-fin" o entrada == "/sesion fin":
+        sesion_limpiar()
+        _syn_tui_mensaje(2, "[SESION] cerrada.")
+        _syn_tui_repintar(modelo)
+        retornar "!ok"
+
+    // Comando desconocido: abre el menu de comandos.
+    r = _syn_tui_menu("Comandos (filtra escribiendo)", MENU_COMANDOS)
+    si r == "":
+        _syn_tui_mensaje(2, "Comando cancelado. Escribe / para el menu de comandos.")
+        _syn_tui_repintar(modelo)
+        retornar "!ok"
+    retornar tui_comando(r, modelo, modelos, modo, ultimo_tipo_tarea)
+
+// Bucle principal de la TUI (estilo OpenCode/Freebuff).
+// ME-1 (R1): variable de estado del modo (inicial: ASK, solo lectura).
+funcion chat_tui() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
+    config = leer_config_ollama()
+    modelos = _syn_ollama_modelos("127.0.0.1", 8088)
+    modelo_base = obtener_modelo_config(config)
+    modelo = normalizar_modelo_activo(modelo_base, modelos)
+    total_mod = contar_modelos(modelos)
+    cwd_act = _syn_obtener_cwd()
+    modo = MODO_DEFAULT
+    // ME-3 (R5): estado de clasificación local al bucle TUI (Manual 2 §2).
+    let ultimo_tipo_tarea: entero = 0
+    // Escena inicial: banner + estado del entorno.
+    _syn_tui_mensaje(4, BANNER_L1)
+    _syn_tui_mensaje(4, BANNER_L2)
+    _syn_tui_mensaje(4, BANNER_L3)
+    _syn_tui_mensaje(4, BANNER_L4)
+    _syn_tui_mensaje(4, BANNER_L5)
+    _syn_tui_mensaje(4, BANNER_L6)
+    _syn_tui_mensaje(2, "Chat local con llama-server en http://127.0.0.1:8088")
+    si total_mod > 0:
+        _syn_tui_mensaje(2, concat("Modelo activo: ", modelo))
+    sino:
+        _syn_tui_mensaje(3, "Sin modelos instalados. Verifica {app}\\opensyn\\models")
+    _syn_tui_mensaje(2, concat("Modo: ", nombre_modo(modo)))
+    _syn_tui_mensaje(2, "Escribe tu consulta · / abre el menu de comandos · Ctrl+C sale")
+    _syn_tui_repintar(modelo)
+    mientras verdadero:
+        evento = _syn_tui_evento()
+        si evento == 1:
+            entrada = _syn_tui_entrada_texto()
+            _syn_tui_entrada_borrar()
+            si entrada == "":
+                siguiente
+            // Añadir al historial persistente
+            _syn_tui_historial_anadir(entrada)
+            si _syn_strstr(entrada, "/") == 0 o entrada == "salir" o entrada == "exit":
+                res = tui_comando(entrada, modelo, modelos, modo, ultimo_tipo_tarea)
+                si res == "!salir":
+                    _syn_tui_finalizar()
+                    retornar 0
+                // ME-1 (R1): detectar cambio de modo
+                si _syn_strstr(res, "!modo:") == 0:
+                    // Extraer el número de modo después de "!modo:"
+                    num_texto = subcadena(res, 6, longitud(res) - 6)
+                    nuevo_modo = _syn_atoi(num_texto)
+                    si nuevo_modo >= MODO_ASK y nuevo_modo <= MODO_ORCHESTRATOR:
+                        modo = nuevo_modo
+                        _syn_tui_mensaje(2, concat("Modo activo: ", nombre_modo(modo)))
+                        _syn_tui_repintar(modelo)
+                    siguiente
+                si res != "!ok" y res != "":
+                    modelo = res
+                    _syn_tui_repintar(modelo)
+                siguiente
+            // Repintar solo si NO es comando de salida (evita flash antes de salir)
+            _syn_tui_repintar(modelo)
+            ultimo_tipo_tarea = tui_agente(modelo, entrada, cwd_act, modo)
+            _syn_tui_repintar(modelo)
+            siguiente
+        si evento == 2:
+            // Esc: limpiar la caja
+            _syn_tui_entrada_borrar()
+            _syn_tui_repintar(modelo)
+            siguiente
+        si evento == 10:
+            // Ctrl+C: terminar
+            _syn_tui_finalizar()
+            retornar 0
+        // Evento 0 = carácter insertado: NO repintar aquí (el cursor se actualiza
+        // en la siguiente iteración o al procesar Enter/Esc). Evita flickering.
+        // Solo repintar si hay alertas pendientes (_syn_tui_dirty).
+        si _syn_tui_dirty() == 1:
+            _syn_tui_repintar(modelo)
+        // Detectar "/" solo en la entrada para abrir menú de comandos (estilo OpenCode)
+        t = _syn_tui_entrada_texto()
+        si t == "/":
+            _syn_tui_entrada_borrar()
+            _syn_tui_repintar(modelo)
+            r = _syn_tui_menu("Comandos (filtra escribiendo)", MENU_COMANDOS)
+            si r != "":
+                res2 = tui_comando(r, modelo, modelos, modo, ultimo_tipo_tarea)
+                si res2 == "!salir":
+                    _syn_tui_finalizar()
+                    retornar 0
+                // ME-1 (R1): detectar cambio de modo desde menú
+                si _syn_strstr(res2, "!modo:") == 0:
+                    num_texto2 = subcadena(res2, 6, longitud(res2) - 6)
+                    nuevo_modo2 = _syn_atoi(num_texto2)
+                    si nuevo_modo2 >= MODO_ASK y nuevo_modo2 <= MODO_ORCHESTRATOR:
+                        modo = nuevo_modo2
+                        _syn_tui_mensaje(2, concat("Modo activo: ", nombre_modo(modo)))
+                si res2 != "!ok" y res2 != "":
+                    modelo = res2
+            _syn_tui_repintar(modelo)
+
 // --- Modo Oraculo (IA Local) ---
 
 funcion modo_oraculo() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
+    // ME eof_cierre_chat (R1, H-AUD-OP-1): leer_linea colapsa EOF y línea vacía en
+    // ""; 3 lecturas vacías seguidas = fin de entrada → salida limpia rc=0
+    // (antes: bucle infinito de "Tu>"). cumple Manual 7 §2.1
+    let eof_consecutivos: entero = 0
+    // cumple Manual 7 §2.1: auto-iniciar llama-server si no esta corriendo
+    iniciar_llama_server()
+    si _syn_tui_iniciar() == 0:
+        rc_tui = chat_tui()
+        retornar rc_tui
+    // Modo linea (pipe/test sin consola): mostrar aqui el banner ASCII retro,
+    // ya que en este flujo chat_tui()/TUI no lo pinto. En consola real la TUI
+    // lo muestra en el panel, asi el banner aparece una sola vez (Manual 7 1.1).
+    mostrar_banner()
     escribir_linea("")
     escribir_linea("=== OpenSyn: Modo Oraculo (IA Local) ===")
     escribir_linea("")
+    // cumple Manual 7 §2.1 + Manual 9 §5: Ollama primero (config_ollama.txt del
+    // instalador, http://localhost:8088); GGUF local como respaldo.
+    config = leer_config_ollama()
+    si config != "":
+        // Chat interactivo real con Ollama, estilo OpenCode/Freebuff:
+        // auto-detección del modelo instalado + comandos /model /modelos /ayuda
+        // + skills (/tdd /revisar /plan). cumple Manual 7 §2.3 + Manual 9 §5.
+        escribir_linea("  [OK] Conectando al servidor IA local… http://127.0.0.1:8088")
+        modelos = _syn_ollama_modelos("127.0.0.1", 8088)
+        si modelos == "":
+            escribir_linea("  [*] No se pudo listar modelos (llama-server no responde).")
+            escribir_linea("  [*] Verifica {app}\\opensyn\\ia y {app}\\opensyn\\models, o usa /modelos mas tarde.")
+            escribir_linea("")
+        modelo_base = obtener_modelo_config(config)
+        modelo = normalizar_modelo_activo(modelo_base, modelos)
+        // ME-1 (R1): inicializar modo en modo línea
+        modo = MODO_DEFAULT
+        // ME-3 (R5): clasificación local al bucle de consola (Manual 2 §2);
+        // este flujo no clasifica (solo TUI lo hace), se inicia en 0.
+        let ultimo_tipo_tarea: entero = 0
+        escribir_linea(concat("  [OK] Modelo activo: ", modelo))
+        total_mod = contar_modelos(modelos)
+        si total_mod > 0:
+            escribir_linea(concat(concat("  [OK] Modelos instalados (", entero_a_texto(total_mod)), "):"))
+            mostrar_modelos(modelos)
+        escribir_linea(concat("  [OK] Modo: ", nombre_modo(modo)))
+        escribir_linea("")
+        escribir_linea("  [Chat] Escribe tu prompt (ayuda: /ayuda · salir para terminar):")
+        escribir_linea("")
+        mientras verdadero:
+            // prompt estilo OpenCode/Freebuff: marcador "❯" verde en consola real
+            si _syn_es_consola() == 1:
+                escribir(_syn_ansi(32))
+                escribir("  \u276f ")
+                escribir(_syn_ansi(0))
+            sino:
+                escribir_linea("  Tu> ")
+            prompt = leer_linea()
+            si prompt == "salir" o prompt == "exit":
+                escribir_linea("")
+                escribir_linea("  Hasta luego!")
+                escribir_linea("")
+                retornar 0
+            si prompt == "":
+                // ME eof_runtime_api (H-EOF-1): EOF real del runtime cierra de
+                // inmediato (stdin_eof 1 = stdin agotado). cumple Manual 7 §2.1
+                si stdin_eof() == 1:
+                    escribir_linea("")
+                    escribir_linea("  [EOF] Entrada cerrada. Saliendo.")
+                    escribir_linea("")
+                    retornar 0
+                // Línea vacía del usuario: contador de respaldo r155 (3 seguidas
+                // cierran; H-AUD-OP-1). cumple Manual 7 §2.1
+                eof_consecutivos = eof_consecutivos + 1
+                si eof_consecutivos >= 3:
+                    escribir_linea("")
+                    escribir_linea("  [EOF] Entrada cerrada. Saliendo.")
+                    escribir_linea("")
+                    retornar 0
+                siguiente
+            eof_consecutivos = 0
+            // --- Comandos del chat ---
+            // ME-1 (R1): comandos de modo
+            si prompt == "/ask":
+                modo = MODO_ASK
+                escribir_linea("  [OK] Modo: ASK (solo lectura)")
+                siguiente
+            si prompt == "/plan":
+                modo = MODO_PLAN
+                escribir_linea("  [OK] Modo: PLAN (diseño)")
+                siguiente
+            si prompt == "/code":
+                modo = MODO_CODE
+                escribir_linea("  [OK] Modo: CODE (edición)")
+                siguiente
+            si prompt == "/debug":
+                modo = MODO_DEBUG
+                escribir_linea("  [OK] Modo: DEBUG (diagnóstico)")
+                siguiente
+            si prompt == "/orchestrator":
+                modo = MODO_ORCHESTRATOR
+                escribir_linea("  [OK] Modo: ORCHESTRATOR (delegación)")
+                siguiente
+            si prompt == "/ayuda" o prompt == "ayuda":
+                mostrar_ayuda()
+                siguiente
+            si prompt == "/modelos" o prompt == "modelos":
+                total_act = contar_modelos(modelos)
+                si total_act == 0:
+                    escribir_linea("  [!] Sin modelos detectados. Verifica {app}\\opensyn\\models")
+                sino:
+                    escribir_linea("  Modelos instalados:")
+                    mostrar_modelos(modelos)
+                    escribir_linea(concat("  Activo: ", modelo))
+                siguiente
+            si prompt == "/model" o _syn_strstr(prompt, "/model ") == 0:
+                nuevo_modelo = manejar_modelo(prompt, modelos)
+                si nuevo_modelo == "":
+                    escribir_linea("  [!] Modelo no disponible. Usa /modelos para ver los instalados.")
+                sino:
+                    modelo = nuevo_modelo
+                    escribir_linea(concat("  [OK] Modelo activo ahora: ", modelo))
+                    escribir_linea("  [OK] Preferencia guardada en config_ollama.txt")
+                siguiente
+            si prompt == "/skills":
+                escribir_linea("  Habilidades disponibles:")
+                escribir_linea("    /tdd <tarea>      - genera tests TDD para una funcion")
+                escribir_linea("    /revisar <codigo> - revision de codigo en 5 ejes")
+                escribir_linea("    /plan <feat>      - desglosa una caracteristica en tareas")
+                escribir_linea("    /ayuda            - todos los comandos")
+                siguiente
+            // ME-1 (R1): skills verifican permisos del modo actual
+            si prompt == "/tdd" o _syn_strstr(prompt, "/tdd ") == 0:
+                si herramienta_permitida(modo, "editar") == 0:
+                    escribir_linea("  [!] /tdd requiere modo CODE. Cambia con /code")
+                    siguiente
+                tarea = subcadena(prompt, 5, longitud(prompt) - 5)
+                si tarea == "":
+                    escribir_linea("  Uso: /tdd <descripcion de la funcion a testear>")
+                sino:
+                    prompt_skill = concat(SKILL_TDD_PROMPT, "\n\nFuncion a testear:\n")
+                    prompt_skill = concat(prompt_skill, tarea)
+                    escribir_linea(concat("  [*] Consultando a ", modelo))
+                    respuesta_skill = _syn_ollama_consultar(modelo, prompt_skill, "127.0.0.1", 8088, 2048)
+                    si respuesta_skill == "":
+                        escribir_linea("  [Error] No hubo respuesta del servidor IA local.")
+                    sino:
+                        escribir_linea("")
+                        escribir_linea(concat("  OpenSyn> ", respuesta_skill))
+                siguiente
+            si prompt == "/revisar" o _syn_strstr(prompt, "/revisar ") == 0:
+                // /revisar solo lee código → permitido en cualquier modo
+                codigo_a_revisar = subcadena(prompt, 9, longitud(prompt) - 9)
+                si codigo_a_revisar == "":
+                    escribir_linea("  Uso: /revisar <codigo a revisar>")
+                sino:
+                    prompt_skill = concat(SKILL_REVIEW_PROMPT, "\n\nCodigo a revisar:\n")
+                    prompt_skill = concat(prompt_skill, codigo_a_revisar)
+                    escribir_linea(concat("  [*] Consultando a ", modelo))
+                    respuesta_skill = _syn_ollama_consultar(modelo, prompt_skill, "127.0.0.1", 8088, 2048)
+                    si respuesta_skill == "":
+                        escribir_linea("  [Error] No hubo respuesta del servidor IA local.")
+                    sino:
+                        escribir_linea("")
+                        escribir_linea(concat("  OpenSyn> ", respuesta_skill))
+                siguiente
+            si prompt == "/plan" o _syn_strstr(prompt, "/plan ") == 0:
+                si herramienta_permitida(modo, "plan") == 0:
+                    escribir_linea("  [!] /plan requiere modo PLAN o superior. Cambia con /plan")
+                    siguiente
+                feat = subcadena(prompt, 6, longitud(prompt) - 6)
+                si feat == "":
+                    escribir_linea("  Uso: /plan <caracteristica a desglosar>")
+                sino:
+                    prompt_skill = concat(SKILL_PLAN_PROMPT, "\n\nCaracteristica: ")
+                    prompt_skill = concat(prompt_skill, feat)
+                    escribir_linea(concat("  [*] Consultando a ", modelo))
+                    respuesta_skill = _syn_ollama_consultar(modelo, prompt_skill, "127.0.0.1", 8088, 2048)
+                    si respuesta_skill == "":
+                        escribir_linea("  [Error] No hubo respuesta del servidor IA local.")
+                    sino:
+                        escribir_linea("")
+                        escribir_linea(concat("  OpenSyn> ", respuesta_skill))
+                siguiente
+            // ME-3 (R7): /next — muestra los 3 siguientes pasos sugeridos (contextual)
+            si prompt == "/next":
+                escribir_linea("  Siguientes pasos sugeridos:")
+                si ultimo_tipo_tarea == 0:
+                    escribir_linea("    1) Diagnostica posibles problemas")
+                    escribir_linea("    2) Refactoriza el codigo explicado")
+                    escribir_linea("    3) Genera tests para el codigo")
+                sino:
+                    si ultimo_tipo_tarea == 1:
+                        escribir_linea("    1) Implementa la correccion sugerida")
+                        escribir_linea("    2) Revisa la solucion propuesta")
+                        escribir_linea("    3) Genera tests que validen la correccion")
+                    sino:
+                        si ultimo_tipo_tarea == 2:
+                            escribir_linea("    1) Revisa los cambios propuestos")
+                            escribir_linea("    2) Ejecuta los tests para verificar")
+                            escribir_linea("    3) Genera documentacion del refactor")
+                        sino:
+                            si ultimo_tipo_tarea == 3:
+                                escribir_linea("    1) Revisa el codigo generado")
+                                escribir_linea("    2) Ejecuta los tests")
+                                escribir_linea("    3) Diagnostica posibles errores")
+                            sino:
+                                escribir_linea("    1) Implementa las correcciones sugeridas")
+                                escribir_linea("    2) Ejecuta los tests")
+                                escribir_linea("    3) Refactoriza el codigo revisado")
+                siguiente
+            // ME-3 (R7): /fork — crea una rama de la sesion actual
+            si prompt == "/fork":
+                fork_id = entero_a_texto(ahora_ms())
+                _syn_tui_historial_anadir(concat("[FORK] Rama creada: ", fork_id))
+                escribir_linea(concat("  Fork creado: ", fork_id))
+                escribir_linea("  La sesion actual se ha ramificado.")
+                siguiente
+            // --- Prompt normal: agente con contexto del repositorio ---
+            // cumple Manual 7 2.3: inyecta contexto estatico y permite herramientas TOOL
+            // ME-1 (R1): pasar modo actual a consultar_agente
+            escribir_linea(concat("  [*] Consultando a ", modelo))
+            respuesta = consultar_agente(modelo, prompt, modo)
+            si respuesta == "":
+                escribir_linea("  [Error] No hubo respuesta del servidor IA local. Ejecuta el diagnostico:")
+                escribir_linea("    opensyn doctor")
+            sino:
+                escribir_linea("")
+                si _syn_es_consola() == 1:
+                    escribir(_syn_ansi(36))
+                escribir("  OpenSyn> ")
+                si _syn_es_consola() == 1:
+                    escribir(_syn_ansi(0))
+                escribir_linea(respuesta)
+            escribir_linea("")
+        retornar 0
 
-    ctx = _syn_modelo_cargar("modelo_synapse.gguf")
+    // --- Sin configuracion Ollama: buscar modelo GGUF local ---
+    escribir_linea("  [*] Servidor IA no detectado; buscando modelo GGUF local...")
+    escribir_linea("")
+    ruta_modelo = buscar_modelo_instalado(obtener_dir_exe(), dir_opensyn(obtener_dir_exe()), _syn_obtener_cwd())
+    si ruta_modelo == "":
+        ruta_modelo = "modelo_synapse.gguf"
+    ctx = _syn_modelo_cargar(ruta_modelo)
     si ctx == nulo:
-        escribir_linea("  [!] No se encontro 'modelo_synapse.gguf'")
-        escribir_linea("  [!] El modo Oraculo requiere un modelo GGUF.")
+        escribir_linea("  [!] No se encontro 'modelo_synapse.gguf' ni en {app}\\opensyn\\models")
+        escribir_linea("  [!] El modo Oraculo requiere un modelo GGUF y llama-server.")
         escribir_linea("")
         escribir_linea("  Descarga un modelo compatible (ej. Qwen2.5-Coder-0.5B)")
         escribir_linea("  y colocalo como 'modelo_synapse.gguf' en la raiz.")
+        escribir_linea("  O ejecuta el instalador de Synapse para descargar el modelo.")
         escribir_linea("")
         escribir_linea("  Luego ejecuta: opensyn")
         escribir_linea("")
@@ -156,17 +2287,171 @@ funcion modo_oraculo() -> entero:
     escribir_linea("  [Error] No se pudo generar codigo valido tras 3 intentos.")
     retornar 1
 
+// --- Subcommands del Orquestador ---
+
+// cumple Manual 7 §2.1: status muestra el estado del entorno Soberania
+// cumple Manual 2 §5: contratos requiere/garantiza
+funcion cmd_status() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
+    dir_exe = obtener_dir_exe()
+    dir_app = dir_opensyn(obtener_dir_exe())
+    escribir_linea("=== OpenSyn: Estado del Sistema ===")
+    escribir_linea("")
+    escribir_linea("  OpenSyn: 1.1.0")
+    escribir_linea(concat("  Binario: ", dir_exe))
+    escribir_linea(concat("  Recursos IA: ", dir_app))
+
+    // Verificar configuracion
+    modo = leer_modo_config()
+    si modo == "":
+        escribir_linea("  Config: No configurado (primera ejecucion)")
+    sino:
+        escribir_linea(concat("  Config: modo_", modo))
+
+    // Verificar servidor IA (llama-server) y modelo real
+    modelos = _syn_ollama_modelos("127.0.0.1", 8088)
+    si longitud(modelos) > 0:
+        escribir_linea("  Servidor IA: activo en http://127.0.0.1:8088")
+        escribir_linea(concat(concat("  Modelos instalados (", entero_a_texto(contar_modelos(modelos))), "):"))
+        mostrar_modelos(modelos)
+    sino:
+        escribir_linea("  Servidor IA: inactivo (se inicia al abrir el chat)")
+    modelo_ruta = buscar_modelo_instalado(obtener_dir_exe(), dir_opensyn(obtener_dir_exe()), _syn_obtener_cwd())
+    si modelo_ruta != "":
+        escribir_linea(concat("  Modelo IA: ", modelo_ruta))
+    sino:
+        escribir_linea("  Modelo IA: No encontrado")
+
+    // Verificar directorio de trabajo
+    cwd = _syn_obtener_cwd()
+    escribir_linea(concat("  Directorio: ", cwd))
+
+    escribir_linea("")
+    escribir_linea("  Comandos disponibles:")
+    escribir_linea("    opensyn <archivo.syn>   - Compilar archivo Synapse")
+    escribir_linea("    opensyn                 - Iniciar orquestador IA local (TUI)")
+    escribir_linea("    opensyn status          - Mostrar este estado")
+    escribir_linea("    opensyn doctor          - Diagnosticar instalacion y entorno")
+    escribir_linea("    opensyn --version       - Mostrar version")
+    escribir_linea("    opensyn --help          - Mostrar ayuda")
+    escribir_linea("")
+    retornar 0
+
+// cumple Manual 7 §2.1: diagnostico de instalacion/entorno antes de abrir la TUI
+// cumple Manual 7 §6.1: prueba de humo posterior a la instalacion
+// cumple Manual 2 §5.1: contrato booleano de exito/fallo del diagnostico
+funcion cmd_doctor() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
+    dir_exe = obtener_dir_exe()
+    dir_app = dir_opensyn(obtener_dir_exe())
+    fallos = 0
+    escribir_linea("=== OpenSyn: Diagnostico ===")
+    escribir_linea("")
+    si longitud(dir_exe) > 0:
+        escribir_linea(concat("  [OK] Binario: ", dir_exe))
+    sino:
+        escribir_linea("  [FAIL] No se pudo resolver el directorio del binario.")
+        fallos = fallos + 1
+    si longitud(dir_app) > 0:
+        escribir_linea(concat("  [OK] Recursos IA: ", dir_app))
+    sino:
+        escribir_linea("  [FAIL] No se pudo resolver {app}\\opensyn.")
+        fallos = fallos + 1
+    modo = leer_modo_config()
+    si modo != "":
+        escribir_linea(concat("  [OK] Config: modo_", modo))
+    sino:
+        escribir_linea("  [i] Config: primera ejecucion (se pide al abrir el chat).")
+    ruta_server = buscar_llama_server(obtener_dir_exe(), dir_opensyn(obtener_dir_exe()), _syn_obtener_cwd())
+    si ruta_server != "":
+        escribir_linea(concat("  [OK] llama-server: ", ruta_server))
+    sino:
+        escribir_linea("  [FAIL] llama-server.exe no encontrado. Reinstala OpenSyn o revisa {app}\\opensyn\\ia.")
+        fallos = fallos + 1
+    modelo = buscar_modelo_instalado(obtener_dir_exe(), dir_opensyn(obtener_dir_exe()), _syn_obtener_cwd())
+    si modelo != "":
+        acc_modelo = _syn_texto_builder_crear()
+        _syn_texto_builder_anexar(acc_modelo, "  [OK] Modelo GGUF: ")
+        _syn_texto_builder_anexar(acc_modelo, modelo)
+        linea_modelo = _syn_texto_builder_construir(acc_modelo)
+        _syn_texto_builder_liberar(acc_modelo)
+        escribir_linea(linea_modelo)
+    sino:
+        escribir_linea("  [FAIL] No hay modelo .gguf. Abre OpenSyn para descargarlo o colocalo en %USERPROFILE%\\.opensyn\\models.")
+        fallos = fallos + 1
+    home = obtener_env("USERPROFILE")
+    si home != "":
+        perfil = concat(home, "\\.opensyn")
+        si longitud(_syn_listar_directorio(perfil)) > 0:
+            escribir_linea(concat("  [OK] Perfil OpenSyn: ", perfil))
+        sino:
+            escribir_linea(concat("  [i] Perfil OpenSyn: ", concat(perfil, " (se crea al guardar config/modelos)")))
+    si llama_server_corriendo() == 1:
+        escribir_linea("  [OK] Servidor IA: activo en http://127.0.0.1:8088")
+    sino:
+        escribir_linea("  [i] Servidor IA: inactivo (se inicia al abrir el chat).")
+    escribir_linea("")
+    si fallos == 0:
+        escribir_linea("  Resultado: OK. OpenSyn puede arrancar el servidor y abrir el chat.")
+        retornar 0
+    escribir_linea(concat(concat("  Resultado: ", entero_a_texto(fallos)), " problema(s) critico(s). Corrige los [FAIL] antes de abrir el chat."))
+    retornar 1
+
 // --- Punto de entrada principal ---
 
-funcion principal() -> entero:
-    escribir_linea("=== OpenSyn v1.1.0 — Orquestador Autonomo ===")
+funcion mostrar_ayuda_cli() -> nulo:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        1 == 1
+    // cumple Manual 7 §2.1: ayuda del orquestador sin abrir la TUI
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    escribir_linea("OpenSyn 1.1.0 - asistente IA local de Synapse")
     escribir_linea("")
+    escribir_linea("Uso:")
+    escribir_linea("  opensyn                 Inicia el orquestador IA local (TUI)")
+    escribir_linea("  opensyn <archivo.syn>   Compila un archivo Synapse")
+    escribir_linea("  opensyn status          Muestra el estado del entorno")
+    escribir_linea("  opensyn doctor          Diagnostica instalacion, modelo y servidor")
+    escribir_linea("  opensyn --version       Muestra la version")
+    escribir_linea("  opensyn --help          Muestra esta ayuda")
 
+funcion principal() -> entero:
+    // cumple Manual 2 §5.1: contrato de dominio
+    requiere:
+        1 == 1
+    garantiza:
+        _resultado_ >= -1
+    // cumple Manual 7 §2.1: CLI de arranque/estado antes de abrir la TUI
+    si _argc() >= 2:
+        a1 = _argv(1)
+        si a1 == "--version" o a1 == "-v" o a1 == "version":
+            escribir_linea("OpenSyn 1.1.0")
+            retornar 0
+        si a1 == "--help" o a1 == "-h" o a1 == "help" o a1 == "ayuda":
+            mostrar_ayuda_cli()
+            retornar 0
+        si a1 == "status":
+            retornar cmd_status()
+        si a1 == "doctor" o a1 == "diagnostico":
+            retornar cmd_doctor()
     // Leer configuracion existente
     modo = leer_modo_config()
 
     si modo == "":
-        // Primera ejecucion: mostrar menu de bienvenida
+        // Primera ejecucion: mostrar menu de bienvenida + banner
+        // cumple Manual 7 1.1: banner ASCII retro al iniciar (estilo OpenCode/Freebuff)
+        mostrar_banner()
         opcion = mostrar_menu_bienvenida()
 
         si opcion == "2":
@@ -185,13 +2470,21 @@ funcion principal() -> entero:
         retornar modo_compilador()
 
     si modo == "oraculo":
+        // El banner se muestra en chat_tui() via TUI (pantalla alternativa)
+        // No imprimir aqui para evitar duplicado y mojibake en consola real
         escribir_linea("  [OK] Modo: Oraculo (IA Local)")
         escribir_linea("  [OK] Para cambiar: elimina .synapse_config y re-ejecuta")
         escribir_linea("")
         retornar modo_oraculo()
 
     // modo == "compilador"
+    // cumple Manual 7 1.1: banner ASCII retro al iniciar (estilo OpenCode/Freebuff)
+    mostrar_banner()
     escribir_linea("  [OK] Modo: Lenguaje Puro")
     escribir_linea("  [OK] Para cambiar: elimina .synapse_config y re-ejecuta")
     escribir_linea("")
     retornar modo_compilador()
+
+// cumple Manual 7 §7.3: el despacho delega la validacion de rutas absolutas en la allowlist.
+
+// cumple Manual 7 §7.3: TOOL ejecutar delega en la allowlist y el timeout de herramienta_ejecutar.

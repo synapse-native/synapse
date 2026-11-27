@@ -1,7 +1,8 @@
 @echo off
 REM build_installer.bat — Automatización del Instalador Maestro (Fase 4.1)
-REM Invoca al compilador de Inno Setup: iscc instalador_synapse.iss
-REM Valida que el artefacto binario resultante se empaquete correctamente en dist/Synapse-5.1.1-industrial-Windows-x64.exe
+REM cumple Manual 9 §2.5 / §4.1
+REM Invoca al compilador de Inno Setup: iscc instaladores/windows/synapse.iss
+REM Valida que el artefacto binario resultante se empaquete correctamente en dist/Synapse-8.1.0-industrial-Windows-x64.exe
 
 setlocal enabledelayedexpansion
 
@@ -24,17 +25,17 @@ for %%I in (iscc.exe) do echo         %%~$PATH:I
 echo.
 
 REM Verificar que el script .iss existe
-if not exist "instalador_synapse.iss" (
-    echo [ERROR] instalador_synapse.iss no encontrado en %CD%
+if not exist "instaladores\windows\synapse.iss" (
+    echo [ERROR] instaladores\windows\synapse.iss no encontrado en %CD%
     exit /b 1
 )
 
 echo [INFO] Compilando instalador con Inno Setup...
-echo [CMD]  iscc instalador_synapse.iss
+echo [CMD]  iscc instaladores\windows\synapse.iss
 echo.
 
 REM Ejecutar compilador Inno Setup
-iscc instalador_synapse.iss
+iscc instaladores\windows\synapse.iss
 set ISCC_EXIT=%errorlevel%
 
 echo.
@@ -47,7 +48,7 @@ echo [OK] Compilacion Inno Setup exitosa (codigo %ISCC_EXIT%)
 echo.
 
 REM Validar artefacto de salida
-set OUTPUT_EXE=dist\Synapse-5.1.1-industrial-Windows-x64.exe
+set OUTPUT_EXE=dist\Synapse-8.1.0-industrial-Windows-x64.exe
 echo [VALIDACION] Verificando artefacto: %OUTPUT_EXE%
 
 if not exist "%OUTPUT_EXE%" (

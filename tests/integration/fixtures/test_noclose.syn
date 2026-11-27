@@ -1,0 +1,8 @@
+#lang: es
+// Prueba: olvidar cerrar() — debe generar warning en C
+
+importar std.io
+
+funcion principal() -> nulo:
+    f = abrir("datos.txt", "r")
+    log("abri pero no cierre")

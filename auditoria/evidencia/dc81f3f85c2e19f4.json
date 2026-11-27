@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "dc81f3f85c2e19f4",
+ "expediente": "docs/alineacion/r206_validation_loop.md",
+ "fecha": "2026-11-10",
+ "archivos": [
+  "opensyn/validation_loop.syn"
+ ],
+ "oraculos": {
+  "tests/opensyn/test_validation_loop_comportamiento.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

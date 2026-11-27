@@ -1,0 +1,19 @@
+{
+ "cambio_hash": "d7aa52b2eb4fb908",
+ "expediente": "docs/alineacion/r331_ci_verde.md",
+ "fecha": "2026-11-25",
+ "archivos": [
+  "nucleo/analizador_semantico.syn",
+  "nucleo/generator.syn",
+  "nucleo/principal.syn",
+  "std/texto.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r256_debugger.py": true,
+  "tests/auditoria/test_oraculos_r27_ctor_aridad.py": true,
+  "tests/auditoria/test_r301_generator_reconciliacion.py": true,
+  "tests/auditoria/test_r331_lsp_compila.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

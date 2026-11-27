@@ -1,0 +1,16 @@
+{
+ "cambio_hash": "4d6c9a16972af6fc",
+ "expediente": "docs/alineacion/r316_link_flags_posix.md",
+ "fecha": "2026-11-23",
+ "archivos": [
+  "cli.py",
+  "librerias/compiler/generator.c",
+  "nucleo/generador/compilar.syn",
+  "nucleo/principal.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_r316_link_flags_posix.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

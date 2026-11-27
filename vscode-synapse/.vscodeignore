@@ -29,9 +29,10 @@ tsconfig.json
 .vscode/
 *.vsix
 
-# Documentation & internal notes
+# Documentation & internal notes (keep README and icon for marketplace)
 CHANGELOG*
-*.md
+!README.md
+!icon.png
 LICENSE
 *.log
 

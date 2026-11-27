@@ -29,13 +29,13 @@ libraries = [
     ('librerias/compiler/lexer.syn', 'LIB_LEXER'),
     ('librerias/compiler/parser.syn', 'LIB_PARSER'),
     ('librerias/compiler/generator.syn', 'LIB_GENERATOR'),
-    ('librerias/std/io.syn', 'LIB_IO'),
-    ('librerias/std/mem.syn', 'LIB_MEM'),
-    ('librerias/std/math.syn', 'LIB_MATH'),
-    ('librerias/std/fs.syn', 'LIB_FS'),
-    ('librerias/std/sys.syn', 'LIB_SYS'),
-    ('librerias/std/modelo.syn', 'LIB_MODELO'),
-    ('librerias/std/oraculo.syn', 'LIB_ORACULO'),
+    ('std/io.syn', 'LIB_IO'),
+    ('std/mem.syn', 'LIB_MEM'),
+    ('std/math.syn', 'LIB_MATH'),
+    ('std/fs.syn', 'LIB_FS'),
+    ('std/sys.syn', 'LIB_SYS'),
+    ('std/modelo.syn', 'LIB_MODELO'),
+    ('std/oraculo.syn', 'LIB_ORACULO'),
 ]
 
 def read_syn(path):
@@ -46,10 +46,10 @@ def read_syn(path):
     return None
 
 STUBS = {
-    'librerias/std/mem.syn': b'// std.mem \xe2\x80\x94 Gestion de memoria con semantica de transferencia\n// Integrante de la Biblioteca Estandar de Sinaplink OS.\n//\n// Uso desde Synapse:\n//   importar std.mem\n//   bloque = reserva(1024)\n//   libera(-> bloque)\n\nfuncion reserva(tamano: int) -> tensor:\n    retornar 0\n\nfuncion libera(bloque: tensor) -> nulo:\n    retornar\n',
-    'librerias/std/math.syn': b'// std.math \xe2\x80\x94 Operaciones tensoriales para IA nativa\n// Integrante de la Biblioteca Estandar de Synapse.\n//\n// Uso desde Synapse:\n//   importar std.math\n//   a = crear_tensor(2, 2)\n//   b = crear_tensor(2, 2)\n//   c = suma_tensor(a, b)\n//   d = producto_punto(a, b)\n//   e = relu(c)\n\nfuncion crear_tensor(filas: entero, columnas: entero) -> tensor:\n    retornar 0\n\nfuncion suma_tensor(a: tensor, b: tensor) -> tensor:\n    retornar 0\n\nfuncion producto_punto(a: tensor, b: tensor) -> tensor:\n    retornar 0\n\nfuncion relu(a: tensor) -> tensor:\n    retornar 0\n',
-    'librerias/std/fs.syn': b'// std.fs \xe2\x80\x94 Operaciones nativas del sistema de archivos via FFI\n// Integrante de la Biblioteca Estandar de Synapse.\n//\n// Uso desde Synapse:\n//   importar std.fs\n//   a = abrir_archivo("test.txt", "w")\n//   escribir_archivo(a, "hola mundo")\n//   cerrar_archivo(a)\n//\n// Nota: Los handles de archivo se almacenan como enteros opacos.\n//       La implementacion subyacente usa FILE* de C.\n\nimportar_c "<stdio.h>"\n\n// Tipo envoltorio para FILE* de C (almacenado como entero opaco)\nestructura Archivo:\n    handle: entero\n\n// Declaraciones externas de C standard library\nexterno funcion fopen(ruta: char*, modo: char*) -> entero\nexterno funcion fclose(archivo: entero) -> entero\nexterno funcion fputs(str: char*, archivo: entero) -> entero\n\n// Wrappers nativos en Synapse\n\nfuncion abrir_archivo(ruta: texto, modo: texto) -> Archivo:\n    a = Archivo()\n    a.handle = fopen(ruta, modo)\n    retornar a\n\nfuncion cerrar_archivo(a: Archivo) -> entero:\n    retornar fclose(a.handle)\n\nfuncion escribir_archivo(a: Archivo, contenido: texto) -> entero:\n    retornar fputs(contenido, a.handle)\n',
-    'librerias/std/sys.syn': b'// std.sys \xe2\x80\x94 Operaciones del sistema operativo via FFI\n// Integrante de la Biblioteca Estandar de Synapse.\n//\n// Uso desde Synapse:\n//   importar std.sys\n//   salir(0)\n\nimportar_c "<stdlib.h>"\n\n// Declaracion externa de la funcion exit(3) de C standard library\nexterno funcion exit(codigo: entero) -> nulo\n\n// Envoltorio nativo: finaliza el programa con un codigo de salida\nfuncion salir(codigo: entero) -> nulo:\n    exit(codigo)\n',
+    'std/mem.syn': b'// std.mem \xe2\x80\x94 Gestion de memoria con semantica de transferencia\n// Integrante de la Biblioteca Estandar de Sinaplink OS.\n//\n// Uso desde Synapse:\n//   importar std.mem\n//   bloque = reserva(1024)\n//   libera(-> bloque)\n\nfuncion reserva(tamano: int) -> tensor:\n    retornar 0\n\nfuncion libera(bloque: tensor) -> nulo:\n    retornar\n',
+    'std/math.syn': b'// std.math \xe2\x80\x94 Operaciones tensoriales para IA nativa\n// Integrante de la Biblioteca Estandar de Synapse.\n//\n// Uso desde Synapse:\n//   importar std.math\n//   a = crear_tensor(2, 2)\n//   b = crear_tensor(2, 2)\n//   c = suma_tensor(a, b)\n//   d = producto_punto(a, b)\n//   e = relu(c)\n\nfuncion crear_tensor(filas: entero, columnas: entero) -> tensor:\n    retornar 0\n\nfuncion suma_tensor(a: tensor, b: tensor) -> tensor:\n    retornar 0\n\nfuncion producto_punto(a: tensor, b: tensor) -> tensor:\n    retornar 0\n\nfuncion relu(a: tensor) -> tensor:\n    retornar 0\n',
+    'std/fs.syn': b'// std.fs \xe2\x80\x94 Operaciones nativas del sistema de archivos via FFI\n// Integrante de la Biblioteca Estandar de Synapse.\n//\n// Uso desde Synapse:\n//   importar std.fs\n//   a = abrir_archivo("test.txt", "w")\n//   escribir_archivo(a, "hola mundo")\n//   cerrar_archivo(a)\n//\n// Nota: Los handles de archivo se almacenan como enteros opacos.\n//       La implementacion subyacente usa FILE* de C.\n\nimportar_c "<stdio.h>"\n\n// Tipo envoltorio para FILE* de C (almacenado como entero opaco)\nestructura Archivo:\n    handle: entero\n\n// Declaraciones externas de C standard library\nexterno funcion fopen(ruta: char*, modo: char*) -> entero\nexterno funcion fclose(archivo: entero) -> entero\nexterno funcion fputs(str: char*, archivo: entero) -> entero\n\n// Wrappers nativos en Synapse\n\nfuncion abrir_archivo(ruta: texto, modo: texto) -> Archivo:\n    a = Archivo()\n    a.handle = fopen(ruta, modo)\n    retornar a\n\nfuncion cerrar_archivo(a: Archivo) -> entero:\n    retornar fclose(a.handle)\n\nfuncion escribir_archivo(a: Archivo, contenido: texto) -> entero:\n    retornar fputs(contenido, a.handle)\n',
+    'std/sys.syn': b'// std.sys \xe2\x80\x94 Operaciones del sistema operativo via FFI\n// Integrante de la Biblioteca Estandar de Synapse.\n//\n// Uso desde Synapse:\n//   importar std.sys\n//   salir(0)\n\nimportar_c "<stdlib.h>"\n\n// Declaracion externa de la funcion exit(3) de C standard library\nexterno funcion exit(codigo: entero) -> nulo\n\n// Envoltorio nativo: finaliza el programa con un codigo de salida\nfuncion salir(codigo: entero) -> nulo:\n    exit(codigo)\n',
 }
 
 # Build content dict
@@ -126,7 +126,26 @@ for rel_path, content in contents.items():
 # Also create the var_name lookup dict
 name_map = {rel: var for rel, var in libraries}
 
+# cumple Manual 1 §3.1 (ME r302_deriva_generados): traza de norma que viaja en
+# el artefacto generado, para que contrastar.py pueda vincularlo a su requisito.
+lines.insert(1, '// cumple Manual 1 §3.1: librerias embebidas del arbol del compilador, '
+                 'regeneradas desde sus .syn (ME r302_deriva_generados).')
+
+nuevo = '\n'.join(lines)
+
+if '--check' in sys.argv:
+    # cumple Manual 1 §7.4: modo verificación para el oráculo de generados
+    actual = ''
+    if os.path.isfile(header):
+        with open(header, encoding='utf-8') as f:
+            actual = f.read()
+    if actual != nuevo:
+        print(f'FALLO --check: {header} está desactualizado', file=sys.stderr)
+        sys.exit(1)
+    print(f'[OK] {header} sincronizado ({len(contents)} librerías embebidas)')
+    sys.exit(0)
+
 with open(header, 'w', encoding='utf-8') as f:
-    f.write('\n'.join(lines))
+    f.write(nuevo)
 
 print(f'Generated {header} with {len(contents)} embedded libraries')

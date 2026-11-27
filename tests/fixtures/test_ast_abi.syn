@@ -1,0 +1,14 @@
+#lang: es
+// Fase 22.B: driver de verificación de la ABI del AST canónico.
+// Este archivo se CONCATENA con nucleo/ast_abi.syn por el harness
+// (tests/unit/test_ast_abi.py) para compilar un binario autónomo
+// que debe imprimir "ABI_OK:0" y retornar rc=0.
+
+funcion principal() -> entero:
+    version = ast_abi_version()
+    divergencias = ast_abi_verificar()
+    escribir_linea(concat("AST_ABI_VERSION=", entero_a_texto(version)))
+    escribir_linea(concat("ABI_OK:", entero_a_texto(divergencias)))
+    si divergencias != 0:
+        retornar 1
+    retornar 0

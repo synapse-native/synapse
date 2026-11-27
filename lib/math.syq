@@ -1,0 +1,88 @@
+#lang: es
+// lib/math.syq — Matemáticas y estadísticas de Syquex
+// Manual 3 §12.1: Módulo Math (extiende std/math de Synapse)
+//
+// Uso desde Syquex:
+//   importar lib.math
+//   let r = math.abs(-5)
+//   let p = math.potencia(2, 10)
+
+// --- Funciones básicas ---
+
+funcion abs(x: decimal) -> decimal:
+    si x < 0.0:
+        retornar -x
+    retornar x
+
+funcion max(a: decimal, b: decimal) -> decimal:
+    si a > b:
+        retornar a
+    retornar b
+
+funcion min(a: decimal, b: decimal) -> decimal:
+    si a < b:
+        retornar a
+    retornar b
+
+funcion clamp(valor: decimal, limite_inf: decimal, limite_sup: decimal) -> decimal:
+    si valor < limite_inf:
+        retornar limite_inf
+    si valor > limite_sup:
+        retornar limite_sup
+    retornar valor
+
+// --- Potencia y raíz ---
+
+funcion potencia(base: decimal, exponente: decimal) -> decimal:
+    retornar _syn_potencia(base, exponente)
+
+funcion raiz_cuadrada(x: decimal) -> decimal:
+    si x < 0.0:
+        retornar 0.0
+    retornar _syn_sqrt(x)
+
+// --- Trigonometría ---
+
+funcion seno(x: decimal) -> decimal:
+    retornar _syn_sen(x)
+
+funcion coseno(x: decimal) -> decimal:
+    retornar _syn_cos(x)
+
+funcion tangente(x: decimal) -> decimal:
+    retornar _syn_tan(x)
+
+// --- Redondeo ---
+
+funcion redondear(x: decimal) -> entero:
+    retornar _syn_round(x)
+
+funcion techo(x: decimal) -> entero:
+    retornar _syn_ceil(x)
+
+funcion piso(x: decimal) -> entero:
+    retornar _syn_floor(x)
+
+// --- Logaritmos ---
+
+funcion logaritmo(x: decimal) -> decimal:
+    retornar _syn_log(x)
+
+funcion logaritmo_base(x: decimal, base: decimal) -> decimal:
+    let ln_x = _syn_log(x)
+    let ln_b = _syn_log(base)
+    si ln_b == 0.0:
+        retornar 0.0
+    retornar ln_x / ln_b
+
+// --- Externs del runtime C ---
+
+externo funcion _syn_potencia(base: decimal, exponente: decimal) -> decimal
+externo funcion _syn_sqrt(x: decimal) -> decimal
+externo funcion _syn_sen(x: decimal) -> decimal
+externo funcion _syn_cos(x: decimal) -> decimal
+externo funcion _syn_tan(x: decimal) -> decimal
+externo funcion _syn_round(x: decimal) -> entero
+externo funcion _syn_ceil(x: decimal) -> entero
+externo funcion _syn_floor(x: decimal) -> entero
+externo funcion _syn_log(x: decimal) -> decimal

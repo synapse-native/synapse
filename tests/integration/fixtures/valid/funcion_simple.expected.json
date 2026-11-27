@@ -1,0 +1,41 @@
+{
+  "_tipo": "Programa",
+  "sentencias": [
+    {
+      "_tipo": "DefinicionFuncion",
+      "nombre": "suma",
+      "parametros": [
+        {
+          "nombre": "a",
+          "tipo": "int"
+        },
+        {
+          "nombre": "b",
+          "tipo": "int"
+        }
+      ],
+      "tipo_retorno": "int",
+      "requiere": [],
+      "garantiza": [],
+      "cuerpo": [
+        {
+          "_tipo": "SentenciaRetornar",
+          "expr": {
+            "_tipo": "OpBinaria",
+            "izquierdo": {
+              "_tipo": "Identificador",
+              "nombre": "a"
+            },
+            "operador": "+",
+            "derecho": {
+              "_tipo": "Identificador",
+              "nombre": "b"
+            }
+          },
+          "es_transferencia": false
+        }
+      ]
+    }
+  ],
+  "is_no_std": false
+}

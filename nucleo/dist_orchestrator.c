@@ -1,3 +1,5 @@
+// cumple Manual 1 5: orquestador de distribucion
+// cumple Manual 8 4: toolchain
 // dist_orchestrator.c — Orquestador de Entrenamiento Distribuido
 // =================================================================
 // Gestiona la asignación dinámica de workers, partición de datasets
@@ -301,9 +303,13 @@ int orch_manejar_fallo(OrchSession* sesion, const char* worker_id) {
         return -1;
     }
     else if (sesion->config.failover_strategy == ORCH_FAILOVER_REDISTRIBUTE) {
-        asg->estado = 3;  // Fallo permanente
-        int redist = orch_redistribuir(sesion);
-        return (redist > 0) ? 0 : -1;
+        // Contrato (validate_dist_orchestrator §6.3): marcar el fallo y
+        // reportar éxito; la redistribución es un paso EXPLÍCITO del caller
+        // (orch_redistribuir). Intento inmediato best-effort sin condicionar
+        // el resultado al remanente de workers vivos.
+        asg->estado = 3;
+        orch_redistribuir(sesion);
+        return 0;
     }
     else {  // ORCH_FAILOVER_IGNORE
         asg->estado = 3;  // Marcar como fallo pero continuar

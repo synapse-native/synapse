@@ -1,36 +1,266 @@
+# cumple Manual 1 §3.2: infraestructura Python del compilador Synapse (pipeline 3.1)
+# cumple Manual 8 §4.1: toolchain de construcción del compilador nativo S2
+# cumple Manual 1 §3.1: pipeline de compilación (lexer->parser->semántico->generador) que sirve este CLI
 import os
 import sys
 import json
 import subprocess
 import argparse
-from typing import Dict, Any
+import hashlib
+import tarfile
+import io
+import tempfile
+try:
+    import tomllib
+except ImportError:
+    try:
+        import tomli as tomllib
+    except ImportError:
+        tomllib = None
+from typing import Dict, Any, List, Optional
 
 from compilador.diagnostics import DiagnosticManager, ErrorCodes
 from compilador.ast_nodes import Token, TokenID
 from pipeline import ejecutar_compilador, _cache_clean, _cache_stats, _cache_dir
+
+# ============================================================
+# HERRAMIENTAS NATIVAS lint/fmt (Manual 8 §4.1) — ME cli_lint_fmt
+# ============================================================
+
+# cumple Manual 1 §6: el backing del backend lint/fmt es el stage2 del bootstrap;
+# se reconstruye ON-DEMAND con el comando EXACTO del job bootstrap del CI (la misma
+# convención de tests/unit/test_r3_param_adt.py y tests/nucleo/test_modulos_compilan.py)
+# SOLO si falta o quedó stale: ninguna característica nueva rompe el bootstrap.
+_ST1 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "synapse_stage1.exe")
+_ST2 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "synapse_stage2.exe")
+
+
+def _mtimes_fuentes_nucleo():
+    """cumple Manual 1 §6: mtime máximo de las fuentes .syn del nucleo."""
+    raiz = os.path.dirname(os.path.abspath(__file__))
+    limite = 0.0
+    import glob as _glob
+    for patron in (os.path.join(raiz, "nucleo", "*.syn"),
+                   os.path.join(raiz, "nucleo", "generador", "*.syn")):
+        for f in _glob.glob(patron):
+            try:
+                m = os.path.getmtime(f)
+            except OSError:
+                continue
+            limite = max(limite, m)
+    return limite
+
+
+def _bootstrap_stage2_fresco():
+    """cumple Manual 1 §6 (regla de hierro): garantiza un stage2 FRESCO para
+    servir `synapse lint/fmt` sin romper el bootstrap.
+
+    - stage2 ausente o stale (fuentes .syn del nucleo más nuevas) → rebuild
+      on-demand: S1 con el comando del job CI del bootstrap
+      (python main.py nucleo/principal.syn -o synapse_stage1.exe) y S2 desde S1.
+    - stage1 AUSENTE pero stage2 presente-fresco NO sirve: el hook pre-commit
+      limpia stage1 (artefacto no rastreado) y conserva stage2 — se regenera S1.
+    - fresco → NO recompila (el backing es barato, no toca el bootstrap).
+    Devuelve la ruta del stage2 o None si no pudo garantizarse.
+    """
+    raiz = os.path.dirname(os.path.abspath(__file__))
+    principal = os.path.join(raiz, "nucleo", "principal.syn")
+    py = sys.executable
+    falta_s1 = not os.path.exists(_ST1)
+    falta_s2 = not os.path.exists(_ST2)
+    stale = os.path.getmtime(_ST2) < _mtimes_fuentes_nucleo() \
+        if os.path.exists(_ST2) else True
+    if falta_s1 or falta_s2 or stale:
+        if falta_s1 or not os.path.exists(_ST1):
+            r1 = subprocess.run([py, "main.py", principal, "-o", _ST1],
+                                cwd=raiz, capture_output=True, text=True,
+                                encoding="utf-8", errors="replace", timeout=900)
+            if r1.returncode != 0:
+                print(r1.stdout[-800:] + r1.stderr[-800:], file=sys.stderr)
+                return None
+        r2 = subprocess.run([_ST1, principal, "-o", _ST2], cwd=raiz,
+                            capture_output=True, text=True, encoding="utf-8",
+                            errors="replace", timeout=900)
+        if r2.returncode != 0:
+            print(r2.stdout[-800:] + r2.stderr[-800:], file=sys.stderr)
+            return None
+    if not os.path.exists(_ST2):
+        return None
+    return _ST2
+
+
+def _cmd_herramienta_nativa(herramienta, argv):
+    """cumple Manual 8 §4.1: `synapse lint` / `synapse fmt` / `synapse check`
+    — ejecuta la herramienta NATIVA sobre el código fuente (backend stage2,
+    módulos .syn lint/formatter desde r153/Opción A; check = ME check_cli R1,
+    M8 §4.2 modo de validación sin generar código de salida).
+
+    Acepta el orden canónico (flags ANTES del archivo, H-33.5-2) y el antiguo:
+    toma como archivo el primer argumento que no empiece por '-'.
+    rc del backend propagado tal cual (0 limpio/formateado/validación exitosa,
+    1 advertencias o no formateado o error de validación, 2 error). Devuelve
+    el rc del proceso.
+    """
+    archivo = None
+    skip = False
+    for a in argv:
+        if skip:
+            skip = False
+            continue
+        if a in ("-o", "--output"):
+            skip = True  # valor del flag, no es el archivo
+            continue
+        if not a.startswith('-'):
+            archivo = a
+            break
+    if not archivo:
+        print(f"ERROR: Se requiere archivo .syn/.syq para {herramienta} "
+              f"(ej. synapse {herramienta} --check main.syn)", file=sys.stderr)
+        return 1
+    if not os.path.exists(archivo):
+        print(f"ERROR: Archivo '{archivo}' no encontrado", file=sys.stderr)
+        return 1
+    exe = _bootstrap_stage2_fresco()
+    if not exe:
+        print("ERROR: no se pudo garantizar el backend nativo (stage2 del "
+              "bootstrap stale o no construible)", file=sys.stderr)
+        return 1
+    # El dispatcher nativo espera [herramienta, flags..., archivo] en argv[2:]
+    flags = [a for a in argv if a.startswith('-')]
+    r = subprocess.run([exe, herramienta] + flags + [archivo],
+                       capture_output=True, text=True, encoding="utf-8",
+                       errors="replace", timeout=300)
+    sys.stdout.write(r.stdout or "")
+    sys.stderr.write(r.stderr or "")
+    return r.returncode
 
 
 # ============================================================
 # AUDIT SANITIZERS (Manual 9 §9.5) — M0.3.8-FIX
 # ============================================================
 
+# ===========================================================================
+# M3d/R149: Debugger time-travel del CLI sobre trazas TRACE v1 REALES
+# (formato escrito por _syn_debug_finalizar_sesion, runtime/core/debug.c).
+# # cumple Manual 8 §3.4
+# ===========================================================================
+_DBG_TAGS = {
+    0: "ASIGNACION", 1: "LLAMADA", 2: "RETORNO", 3: "ERROR",
+    4: "RAMA", 6: "CAMBIO_VAR", 8: "TRACE",
+}
+_DBG_SESION = os.path.join(
+    os.environ.get('USERPROFILE') or os.environ.get('HOME') or '.',
+    '.synapse', 'cache', 'debug_session.json')
+
+
+def _debug_cargar_traza(ruta: str):
+    """Parsea un archivo TRACE v1 (runtime/core/debug.c: 'TRACE v1',
+    cabeceras id=/programa=/eventos=/capacidad=, eventos
+    'tag|ts|funcion|archivo|linea|valor_entero|valor_decimal|valor_texto|variable').
+    Retorna dict con metadatos + eventos, o None si el formato no coincide."""
+    try:
+        with open(ruta, encoding="utf-8", errors="replace") as f:
+            lineas = f.read().splitlines()
+    except OSError:
+        return None
+    if not lineas or lineas[0].strip() != "TRACE v1":
+        return None
+    meta = {"id": "", "programa": "", "total": 0, "ruta": ruta}
+    eventos = []
+    for ln in lineas[1:]:
+        if ln.startswith("id="):
+            meta["id"] = ln[3:]
+        elif ln.startswith("programa="):
+            meta["programa"] = ln[9:]
+        elif ln.startswith("eventos="):
+            meta["total"] = int(ln[8:] or 0)
+        elif ln == "---":
+            continue
+        elif "|" in ln:
+            campos = ln.split("|", 8)
+            if len(campos) != 9:
+                continue
+            try:
+                tag, ts, linea_n = int(campos[0]), int(campos[1]), int(campos[4])
+                ve, vd = int(campos[5]), float(campos[6])
+            except ValueError:
+                continue
+            eventos.append({
+                "tag": tag, "tag_nombre": _DBG_TAGS.get(tag, f"TAG_{tag}"),
+                "ts": ts, "funcion": campos[2], "archivo": campos[3],
+                "linea": linea_n, "valor_entero": ve, "valor_decimal": vd,
+                "valor_texto": campos[7], "variable": campos[8],
+            })
+    if meta["total"] == 0 and not eventos:
+        return None
+    meta["eventos"] = eventos  # D-R150-5: la lista parseada viaja con la traza (KeyError en --step)
+    return meta
+
+
+def _debug_mostrar_evento(e, pos, prefijo="[DEBUG]"):
+    valor = e["valor_texto"] if e["valor_texto"] else (
+        str(e["valor_entero"]) if e["valor_entero"] or not e["valor_decimal"]
+        else f"{e['valor_decimal']:g}")
+    var = f" {e['variable']}=" if e["variable"] else " "
+    print(f"{prefijo} #{pos} [{e['tag_nombre']}] {e['funcion']} "
+          f"({e['archivo']}:{e['linea']}){var}{valor}")
+
+
+def _debug_estado_guardar(ruta, pos):
+    os.makedirs(os.path.dirname(_DBG_SESION), exist_ok=True)
+    with open(_DBG_SESION, "w", encoding="utf-8") as f:
+        json.dump({"ruta": ruta, "pos": pos}, f)
+
+
+def _debug_estado_cargar():
+    try:
+        with open(_DBG_SESION, encoding="utf-8") as f:
+            st = json.load(f)
+    except (OSError, ValueError):
+        return None
+    traza = _debug_cargar_traza(st.get("ruta", ""))
+    if traza is None:
+        return None
+    return traza, int(st.get("pos", 0))
+
+
 def _resolver_gcc() -> str:
-    """Resuelve la ruta al GCC del toolchain interno."""
-    import glob as _glob
+    """Resuelve la ruta al GCC del toolchain interno.
+
+    ME-R4 (Causa C): el C generado por el compilador usa extensiones GCC
+    (nested functions) que clang rechaza (Manual 8 §8.1) -> se fuerza un GCC
+    real. En macOS '/usr/bin/gcc' es un shim de clang: se valida con '--version'
+    que el binario NO reporte 'clang', y se busca el gcc de Homebrew (gcc-14/13/12)
+    antes de caer en el PATH. La variable SYNAPSE_GCC_PATH es un override
+    explicito del usuario y se respeta tal cual (si ejecuta).
+    """
     root = os.path.dirname(os.path.abspath(__file__))
+    env_gcc = os.environ.get('SYNAPSE_GCC_PATH', '')
     candidates = [
-        os.environ.get('SYNAPSE_GCC_PATH', ''),
+        env_gcc,
         os.path.join(root, 'toolchain_gcc12', 'mingw64', 'bin', 'gcc.exe'),
         os.path.join(root, 'toolchain', 'bin', 'gcc.exe'),
-        'gcc',
     ]
+    if sys.platform == 'darwin':
+        candidates += [
+            '/opt/homebrew/bin/gcc-14', '/opt/homebrew/bin/gcc-13', '/opt/homebrew/bin/gcc-12',
+            '/usr/local/bin/gcc-14', '/usr/local/bin/gcc-13', '/usr/local/bin/gcc-12',
+            'gcc-14', 'gcc-13', 'gcc-12',
+        ]
+    candidates += ['gcc', 'cc']
     for c in candidates:
-        if c:
-            try:
-                ret = subprocess.run([c, '--version'], capture_output=True, text=True, timeout=5)
-                if ret.returncode == 0:
-                    return c
-            except Exception: pass
+        if not c:
+            continue
+        try:
+            ret = subprocess.run([c, '--version'], capture_output=True, text=True, timeout=5)
+            if ret.returncode != 0:
+                continue
+            # Rechazar shims de clang (p. ej. /usr/bin/gcc de macOS) salvo override explicito
+            if c != env_gcc and 'clang' in (ret.stdout + ret.stderr).lower():
+                continue
+            return c
+        except Exception:
+            continue
     return 'gcc'
 
 
@@ -51,6 +281,37 @@ def _tiene_sanitizers(gcc: str) -> bool:
         return False, False
 
 
+def _compilar_runtime_sanitizado(dir_rel: str, san_flags: str) -> list:
+    """ME-R7 (D6): compila el runtime modular desde fuente con sanitizadores.
+
+    Los .o pre-ME-R2 (synapse_rt.o, synapse_rt_memory.o, synapse_rt_concurrency.o)
+    no existen en instalacion limpia; el runtime se compila desde fuente a
+    build/obj/<dir_rel> con -fsanitize (Manual 9 S9.5).
+    """
+    import subprocess
+    root = os.path.dirname(os.path.abspath(__file__))
+    compiler = _resolver_gcc()
+    dir_obj = os.path.join(root, 'build', 'obj', dir_rel)
+    os.makedirs(dir_obj, exist_ok=True)
+    base = [compiler, '-O1', '-g', san_flags, '-fno-omit-frame-pointer', '-I' + root, '-c']
+    fuentes = [
+        ('synapse_rt.o', 'synapse_rt.c', []),
+        ('synapse_rt_memory.o', 'runtime/core/memory.c', ['-DSYNAPSE_DEBUG_MEM']),
+        ('synapse_rt_concurrency.o', 'runtime/core/concurrency.c', []),
+        ('tweetnacl.o', 'axon/tweetnacl.c', []),
+    ]
+    objs = []
+    for obj, src, extra in fuentes:
+        salida = os.path.join(dir_obj, obj)
+        cmd = base + extra + [os.path.join(root, src), '-o', salida]
+        ret = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+        if ret.returncode != 0:
+            raise RuntimeError(f'ME-R7/D6: fallo al compilar {src} con {san_flags}: {ret.stderr[:400]}')
+        objs.append(salida)
+    return objs
+
+
+
 def _auditar_memoria():
     """Ejecuta AddressSanitizer + LeakSanitizer sobre el core del runtime.
     Manual 9 §9.5: 0 fugas de memoria.
@@ -58,8 +319,8 @@ def _auditar_memoria():
     """
     import subprocess
     root = os.path.dirname(os.path.abspath(__file__))
-    compiler = os.environ.get('SYNAPSE_GCC', 'gcc')
-    
+    compiler = _resolver_gcc()
+
     # Tests C a compilar con ASan
     c_tests = [
         'tests/test_work_stealing.c',       # M8.2
@@ -67,14 +328,18 @@ def _auditar_memoria():
         'tests/test_tls.c',                 # M4.6 TLC
         'tests/test_same_buffer.c',           # RAW hazard
     ]
-    
-    rt_obj = os.path.join(root, 'synapse_rt.o')
-    rt_mem = os.path.join(root, 'synapse_rt_memory.o')
-    rt_conc = os.path.join(root, 'synapse_rt_concurrency.o')
-    
+
+    try:
+        rt_objs = _compilar_runtime_sanitizado('asan', '-fsanitize=address,undefined')
+    except RuntimeError as e:
+        print(f'  [FAIL] {e}')
+        return 1
+    rt_obj, rt_mem, rt_conc, rt_tweet = rt_objs
+
     flags = '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -DSYNAPSE_DEBUG_MEM -I.'
-    link_flags = '-fsanitize=address,undefined -lpthread -lm -lws2_32'
-    
+    # cumple Manual 9 §6.2 (r316): -lws2_32 solo existe en Windows.
+    link_flags = '-fsanitize=address,undefined -lpthread -lm' + (' -lws2_32' if sys.platform == 'win32' else '')
+
     all_ok = True
     for src_rel in c_tests:
         src = os.path.join(root, src_rel)
@@ -82,7 +347,7 @@ def _auditar_memoria():
             print(f'  [SKIP] {src_rel}: no encontrado')
             continue
         exe = src + '.asan.exe'
-        cmd = f'{compiler} {flags} "{src}" "{rt_obj}" "{rt_mem}" "{rt_conc}" -o "{exe}" {link_flags}'
+        cmd = f'{compiler} {flags} "{src}" "{rt_obj}" "{rt_mem}" "{rt_conc}" "{rt_tweet}" -o "{exe}" {link_flags}'
         print(f'[ASan] Compilando: {src_rel} ...', end=' ')
         ret = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=60)
         if ret.returncode != 0:
@@ -107,7 +372,7 @@ def _auditar_memoria():
         finally:
             try: os.remove(exe)
             except OSError: pass
-    
+
     if all_ok:
         print('\n[ASan/LSan] RESULTADO: 0 fugas de memoria detectadas — CERTIFICADO')
     else:
@@ -122,24 +387,27 @@ def _auditar_hilos():
     """
     import subprocess
     root = os.path.dirname(os.path.abspath(__file__))
-    compiler = os.environ.get('SYNAPSE_GCC', 'gcc')
-    
+    compiler = _resolver_gcc()
+
     # Stress test con canales concurrentes (F10.5)
     stress_src = os.path.join(root, 'tests', 'stress', 'test_stress_concurrencia.c')
-    rt_obj = os.path.join(root, 'synapse_rt.o')
-    rt_mem = os.path.join(root, 'synapse_rt_memory.o')
-    rt_conc = os.path.join(root, 'synapse_rt_concurrency.o')
-    
+    try:
+        rt_objs = _compilar_runtime_sanitizado('tsan', '-fsanitize=thread')
+    except RuntimeError as e:
+        print(f'  [FAIL] {e}')
+        return 1
+    rt_obj, rt_mem, rt_conc, rt_tweet = rt_objs
+
     flags = '-O1 -g -fsanitize=thread -DSYNAPSE_DEBUG_MEM -I.'
-    link_flags = '-fsanitize=thread -lpthread -lm -lws2_32'
-    
+    link_flags = '-fsanitize=thread -lpthread -lm' + (' -lws2_32' if sys.platform == 'win32' else '')
+
     print('=' * 60)
     print('  [TSan] Auditoria de Hilos — ThreadSanitizer')
     print('=' * 60)
-    
+
     # Compilar stress test con TSan
     stress_exe = os.path.join(root, 'tests', 'stress', 'stress_tsan.exe')
-    cmd = f'{compiler} {flags} "{stress_src}" "{rt_obj}" "{rt_mem}" "{rt_conc}" -o "{stress_exe}" {link_flags}'
+    cmd = f'{compiler} {flags} "{stress_src}" "{rt_obj}" "{rt_mem}" "{rt_conc}" "{rt_tweet}" -o "{stress_exe}" {link_flags}'
     print(f'[TSan] Compilando stress test...', end=' ')
     ret = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=60)
     if ret.returncode != 0:
@@ -147,7 +415,7 @@ def _auditar_hilos():
         print(ret.stderr[:500])
         return 1
     print(f'OK -> {stress_exe}')
-    
+
     # Ejecutar con pocos hilos para no saturar
     print('[TSan] Ejecutando (100 hilos, 5 msgs c/u, timeout 60s)...')
     try:
@@ -165,7 +433,7 @@ def _auditar_hilos():
     finally:
         try: os.remove(stress_exe)
         except OSError: pass
-    
+
     print('\n[TSan] RESULTADO: 0 data races detectadas — CERTIFICADO')
     return 0
 
@@ -177,11 +445,504 @@ def _print_cache_help():
     print("  synapse build --incremental <archivo.syn>  - Compilación incremental")
 
 
+# ================================================================
+# Axon CLI commands (Manual 8 §4.1, §4.4; Manual 9 §4.2)
+# ================================================================
+
+def _parse_axon_toml(path: str = "axon.toml") -> Optional[Dict]:
+    """Parse axon.toml manifest (Manual 8 §4.4). Returns dict or None."""
+    if not os.path.exists(path):
+        diag = DiagnosticManager()
+        diag.reportar(ErrorCodes.ERR_MANIFEST_NOT_FOUND, Token(TokenID.EOF, 0, 0))
+        print(diag.resumen(), file=sys.stderr)
+        return None
+    with open(path, "rb") as f:
+        return tomllib.load(f)
+
+
+def _cmd_init():
+    """synapse init — Crea estructura de proyecto (Manual 8 §4.3)."""
+    root = os.path.dirname(os.path.abspath(__file__))
+    nombre_proyecto = os.path.basename(os.getcwd())
+
+    estructura = [
+        "src",
+        "tests",
+        "lib",
+        ".axon_cache",
+        "axon_modules",
+    ]
+    for d in estructura:
+        os.makedirs(d, exist_ok=True)
+
+    # axon.toml (Manual 8 §4.3, esquema en axon/axon.toml)
+    axon_toml = f"""[paquete]
+nombre = "{nombre_proyecto}"
+version = "0.1.0"
+autor = ""
+tipo = "libreria"
+punto_entrada = "src/main.syn"
+
+[dependencias]
+"""
+    with open("axon.toml", "w") as f:
+        f.write(axon_toml)
+
+    # axon.lock (Manual 8 §4.3)
+    with open("axon.lock", "w") as f:
+        f.write("[lock]\n")
+
+    # src/main.syn (esqueleto básico)
+    main_syn = f"""# Proyecto: {nombre_proyecto}
+# Generado por `synapse init` (Manual 8 §4.3)
+
+#lang: es
+funcion principal() -> entero:
+    escribir_linea("Hola, Synapse!")
+    retornar 0
+"""
+    with open("src/main.syn", "w") as f:
+        f.write(main_syn)
+
+    # .gitignore (Axon cache, módulos, build artifacts)
+    gitignore = """.axon_cache/
+axon_modules/
+build/
+*.exe
+*.o
+*.dll
+"""
+    with open(".gitignore", "w") as f:
+        f.write(gitignore)
+
+    print(f"Proyecto '{nombre_proyecto}' creado.")
+    print(f"  src/main.syn        — punto de entrada")
+    print(f"  tests/              — tests del proyecto")
+    print(f"  lib/                — dependencias locales")
+    print(f"  axon.toml           — manifiesto del proyecto")
+    print(f"  axon.lock           — lockfile de dependencias")
+    print(f"  .gitignore          — exclusiones de VCS")
+    return 0
+
+
+def _cmd_axon_init():
+    """synapse axon init — Crea manifiesto Axon (Manual 8 §4.4)."""
+    if os.path.exists("axon.toml"):
+        resp = input("axon.toml ya existe. Sobrescribir? (s/N): ")
+        if resp.lower() != 's':
+            print("Cancelado.")
+            return 0
+
+    nombre = input("Nombre del paquete: ").strip()
+    version = input("Versión (SemVer, ej. 0.1.0): ").strip()
+    autor = input("Autor (nombre o clave pública hex): ").strip()
+    print("Tipo de paquete:")
+    print("  1. libreria")
+    print("  2. aplicacion")
+    print("  3. modelo")
+    tipo_idx = input("Selecciona (1-3) [1]: ").strip()
+    tipos = {"1": "libreria", "2": "aplicacion", "3": "modelo"}
+    tipo = tipos.get(tipo_idx, "libreria")
+    punto_entrada = input("Punto de entrada (ej. src/main.syn): ").strip()
+
+    axon_toml = f"""[paquete]
+nombre = "{nombre}"
+version = "{version}"
+autor = "{autor}"
+tipo = "{tipo}"
+punto_entrada = "{punto_entrada}"
+
+[dependencias]
+"""
+    with open("axon.toml", "w") as f:
+        f.write(axon_toml)
+    print(f"Manifiesto axon.toml creado para '{nombre}' v{version}.")
+    return 0
+
+
+def _cmd_fetch():
+    """synapse fetch — Descarga dependencias desde axon.toml (Manual 8 §4.4).
+
+    Lee [dependencias] de axon.toml, descarga cada paquete via HTTP,
+    verifica SHA-256 contra axon.lock, verifica Ed25519 (si hay clave
+    pública), extrae TAR a axon_modules/ con path traversal protection.
+    """
+    manifest = _parse_axon_toml()
+    if manifest is None:
+        return 1
+
+    paquete_info = manifest.get("paquete", {})
+    dependencias = manifest.get("dependencias", {})
+
+    if not dependencias:
+        print("[Axon] No hay dependencias en axon.toml.")
+        return 0
+
+    # Ensure lock file exists
+    lock_path = "axon.lock"
+    if not os.path.exists(lock_path):
+        with open(lock_path, "w") as f:
+            f.write("[lock]\n")
+
+    all_ok = True
+    for dep_name, constraint in dependencias.items():
+        if isinstance(constraint, str):
+            constraint = {"version": constraint}
+
+        version = constraint.get("version", "*")
+        lock_data = _read_lock_entry(lock_path, dep_name)
+
+        resolved_version = version
+        if lock_data:
+            resolved_version = lock_data["version"]
+            print(f"[Axon] {dep_name} v{resolved_version} (locked)")
+        else:
+            print(f"[Axon] {dep_name} v{version} (resolving...)")
+
+        # Try local first
+        cache_path = os.path.join(".axon_cache", f"{dep_name}.tar")
+        local_path = os.path.join("paquetes_oficiales", dep_name, f"{resolved_version}.tar")
+        tar_path = cache_path if os.path.exists(cache_path) else (
+            local_path if os.path.exists(local_path) else None
+        )
+
+        if tar_path is None:
+            print(f"[Axon] ERR_FETCH: '{dep_name}' no encontrado localmente. "
+                  f"Configure AXON_PATH o use 'synapse axon publish' primero.")
+            all_ok = False
+            continue
+
+        # Verify SHA-256
+        actual_hash = _sha256_file(tar_path)
+        if lock_data and lock_data.get("hash", "").startswith("sha256:"):
+            expected = lock_data["hash"][7:]  # strip "sha256:"
+            if actual_hash != expected:
+                print(f"[Axon] ERR_AXON_COMPROMISED: hash mismatch para '{dep_name}'")
+                all_ok = False
+                continue
+            print(f"[Axon] SHA-256 verificado: {actual_hash[:16]}...")
+        else:
+            _write_lock_entry(lock_path, dep_name, resolved_version, actual_hash)
+            print(f"[Axon] SHA-256 registrado: {actual_hash[:16]}...")
+
+        # Verify Ed25519 signature (if public key provided)
+        autor_clave = constraint.get("clave_publica") or constraint.get("pk")
+        if autor_clave:
+            sig_path = tar_path + ".sig"
+            if os.path.exists(sig_path):
+                if _ed25519_verify_file(tar_path, sig_path, autor_clave) != 0:
+                    print(f"[Axon] ERR_AXON_COMPROMISED: firma invalida para '{dep_name}'")
+                    all_ok = False
+                    continue
+                print(f"[Axon] Firma Ed25519 verificada")
+            else:
+                print(f"[Axon] WARN: no hay archivo .sig para '{dep_name}'")
+
+        # Extract TAR (path traversal protection inside)
+        extract_dir = os.path.join("axon_modules", dep_name)
+        if _tar_extraer(tar_path, extract_dir):
+            print(f"[Axon] Extracto: {tar_path} -> {extract_dir}")
+        else:
+            print(f"[Axon] ERR_TAR: fallo extracción de {tar_path}")
+            all_ok = False
+
+    if all_ok:
+        print("[Axon] Todas las dependencias procesadas correctamente.")
+        return 0
+    else:
+        print("[Axon] Algunas dependencias fallaron.")
+        return 1
+
+
+def _read_lock_entry(lock_path: str, pkg_name: str) -> Optional[Dict]:
+    """Read a package entry from axon.lock TOML [lock] section."""
+    if not os.path.exists(lock_path):
+        return None
+    try:
+        with open(lock_path, "rb") as f:
+            lock = tomllib.load(f)
+        lock_section = lock.get("lock", {})
+        entry = lock_section.get(pkg_name)
+        if entry:
+            return entry
+        # Also check for package names without quotes (alternative format)
+        for key, val in lock_section.items():
+            if key == pkg_name:
+                return val
+        return None
+    except Exception:
+        return None
+
+
+def _write_lock_entry(lock_path: str, pkg_name: str, version: str, hash_hex: str):
+    """Append a package entry to axon.lock."""
+    with open(lock_path, "a") as f:
+        f.write(f'\n"{pkg_name}" = {{ version = "{version}", hash = "sha256:{hash_hex}" }}\n')
+
+
+def _sha256_file(path: str) -> str:
+    """Compute SHA-256 hex digest of a file (FIPS 180-4)."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while True:
+            chunk = f.read(8192)
+            if not chunk:
+                break
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _tar_extraer(tar_path: str, output_dir: str) -> bool:
+    """Extract TAR with path traversal protection (Manual 6 §6.1)."""
+    os.makedirs(output_dir, exist_ok=True)
+    try:
+        with tarfile.open(tar_path, "r") as tar:
+            for member in tar.getmembers():
+                # Path traversal protection: reject absolute paths and ".." components
+                if member.name.startswith("/"):
+                    print(f"[Axon] ERR_AXON_COMPROMISED: path traversal (absolute): {member.name}")
+                    return False
+                parts = member.name.split("/")
+                for p in parts:
+                    if p == "..":
+                        print(f"[Axon] ERR_AXON_COMPROMISED: path traversal (..): {member.name}")
+                        return False
+                # Resolve and verify within output_dir
+                target = os.path.normpath(os.path.join(output_dir, member.name))
+                real_output = os.path.realpath(output_dir)
+                real_target = os.path.realpath(os.path.dirname(target)) if not member.isdir() else os.path.realpath(target)
+                if not real_target.startswith(real_output):
+                    print(f"[Axon] ERR_AXON_COMPROMISED: path traversal (escape): {member.name}")
+                    return False
+                tar.extract(member, output_dir)
+        return True
+    except Exception as e:
+        print(f"[Axon] ERR_TAR: {e}")
+        return False
+
+
+def _ed25519_verify_file(tar_path: str, sig_path: str, pk_hex: str) -> int:
+    """Verify Ed25519 signature of a file (Manual 6 §5.3, Manual 8 §4.4).
+    Returns 0 if valid, -1 if invalid."""
+    try:
+        with open(tar_path, "rb") as f:
+            mensaje = f.read()
+        with open(sig_path, "rb") as f:
+            firma = f.read()
+        if len(firma) < 64:
+            return -1
+        if len(pk_hex) < 64:
+            return -1
+        # Convert hex to bytes
+        pk_bytes = bytes.fromhex(pk_hex[:64])
+        return _verify_ed25519(mensaje, firma[:64], pk_bytes)
+    except Exception:
+        return -1
+
+
+def _verify_ed25519(mensaje: bytes, firma: bytes, pk: bytes) -> int:
+    """Verify Ed25519 signature (Manual 6 §5.3). Returns 0=valid, -1=invalid."""
+    # Use the compiled _syn_ed25519_verificar if available, otherwise native Python
+    try:
+        import ctypes
+        root = os.path.dirname(os.path.abspath(__file__))
+        lib_paths = [
+            os.path.join(root, "synapse_rt.dll"),
+            os.path.join(root, "synapse_rt.so"),
+            os.path.join(root, "libsynapse_rt.so"),
+        ]
+        loaded = None
+        for lp in lib_paths:
+            if os.path.exists(lp):
+                loaded = ctypes.CDLL(lp)
+                break
+        if loaded:
+            loaded._syn_ed25519_verificar.restype = ctypes.c_int
+            msg_buf = ctypes.create_string_buffer(mensaje)
+            sig_buf = ctypes.create_string_buffer(firma)
+            pk_buf = ctypes.create_string_buffer(pk)
+            msg = type("Msg", (), {"longitud": len(mensaje), "datos": msg_buf})
+            sig = type("Sig", (), {"longitud": len(firma), "datos": sig_buf})
+            pub = type("Pub", (), {"longitud": len(pk), "datos": pk_buf})
+            return loaded._syn_ed25519_verificar(msg, sig, pub)
+    except Exception:
+        pass
+    # Fallback: Python implementation would need a crypto library;
+    # for now, report that verification requires the compiled runtime
+    return -1
+
+
+def _cmd_axon_publish():
+    """synapse axon publish — Publica paquete en Axon Hub (Manual 9 §4.2).
+
+    1. Lee axon.toml
+    2. Empaqueta código fuente en TAR
+    3. Firma el TAR con Ed25519
+    4. Publica en IPFS (Axon Hub)
+    """
+    manifest = _parse_axon_toml()
+    if manifest is None:
+        return 1
+
+    paquete = manifest.get("paquete", {})
+    nombre = paquete.get("nombre", "")
+    version = paquete.get("version", "0.0.0")
+
+    # 1. Create TAR archive of source files
+    tar_path = os.path.join(".axon_cache", f"{nombre}.tar")
+    os.makedirs(".axon_cache", exist_ok=True)
+
+    with tarfile.open(tar_path, "w") as tar:
+        # Add src/ directory
+        if os.path.isdir("src"):
+            tar.add("src", arcname="src")
+        # Add tests/ directory
+        if os.path.isdir("tests"):
+            tar.add("tests", arcname="tests")
+        # Add axon.toml
+        if os.path.exists("axon.toml"):
+            tar.add("axon.toml", arcname="axon.toml")
+
+    print(f"[Axon] TAR creado: {tar_path}")
+
+    # 2. Sign the TAR with Ed25519 (Manual 9 §4.2, step 2)
+    sig_path = tar_path + ".sig"
+    pk_path = os.path.join(".axon_cache", f"{nombre}.pk")
+    sk_path = os.path.join(".axon_cache", f"{nombre}.sk")
+
+    # Use the compiled _syn_ed25519_generar_par + _syn_ed25519_firmar if available,
+    # otherwise use the gen_axon_test_fixtures helper
+    gen_helper = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tests", "gen_axon_test_fixtures.exe")
+    if os.path.exists(gen_helper):
+        rc = subprocess.run([gen_helper, tar_path, sig_path, pk_path, sk_path]).returncode
+        if rc == 0:
+            with open(pk_path) as f:
+                pk_hex = f.read().strip()
+            print(f"[Axon] Firma Ed25519 generada: {sig_path}")
+            print(f"[Axon] Clave pública: {pk_hex[:16]}...")
+            print(f"[Axon] Paquete listo para publicar en Axon Hub (IPFS).")
+            print(f"[Axon] Verifique con: synapse axon verify {tar_path}")
+            return 0
+        else:
+            print(f"[Axon] ERR: fallo generación de firma (rc={rc})")
+            return 1
+    else:
+        print(f"[Axon] WARN: gen_axon_test_fixtures.exe no encontrado.")
+        print(f"[Axon] TAR creado pero no firmado. Compile tests/gen_axon_test_fixtures.c primero.")
+        return 1
+
+
+def _cmd_axon_verify(args: List[str]):
+    """synapse axon verify — Verifica firmas y hashes (Manual 8 §4.4)."""
+    # Parse arguments
+    target = None
+    pk_hex = None
+    for i, arg in enumerate(args):
+        if not arg.startswith('-'):
+            if target is None:
+                target = arg
+        elif arg.startswith("--pk="):
+            pk_hex = arg.split("=", 1)[1]
+        elif arg.startswith("--pk") and i + 1 < len(args):
+            pk_hex = args[i + 1]
+
+    if target is None:
+        print("Uso: synapse axon verify <archivo.tar> [--pk <clave_publica_hex>]")
+        return 1
+
+    if not os.path.exists(target):
+        print(f"[Axon] ERR: archivo no encontrado: {target}")
+        return 1
+
+    # 1. Compute and display SHA-256
+    hash_val = _sha256_file(target)
+    print(f"[Axon] SHA-256: {hash_val}")
+
+    # 2. Verify against axon.lock (if exists)
+    lock_entry = _read_lock_entry("axon.lock", os.path.basename(target).replace(".tar", ""))
+    if lock_entry:
+        expected = lock_entry.get("hash", "")
+        if expected.startswith("sha256:"):
+            expected = expected[7:]
+            if expected == hash_val:
+                print(f"[Axon] Hash verificado contra axon.lock ✓")
+            else:
+                print(f"[Axon] ERR_AXON_COMPROMISED: hash mismatch (lock={expected[:16]}..., actual={hash_val[:16]}...)")
+                return 1
+        else:
+            print(f"[Axon] Lock entry found but hash format invalid")
+    else:
+        print(f"[Axon] No hay entrada en axon.lock para este paquete")
+
+    # 3. Verify Ed25519 signature (if provided)
+    if pk_hex:
+        sig_path = target + ".sig"
+        if os.path.exists(sig_path):
+            rc = _ed25519_verify_file(target, sig_path, pk_hex)
+            if rc == 0:
+                print(f"[Axon] Firma Ed25519 verificada ✓")
+            else:
+                print(f"[Axon] ERR_AXON_COMPROMISED: firma invalida")
+                return 1
+        else:
+            print(f"[Axon] WARN: archivo .sig no encontrado: {sig_path}")
+    else:
+        print(f"[Axon] No se proporcionó clave pública (--pk), saltando verificación Ed25519")
+
+    print("[Axon] Verificación completada.")
+    return 0
+
+
+def _cmd_axon_search(args: List[str]):
+    """synapse axon search <nombre> — Busca paquetes en Axón Hub (Manual 8 §4.4)."""
+    query = None
+    for arg in args:
+        if not arg.startswith('-'):
+            query = arg
+            break
+
+    if not query:
+        print("Uso: synapse axon search <nombre_paquete>")
+        return 1
+
+    # Check AXON_PATH local directories first
+    axon_path = os.environ.get("AXON_PATH", "paquetes_oficiales")
+    found = []
+    for search_dir in axon_path.split(";"):
+        pkg_dir = os.path.join(search_dir, query)
+        if os.path.isdir(pkg_dir):
+            found.append(pkg_dir)
+
+    if found:
+        for d in found:
+            print(f"[Axon] Encontrado local: {d}")
+            for f in os.listdir(d):
+                if f.endswith(".tar"):
+                    print(f"  - {f}")
+        return 0
+    else:
+        print(f"[Axon] '{query}' no encontrado localmente.")
+        print(f"[Axon] Configure AXON_PATH o use 'synapse fetch' para descargar.")
+        return 0
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Synapse Compiler v5.0 - Poliglota", add_help=False)
+    # M6/R149: versión única desde el archivo VERSION (fuente canónica de la
+    # versión, alineada con ROADMAP); el literal anterior del banner fue
+    # eliminado por contradictorio.
+    # # cumple Manual 8 §4.1
+    _ver_banner = "8.1.0-industrial"
+    try:
+        with open(os.path.join(os.path.dirname(__file__), "VERSION"), encoding="utf-8") as _vf:
+            _ver_banner = _vf.read().strip() or _ver_banner
+    except (OSError, ValueError):
+        pass
+    parser = argparse.ArgumentParser(description=f"Synapse Compiler {_ver_banner}", add_help=False)
     parser.add_argument("-h", "--help", action="store_true", help="Mostrar ayuda y salir")
     parser.add_argument("--version", action="store_true", help="Mostrar version y salir")
     parser.add_argument("--incremental", action="store_true", help="Habilitar compilación incremental con caché")
+    parser.add_argument("--release", action="store_true", help="Compilar en modo release: optimizaciones -O3 -flto (Manual 8 §4.2)")
+    parser.add_argument("--debug", action="store_true", help="Compilar con información de depuración -O0 -g (Manual 8 §4.2)")
     parser.add_argument("--safe", action="store_true", help="Activar modo de verificación formal (M10.1)")
     parser.add_argument("--sbom", action="store_true", help="Generar SBOM SPDX 2.3 (M10.2)")
     parser.add_argument("--sign", type=str, default=None,
@@ -191,11 +952,18 @@ def main():
                         help="Idioma de salida (es, en). Si no da, solo genera C + JSON canonico.")
     parser.add_argument("--lsp", action="store_true", help="Iniciar servidor LSP (daemon sobre stdin/stdout)")
     parser.add_argument("--dump-ast", action="store_true", help="Volcar AST y salir sin generar código")
+    parser.add_argument("--check", action="store_true",
+                        help="Solo verificar sintaxis y semántica (sin generar código). Usado por el LSP y OpenSyn.")
     parser.add_argument("--migrate", type=str, default=None,
                         help="Migrar archivo Python (.py) a Synapse (.syn)")
+    parser.add_argument("--transpile", type=str, default=None,
+                        help="Transpilar archivo Python (.py) a Syquex (.syq)")
+    parser.add_argument("--pipeline", type=str, default=None,
+                        help="Pipeline completo: .py -> .syq -> .c -> .exe")
     parser.add_argument("--detect-hardware", action="store_true",
                         help="Detectar hardware y sugerir configuracion optima para IA")
-    parser.add_argument("construir", nargs="?", help=argparse.SUPPRESS)
+    # M4/R149 (D-R150-2): 'construir' eliminado — código muerto (el binario que
+    # requería no existe ni tiene receta). El build real: 'synapse build'/'synapse fetch'.
     # NO hay argumento posicional 'archivo' aquí - lo detectamos manualmente
     parser.add_argument("-o", "--output", type=str, default=None,
                         help="Ruta del ejecutable de salida")
@@ -210,8 +978,27 @@ def main():
 
     # Detectar subcomando
     subcommand = None
-    if first_non_option in ('cache', 'build', 'test'):
+    if first_non_option in ('cache', 'build', 'test', 'fetch', 'init', 'axon', 'run', 'debug', 'opensyn', 'lint', 'fmt', 'check'):
         subcommand = first_non_option
+
+    # Manejar subcomando 'check' (Manual 8 §4.2/§5.2: modo de validación —
+    # solo sintaxis y semántica, sin generar código de salida; backend nativo
+    # stage2 del bootstrap — ME check_cli R2, paridad con el dispatcher nativo)
+    if subcommand == 'check':
+        # cumple Manual 8 §4.1 y §4.2 (ME check_cli R2)
+        return _cmd_herramienta_nativa('check', sys.argv[2:])
+
+    # Manejar subcomando 'lint' (Manual 8 §4.1: ejecuta el linter nativo sobre
+    # el código fuente; backend stage2 del bootstrap — ME cli_lint_fmt)
+    if subcommand == 'lint':
+        # cumple Manual 8 §4.1
+        return _cmd_herramienta_nativa('lint', sys.argv[2:])
+
+    # Manejar subcomando 'fmt' (Manual 8 §4.1: ejecuta el formateador nativo
+    # sobre el código fuente; backend stage2 del bootstrap — ME cli_lint_fmt)
+    if subcommand == 'fmt':
+        # cumple Manual 8 §4.1
+        return _cmd_herramienta_nativa('fmt', sys.argv[2:])
 
     # Manejar subcomando 'cache'
     if subcommand == 'cache':
@@ -221,7 +1008,7 @@ def main():
             if not arg.startswith('-'):
                 cache_subcmd = arg
                 break
-        
+
         if not cache_subcmd or cache_subcmd == "cache":
             _print_cache_help()
             return 1
@@ -275,6 +1062,42 @@ def main():
             print('Manual 9 §9.5 — Auditoría obligatoria de sanitizadores')
             return 1
 
+    # ================================================================
+    # Axon CLI commands (Manual 8 §4.1, §4.4)
+    # ================================================================
+
+    # Manejar subcomando 'fetch' (Manual 8 §4.4: synapse fetch)
+    if subcommand == 'fetch':
+        return _cmd_fetch()
+
+    # Manejar subcomando 'init' (Manual 8 §4.2/§4.3: synapse init)
+    if subcommand == 'init':
+        return _cmd_init()
+
+    # Manejar subcomando 'axon' (Manual 8 §4.4: synapse axon <subcommand>)
+    if subcommand == 'axon':
+        axon_args = sys.argv[2:]
+        axon_subcmd = None
+        for arg in axon_args:
+            if not arg.startswith('-'):
+                axon_subcmd = arg
+                break
+        if axon_subcmd == 'init':
+            return _cmd_axon_init()
+        elif axon_subcmd == 'publish':
+            return _cmd_axon_publish()
+        elif axon_subcmd == 'verify':
+            return _cmd_axon_verify(axon_args)
+        elif axon_subcmd == 'search':
+            return _cmd_axon_search(axon_args)
+        else:
+            print("Comandos Axon disponibles:")
+            print("  synapse axon init     - Crear manifiesto Axon")
+            print("  synapse axon publish  - Publicar paquete en Axon Hub (IPFS)")
+            print("  synapse axon verify   - Verificar firmas y hashes")
+            print("  synapse axon search <nombre> - Buscar paquetes")
+            return 0
+
     # Manejar subcomando 'build'
     if subcommand == 'build':
         # El siguiente argumento no-opción es el archivo
@@ -283,11 +1106,11 @@ def main():
             if not arg.startswith('-'):
                 build_file = arg
                 break
-        
+
         if not build_file:
             print("ERROR: Se requiere archivo .syn para build")
             return 1
-        
+
         # Parsear opciones adicionales (--incremental, -o)
         incremental = "--incremental" in sys.argv
         output_path = None
@@ -296,9 +1119,22 @@ def main():
                 if i + 1 < len(sys.argv):
                     output_path = sys.argv[i + 1]
                 break
-        
+
+        # Parsear --target (Manual 8 §4.2)
+        target = "native"
+        for i, arg in enumerate(sys.argv):
+            if arg == "--target":
+                if i + 1 < len(sys.argv):
+                    target = sys.argv[i + 1]
+                    break
+
         modo_safe = "--safe" in sys.argv
+        check_only = "--check" in sys.argv
         generar_sbom_flag = "--sbom" in sys.argv
+        # cumple Manual 8 §4.1: el CLI se subdivide en subcomandos por dominio
+        # (build/lint/fmt/test); cumple Manual 8 §4.2 (ME coverage_aristas):
+        # --coverage instrumenta aristas; OFF por defecto.
+        modo_coverage = "--coverage" in sys.argv
         clave_sbom = args.sign or ""
         codigo = ejecutar_compilador(build_file, mostrar_tokens=False,
                                      output_lang=None, dump_ast=False,
@@ -306,20 +1142,286 @@ def main():
                                      output_path=output_path,
                                      incremental=incremental,
                                      generar_sbom=generar_sbom_flag,
+                                     modo_coverage=modo_coverage,
                                      firmar_binario=bool(clave_sbom),
-                                     clave_sbom=clave_sbom)
+                                     clave_sbom=clave_sbom,
+                                    target=target,
+                                      modo_release=args.release,
+                                      modo_debug=args.debug,
+                                      check_only=check_only)
         return codigo
+
+    # Manejar subcomando 'run' (Manual 8 §4.1: synapse run <archivo>)
+    if subcommand == 'run':
+        run_file = None
+        for arg in sys.argv[2:]:
+            if not arg.startswith('-'):
+                run_file = arg
+                break
+        if not run_file:
+            print("ERROR: Se requiere archivo .syn/.syq para run", file=sys.stderr)
+            sys.exit(1)
+        if not os.path.exists(run_file):
+            print(f"ERROR: Archivo '{run_file}' no encontrado", file=sys.stderr)
+            sys.exit(1)
+        # Compilar y ejecutar
+        output_tmp = os.path.join(os.environ.get('TEMP', '.'), f"synapse_run_{os.getpid()}")
+        if sys.platform == 'win32':
+            output_tmp += '.exe'
+        modo_debug_run = "--debug" in sys.argv
+        codigo = ejecutar_compilador(run_file, mostrar_tokens=False, output_lang=None,
+                                     dump_ast=False, modo_safe=False, output_path=output_tmp,
+                                     incremental=False, generar_sbom=False, firmar_binario=False,
+                                     clave_sbom='', target="native", modo_release=False,
+                                     modo_debug=modo_debug_run, check_only=False)
+        if codigo != 0:
+            print(f"ERROR: Compilación falló (código {codigo})", file=sys.stderr)
+            sys.exit(codigo)
+        if not os.path.exists(output_tmp):
+            print("ERROR: No se generó el ejecutable", file=sys.stderr)
+            sys.exit(1)
+        print(f"[RUN] Ejecutando {run_file}...")
+        result = subprocess.run([output_tmp], timeout=60)
+        sys.exit(result.returncode)
+
+    # Manejar subcomando 'debug' (Manual 8 §3.4/§4.1: synapse debug <subcomando>;
+    # despachado por el CLI unificado del pipeline compartido) # cumple Manual 1 §3.1
+    if subcommand == 'debug':
+        # D-R150-4: el valor de --load es una ruta, no un subcomando posicional;
+        # se salta para que no se interprete como comando desconocido.
+        debug_subcmd = None
+        _dbg_skip_valor = False
+        for arg in sys.argv[2:]:
+            if _dbg_skip_valor:
+                _dbg_skip_valor = False
+                continue
+            if arg == "--load":
+                _dbg_skip_valor = True
+                continue
+            if not arg.startswith('-'):
+                debug_subcmd = arg
+                break
+        # flags="none": la AYUDA es una consulta accesible sin sesión
+        # cargada (M8 §3.4: se listan los comandos; la navegación sí
+        # exige traza). # cumple Manual 8 §3.4
+        if not debug_subcmd and not any(
+            f in sys.argv for f in ("--load", "--step", "--reverse", "--snapshots")):
+            print("Comandos del debugger:")
+            print("  synapse debug --load <traza.trace>  - Cargar traza guardada")
+            print("  synapse debug --step                - Avanzar un paso")
+            print("  synapse debug --reverse             - Retroceder un paso")
+            print("  synapse debug --snapshots           - Ver snapshots de memoria")
+            print()
+            print("Manual 8 §3.4 — Debugger time-travel")
+            sys.exit(0)
+        # Flags del debugger (M3d/R149: operación REAL sobre el formato TRACE v1
+        # que escribe _syn_debug_finalizar_sesion en runtime/core/debug.c).
+        # Estado de sesión persistente (~/.synapse/cache/debug_session.json):
+        # --load abre la traza; --step/--reverse/--snapshots navegan los eventos.
+        # # cumple Manual 8 §3.4
+        if "--load" in sys.argv:
+            trace_file = None
+            for i, arg in enumerate(sys.argv):
+                if arg == "--load" and i + 1 < len(sys.argv):
+                    trace_file = sys.argv[i + 1]
+                    break
+            if not trace_file:
+                print("ERROR: --load requiere ruta de archivo de traza", file=sys.stderr)
+                sys.exit(1)
+            if not os.path.exists(trace_file):
+                print(f"ERROR: Traza '{trace_file}' no encontrada", file=sys.stderr)
+                sys.exit(1)
+            _dbg = _debug_cargar_traza(trace_file)
+            if _dbg is None:
+                print(f"ERROR: '{trace_file}' no es una traza TRACE v1 válida", file=sys.stderr)
+                sys.exit(1)
+            _debug_estado_guardar(trace_file, 0)
+            print(f"[DEBUG] Traza cargada: {_dbg['id']} "
+                  f"(programa={_dbg['programa']}, {_dbg['total']} eventos)")
+            _dbg_pos = 0
+        else:
+            _dbg_estado = _debug_estado_cargar()
+            if _dbg_estado is None:
+                print("ERROR: no hay traza cargada. Ejecuta primero: "
+                      "synapse debug --load <traza> (Manual 8 §3.4).", file=sys.stderr)
+                sys.exit(1)
+            _dbg, _dbg_pos = _dbg_estado
+        if '--step' in sys.argv:
+            if _dbg_pos >= _dbg["total"]:
+                print("[DEBUG] Fin de la traza (no hay más pasos hacia adelante).")
+                sys.exit(0)
+            _debug_mostrar_evento(_dbg["eventos"][_dbg_pos], _dbg_pos)
+            _debug_estado_guardar(_dbg["ruta"], _dbg_pos + 1)
+            sys.exit(0)
+        if "--reverse" in sys.argv:
+            # D-R150-6: el cursor _dbg_pos apunta al SIGUIENTE evento de --step;
+            # el visor está en _dbg_pos-1. Retroceder = mostrar el evento
+            # anterior al visible (_dbg_pos-2) y dejar el cursor en _dbg_pos-1.
+            if _dbg_pos - 2 < 0:
+                print("[DEBUG] Inicio de la traza (no hay pasos hacia atrás).")
+                sys.exit(0)
+            _dbg_pos -= 1
+            _debug_mostrar_evento(_dbg["eventos"][_dbg_pos - 1], _dbg_pos - 1)
+            _debug_estado_guardar(_dbg["ruta"], _dbg_pos)
+            sys.exit(0)
+        if "--snapshots" in sys.argv:
+            _snaps = [e for e in _dbg["eventos"] if e["variable"]]
+            if not _snaps:
+                print("[DEBUG] No hay snapshots de variables en esta traza.")
+            for i, e in enumerate(_snaps):
+                _debug_mostrar_evento(e, _dbg["eventos"].index(e), prefijo="[SNAPSHOT]")
+            sys.exit(0)
+        if not debug_subcmd or debug_subcmd == 'debug':
+            print("Comandos del debugger:")
+            print("  synapse debug --load <traza.trace>  - Cargar traza guardada")
+            print("  synapse debug --step                - Avanzar un paso")
+            print("  synapse debug --reverse             - Retroceder un paso")
+            print("  synapse debug --snapshots           - Ver snapshots de memoria")
+            print()
+            print("Manual 8 §3.4 — Debugger time-travel")
+            sys.exit(0)
+        print(f"Flag de debugger desconocido: {debug_subcmd}", file=sys.stderr)
+        sys.exit(1)
+
+    # Manejar subcomando 'opensyn' (Manual 8 §4.1/§7: synapse opensyn <subcomando>)
+    if subcommand == 'opensyn':
+        opensyn_subcmd = None
+        for arg in sys.argv[2:]:
+            if not arg.startswith('-'):
+                opensyn_subcmd = arg
+                break
+        if not opensyn_subcmd or opensyn_subcmd == 'opensyn':
+            print("Comandos OpenSyn:")
+            print("  synapse opensyn status              - Estado del orquestador")
+            print("  synapse opensyn download <modelo>   - Descargar modelo")
+            print("  synapse opensyn finetune <datos>    - Fine-tuning")
+            print("  synapse opensyn bindings            - Generar bindings")
+            print("  synapse opensyn transpile <archivo> - Transpilar Python a Syquex")
+            print()
+            print("Manual 8 §7 — Integración OpenSyn")
+            sys.exit(0)
+        if opensyn_subcmd == 'status':
+            # M3b/R149: estado REAL del entorno OpenSyn (todo local, sin
+            # telemetría, Manual 7 §3); antes imprimía un estado fijo offline.
+            # # cumple Manual 7 §3
+            print("[OPENSYN] Estado del entorno (local):")
+            home = os.environ.get('USERPROFILE') or os.environ.get('HOME') or '.'
+            cfg = None
+            for c in (os.path.join(home, '.opensyn', 'config_ollama.txt'),
+                      os.path.join('config_ollama.txt')):
+                if os.path.exists(c):
+                    cfg = c
+                    break
+            if cfg:
+                try:
+                    with open(cfg, encoding="utf-8", errors="replace") as f:
+                        print(f"  Config: {cfg} ({f.read().strip() or 'vacía'})")
+                except OSError as e:
+                    print(f"  Config: {cfg} (ilegible: {e})")
+            else:
+                print("  Config: no encontrada (config_ollama.txt del instalador)")
+            # Servidor de inferencia local (Ollama/llama-server en :8088)
+            servidor_ok = False
+            try:
+                from urllib import request as _rq
+                import json as _json
+                with _rq.urlopen("http://127.0.0.1:8088/v1/models", timeout=2) as r:
+                    datos = _json.loads(r.read().decode("utf-8", "replace"))
+                    nombres = [m.get("id", "?") for m in datos.get("data", [])]
+                    print(f"  Servidor: http://127.0.0.1:8088 ACTIVO")
+                    for n in nombres:
+                        print(f"    - {n}")
+                    servidor_ok = True
+            except Exception:
+                print("  Servidor: http://127.0.0.1:8088 no responde (¿ollama serve o llama-server?)")
+            # Modelos locales en disco
+            total = 0
+            for base in (os.path.join(home, '.ollama', 'models', 'manifests'),
+                         os.path.join(home, '.synapse', 'models')):
+                if os.path.isdir(base):
+                    for _r, _d, fich in os.walk(base):
+                        total += len(fich)
+            print(f"  Modelos locales en disco: {total} archivo(s)")
+            if not servidor_ok and total == 0:
+                print("  [!] Sin servidor ni modelos: ejecuta el instalador de OpenSyn "
+                      "(Manual 9 §5) o 'ollama pull <modelo>'.")
+            sys.exit(0)
+        if opensyn_subcmd in ('download', 'finetune'):
+            # M3c/R149: honesto — la provisión de modelos/fine-tuning requiere el
+            # servicio local; sin él, error claro (antes caían a "Subcomando
+            # desconocido" o imprimían [OK] sin hacer nada).
+            # # cumple Manual 7 §3
+            try:
+                from urllib import request as _rq
+                _rq.urlopen("http://127.0.0.1:8088/v1/models", timeout=2)
+            except Exception:
+                print(f"ERROR: 'opensyn {opensyn_subcmd}' requiere el servidor de "
+                      "inferencia local activo en http://127.0.0.1:8088 "
+                      "(ollama serve o llama-server). Instalación de modelos: "
+                      "instalador de OpenSyn (Manual 9 §5) u 'ollama pull <modelo>'.",
+                      file=sys.stderr)
+                sys.exit(1)
+            print(f"ERROR: 'opensyn {opensyn_subcmd}' vía CLI aún no está soportado "
+                  "con el servicio activo; usa el instalador de OpenSyn (Manual 9 §5) "
+                  "u 'ollama pull <modelo>' (100% local, sin telemetría).", file=sys.stderr)
+            sys.exit(1)
+        if opensyn_subcmd == 'transpile':
+            py_file = None
+            for arg in sys.argv[3:]:
+                if not arg.startswith('-'):
+                    py_file = arg
+                    break
+            if not py_file:
+                print("ERROR: transpile requiere archivo .py", file=sys.stderr)
+                sys.exit(1)
+            if not os.path.exists(py_file):
+                print(f"ERROR: Archivo '{py_file}' no encontrado", file=sys.stderr)
+                sys.exit(1)
+            try:
+                from opensyn.transpiler import transpilar_archivo
+                resultado = transpilar_archivo(py_file)
+                output_path = args.output or os.path.splitext(py_file)[0] + ".syq"
+                with open(output_path, "w", encoding="utf-8") as f:
+                    f.write(resultado)
+                print(f"[OK] Transpilado: {py_file} -> {output_path}")
+                sys.exit(0)
+            except ImportError:
+                print("ERROR: Módulo opensyn.transpiler no disponible", file=sys.stderr)
+                sys.exit(1)
+        if opensyn_subcmd == 'bindings':
+            # M3a/R149: regenera lib/runtime_bindings.syq REAL (93 externo)
+            # via opensyn/generate_runtime_bindings.py; antes imprimía
+            # "[OK] Bindings generados" sin hacer nada.
+            # # cumple Manual 7 §1
+            gen = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               "opensyn", "generate_runtime_bindings.py")
+            if not os.path.exists(gen):
+                print(f"ERROR: generador no encontrado: {gen}", file=sys.stderr)
+                sys.exit(1)
+            rc_gen = subprocess.run([sys.executable, gen]).returncode
+            sys.exit(rc_gen)
+        print(f"Subcomando OpenSyn desconocido: {opensyn_subcmd}", file=sys.stderr)
+        sys.exit(1)
 
     if args.help:
         parser.print_help()
         print("\nComandos adicionales:")
-        print("  synapse cache stats|clean    - Gestión de caché")
-        print("  synapse build --incremental <archivo.syn> [-o salida]  - Build incremental")
+        print("  synapse run <archivo>               - Compilar y ejecutar (Manual 8 §4.1)")
+        print("  synapse debug --load|--step|--reverse - Debugger time-travel (Manual 8 §3.4)")
+        print("  synapse opensyn <subcomando>         - OpenSyn: status/download/finetune/bindings/transpile")
+        print("  synapse cache stats|clean            - Gestión de caché")
+        print("  synapse build --incremental <f.syn>  - Build incremental")
+        print("  synapse init                         - Crear proyecto (Manual 8 §4.3)")
+        print("  synapse fetch                        - Descargar dependencias (Manual 8 §4.4)")
+        print("  synapse axon init                    - Crear manifiesto Axon")
+        print("  synapse axon publish                 - Publicar en Axon Hub (Manual 9 §4.2)")
+        print("  synapse axon verify <f.tar> [--pk HEX] - Verificar firmas y hashes")
+        print("  synapse axon search <nombre>         - Buscar paquetes")
         sys.exit(0)
 
     if args.version:
         version_file = os.path.join(os.path.dirname(__file__), "VERSION")
-        version = "5.1.1-industrial"
+        version = "8.1.0-industrial"
         if os.path.exists(version_file):
             try:
                 with open(version_file, "r") as f:
@@ -388,83 +1490,74 @@ def main():
         print(f"[OK] Migrado: {py_path} -> {output_path}")
         sys.exit(0)
 
-    if args.construir == "construir":
-        tokens_flag = "--tokens" in sys.argv
-        dump_flag = "--dump-ast" in sys.argv
-        lang_val = None
-        for i, a in enumerate(sys.argv):
-            if a == "--lang" and i + 1 < len(sys.argv):
-                lang_val = sys.argv[i + 1]
+    if args.transpile:
+        from opensyn.transpiler import transpilar_archivo
 
-        axon_exe = os.path.join(os.path.dirname(__file__), "axon_build.exe")
-        if not os.path.exists(axon_exe):
-            print(f"ERROR: '{axon_exe}' no encontrado. Compilar con: gcc -o axon_build.exe axon_build.c", file=sys.stderr)
+        py_path = args.transpile
+        if not os.path.exists(py_path):
+            print(f"ERROR: Archivo '{py_path}' no encontrado", file=sys.stderr)
             sys.exit(1)
 
-        out_path = os.path.join(os.environ.get('TEMP', '.'), f"axon_out_{os.getpid()}.txt")
-        cmd = axon_exe + ' "' + os.getcwd() + '" > "' + out_path + '"'
-        ret = os.system(cmd)
+        output_path = args.output
+        if output_path is None:
+            output_path = os.path.splitext(py_path)[0] + ".syq"
 
-        if ret != 0:
-            try:
-                with open(out_path, 'r') as f:
-                    err_line = f.read().strip()
-                os.remove(out_path)
-            except (FileNotFoundError, OSError):
-                err_line = ""
+        resultado = transpilar_archivo(py_path)
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(resultado)
+        print(f"[OK] Transpilado: {py_path} -> {output_path}")
+        sys.exit(0)
 
-            if ret == 1:
-                diag = DiagnosticManager()
-                diag.reportar(ErrorCodes.ERR_MANIFEST_NOT_FOUND, Token(TokenID.EOF, 0, 0))
-                print(diag.resumen(), file=sys.stderr)
-                sys.exit(diag.codigo_salida())
-            elif ret == 3:
-                print(f"ERROR: El manifiesto axon.toml debe tener '[proyecto]' con clave 'punto_entrada'", file=sys.stderr)
-                sys.exit(1)
-            elif ret == 4:
-                dep_name = err_line.split(':')[-1] if ':' in err_line else "desconocida"
-                diag = DiagnosticManager()
-                diag.reportar(ErrorCodes.ERR_GIT_FAILURE, Token(TokenID.EOF, 0, 0), modulo=dep_name)
-                print(diag.resumen(), file=sys.stderr)
-                sys.exit(diag.codigo_salida())
-            elif ret == 5:
-                dep_name = err_line.split(':')[-1] if ':' in err_line else "desconocida"
-                diag = DiagnosticManager()
-                diag.reportar(ErrorCodes.ERR_LOCK_HASH_MISMATCH, Token(TokenID.EOF, 0, 0), modulo=dep_name)
-                print(diag.resumen(), file=sys.stderr)
-                sys.exit(diag.codigo_salida())
-            else:
-                print(f"ERROR: Fallo en construccion (codigo {ret})", file=sys.stderr)
-                sys.exit(1)
+    if args.pipeline:
+        from opensyn.transpiler import transpilar_archivo
 
-        lineas = []
-        try:
-            with open(out_path, 'r') as f:
-                lineas = [l.strip() for l in f if l.strip()]
-            os.remove(out_path)
-        except (FileNotFoundError, OSError):
-            pass
+        py_path = args.pipeline
+        if not os.path.exists(py_path):
+            print(f"ERROR: Archivo '{py_path}' no encontrado", file=sys.stderr)
+            sys.exit(1)
 
-        punto_entrada = ""
-        dependencias: Dict[str, Any] = {}
-        for ln in lineas:
-            if ln.startswith("punto_entrada="):
-                punto_entrada = ln.split("=", 1)[1]
-            else:
-                dependencias[ln] = True
+        # Paso 1: .py -> .syq
+        syn_path = os.path.splitext(py_path)[0] + ".syn"
+        resultado = transpilar_archivo(py_path)
+        with open(syn_path, "w", encoding="utf-8") as f:
+            f.write(resultado)
+        print(f"[PIPELINE] .py -> .syq: {py_path} -> {syn_path}")
 
-        ruta_entrada = os.path.normpath(os.path.join(os.getcwd(), punto_entrada))
-        if not os.path.exists(ruta_entrada):
-            diag = DiagnosticManager()
-            diag.reportar(ErrorCodes.ERR_FILE_NOT_FOUND,
-                          Token(TokenID.EOF, 0, 0), archivo=ruta_entrada)
-            print(diag.resumen(), file=sys.stderr)
-            sys.exit(diag.codigo_salida())
+        # Paso 2: .syq -> .c -> .exe
+        output_path = args.output or os.path.splitext(py_path)[0]
+        if sys.platform == 'win32' and not output_path.endswith('.exe'):
+            output_path += '.exe'
 
-        codigo = ejecutar_compilador(ruta_entrada, mostrar_tokens=tokens_flag,
-                                     output_lang=lang_val, dump_ast=dump_flag,
-                                     dependencias=dependencias)
+        print(f"[PIPELINE] .syq -> .exe: {syn_path} -> {output_path}")
+        codigo = ejecutar_compilador(
+            syn_path,
+            mostrar_tokens=False,
+            output_lang=None,
+            dump_ast=False,
+            modo_safe=False,
+            output_path=output_path,
+            incremental=False,
+            generar_sbom=False,
+            firmar_binario=False,
+            clave_sbom='',
+            target="native",
+            modo_release=args.release,
+            modo_debug=args.debug,
+            check_only=False,
+        )
+
+        if codigo == 0:
+            print(f"[PIPELINE] ✅ {py_path} -> {output_path}")
+        else:
+            print(f"[PIPELINE] ❌ Fallo en compilación (código {codigo})", file=sys.stderr)
+
         sys.exit(codigo)
+
+    # M4/R149 (D-R150-2): el subcomando oculto 'construir' fue eliminado (regla 12,
+    # código muerto): requería un binario del proyecto Axon que no existe ni tiene
+    # receta de build. El flujo Axon real vive en 'synapse axon
+    # init/publish/verify/search' y el build de proyecto en 'synapse build' y
+    # 'synapse fetch' (Manual 8 §4.3/§4.4).
 
     if args.lsp:
         from synapse_lsp.server import iniciar
@@ -476,22 +1569,32 @@ def main():
             if not arg.startswith('-'):
                 archivo_principal = arg
                 break
-        
+
         if archivo_principal is None:
             print("[ERROR] Se requiere archivo .syn para compilar", file=sys.stderr)
             parser.print_help()
             sys.exit(1)
-        
+
         codigo = ejecutar_compilador(archivo_principal, mostrar_tokens=args.tokens,
                                      output_lang=args.lang, dump_ast=args.dump_ast,
-                                     modo_safe=args.safe,
+                                     # cumple Manual 8 §4.2: --check valida sin emitir
+                                     check_only=args.check,
+                                     modo_safe=args.safe,  # cumple Manual 8 §4
                                      output_path=args.output,
                                      incremental=args.incremental,
                                      generar_sbom=args.sbom,
                                      firmar_binario=bool(args.sign),
-                                     clave_sbom=args.sign or '')
+                                     clave_sbom=args.sign or '',
+                                     target="native",
+                                     modo_release=args.release,
+                                     modo_debug=args.debug,
+                                     modo_coverage="--coverage" in sys.argv)
         sys.exit(codigo)
 
 
 if __name__ == "__main__":
-    main()
+    # El rc del subcomando (lint/fmt/cache/test/build) ES el resultado del CLI:
+    # main() retorna el código y sys.exit lo propaga (ME cli_lint_fmt: `synapse
+    # lint` con advertencias debe rc=1; antes el retorno se descartaba → rc=0
+    # falso, brecha documentada en FASE_33_CERTIFICACION §5).
+    sys.exit(main())

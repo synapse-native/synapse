@@ -1,0 +1,19 @@
+{
+ "cambio_hash": "060024ceeb5779fb",
+ "expediente": "docs/alineacion/r194_deuda_gobernanza.md",
+ "fecha": "2026-10-22",
+ "archivos": [
+  "compilador/generator/emit_expressions.py",
+  "compilador/generator/generator.py",
+  "nucleo/generador/expr_eval.syn",
+  "nucleo/generador/orquestador.syn",
+  "nucleo/generator.syn",
+  "runtime/core/sistema.c",
+  "runtime/core/sistema.h"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r194_sandbox.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

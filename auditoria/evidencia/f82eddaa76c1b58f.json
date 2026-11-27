@@ -1,0 +1,18 @@
+{
+ "cambio_hash": "f82eddaa76c1b58f",
+ "expediente": "docs/alineacion/r150_funcional.md",
+ "fecha": "2026-09-18",
+ "archivos": [
+  "cli.py",
+  "compilador/generator/generator.py",
+  "pipeline.py",
+  "runtime/core/cluster.c",
+  "runtime/core/cluster.h",
+  "std/testing.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r150.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

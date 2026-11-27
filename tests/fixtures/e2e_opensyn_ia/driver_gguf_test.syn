@@ -1,0 +1,61 @@
+#lang: es
+// tests/fixtures/e2e_opensyn_ia/driver_gguf_test.syn — Driver del oraculo E2E
+// del motor GGUF local (Manual 7 §3.1/§3.3). Verifica contra un GGUF sintetico:
+//   1. Carga del modelo (metadata + tensores + tokenizer BPE)
+//   2. Ingesta determinista: codificar_contar == 5 (vocab 1-char + merges)
+//   3. Generacion determinista: max_tokens=8, temp=0 (argmax), top_k=0, top_p=0
+// La salida (lineas VERDE/ROJO) la evalua tests/e2e_oracle_opensyn_ia_gguf.py.
+
+importar std.io
+importar std.texto
+importar std.modelo
+
+externo funcion entero_a_texto(n: entero) -> texto
+
+// cumple Manual 7 §3.1: carga del modelo GGUF local
+funcion main_gguf() -> entero:
+    ruta = "tests/fixtures/e2e_opensyn_ia/modelo_test.gguf"
+    ctx = cargar_modelo(ruta)
+    si ctx == nulo:
+        escribir_linea("ROJO: no se pudo cargar el modelo GGUF sintetico")
+        retornar 1
+
+    escribir_linea("VERDE: cargar_modelo")
+    escribir_linea("MARCA: arquitectura=llama")
+    escribir_linea("MARCA: dims=32-2-1-64")
+
+    n_vocab = vocab_tamano(ctx)
+    si n_vocab != 11:
+        escribir_linea(concat("ROJO: vocab incorrecto (", entero_a_texto(n_vocab), ")"))
+        retornar 1
+    escribir_linea("VERDE: vocab=11")
+
+    // cumple Manual 7 §3.1: vocabulario leido del array real del GGUF
+    n_tok = codificar_contar(ctx, "abc def")
+    escribir_linea(concat("MARCA: n_tok=", entero_a_texto(n_tok)))
+    si n_tok != 5:
+        escribir_linea("ROJO: ingesta tokenizada incorrecta")
+        retornar 1
+    escribir_linea("VERDE: tokenizacion (ingesta determinista)")
+
+    // cumple Manual 7 §3.3: generacion acotada en el tiempo sobre tensores
+    // cuantizados (token_embd Q8_0), temperatura 0 => argmax determinista
+    // temp=0 => argmax determinista; output.weight construido para que la
+    // fila 8 ("ab") gane siempre => salida esperable exacta.
+    resp = generar_texto(ctx, "abc def", 8, 0.0, 0, 0.0)
+    si resp == "":
+        escribir_linea("ROJO: generacion vacia")
+        retornar 1
+    si resp != "abababababababab":
+        escribir_linea(concat("ROJO: generacion no determinista (", resp, ")"))
+        retornar 1
+    escribir_linea("VERDE: generacion determinista")
+    escribir_linea("MARCA: salida=abababababababab")
+
+    cerrar_modelo(ctx)
+    escribir_linea("VERDE: cerrar_modelo (sin corrupcion de heap)")
+    escribir_linea("FIN: OK")
+    retornar 0
+
+funcion principal() -> entero:
+    retornar main_gguf()

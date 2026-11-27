@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "805b73291a740ffd",
+ "expediente": "docs/alineacion/r320_ld64_dup_flag.md",
+ "fecha": "2026-11-23",
+ "archivos": [
+  "nucleo/principal.syn",
+  "pipeline.py"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_r320_ld64_dup_flag.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

@@ -1,0 +1,14 @@
+{
+ "cambio_hash": "a7bc8befac4de0b0",
+ "expediente": "docs/alineacion/r317_detect_hardware_macos.md",
+ "fecha": "2026-11-23",
+ "archivos": [
+  "nucleo/detect_hardware.c",
+  "runtime/core/detect_hardware.c"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_r317_detect_hardware_macos.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

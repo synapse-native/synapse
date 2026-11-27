@@ -1,0 +1,22 @@
+{
+ "cambio_hash": "828a4be257954718",
+ "expediente": "docs/alineacion/nativa_rc5_familia.md",
+ "fecha": "2026-10-03",
+ "archivos": [
+  "compilador/generator/emit_declarations.py",
+  "compilador/generator/emit_expressions.py",
+  "compilador/generator/generator.py",
+  "nucleo/generador/escaneo.syn",
+  "nucleo/generador/expr_eval.syn",
+  "nucleo/generador/funciones.syn",
+  "nucleo/generador/nodos_flujo.syn",
+  "nucleo/generador/orquestador.syn",
+  "nucleo/generator.syn",
+  "nucleo/parser_expr.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_nativa_rc5_familia.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

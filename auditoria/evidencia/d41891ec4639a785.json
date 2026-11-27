@@ -1,0 +1,17 @@
+{
+ "cambio_hash": "d41891ec4639a785",
+ "expediente": "docs/alineacion/r275b_str_eq_texto_indexado.md",
+ "fecha": "2026-11-20",
+ "archivos": [
+  "nucleo/generator.syn",
+  "nucleo/principal.syn",
+  "opensyn/permisos.syn"
+ ],
+ "oraculos": {
+  "auditoria/oraculos/oraculo_r252_paridad_bootstrap.py": true,
+  "auditoria/oraculos/oraculo_r275b_texto_indexado.py": true,
+  "tests/integration/test_cli_check.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

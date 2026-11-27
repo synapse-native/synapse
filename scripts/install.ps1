@@ -1,108 +1,99 @@
+# =========================================================================
+# install.ps1 — Script de provisionamiento MinGW Toolchain para Windows
+# =========================================================================
+# cumple Manual 9 §2.5: Configuración de Inno Setup (Windows)
+# Provisiona MSYS2 + MinGW-w64 para compilar el runtime Synapse en Windows.
+# =========================================================================
+
 param(
-    [string]$Version = "v1.5.0",
-    [string]$InstallDir = "C:\Synapse"
+    [string]$MingwRoot = "${env:ProgramFiles}\MSYS2",
+    [string]$InstallLog = "$env:TEMP\synapse-mingw-provision.log"
 )
 
 $ErrorActionPreference = "Stop"
-$RepoUrl = "https://github.com/gedeon1972-svg/synapse-lang"
-$ZipUrl = "$RepoUrl/releases/download/$Version/synapse-$Version-windows-x64.zip"
-$ZipPath = "$env:TEMP\synapse-$Version.zip"
+$requiredPackages = @("mingw-w64-x86_64-gcc", "make", "pkg-config")
+$requiredExes = @("gcc.exe", "g++.exe", "ld.exe")
 
-# MinGW-w64 (WinLibs) - solo C, portable, sin C++
-# Fuente: https://winlibs.com/
-$MingwUrl = "https://github.com/brechtsanders/winlibs_mingw/releases/download/13.2.0posix-17.0.6-11.0.0-ucrt-r1/winlibs-x86_64-posix-seh-gcc-13.2.0-mingw-w64ucrt-11.0.0-r1.zip"
-$MingwZipPath = "$env:TEMP\winlibs-mingw.zip"
+function Write-Log {
+    param([string]$Message)
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $line = "[$timestamp] $Message"
+    Write-Host $line
+    Add-Content -Path $InstallLog -Value $line -Encoding UTF8
+}
 
-Write-Host "Synapse $Version - Instalador Automatico" -ForegroundColor Cyan
-Write-Host "======================================" -ForegroundColor Cyan
+function Test-Command {
+    param([string]$Name)
+    $cmd = Get-Command $Name -ErrorAction SilentlyContinue
+    return $null -ne $cmd
+}
 
-if (Test-Path $InstallDir) {
-    Remove-Item -Path "$InstallDir\*" -Recurse -Force -ErrorAction SilentlyContinue
+function Invoke-GccVersion {
+    $gcc = Get-Command gcc.exe -ErrorAction SilentlyContinue
+    if ($gcc) {
+        $ver = & gcc --version 2>$null | Select-Object -First 1
+        Write-Log "GCC encontrado: $ver"
+        return $true
+    }
+    return $false
+}
+
+Write-Log "=== Provisionamiento MinGW Toolchain (Synapse) ==="
+
+if (Invoke-GccVersion) {
+    Write-Log "GCC ya está en PATH — instalación previa detectada"
+    exit 0
+}
+
+if (Test-Path $MingwRoot) {
+    Write-Log "MSYS2 ya instalado en $MingwRoot"
 } else {
-    New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
-}
+    Write-Log "MSYS2 no encontrado — instalando via winget..."
 
-Write-Host "[1/5] Descargando binarios de Synapse..." -NoNewline
-try {
-    Invoke-WebRequest -Uri $ZipUrl -OutFile $ZipPath -UseBasicParsing -ErrorAction Stop
-    Write-Host " OK" -ForegroundColor Green
-} catch {
-    Write-Host " ERROR" -ForegroundColor Red
-    Write-Host "No se pudo descargar desde:`n$ZipUrl" -ForegroundColor Red
-    exit 1
-}
-
-Write-Host "[2/5] Extrayendo binarios en $InstallDir..." -NoNewline
-try {
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    [System.IO.Compression.ZipFile]::ExtractToDirectory($ZipPath, $InstallDir)
-    Write-Host " OK" -ForegroundColor Green
-} catch {
-    Write-Host " ERROR" -ForegroundColor Red
-    exit 1
-}
-
-Remove-Item $ZipPath -Force -ErrorAction SilentlyContinue
-
-# Toolchain interno (MinGW-w64 portable) - solo C
-$ToolchainDir = Join-Path $InstallDir "toolchain"
-$GccPath = Join-Path $ToolchainDir "bin\gcc.exe"
-
-if (-not (Test-Path $GccPath)) {
-    Write-Host "[3/5] Provisionando toolchain C interno (MinGW-w64)..." -NoNewline
-    try {
-        # Descargar WinLibs MinGW-w64
-        Write-Host ""
-        Write-Host "   Descargando MinGW-w64 (WinLibs)..." -NoNewline
-        Invoke-WebRequest -Uri $MingwUrl -OutFile $MingwZipPath -UseBasicParsing -ErrorAction Stop
-        Write-Host " OK" -ForegroundColor Green
-
-        Write-Host "   Extrayendo toolchain..." -NoNewline
-        [System.IO.Compression.ZipFile]::ExtractToDirectory($MingwZipPath, $InstallDir)
-        Write-Host " OK" -ForegroundColor Green
-
-        # WinLibs extrae como "mingw64/", mover a "toolchain/"
-        $MingwExtracted = Join-Path $InstallDir "mingw64"
-        if (Test-Path $MingwExtracted) {
-            Move-Item -Path "$MingwExtracted\*" -Destination $ToolchainDir -Force
-            Remove-Item -Path $MingwExtracted -Recurse -Force
+    if (Test-Command winget) {
+        Write-Log "winget disponible — ejecutando: winget install MSYS2.MSYS2"
+        winget install MSYS2.MSYS2 --accept-package-agreements --accept-source-agreements 2>&1 | Tee-Object -Variable wingetOutput | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Log "[WARN] winget install falló (código $LASTEXITCODE)"
         }
-
-        Remove-Item $MingwZipPath -Force -ErrorAction SilentlyContinue
-
-        if (Test-Path $GccPath) {
-            Write-Host "   Toolchain C listo en $ToolchainDir" -ForegroundColor Green
-        } else {
-            throw "gcc.exe no encontrado despues de extraer"
-        }
-    } catch {
-        Write-Host " ERROR" -ForegroundColor Red
-        Write-Host "No se pudo provisionar el toolchain: $_" -ForegroundColor Red
+    } elseif (Test-Command choco) {
+        Write-Log "Chocolatey disponible — ejecutando: choco install msys2 -y"
+        choco install msys2 -y 2>&1 | Tee-Object -Variable chocoOutput | Out-Null
+    } else {
+        Write-Log "[ERROR] Ni winget ni chocolatey disponibles — requiere instalación manual de MSYS2"
+        Write-Log "Descargar de: https://www.msys2.org/"
         exit 1
     }
-} else {
-    Write-Host "[3/5] Toolchain C ya presente en $ToolchainDir" -ForegroundColor Green
 }
 
-Write-Host "[4/5] Configurando PATH de usuario..." -NoNewline
-$BinPath = Join-Path $InstallDir "bin"
-$CurrentPath = [Environment]::GetEnvironmentVariable("Path", "User")
-if ($CurrentPath -split ";" -notcontains $BinPath) {
-    $NewPath = $CurrentPath + ";" + $BinPath
-    [Environment]::SetEnvironmentVariable("Path", $NewPath, "User")
-    Write-Host " OK" -ForegroundColor Green
-} else {
-    Write-Host " ya presente" -ForegroundColor Yellow
+if (-not (Test-Path $MingwRoot)) {
+    $MingwRoot = "${env:ProgramFiles}\MSYS2"
 }
 
-Write-Host "[5/5] Verificando instalacion..." -NoNewline
-if (Test-Path (Join-Path $InstallDir "synapse.exe") -and (Test-Path $GccPath)) {
-    Write-Host " OK" -ForegroundColor Green
-} else {
-    Write-Host " ADVERTENCIA: Faltan componentes" -ForegroundColor Yellow
+$mingw64Bin = Join-Path $MingwRoot "mingw64\bin"
+if (-not (Test-Path $mingw64Bin)) {
+    $mingw64Bin = Join-Path $MingwRoot "usr\bin"
 }
 
-Write-Host ""
-Write-Host "Synapse $Version instalado correctamente." -ForegroundColor Green
-Write-Host "Reinicia tu terminal para usar el comando 'synapse'." -ForegroundColor Cyan
-Write-Host "Toolchain C interno: $GccPath" -ForegroundColor Gray
+Write-Log "MinGW bin path: $mingw64Bin"
+
+$currentUserPath = [Environment]::GetEnvironmentVariable("Path", "CurrentUser")
+if ($currentUserPath -notmatch [regex]::Escape($mingw64Bin)) {
+    Write-Log "Agregando $mingw64Bin al PATH del usuario"
+    $newPath = $currentUserPath.TrimEnd(';') + ";" + $mingw64Bin
+    [Environment]::SetEnvironmentVariable("Path", $newPath, "CurrentUser")
+}
+
+$processPath = $env:PATH
+if ($processPath -notmatch [regex]::Escape($mingw64Bin)) {
+    $env:PATH = $processPath + ";" + $mingw64Bin
+}
+
+if (Invoke-GccVersion) {
+    Write-Log "✅ GCC funcionando después de la provision"
+    Write-Log "=== Provisionamiento completado ==="
+    exit 0
+} else {
+    Write-Log "[ERROR] GCC no disponible tras provisionamiento"
+    exit 1
+}

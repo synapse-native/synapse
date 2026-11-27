@@ -1,3 +1,7 @@
+# cumple Manual 1 1: infraestructura Python del compilador Synapse
+# cumple Manual 8 4: toolchain de construcción
+# cumple Manual 9 §6.1: SBOM y SLSA generados correctamente — inventario SPDX determinista
+# (solo archivos versionados), packageVerificationCode SPDX 2.3 y modo --check de deriva.
 """
 nucleo/sbom.py — Generación de SBOM (Software Bill of Materials) estándar SPDX 2.3
 
@@ -18,6 +22,7 @@ import os
 import json
 import hashlib
 import datetime
+import subprocess
 from datetime import timezone
 from typing import List, Dict, Optional, Set
 from pathlib import Path
@@ -49,8 +54,83 @@ def sha256_texto(contenido: str) -> str:
     return hashlib.sha256(contenido.encode('utf-8')).hexdigest()
 
 
-def _escanear_archivos(ruta_proyecto: str, max_depth: int = 5) -> List[Dict]:
-    """Escanea el directorio del proyecto para encontrar todos los archivos relevantes."""
+RESERVADOS_WINDOWS = ('nul', 'con', 'prn', 'aux', 'com1', 'com2', 'com3', 'com4',
+                      'lpt1', 'lpt2', 'lpt3', 'clock$')
+
+
+def _es_autoinventario(nombre: str) -> bool:
+    """El SBOM no puede inventariarse a sí mismo (su hash cambiaría al escribirlo)."""
+    return '.spdx.json' in nombre
+
+
+def _entrada_archivo(fpath: str, rel: str) -> Optional[Dict]:
+    """Construye la entrada de inventario de un archivo (SHA-256 y SHA-1)."""
+    ext = os.path.splitext(fpath)[1].lower()
+    if ext in EXTENSIONES_FUENTE:
+        tipo = "SOURCE"
+    elif ext in EXTENSIONES_BINARIO:
+        tipo = "BINARY"
+    else:
+        tipo = "OTHER"
+    try:
+        with open(fpath, 'rb') as f:
+            datos = f.read()
+    except (OSError, IOError):
+        return None
+    return {
+        "fileName": rel.replace(os.sep, '/'),
+        "SHA256": hashlib.sha256(datos).hexdigest(),
+        "SHA1": hashlib.sha1(datos).hexdigest(),
+        "size": len(datos),
+        "type": tipo,
+    }
+
+
+def _escanear_versionados(ruta_proyecto: str) -> List[Dict]:
+    """Inventaría solo archivos versionados (`git ls-files`): inventario determinista.
+
+    Si la ruta no es un repositorio git, cae al escaneo del árbol.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "-C", ruta_proyecto, "ls-files", "-z"],
+            capture_output=True, check=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return _escanear_arbol(ruta_proyecto)
+
+    archivos = []
+    for bruto in sorted(x for x in out.split(b'\0') if x):
+        rel = bruto.decode('utf-8', 'replace')
+        partes = rel.replace('\\', '/').split('/')
+        if any(p in EXCLUIR_DIRECTORIOS or p.startswith('.') for p in partes[:-1]):
+            continue
+        ext = os.path.splitext(partes[-1])[1].lower()
+        if ext in EXCLUIR_EXTENSIONES or _es_autoinventario(partes[-1]):
+            continue
+        if os.path.splitext(partes[-1])[0].lower() in RESERVADOS_WINDOWS:
+            continue
+        if not (ext in EXTENSIONES_FUENTE or ext in EXTENSIONES_BINARIO or ext == ''):
+            continue
+        fpath = os.path.join(ruta_proyecto, *partes)
+        if not os.path.isfile(fpath):
+            continue
+        entrada = _entrada_archivo(fpath, rel)
+        if entrada is not None:
+            archivos.append(entrada)
+    return archivos
+
+
+def _escanear_archivos(ruta_proyecto: str, max_depth: int = 5,
+                       solo_versionados: bool = False) -> List[Dict]:
+    """Escanea el proyecto para encontrar los archivos relevantes."""
+    if solo_versionados:
+        return _escanear_versionados(os.path.abspath(ruta_proyecto))
+    return _escanear_arbol(ruta_proyecto, max_depth)
+
+
+def _escanear_arbol(ruta_proyecto: str, max_depth: int = 5) -> List[Dict]:
+    """Escanea el directorio de trabajo completo (incluye artefactos no versionados)."""
     archivos = []
     ruta_proyecto = os.path.abspath(ruta_proyecto)
 
@@ -69,7 +149,7 @@ def _escanear_archivos(ruta_proyecto: str, max_depth: int = 5) -> List[Dict]:
 
         for fname in files:
             ext = os.path.splitext(fname)[1].lower()
-            if ext in EXCLUIR_EXTENSIONES:
+            if ext in EXCLUIR_EXTENSIONES or _es_autoinventario(fname):
                 continue
 
             # Saltar nombres reservados de Windows (nul, con, prn, etc.)
@@ -87,36 +167,31 @@ def _escanear_archivos(ruta_proyecto: str, max_depth: int = 5) -> List[Dict]:
                 if rel.startswith('.'):
                     continue
 
-                hash_val = sha256_archivo(fpath)
-                try:
-                    size = os.path.getsize(fpath)
-                except OSError:
-                    size = 0
-
-                # Determinar tipo de archivo
-                if ext in EXTENSIONES_FUENTE:
-                    pkg_type = "SOURCE"
-                elif ext in EXTENSIONES_BINARIO:
-                    pkg_type = "BINARY"
-                else:
-                    pkg_type = "OTHER"
-
-                archivos.append({
-                    "fileName": rel.replace(os.sep, '/'),
-                    "SHA256": hash_val,
-                    "size": size,
-                    "type": pkg_type,
-                })
+                entrada = _entrada_archivo(fpath, rel)
+                if entrada is not None:
+                    archivos.append(entrada)
 
     return archivos
+
+
+def _codigo_verificacion_paquete(archivos: List[Dict]) -> str:
+    """packageVerificationCode SPDX 2.3: SHA-1 de los SHA-1 de archivo ordenados."""
+    sha1s = sorted(f["SHA1"] for f in archivos if f.get("SHA1"))
+    return hashlib.sha1(''.join(sha1s).encode('ascii')).hexdigest()
+
+
+def _digest_arbol(archivos: List[Dict]) -> str:
+    """SHA-256 reproducible del inventario: ruta + hash por archivo, ordenado."""
+    lineas = [f"{f['fileName']}\t{f['SHA256']}"
+              for f in sorted(archivos, key=lambda x: x["fileName"])]
+    return hashlib.sha256('\n'.join(lineas).encode('utf-8')).hexdigest()
 
 
 def _generar_packages(archivos: List[Dict], proyecto_nombre: str, proyecto_version: str) -> List[Dict]:
     """Genera la lista de paquetes SPDX a partir de los archivos escaneados."""
     packages = []
 
-    # Paquete principal del proyecto
-    hash_proyecto = sha256_texto(proyecto_nombre + proyecto_version + str(datetime.datetime.now().year))
+    # Paquete principal del proyecto: PVC SPDX 2.3 y digest reproducible del inventario
     packages.append({
         "SPDXID": "SPDXRef-ROOT",
         "name": proyecto_nombre,
@@ -125,9 +200,9 @@ def _generar_packages(archivos: List[Dict], proyecto_nombre: str, proyecto_versi
         "downloadLocation": "NOASSERTION",
         "filesAnalyzed": True,
         "packageVerificationCode": {
-            "packageVerificationCodeValue": hash_proyecto[:64],
+            "packageVerificationCodeValue": _codigo_verificacion_paquete(archivos),
         },
-        "checksums": [{"algorithm": "SHA256", "checksumValue": hash_proyecto}],
+        "checksums": [{"algorithm": "SHA256", "checksumValue": _digest_arbol(archivos)}],
         "licenseConcluded": "NOASSERTION",
         "licenseDeclared": "NOASSERTION",
         "copyrightText": "NOASSERTION",
@@ -175,14 +250,15 @@ def _leer_version(ruta_proyecto: str) -> str:
         with open(version_path, 'r') as f:
             return f.read().strip()
     except (OSError, IOError):
-        return '5.1.1-industrial'
+        return '8.1.0-industrial'
 
 
 def generar_sbom(ruta_proyecto: str,
                  nombre: str = "synapse",
                  version: str = "",
                  creator: str = "Synapse Project",
-                 namespace: str = "https://synapse-lang.org/spdx") -> str:
+                 namespace: str = "https://synapse-lang.org/spdx",
+                 solo_versionados: bool = False) -> str:
     """Genera un SBOM en formato SPDX 2.3 JSON.
 
     Args:
@@ -199,7 +275,8 @@ def generar_sbom(ruta_proyecto: str,
     if not version:
         version = _leer_version(ruta_proyecto)
     # Escanear archivos
-    archivos = _escanear_archivos(ruta_proyecto)
+    archivos = _escanear_archivos(ruta_proyecto, solo_versionados=solo_versionados)
+    archivos.sort(key=lambda f: f["fileName"])
 
     # Construir documento SPDX
     doc = {
@@ -288,6 +365,35 @@ def generar_sbom_simplificado(ruta_proyecto: str) -> Dict:
     }
 
 
+def comparar_sbom(ruta_sbom: str, ruta_proyecto: str = '.',
+                  solo_versionados: bool = False) -> List[str]:
+    """Compara un SBOM versionado contra el inventario actual (deriva).
+
+    `creationInfo.created` cambia en cada generación y no es deriva: no se compara.
+    Devuelve la lista de diferencias (vacía si está sincronizado).
+    """
+    actual = json.loads(Path(ruta_sbom).read_text(encoding='utf-8'))
+    generado = json.loads(generar_sbom(ruta_proyecto, solo_versionados=solo_versionados))
+    for doc in (actual, generado):
+        doc.get('creationInfo', {}).pop('created', None)
+    if actual == generado:
+        return []
+
+    def _hashes(doc):
+        return {f['fileName']: f['checksums'][0]['checksumValue']
+                for f in doc.get('files', [])}
+
+    a, g = _hashes(actual), _hashes(generado)
+    diferencias = []
+    diferencias += [f"falta en el SBOM: {n}" for n in sorted(set(g) - set(a))][:20]
+    diferencias += [f"sobra en el SBOM: {n}" for n in sorted(set(a) - set(g))][:20]
+    diferencias += [f"hash desactualizado: {n}" for n in sorted(set(a) & set(g))
+                    if a[n] != g[n]][:20]
+    if not diferencias:
+        diferencias.append("estructura del documento difiere (paquetes, relaciones o checksum raíz)")
+    return diferencias
+
+
 if __name__ == '__main__':
     import sys
     import argparse
@@ -295,10 +401,24 @@ if __name__ == '__main__':
     parser_arg.add_argument('ruta', nargs='?', default='.', help='Ruta del proyecto')
     parser_arg.add_argument('--output', '-o', type=str, default=None,
                             help='Archivo de salida (si no se da, imprime a stdout)')
+    parser_arg.add_argument('--versionados', action='store_true',
+                            help='Inventariar solo archivos versionados (determinista)')
+    parser_arg.add_argument('--check', action='store_true',
+                            help='Verificar que el SBOM no derive (no escribe)')
     args_sbom = parser_arg.parse_args()
-    sbom = generar_sbom(args_sbom.ruta)
+    if args_sbom.check:
+        destino = args_sbom.output or os.path.join(args_sbom.ruta, 'synapse.spdx.json')
+        diferencias = comparar_sbom(destino, args_sbom.ruta, args_sbom.versionados)
+        if diferencias:
+            print('[FALTA] SBOM desincronizado:', file=sys.stderr)
+            for d in diferencias:
+                print(f'  - {d}', file=sys.stderr)
+            sys.exit(1)
+        print(f'[OK] SBOM sincronizado: {destino}', file=sys.stderr)
+        sys.exit(0)
+    sbom = generar_sbom(args_sbom.ruta, solo_versionados=args_sbom.versionados)
     if args_sbom.output:
-        with open(args_sbom.output, 'w', encoding='utf-8') as f:
+        with open(args_sbom.output, 'w', encoding='utf-8', newline='') as f:
             f.write(sbom)
         print(f'[SBOM] Escrito: {args_sbom.output}', file=sys.stderr)
     else:

@@ -20,20 +20,26 @@ Clasificación: M8.4 — Migración de Tareas Live (Checkpoint/Restore)
 """
 
 import os
+
+from conftest import rt_objs
+
+
+RT_OBJS = rt_objs()  # F3-15: objetos del runtime derivados de runtime/core/*.c (sin hardcoding)
 import sys
 import subprocess
 import tempfile
 import json
 import time
+
 import pytest
 
+pytestmark = pytest.mark.integration
+
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-RT_O = os.path.join(PROJECT_ROOT, "synapse_rt.o")
-RT_MEM_O = os.path.join(PROJECT_ROOT, "synapse_rt_memory.o")
-RT_CONC_O = os.path.join(PROJECT_ROOT, "synapse_rt_concurrency.o")
 TEST_C = os.path.join(PROJECT_ROOT, "tests", "test_live_migration.c")
 TEST_BIN = os.path.join(PROJECT_ROOT, "test_live_migration.exe")
-TWEETNACL_O = os.path.join(PROJECT_ROOT, "tweetnacl.o")
+
+
 MIGRATION_DIR = os.path.join(PROJECT_ROOT, "_test_migration_cluster")
 
 GCC = os.path.join(PROJECT_ROOT, "toolchain_gcc12", "mingw64", "bin", "gcc.exe")
@@ -63,8 +69,7 @@ def _compile_test_binary() -> subprocess.CompletedProcess:
         "-I", os.path.join(PROJECT_ROOT, "librerias"),
         "-o", TEST_BIN,
         TEST_C,
-        RT_O, RT_MEM_O, RT_CONC_O,
-        TWEETNACL_O,
+        *RT_OBJS,
         "-lm", "-lws2_32", "-static",
     ]
     return subprocess.run(cmd, capture_output=True, text=True, timeout=30)
@@ -78,7 +83,9 @@ def _run_test_binary(args: list = None) -> subprocess.CompletedProcess:
 
 
 def _limpiar_migracion():
-    """Limpia artefactos de migración de ejecuciones previas."""
+    """Limpia artefactos de migración de ejecuciones previas.
+Manual 2
+"""
     if os.path.exists(MIGRATION_DIR):
         import shutil
         shutil.rmtree(MIGRATION_DIR, ignore_errors=True)

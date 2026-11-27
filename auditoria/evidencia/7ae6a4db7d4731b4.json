@@ -1,0 +1,15 @@
+{
+ "cambio_hash": "7ae6a4db7d4731b4",
+ "expediente": "docs/alineacion/r300_formatter_comentarios.md",
+ "fecha": "2026-11-22",
+ "archivos": [
+  "nucleo/formatter.syn",
+  "nucleo/generator.syn",
+  "nucleo/lsp_v3.syn"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_r300_formatter_comentarios.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

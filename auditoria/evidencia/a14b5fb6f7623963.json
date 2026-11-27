@@ -1,0 +1,20 @@
+{
+ "cambio_hash": "a14b5fb6f7623963",
+ "expediente": "docs/alineacion/reparacion_imports_ffi.md",
+ "fecha": "2026-09-26",
+ "archivos": [
+  "compilador/generator/context.py",
+  "compilador/generator/emit_control.py",
+  "compilador/generator/emit_expressions.py",
+  "compilador/generator/generator.py",
+  "compilador/resolvedor_axon.py",
+  "pipeline.py"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_reparacion_imports_ffi.py": true,
+  "tests/integration/test_contracts.py": true,
+  "tests/unit/test_puente_ffi_lista_mapa.py": true
+ },
+ "citas_muertas_repo": 44,
+ "modo": "block"
+}

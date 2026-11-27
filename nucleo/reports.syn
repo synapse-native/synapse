@@ -1,0 +1,215 @@
+#lang: es
+// cumple Manual 2 §5.1 (ME r192_deuda_barrido): cláusulas de contratos booleanas alineadas.
+// nucleo/reports.syn — Reportes CI/CD para synapse test
+// cumple Manual 2 §12: nucleo/reports.syn — reportes JUnit XML, JSON y coverage HTML
+// cumple Manual 9 §6.2: reportes junit/json para CI/CD (bootstrap verificable)
+// cumple Manual 3 §12: colecciones de la biblioteca estándar en su API
+// Fase 31.5: generación de reportes JUnit XML, HTML coverage, JSON
+// r153 (H-R153-1): reescrito contra el API que S1/S2 soportan de verdad
+// cumple Manual 2 §4.3 (r153 R4): usa Listas, para..en y métodos de colección del runtime
+// (probe r153): Listas, para..en, metodos de colección, longitud(),
+// subcadena(), entero_a_texto(), decimal_a_texto(). Eliminado: `si no si`
+// (sintaxis inexistente, Manual 2 §2.2 prescribe `sino si` con `si anidado`
+// según la paridad del parser), `$valor` (interpolación no documentada) y
+// `agregar()` fantasma (el método de Lista es `lista.agregar(x)`, H-R153-2).
+
+// --- Estructuras de resultados ---
+
+estructura ResultadoTest:
+    nombre: texto
+    suite: texto
+    estado: texto // "passed", "failed", "skipped"
+    mensaje: texto
+    tiempo: decimal
+
+estructura ResultadoSuite:
+    nombre: texto
+    total: entero
+    fallos: entero
+    errores: entero
+    tiempo: decimal
+    tests: Lista<ResultadoTest>
+
+estructura ResultadoGlobal:
+    total: entero
+    pasados: entero
+    fallidos: entero
+    omitidos: entero
+    tiempo: decimal
+
+// --- Generación JUnit XML ---
+
+funcion generar_junit(resultados: Lista<ResultadoTest>) -> texto:
+    requiere:
+        longitud(resultados) >= 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    let xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+    xml = xml + "<testsuites>\n"
+    let suites = agrupar_por_suite(resultados)
+    para suite en suites:
+        xml = xml + "  <testsuite name=\"" + suite.nombre + "\" tests=\"" + entero_a_texto(suite.total) + "\" failures=\"" + entero_a_texto(suite.fallos) + "\" errors=\"" + entero_a_texto(suite.errores) + "\" time=\"" + decimal_a_texto(suite.tiempo) + "\">\n"
+        para test en suite.tests:
+            xml = xml + "    <testcase name=\"" + test.nombre + "\" classname=\"" + test.suite + "\" time=\"" + decimal_a_texto(test.tiempo) + "\""
+            si test.estado == "failed":
+                xml = xml + ">\n"
+                xml = xml + "      <failure message=\"" + test.mensaje + "\"/>\n"
+                xml = xml + "    </testcase>\n"
+            sino:
+                si test.estado == "skipped":
+                    xml = xml + ">\n"
+                    xml = xml + "      <skipped/>\n"
+                    xml = xml + "    </testcase>\n"
+                sino:
+                    xml = xml + "/>\n"
+        xml = xml + "  </testsuite>\n"
+    xml = xml + "</testsuites>\n"
+    retornar xml
+
+// --- Generación JSON ---
+
+funcion generar_json(resultados: Lista<ResultadoTest>) -> texto:
+    requiere:
+        longitud(resultados) >= 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    let json = "{\n"
+    json = json + "  \"tests\": [\n"
+    let primero = verdadero
+    para test en resultados:
+        si no primero:
+            json = json + ",\n"
+        json = json + "    {"
+        json = json + "\"name\": \"" + test.nombre + "\", "
+        json = json + "\"suite\": \"" + test.suite + "\", "
+        json = json + "\"status\": \"" + test.estado + "\", "
+        json = json + "\"message\": \"" + test.mensaje + "\", "
+        json = json + "\"time\": " + decimal_a_texto(test.tiempo)
+        json = json + "}"
+        primero = falso
+    json = json + "\n  ],\n"
+    let resumen = calcular_resumen(resultados)
+    json = json + "  \"summary\": {"
+    json = json + "\"total\": " + entero_a_texto(resumen.total) + ", "
+    json = json + "\"passed\": " + entero_a_texto(resumen.pasados) + ", "
+    json = json + "\"failed\": " + entero_a_texto(resumen.fallidos) + ", "
+    json = json + "\"skipped\": " + entero_a_texto(resumen.omitidos) + ", "
+    json = json + "\"time\": " + decimal_a_texto(resumen.tiempo)
+    json = json + "}\n"
+    json = json + "}\n"
+    retornar json
+
+// --- Generación HTML Coverage ---
+
+funcion generar_coverage(cubiertas: entero, total: entero) -> texto:
+    requiere:
+        total > 0
+        cubiertas >= 0
+        cubiertas <= total
+    garantiza:
+        longitud(_resultado_) >= 0
+    let porcentaje = (cubiertas * 100) / total
+    let clase = "failed"
+    si porcentaje >= 80:
+        clase = "passed"
+    // H-R153-4: el literal 80 es entero — se comparan decimales con decimal
+    // (division entera/decimal del Manual 2 §4.1) para evitar la coerción.
+    let umbral = 80.0
+    si porcentaje >= umbral:
+        clase = "passed"
+    let html = "<!DOCTYPE html>\n"
+    html = html + "<html lang=\"es\">\n"
+    html = html + "<head>\n"
+    html = html + "  <meta charset=\"UTF-8\">\n"
+    html = html + "  <title>Synapse Coverage Report</title>\n"
+    html = html + "  <style>\n"
+    html = html + "    body { font-family: monospace; margin: 20px; }\n"
+    html = html + "    .passed { color: green; }\n"
+    html = html + "    .failed { color: red; }\n"
+    html = html + "    .summary { background: #f0f0f0; padding: 10px; }\n"
+    html = html + "  </style>\n"
+    html = html + "</head>\n"
+    html = html + "<body>\n"
+    html = html + "  <h1>Synapse Coverage Report</h1>\n"
+    html = html + "  <div class=\"summary\">\n"
+    html = html + "    <p>Total lines: " + entero_a_texto(total) + "</p>\n"
+    html = html + "    <p>Covered lines: " + entero_a_texto(cubiertas) + "</p>\n"
+    html = html + "    <p class=\"" + clase + "\">"
+    html = html + "Coverage: " + decimal_a_texto(porcentaje) + "%</p>\n"
+    html = html + "  </div>\n"
+    html = html + "</body>\n"
+    html = html + "</html>\n"
+    retornar html
+
+// --- Agrupación por suite ---
+
+funcion agrupar_por_suite(resultados: Lista<ResultadoTest>) -> Lista<ResultadoSuite>:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    let suites = Lista<ResultadoSuite>()
+    let nombres = Lista<texto>()
+    // r153 (H-R153-27): recuento en DOS pasadas con acumuladores LOCALES.
+    // La semantica del for-en entrega el elemento por VALOR (verificado con
+    // probe en S1 y nativo: mutar `x.v` dentro del bucle no persiste), asi que
+    // `suite_obj.total = ...` dentro de `para suite_obj en suites` no
+    // persistia y el junit salia con tests="0". Patron invariante-de-bucle:
+    // pasada 1 SOLO registra nombres (sin semilla: agregarla duplicaria la
+    // suite en el XML) y pasada 2 construye cada suite completa.
+    para test en resultados:
+        si no contiene(nombres, test.suite):
+            nombres.agregar(test.suite)
+    para nombre_s en nombres:
+        let acum_total = 0
+        let acum_fallos = 0
+        let acum_errores = 0
+        let acum_tiempo = 0.0
+        para test en resultados:
+            si test.suite == nombre_s:
+                acum_total = acum_total + 1
+                si test.estado == "failed":
+                    acum_fallos = acum_fallos + 1
+                si test.estado == "error":
+                    acum_errores = acum_errores + 1
+                acum_tiempo = acum_tiempo + test.tiempo
+        let s_final = ResultadoSuite(nombre_s, acum_total, acum_fallos, acum_errores, acum_tiempo, Lista<ResultadoTest>())
+        para test en resultados:
+            si test.suite == nombre_s:
+                s_final.tests.agregar(test)
+        suites.agregar(s_final)
+    retornar suites
+
+// --- Cálculo de resumen ---
+
+funcion calcular_resumen(resultados: Lista<ResultadoTest>) -> ResultadoGlobal:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    let total = longitud(resultados)
+    let pasados = 0
+    let fallidos = 0
+    let omitidos = 0
+    let tiempo = 0.0
+    para test en resultados:
+        si test.estado == "passed":
+            pasados = pasados + 1
+        si test.estado == "failed":
+            fallidos = fallidos + 1
+        si test.estado == "skipped":
+            omitidos = omitidos + 1
+        tiempo = tiempo + test.tiempo
+    retornar ResultadoGlobal(total, pasados, fallidos, omitidos, tiempo)
+
+// --- Utilidades ---
+
+funcion contiene(lista: Lista<texto>, valor: texto) -> booleano:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == 1 o _resultado_ == 0
+    para item en lista:
+        si item == valor:
+            retornar verdadero
+    retornar falso

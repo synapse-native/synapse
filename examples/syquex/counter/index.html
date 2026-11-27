@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Syquex Counter App — FASE 25 WASM Demo</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 30px;
+        }
+        .counter-display {
+            font-size: 4rem;
+            font-weight: 700;
+            margin: 20px 0;
+            min-height: 80px;
+            line-height: 1;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+        }
+        .buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        button {
+            padding: 12px 28px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #fff;
+        }
+        button:active { transform: scale(0.95); }
+        .btn-dec {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+        }
+        .btn-dec:hover { box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4); }
+        .btn-inc {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+        }
+        .btn-inc:hover { box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4); }
+        .btn-reset {
+            background: linear-gradient(135deg, #a18cd1, #fbc2eb);
+            color: #333;
+            margin-top: 10px;
+        }
+        .btn-reset:hover { box-shadow: 0 4px 15px rgba(161, 140, 209, 0.4); }
+        .status {
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.4);
+        }
+        .status .ok { color: #4facfe; }
+        .status .error { color: #f5576c; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ Syquex Counter</h1>
+        <p class="subtitle">FASE 25 — WebAssembly + DOM</p>
+
+        <div class="counter-display" id="counter-value">0</div>
+
+        <div class="buttons">
+            <button class="btn-dec" id="btn-dec">−1</button>
+            <button class="btn-inc" id="btn-inc">+1</button>
+        </div>
+        <button class="btn-reset" id="btn-reset">Reset</button>
+
+        <div class="status" id="status">Loading WASM...</div>
+    </div>
+
+    <script>
+    // ================================================================
+    // JavaScript Glue — Bridge entre WASM y DOM
+    // ================================================================
+
+    // --- DOM Bridge Functions (importadas por WASM) ---
+
+    // Buffer en memoria lineal para strings intercambiados con WASM
+    const MEMORY_BASE = 0;
+    let wasmMemory = null;
+
+    function getString(ptr) {
+        if (!wasmMemory) return "";
+        const bytes = new Uint8Array(wasmMemory.buffer);
+        let end = ptr;
+        while (bytes[end] !== 0 && end < bytes.length) end++;
+        return new TextDecoder().decode(bytes.slice(ptr, end));
+    }
+
+    function setString(ptr, str) {
+        if (!wasmMemory) return;
+        const bytes = new Uint8Array(wasmMemory.buffer);
+        const encoded = new TextEncoder().encode(str);
+        bytes.set(encoded, ptr);
+        bytes[ptr + encoded.length] = 0;
+    }
+
+    // js_get_element_by_id(ptr_id) -> ptr_element
+    // Retorna un handle numérico al elemento DOM
+    const elementHandles = new Map();
+    let nextHandle = 1;
+
+    function js_get_element_by_id(ptr_id) {
+        const id = getString(ptr_id);
+        const el = document.getElementById(id);
+        if (!el) return 0;
+        const handle = nextHandle++;
+        elementHandles.set(handle, el);
+        return handle;
+    }
+
+    // js_set_text(ptr_element, ptr_text)
+    function js_set_text(ptr_elem, ptr_text) {
+        const el = elementHandles.get(ptr_elem);
+        if (el) {
+            el.textContent = getString(ptr_text);
+        }
+    }
+
+    // js_get_input_value(ptr_element) -> i32 value
+    function js_get_input_value(ptr_elem) {
+        const el = elementHandles.get(ptr_elem);
+        if (el && el.value !== undefined) {
+            return parseInt(el.value, 10) || 0;
+        }
+        return 0;
+    }
+
+    // js_alert(ptr_text)
+    function js_alert(ptr_text) {
+        alert(getString(ptr_text));
+    }
+
+    // --- Cargar y ejecutar WASM ---
+
+    async function init() {
+        const statusEl = document.getElementById('status');
+
+        try {
+            // Cargar el módulo WASM
+            const response = await fetch('counter.wasm');
+            const bytes = await response.arrayBuffer();
+
+            // Importar funciones DOM
+            const importObject = {
+                env: {
+                    js_get_element_by_id,
+                    js_set_text,
+                    js_get_input_value,
+                    js_alert
+                }
+            };
+
+            // Instanciar el módulo
+            const { instance } = await WebAssembly.instantiate(bytes, importObject);
+            const wasm = instance.exports;
+
+            // Obtener referencia a la memoria
+            wasmMemory = wasm.memory;
+
+            // Llamar main() para inicializar
+            wasm.main();
+
+            // Conectar botones a funciones WASM
+            document.getElementById('btn-inc').addEventListener('click', () => {
+                wasm.increment();
+            });
+
+            document.getElementById('btn-dec').addEventListener('click', () => {
+                wasm.decrement();
+            });
+
+            document.getElementById('btn-reset').addEventListener('click', () => {
+                wasm.reset();
+            });
+
+            // Actualizar estado
+            statusEl.innerHTML = '✅ WASM loaded — <span class="ok">counter.wasm (' +
+                bytes.byteLength + ' bytes)</span>';
+
+        } catch (err) {
+            statusEl.innerHTML = '❌ <span class="error">' + err.message + '</span>';
+            console.error('WASM load error:', err);
+        }
+    }
+
+    // Iniciar al cargar la página
+    init();
+    </script>
+</body>
+</html>

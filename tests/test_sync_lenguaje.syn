@@ -1,0 +1,61 @@
+#lang: es
+importar std.sync
+
+// F4.5 - Primitivas de sincronizacion (Manual 5 §5) desde el lenguaje.
+// std.sync expone mutex/semaforo/barrera (externos -> runtime/core/concurrency.c).
+// El main espera a las fibras (synapse_esperar_fibras, F4.4).
+
+funcion tarea_mutex(m: puntero, ch: Canal<entero>) -> nulo:
+    mutex_bloquear(m)          // se parquea: el main lo tiene tomado
+    ch <- 1                    // adquirido
+    mutex_desbloquear(m)
+    ch <- 2                    // liberado
+    retornar
+
+funcion tarea_sem(s: puntero) -> nulo:
+    semaforo_señalar(s)
+    retornar
+
+funcion tarea_barrera(b: puntero, ch: Canal<entero>, n: entero) -> nulo:
+    v = n * 100
+    ch <- v                    // ANTES de la barrera
+    barrera_esperar(b)
+    ch <- n                    // DESPUES de la barrera
+    retornar
+
+funcion principal() -> nulo:
+    // MUTEX: main toma el mutex; la fibra se bloquea; al liberar, completa.
+    m = mutex_crear()
+    ch = canal(entero, 10)
+    mutex_bloquear(m)
+    lanzar tarea_mutex(m, ch)
+    mutex_desbloquear(m)       // handoff a la fibra
+    a = ch ->
+    b = ch ->
+    si a == 1 y b == 2:
+        log("MUTEX_OK")
+    mutex_destruir(m)
+
+    // SEMAFORO: esperar(0) bloquea al main hasta el señalar de la fibra.
+    s = semaforo_crear(0)
+    lanzar tarea_sem(s)
+    semaforo_esperar(s)
+    semaforo_destruir(s)
+    log("SEM_OK")
+
+    // BARRERA: 3 fibras; los 3 primeros mensajes son los "antes" (n*100).
+    b2 = barrera_crear(3)
+    ch2 = canal(entero, 10)
+    lanzar tarea_barrera(b2, ch2, 1)
+    lanzar tarea_barrera(b2, ch2, 2)
+    lanzar tarea_barrera(b2, ch2, 3)
+    v1 = ch2 ->
+    v2 = ch2 ->
+    v3 = ch2 ->
+    v4 = ch2 ->
+    v5 = ch2 ->
+    v6 = ch2 ->
+    si (v1 >= 100) y (v2 >= 100) y (v3 >= 100) y (v4 < 100) y (v5 < 100) y (v6 < 100):
+        log("BARRERA_OK")
+    barrera_destruir(b2)
+    retornar

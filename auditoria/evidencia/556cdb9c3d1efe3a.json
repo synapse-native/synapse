@@ -1,0 +1,15 @@
+{
+ "cambio_hash": "556cdb9c3d1efe3a",
+ "expediente": "docs/alineacion/r243_native_fase32.md",
+ "fecha": "2026-11-18",
+ "archivos": [
+  "nucleo/analizador_semantico.syn",
+  "nucleo/lexer.syn",
+  "nucleo/principal.syn"
+ ],
+ "oraculos": {
+  "tests/integration/test_compilacion_fase32_s2.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}
